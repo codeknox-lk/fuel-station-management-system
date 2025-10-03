@@ -38,7 +38,7 @@ export const DateTimePicker = forwardRef<HTMLInputElement, DateTimePickerProps>(
     disabled = false,
     showTime = true,
     showSeconds = false
-  }) => {
+  }, ref) => {
     const [isOpen, setIsOpen] = useState(false)
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(value)
     const [time, setTime] = useState(() => {
@@ -107,6 +107,7 @@ export const DateTimePicker = forwardRef<HTMLInputElement, DateTimePickerProps>(
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <Button
+            ref={ref}
             variant="outline"
             className={cn(
               'w-full justify-start text-left font-normal',
