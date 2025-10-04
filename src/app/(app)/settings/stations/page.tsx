@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Building2, Plus, Edit, Trash2, MapPin, Phone, Clock } from 'lucide-react'
@@ -14,15 +15,10 @@ import { useToast } from '@/hooks/use-toast'
 
 interface Station {
   id: string
-  code: string
   name: string
   address: string
-  phone: string
-  email: string
-  manager: string
-  openTime: string
-  closeTime: string
-  status: 'active' | 'inactive' | 'maintenance'
+  city: string
+  isActive: boolean
   createdAt: string
   updatedAt: string
 }
@@ -33,15 +29,10 @@ export default function StationsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingStation, setEditingStation] = useState<Station | null>(null)
   const [formData, setFormData] = useState({
-    code: '',
     name: '',
     address: '',
-    phone: '',
-    email: '',
-    manager: '',
-    openTime: '06:00',
-    closeTime: '22:00',
-    status: 'active' as Station['status']
+    city: '',
+    isActive: true
   })
   const { toast } = useToast()
 
@@ -100,15 +91,10 @@ export default function StationsPage() {
   const handleEdit = (station: Station) => {
     setEditingStation(station)
     setFormData({
-      code: station.code,
       name: station.name,
       address: station.address,
-      phone: station.phone,
-      email: station.email,
-      manager: station.manager,
-      openTime: station.openTime,
-      closeTime: station.closeTime,
-      status: station.status
+      city: station.city,
+      isActive: station.isActive
     })
     setDialogOpen(true)
   }
@@ -141,35 +127,18 @@ export default function StationsPage() {
   const resetForm = () => {
     setEditingStation(null)
     setFormData({
-      code: '',
       name: '',
       address: '',
-      phone: '',
-      email: '',
-      manager: '',
-      openTime: '06:00',
-      closeTime: '22:00',
-      status: 'active'
+      city: '',
+      isActive: true
     })
   }
 
-  const getStatusColor = (status: Station['status']) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800'
-      case 'inactive': return 'bg-gray-100 text-gray-800'
-      case 'maintenance': return 'bg-yellow-100 text-yellow-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
+  const getStatusColor = (isActive: boolean) => {
+    return isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
   }
 
   const columns = [
-    {
-      key: 'code' as keyof Station,
-      title: 'Code',
-      render: (value: unknown) => (
-        <span className="font-mono font-medium">{value as string}</span>
-      )
-    },
     {
       key: 'name' as keyof Station,
       title: 'Station Name',
@@ -188,34 +157,20 @@ export default function StationsPage() {
       )
     },
     {
-      key: 'manager' as keyof Station,
-      title: 'Manager',
+      key: 'city' as keyof Station,
+      title: 'City',
       render: (value: unknown) => (
         <span className="text-sm">{value as string}</span>
       )
     },
     {
-      key: 'openTime' as keyof Station,
-      title: 'Operating Hours',
-      render: (value: unknown, row: Station) => (
-        <div className="flex items-center gap-1 text-sm">
-          <Clock className="h-3 w-3 text-gray-400" />
-          {value as string} - {row.closeTime}
-        </div>
-      )
-    },
-    {
-      key: 'status' as keyof Station,
+      key: 'isActive' as keyof Station,
       title: 'Status',
-      render: (value: unknown) => {
-        const status = value as string
-        if (!status) return <Badge className="bg-gray-100 text-gray-800">Unknown</Badge>
-        return (
-          <Badge className={getStatusColor(status as Station['status'])}>
-            {status.charAt(0).toUpperCase() + status.slice(1)}
-          </Badge>
-        )
-      }
+      render: (value: unknown) => (
+        <Badge className={getStatusColor(value as boolean)}>
+          {(value as boolean) ? 'Active' : 'Inactive'}
+        </Badge>
+      )
     },
     {
       key: 'id' as keyof Station,
@@ -292,27 +247,15 @@ export default function StationsPage() {
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="code">Station Code</Label>
-                  <Input
-                    id="code"
-                    value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    placeholder="e.g., ST001"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="name">Station Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g., Main Street Station"
-                    required
-                  />
-                </div>
+              <div>
+                <Label htmlFor="name">Station Name</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g., Main Street Station"
+                  required
+                />
               </div>
 
               <div>
@@ -326,75 +269,31 @@ export default function StationsPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="Contact number"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="Contact email"
-                  />
-                </div>
-              </div>
-
               <div>
-                <Label htmlFor="manager">Manager</Label>
+                <Label htmlFor="city">City</Label>
                 <Input
-                  id="manager"
-                  value={formData.manager}
-                  onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
-                  placeholder="Station manager name"
+                  id="city"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  placeholder="City name"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="openTime">Opening Time</Label>
-                  <Input
-                    id="openTime"
-                    type="time"
-                    value={formData.openTime}
-                    onChange={(e) => setFormData({ ...formData, openTime: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="closeTime">Closing Time</Label>
-                  <Input
-                    id="closeTime"
-                    type="time"
-                    value={formData.closeTime}
-                    onChange={(e) => setFormData({ ...formData, closeTime: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="status">Status</Label>
-                  <select
-                    id="status"
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value as Station['status'] })}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    required
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="maintenance">Maintenance</option>
-                  </select>
-                </div>
+              <div>
+                <Label htmlFor="isActive">Status</Label>
+                <Select
+                  value={formData.isActive ? 'active' : 'inactive'}
+                  onValueChange={(value) => setFormData({ ...formData, isActive: value === 'active' })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex justify-end gap-3 pt-4">
