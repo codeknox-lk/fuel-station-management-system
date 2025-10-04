@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { useStation } from '@/contexts/StationContext'
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -48,31 +49,8 @@ const roleColors = {
 
 export function TopBar({ userRole }: TopBarProps) {
   const [notifications, setNotifications] = useState<Notification[]>([])
-  const [stations, setStations] = useState<any[]>([])
-  const [selectedStation, setSelectedStation] = useState<string>('all')
+  const { selectedStation, stations, setSelectedStation, getSelectedStation } = useStation()
   const router = useRouter()
-
-  // Load selected station from localStorage on mount
-  useEffect(() => {
-    const savedStation = localStorage.getItem('selectedStation')
-    if (savedStation) {
-      setSelectedStation(savedStation)
-    }
-  }, [])
-
-  // Fetch stations on component mount
-  useEffect(() => {
-    const fetchStations = async () => {
-      try {
-        const response = await fetch('/api/stations?active=true')
-        const data = await response.json()
-        setStations(data)
-      } catch (error) {
-        console.error('Failed to fetch stations:', error)
-      }
-    }
-    fetchStations()
-  }, [])
 
   // Mock notifications - in real app, this would come from API
   useEffect(() => {
@@ -138,17 +116,9 @@ export function TopBar({ userRole }: TopBarProps) {
     router.push('/login')
   }
 
-  const handleStationSelect = (stationId: string) => {
-    setSelectedStation(stationId)
-    // Store selected station in localStorage for persistence
-    localStorage.setItem('selectedStation', stationId)
-    // You can also emit an event or use context to notify other components
-    window.dispatchEvent(new CustomEvent('stationChanged', { detail: { stationId } }))
-  }
-
   const getSelectedStationName = () => {
     if (selectedStation === 'all') return 'All Stations'
-    const station = stations.find(s => s.id === selectedStation)
+    const station = getSelectedStation()
     return station ? station.name : 'All Stations'
   }
 
@@ -297,7 +267,7 @@ export function TopBar({ userRole }: TopBarProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem 
-                onClick={() => handleStationSelect('all')}
+                onClick={() => setSelectedStation('all')}
                 className={selectedStation === 'all' ? 'bg-blue-50' : ''}
               >
                 All Stations
@@ -306,7 +276,7 @@ export function TopBar({ userRole }: TopBarProps) {
               {stations.map((station) => (
                 <DropdownMenuItem 
                   key={station.id}
-                  onClick={() => handleStationSelect(station.id)}
+                  onClick={() => setSelectedStation(station.id)}
                   className={selectedStation === station.id ? 'bg-blue-50' : ''}
                 >
                   {station.name}

@@ -258,8 +258,15 @@ export function addAuditLogEntry(entry: Omit<AuditLogEntry, 'id' | 'timestamp'>)
 }
 
 // Activity summary for dashboard
-export function getRecentActivity(limit: number = 10): AuditLogEntry[] {
-  return getAuditLogEntries().slice(0, limit)
+export function getRecentActivity(limit: number = 10, stationId?: string): AuditLogEntry[] {
+  let entries = getAuditLogEntries()
+  
+  // Filter by station if provided
+  if (stationId) {
+    entries = entries.filter(entry => entry.stationId === stationId)
+  }
+  
+  return entries.slice(0, limit)
 }
 
 export function getActivityStats() {

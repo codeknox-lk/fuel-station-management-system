@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useStation } from '@/contexts/StationContext'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DataTable } from '@/components/ui/DataTable'
@@ -39,6 +40,7 @@ interface ShiftStats {
 }
 
 export default function ShiftsPage() {
+  const { selectedStation, isAllStations, getSelectedStation } = useStation()
   const [shifts, setShifts] = useState<Shift[]>([])
   const [stats, setStats] = useState<ShiftStats>({
     activeShifts: 0,
@@ -50,12 +52,16 @@ export default function ShiftsPage() {
 
   useEffect(() => {
     fetchShifts()
-  }, [])
+  }, [selectedStation])
 
   const fetchShifts = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/shifts')
+      const url = isAllStations 
+        ? '/api/shifts'
+        : `/api/shifts?stationId=${selectedStation}`
+      
+      const response = await fetch(url)
       const data = await response.json()
       
       // Transform the data to include station names and calculate stats
@@ -205,7 +211,10 @@ export default function ShiftsPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Shift Management</h1>
           <p className="text-gray-600 mt-1">
-            Manage station shifts, assignments, and operations
+            {isAllStations 
+              ? 'Manage shifts across all stations, assignments, and operations'
+              : `Manage shifts for ${getSelectedStation()?.name || 'selected station'}, assignments, and operations`
+            }
           </p>
         </div>
         <div className="flex gap-3">

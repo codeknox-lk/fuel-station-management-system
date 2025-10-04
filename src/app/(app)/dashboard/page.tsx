@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useStation } from '@/contexts/StationContext'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { 
@@ -29,13 +30,18 @@ interface AuditLogEntry {
 
 export default function DashboardPage() {
   const router = useRouter()
+  const { selectedStation, isAllStations, getSelectedStation } = useStation()
   const [recentActivities, setRecentActivities] = useState<AuditLogEntry[]>([])
 
-  // Load recent activities
+  // Load recent activities based on selected station
   useEffect(() => {
     const loadRecentActivities = async () => {
       try {
-        const res = await fetch('/api/audit-log?recent=true&limit=5')
+        const url = isAllStations 
+          ? '/api/audit-log?recent=true&limit=5'
+          : `/api/audit-log?recent=true&limit=5&stationId=${selectedStation}`
+        
+        const res = await fetch(url)
         if (res.ok) {
           const activities = await res.json()
           setRecentActivities(activities)
@@ -46,34 +52,38 @@ export default function DashboardPage() {
     }
 
     loadRecentActivities()
-  }, [])
+  }, [selectedStation, isAllStations])
 
-  // Mock data
+  // Get current station info for display
+  const currentStation = getSelectedStation()
+  const stationName = isAllStations ? 'All Stations' : (currentStation?.name || 'Unknown Station')
+
+  // Mock data - in real app, this would be fetched based on selected station
   const stats = [
     {
       title: 'Today\'s Sales',
-      value: 'Rs. 1,250,000',
+      value: isAllStations ? 'Rs. 2,500,000' : 'Rs. 1,250,000',
       change: '+12.5%',
       changeType: 'positive' as const,
       icon: DollarSign
     },
     {
       title: 'Active Shifts',
-      value: '3',
-      change: '2 pumps active',
+      value: isAllStations ? '6' : '3',
+      change: isAllStations ? '4 pumps active' : '2 pumps active',
       changeType: 'neutral' as const,
       icon: Clock
     },
     {
       title: 'Tank Levels',
       value: '85%',
-      change: '2 tanks low',
+      change: isAllStations ? '4 tanks low' : '2 tanks low',
       changeType: 'warning' as const,
       icon: Fuel
     },
     {
       title: 'POS Transactions',
-      value: '156',
+      value: isAllStations ? '312' : '156',
       change: '+8.2%',
       changeType: 'positive' as const,
       icon: CreditCard
@@ -94,9 +104,14 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* Welcome Section */}
         <div className="bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg p-6 text-white">
-          <h1 className="text-2xl font-bold mb-2">Welcome to Fuel Station Management</h1>
+          <h1 className="text-2xl font-bold mb-2">
+            {isAllStations ? 'Multi-Station Overview' : `Welcome to ${currentStation?.name || 'Station'}`}
+          </h1>
           <p className="text-purple-100">
-            Monitor your fuel station operations, track sales, and manage daily activities.
+            {isAllStations 
+              ? 'Monitor all your fuel stations, track combined sales, and manage operations across locations.'
+              : `Monitor your fuel station operations, track sales, and manage daily activities at ${currentStation?.address || 'this location'}.`
+            }
           </p>
         </div>
 
@@ -223,21 +238,36 @@ export default function DashboardPage() {
               onClick={() => router.push('/tanks')}
             >
               <div className="w-2 h-2 bg-yellow-500 rounded-full" />
-              <span>Tank 2 (Diesel) is at 15% capacity</span>
+              <span>
+                {isAllStations 
+                  ? 'Multiple tanks across stations are at low capacity'
+                  : `Tank 2 (Diesel) at ${currentStation?.name || 'this station'} is at 15% capacity`
+                }
+              </span>
             </div>
             <div 
               className="flex items-center gap-2 text-sm cursor-pointer hover:bg-yellow-100 p-2 rounded transition-colors"
               onClick={() => router.push('/pos/reconcile')}
             >
               <div className="w-2 h-2 bg-yellow-500 rounded-full" />
-              <span>POS Batch reconciliation pending for 3 terminals</span>
+              <span>
+                {isAllStations 
+                  ? 'POS Batch reconciliation pending across multiple stations'
+                  : `POS Batch reconciliation pending for 3 terminals at ${currentStation?.name || 'this station'}`
+                }
+              </span>
             </div>
             <div 
               className="flex items-center gap-2 text-sm cursor-pointer hover:bg-yellow-100 p-2 rounded transition-colors"
               onClick={() => router.push('/credit/aging')}
             >
               <div className="w-2 h-2 bg-yellow-500 rounded-full" />
-              <span>Credit customer payment overdue: ABC Company</span>
+              <span>
+                {isAllStations 
+                  ? 'Multiple credit customers have overdue payments'
+                  : `Credit customer payment overdue: ABC Company (${currentStation?.name || 'this station'})`
+                }
+              </span>
             </div>
           </div>
         </CardContent>

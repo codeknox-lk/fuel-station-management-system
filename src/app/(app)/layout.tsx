@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { TopBar } from '@/components/layout/TopBar'
+import { StationProvider } from '@/contexts/StationContext'
 
 type UserRole = 'OWNER' | 'MANAGER' | 'ACCOUNTS'
 
@@ -39,21 +40,23 @@ export default function AppLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="flex">
-        {/* Sidebar - fixed width */}
-        <div className="flex-shrink-0">
-          <Sidebar userRole={userRole} />
-        </div>
-        
-        {/* Main content area */}
-        <div className="flex-1 flex flex-col min-w-0">
-          <TopBar userRole={userRole} />
-          <main className="flex-1 p-6 overflow-auto">
-            {children}
-          </main>
+    <StationProvider>
+      <div className="min-h-screen bg-gray-50">
+        <div className="flex">
+          {/* Sidebar - fixed width */}
+          <div className="flex-shrink-0">
+            <Sidebar userRole={userRole} />
+          </div>
+          
+          {/* Main content area */}
+          <div className="flex-1 flex flex-col min-w-0">
+            <TopBar userRole={userRole} />
+            <main className="flex-1 p-6 overflow-auto">
+              {children}
+            </main>
+          </div>
         </div>
       </div>
-    </div>
+    </StationProvider>
   )
 }

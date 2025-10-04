@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     // Get recent activity
     if (recent === 'true') {
       const limitNum = limit ? parseInt(limit) : 10
-      return NextResponse.json(getRecentActivity(limitNum))
+      return NextResponse.json(getRecentActivity(limitNum, stationId || undefined))
     }
 
     // Filter by date range
