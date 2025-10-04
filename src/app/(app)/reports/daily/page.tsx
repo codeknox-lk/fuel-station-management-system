@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { FormCard } from '@/components/ui/FormCard'
+import { useStation } from '@/contexts/StationContext'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
@@ -83,13 +84,13 @@ interface MissingSlip {
 }
 
 export default function DailyReportsPage() {
+  const { selectedStation: contextSelectedStation, isAllStations, getSelectedStation } = useStation()
   const [stations, setStations] = useState<Station[]>([])
   const [dailyReport, setDailyReport] = useState<DailyReport | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   // Form state
-  const [selectedStation, setSelectedStation] = useState('')
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
 
   // Load initial data
@@ -108,7 +109,12 @@ export default function DailyReportsPage() {
   }, [])
 
   const generateReport = async () => {
-    if (!selectedStation || !selectedDate) {
+    if (isAllStations) {
+      setError('Please select a specific station to generate daily report')
+      return
+    }
+    
+    if (!contextSelectedStation || !selectedDate) {
       setError('Please select both station and date')
       return
     }
@@ -120,7 +126,7 @@ export default function DailyReportsPage() {
       // In a real app, this would call the API endpoint
       // For now, we'll generate mock daily report data
       
-      const station = stations.find(s => s.id === selectedStation)
+      const station = getSelectedStation()
       
       // Generate mock daily report
       const petrolSales = Math.floor(Math.random() * 150000) + 80000
@@ -169,7 +175,7 @@ export default function DailyReportsPage() {
 
       const report: DailyReport = {
         date: selectedDate,
-        stationId: selectedStation,
+        stationId: contextSelectedStation,
         stationName: station?.name || 'Unknown Station',
         petrolSales,
         dieselSales,
@@ -200,12 +206,12 @@ export default function DailyReportsPage() {
   }
 
   const exportToPDF = () => {
-    if (!dailyReport || !selectedStation) {
+    if (!dailyReport || isAllStations) {
       alert('Please select a station and generate a report first')
       return
     }
     
-    const station = stations.find(s => s.id === selectedStation)
+    const station = getSelectedStation()
     const stationName = station?.name || 'Unknown Station'
     const dateStr = selectedDate.toISOString().split('T')[0]
     
@@ -213,12 +219,12 @@ export default function DailyReportsPage() {
   }
 
   const exportToExcel = () => {
-    if (!dailyReport || !selectedStation) {
+    if (!dailyReport || isAllStations) {
       alert('Please select a station and generate a report first')
       return
     }
     
-    const station = stations.find(s => s.id === selectedStation)
+    const station = getSelectedStation()
     const stationName = station?.name || 'Unknown Station'
     const dateStr = selectedDate.toISOString().split('T')[0]
     
@@ -307,22 +313,10 @@ export default function DailyReportsPage() {
       <FormCard title="Generate Daily Report">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <Label htmlFor="station">Station</Label>
-            <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
-              <SelectTrigger id="station">
-                <SelectValue placeholder="Select a station" />
-              </SelectTrigger>
-              <SelectContent>
-                {stations.map((station) => (
-                  <SelectItem key={station.id} value={station.id}>
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4" />
-                      {station.name} ({station.city})
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Current Station</Label>
+            <div className="px-3 py-2 border rounded-md bg-gray-50 text-sm">
+              {isAllStations ? 'All Stations (Select specific station)' : (getSelectedStation()?.name || 'No station selected')}
+            </div>
           </div>
 
           <div>
@@ -338,7 +332,7 @@ export default function DailyReportsPage() {
           </div>
 
           <div className="flex items-end">
-            <Button onClick={generateReport} disabled={loading || !selectedStation || !selectedDate}>
+            <Button onClick={generateReport} disabled={loading || isAllStations || !selectedDate}>
               {loading ? 'Generating...' : (
                 <>
                   <Calculator className="mr-2 h-4 w-4" />
