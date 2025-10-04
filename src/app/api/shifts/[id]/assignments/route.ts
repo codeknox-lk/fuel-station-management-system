@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getShiftAssignments } from '@/data/shifts.seed'
+import { getShiftById, getAssignmentsByShiftId } from '@/data/shifts.seed'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const shiftId = params.id
-    const assignments = getShiftAssignments(shiftId)
+    const { id } = await params
+    const shift = getShiftById(id)
+    
+    if (!shift) {
+      return NextResponse.json({ error: 'Shift not found' }, { status: 404 })
+    }
+
+    const assignments = getAssignmentsByShiftId(id)
     return NextResponse.json(assignments)
   } catch (error) {
-    console.error('Error fetching shift assignments:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

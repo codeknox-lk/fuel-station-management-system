@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { FormCard } from '@/components/ui/FormCard'
 import { useStation } from '@/contexts/StationContext'
 import { Button } from '@/components/ui/button'
@@ -64,9 +64,9 @@ export default function AuditLogPage() {
   useEffect(() => {
     loadAuditLog()
     loadStats()
-  }, [contextSelectedStation])
+  }, [contextSelectedStation, loadAuditLog])
 
-  const loadAuditLog = async () => {
+  const loadAuditLog = useCallback(async () => {
     setLoading(true)
     setError('')
 
@@ -99,7 +99,7 @@ export default function AuditLogPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [contextSelectedStation, isAllStations, startDate, endDate, selectedUser, selectedEntity, selectedAction])
 
   const loadStats = async () => {
     try {

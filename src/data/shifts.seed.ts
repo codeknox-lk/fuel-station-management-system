@@ -240,7 +240,7 @@ export function getShiftById(id: string): Shift | undefined {
   return shifts.find(shift => shift.id === id)
 }
 
-export function getAllShiftAssignments(): ShiftAssignment[] {
+export function getShiftAssignments(): ShiftAssignment[] {
   return shiftAssignments
 }
 
@@ -287,48 +287,6 @@ export function closeAssignment(assignmentId: string, endMeterReading: number, e
   assignment.endMeterReading = endMeterReading
   assignment.status = 'CLOSED'
   assignment.closedAt = endTime
-  assignment.updatedAt = new Date().toISOString()
-
-  return assignment
-}
-
-export function addShiftAssignment(data: {
-  shiftId: string
-  nozzleId: string
-  pumperId: string
-  startMeter: number
-  startTime: string
-}): ShiftAssignment {
-  const newAssignment: ShiftAssignment = {
-    id: Date.now().toString(),
-    shiftId: data.shiftId,
-    nozzleId: data.nozzleId,
-    pumperName: `Pumper ${data.pumperId}`, // In real app, fetch from pumpers data
-    startMeterReading: data.startMeter,
-    status: 'ACTIVE',
-    assignedAt: data.startTime,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-
-  shiftAssignments.push(newAssignment)
-  return newAssignment
-}
-
-export function getShiftAssignments(shiftId: string): ShiftAssignment[] {
-  return shiftAssignments.filter(assignment => assignment.shiftId === shiftId)
-}
-
-export function closeShiftAssignment(assignmentId: string, data: {
-  endMeter: number
-  endTime: string
-}): ShiftAssignment | null {
-  const assignment = shiftAssignments.find(a => a.id === assignmentId)
-  if (!assignment) return null
-
-  assignment.endMeterReading = data.endMeter
-  assignment.status = 'CLOSED'
-  assignment.closedAt = data.endTime
   assignment.updatedAt = new Date().toISOString()
 
   return assignment

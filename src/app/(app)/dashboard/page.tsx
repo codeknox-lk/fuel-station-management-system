@@ -56,7 +56,6 @@ export default function DashboardPage() {
 
   // Get current station info for display
   const currentStation = getSelectedStation()
-  const stationName = isAllStations ? 'All Stations' : (currentStation?.name || 'Unknown Station')
 
   // Mock data - in real app, this would be fetched based on selected station
   const stats = [
