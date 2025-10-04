@@ -138,22 +138,70 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-3">
-              <Button variant="outline" className="h-20 flex flex-col gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Button 
+                variant="outline" 
+                className="h-20 flex flex-col gap-2 hover:bg-blue-50 hover:border-blue-200 transition-colors"
+                onClick={() => router.push('/shifts/open')}
+              >
                 <Clock className="h-5 w-5" />
                 <span className="text-xs">Start Shift</span>
               </Button>
-              <Button variant="outline" className="h-20 flex flex-col gap-2">
+              <Button 
+                variant="outline" 
+                className="h-20 flex flex-col gap-2 hover:bg-green-50 hover:border-green-200 transition-colors"
+                onClick={() => router.push('/tanks/dips')}
+              >
                 <Fuel className="h-5 w-5" />
                 <span className="text-xs">Tank Dip</span>
               </Button>
-              <Button variant="outline" className="h-20 flex flex-col gap-2">
+              <Button 
+                variant="outline" 
+                className="h-20 flex flex-col gap-2 hover:bg-purple-50 hover:border-purple-200 transition-colors"
+                onClick={() => router.push('/pos/batches')}
+              >
                 <CreditCard className="h-5 w-5" />
                 <span className="text-xs">POS Batch</span>
               </Button>
-              <Button variant="outline" className="h-20 flex flex-col gap-2">
+              <Button 
+                variant="outline" 
+                className="h-20 flex flex-col gap-2 hover:bg-yellow-50 hover:border-yellow-200 transition-colors"
+                onClick={() => router.push('/audits')}
+              >
                 <AlertTriangle className="h-5 w-5" />
                 <span className="text-xs">Audit</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                className="h-20 flex flex-col gap-2 hover:bg-red-50 hover:border-red-200 transition-colors"
+                onClick={() => router.push('/shifts/close')}
+              >
+                <Clock className="h-5 w-5" />
+                <span className="text-xs">Close Shift</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                className="h-20 flex flex-col gap-2 hover:bg-indigo-50 hover:border-indigo-200 transition-colors"
+                onClick={() => router.push('/credit/sales')}
+              >
+                <DollarSign className="h-5 w-5" />
+                <span className="text-xs">Credit Sale</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                className="h-20 flex flex-col gap-2 hover:bg-orange-50 hover:border-orange-200 transition-colors"
+                onClick={() => router.push('/reports/daily')}
+              >
+                <FileText className="h-5 w-5" />
+                <span className="text-xs">Daily Report</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                className="h-20 flex flex-col gap-2 hover:bg-teal-50 hover:border-teal-200 transition-colors"
+                onClick={() => router.push('/safe/summary')}
+              >
+                <Activity className="h-5 w-5" />
+                <span className="text-xs">Safe Summary</span>
               </Button>
             </div>
           </CardContent>
@@ -170,15 +218,24 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm">
+            <div 
+              className="flex items-center gap-2 text-sm cursor-pointer hover:bg-yellow-100 p-2 rounded transition-colors"
+              onClick={() => router.push('/tanks')}
+            >
               <div className="w-2 h-2 bg-yellow-500 rounded-full" />
               <span>Tank 2 (Diesel) is at 15% capacity</span>
             </div>
-            <div className="flex items-center gap-2 text-sm">
+            <div 
+              className="flex items-center gap-2 text-sm cursor-pointer hover:bg-yellow-100 p-2 rounded transition-colors"
+              onClick={() => router.push('/pos/reconcile')}
+            >
               <div className="w-2 h-2 bg-yellow-500 rounded-full" />
               <span>POS Batch reconciliation pending for 3 terminals</span>
             </div>
-            <div className="flex items-center gap-2 text-sm">
+            <div 
+              className="flex items-center gap-2 text-sm cursor-pointer hover:bg-yellow-100 p-2 rounded transition-colors"
+              onClick={() => router.push('/credit/aging')}
+            >
               <div className="w-2 h-2 bg-yellow-500 rounded-full" />
               <span>Credit customer payment overdue: ABC Company</span>
             </div>
