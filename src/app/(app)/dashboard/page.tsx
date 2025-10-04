@@ -37,7 +37,18 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadRecentActivities = async () => {
       try {
-        // For now, use mock data since Python backend doesn't have audit log yet
+        const url = isAllStations 
+          ? 'http://localhost:8000/api/audit-log?limit=5'
+          : `http://localhost:8000/api/audit-log?limit=5&stationId=${selectedStation}`
+        
+        const res = await fetch(url)
+        if (res.ok) {
+          const activities = await res.json()
+          setRecentActivities(activities)
+        }
+      } catch (error) {
+        console.error('Failed to load recent activities:', error)
+        // Fallback to mock data
         const mockActivities = [
           {
             id: '1',
@@ -45,9 +56,9 @@ export default function DashboardPage() {
             userRole: 'MANAGER',
             action: 'CREATE',
             entity: 'SHIFT',
-            details: 'Opened morning shift for Station 1',
+            details: 'Opened morning shift for Colombo Central Station',
             timestamp: '2024-10-04T06:00:00Z',
-            stationName: 'Station 1 - Colombo'
+            stationName: 'Colombo Central Station'
           },
           {
             id: '2',
@@ -55,20 +66,12 @@ export default function DashboardPage() {
             userRole: 'ACCOUNTS',
             action: 'UPDATE',
             entity: 'POS_BATCH',
-            details: 'Reconciled POS batch for Station 2',
+            details: 'Reconciled POS batch for Kandy Hill Station',
             timestamp: '2024-10-04T05:30:00Z',
-            stationName: 'Station 2 - Kandy'
+            stationName: 'Kandy Hill Station'
           }
         ]
-        
-        // Filter by station if not "All Stations"
-        const filteredActivities = isAllStations 
-          ? mockActivities
-          : mockActivities.filter(activity => activity.stationName?.includes(selectedStation))
-        
-        setRecentActivities(filteredActivities)
-      } catch (error) {
-        console.error('Failed to load recent activities:', error)
+        setRecentActivities(mockActivities)
       }
     }
 
@@ -79,37 +82,87 @@ export default function DashboardPage() {
   const currentStation = getSelectedStation()
   const stationName = isAllStations ? 'All Stations' : (currentStation?.name || 'Unknown Station')
 
-  // Mock data - in real app, this would be fetched based on selected station
-  const stats = [
+  // Fetch stats from backend
+  const [stats, setStats] = useState([
     {
       title: 'Today\'s Sales',
-      value: isAllStations ? 'Rs. 2,500,000' : 'Rs. 1,250,000',
-      change: '+12.5%',
+      value: 'Rs. 0',
+      change: '+0%',
       changeType: 'positive' as const,
       icon: DollarSign
     },
     {
       title: 'Active Shifts',
-      value: isAllStations ? '6' : '3',
-      change: isAllStations ? '4 pumps active' : '2 pumps active',
+      value: '0',
+      change: '0 pumps active',
       changeType: 'neutral' as const,
       icon: Clock
     },
     {
       title: 'Tank Levels',
-      value: '85%',
-      change: isAllStations ? '4 tanks low' : '2 tanks low',
+      value: '0%',
+      change: '0 tanks low',
       changeType: 'warning' as const,
       icon: Fuel
     },
     {
       title: 'POS Transactions',
-      value: isAllStations ? '312' : '156',
-      change: '+8.2%',
+      value: '0',
+      change: '+0%',
       changeType: 'positive' as const,
       icon: CreditCard
     }
-  ]
+  ])
+
+  // Load stats from backend
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const url = isAllStations 
+          ? 'http://localhost:8000/api/dashboard/stats'
+          : `http://localhost:8000/api/dashboard/stats?stationId=${selectedStation}`
+        
+        const res = await fetch(url)
+        if (res.ok) {
+          const data = await res.json()
+          setStats([
+            {
+              title: 'Today\'s Sales',
+              value: `Rs. ${data.today_sales.toLocaleString()}`,
+              change: '+12.5%',
+              changeType: 'positive' as const,
+              icon: DollarSign
+            },
+            {
+              title: 'Active Shifts',
+              value: data.active_shifts.toString(),
+              change: `${data.active_shifts} pumps active`,
+              changeType: 'neutral' as const,
+              icon: Clock
+            },
+            {
+              title: 'Tank Levels',
+              value: `${data.tank_levels}%`,
+              change: data.tank_levels < 20 ? '2 tanks low' : 'All good',
+              changeType: data.tank_levels < 20 ? 'warning' as const : 'positive' as const,
+              icon: Fuel
+            },
+            {
+              title: 'POS Transactions',
+              value: data.pos_transactions.toString(),
+              change: '+8.2%',
+              changeType: 'positive' as const,
+              icon: CreditCard
+            }
+          ])
+        }
+      } catch (error) {
+        console.error('Failed to load stats:', error)
+      }
+    }
+
+    loadStats()
+  }, [selectedStation, isAllStations])
 
 
   const getChangeColor = (changeType: string) => {
