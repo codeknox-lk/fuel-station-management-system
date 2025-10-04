@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { FormCard } from '@/components/ui/FormCard'
-import { useStation } from '@/contexts/StationContext'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
@@ -83,7 +82,6 @@ interface TenderSummary {
 }
 
 export default function ShiftReportsPage() {
-  const { selectedStation: contextSelectedStation, isAllStations, getSelectedStation } = useStation()
   const [stations, setStations] = useState<Station[]>([])
   const [shifts, setShifts] = useState<Shift[]>([])
   const [shiftReport, setShiftReport] = useState<ShiftReport | null>(null)
@@ -91,6 +89,7 @@ export default function ShiftReportsPage() {
   const [error, setError] = useState('')
 
   // Form state
+  const [selectedStation, setSelectedStation] = useState('')
   const [selectedShift, setSelectedShift] = useState('')
 
   // Load initial data
@@ -110,17 +109,17 @@ export default function ShiftReportsPage() {
 
   // Load shifts when station changes
   useEffect(() => {
-    if (!isAllStations && contextSelectedStation) {
+    if (selectedStation) {
       loadShifts()
     } else {
       setShifts([])
       setSelectedShift('')
     }
-  }, [contextSelectedStation, isAllStations])
+  }, [selectedStation])
 
   const loadShifts = async () => {
     try {
-      const response = await fetch(`/api/shifts?stationId=${contextSelectedStation}&status=CLOSED&limit=10`)
+      const response = await fetch(`/api/shifts?stationId=${selectedStation}&status=CLOSED&limit=10`)
       const shiftsData = await response.json()
       setShifts(shiftsData)
     } catch (err) {
@@ -129,11 +128,6 @@ export default function ShiftReportsPage() {
   }
 
   const generateReport = async () => {
-    if (isAllStations) {
-      setError('Please select a specific station to generate shift report')
-      return
-    }
-    
     if (!selectedShift) {
       setError('Please select a shift')
       return
@@ -262,7 +256,7 @@ export default function ShiftReportsPage() {
       return
     }
     
-    const station = getSelectedStation()
+    const station = stations.find(s => s.id === selectedStation)
     const stationName = station?.name || 'Unknown Station'
     
     exportShiftReportPDF(shiftReport, stationName, selectedShift)
@@ -379,15 +373,27 @@ export default function ShiftReportsPage() {
       <FormCard title="Generate Shift Report">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <Label>Current Station</Label>
-            <div className="px-3 py-2 border rounded-md bg-gray-50 text-sm">
-              {isAllStations ? 'All Stations (Select specific station)' : (getSelectedStation()?.name || 'No station selected')}
-            </div>
+            <Label htmlFor="station">Station</Label>
+            <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
+              <SelectTrigger id="station">
+                <SelectValue placeholder="Select a station" />
+              </SelectTrigger>
+              <SelectContent>
+                {stations.map((station) => (
+                  <SelectItem key={station.id} value={station.id}>
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      {station.name} ({station.city})
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
             <Label htmlFor="shift">Shift</Label>
-            <Select value={selectedShift} onValueChange={setSelectedShift} disabled={loading || isAllStations}>
+            <Select value={selectedShift} onValueChange={setSelectedShift} disabled={loading || !selectedStation}>
               <SelectTrigger id="shift">
                 <SelectValue placeholder="Select a shift" />
               </SelectTrigger>
@@ -410,7 +416,7 @@ export default function ShiftReportsPage() {
           </div>
 
           <div className="flex items-end">
-            <Button onClick={generateReport} disabled={loading || isAllStations || !selectedShift}>
+            <Button onClick={generateReport} disabled={loading || !selectedShift}>
               {loading ? 'Generating...' : (
                 <>
                   <Calculator className="mr-2 h-4 w-4" />

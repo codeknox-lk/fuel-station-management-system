@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { FormCard } from '@/components/ui/FormCard'
-import { useStation } from '@/contexts/StationContext'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
@@ -71,7 +70,6 @@ interface StationReport {
 }
 
 export default function TankReportPage() {
-  const { selectedStation: contextSelectedStation, isAllStations, getSelectedStation } = useStation()
   const [stations, setStations] = useState<Station[]>([])
   const [tanks, setTanks] = useState<Tank[]>([])
   const [report, setReport] = useState<StationReport | null>(null)
@@ -79,6 +77,7 @@ export default function TankReportPage() {
   const [error, setError] = useState('')
 
   // Form state
+  const [selectedStation, setSelectedStation] = useState('')
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
 
   // Load initial data
@@ -98,10 +97,10 @@ export default function TankReportPage() {
 
   // Load tanks when station changes
   useEffect(() => {
-    if (!isAllStations && contextSelectedStation) {
+    if (selectedStation) {
       const loadTanks = async () => {
         try {
-          const response = await fetch(`/api/tanks?stationId=${contextSelectedStation}&type=tanks`)
+          const response = await fetch(`/api/tanks?stationId=${selectedStation}&type=tanks`)
           const tanksData = await response.json()
           setTanks(tanksData)
         } catch (err) {
@@ -113,15 +112,10 @@ export default function TankReportPage() {
     } else {
       setTanks([])
     }
-  }, [contextSelectedStation, isAllStations])
+  }, [selectedStation])
 
   const generateReport = async () => {
-    if (isAllStations) {
-      setError('Please select a specific station to generate tank report')
-      return
-    }
-    
-    if (!contextSelectedStation || !selectedDate) {
+    if (!selectedStation || !selectedDate) {
       setError('Please select both station and date')
       return
     }
@@ -133,8 +127,8 @@ export default function TankReportPage() {
       // In a real app, this would call an API endpoint
       // For now, we'll generate mock data based on the selected parameters
       
-      const station = getSelectedStation()
-      const stationTanks = tanks.filter(t => t.stationId === contextSelectedStation)
+      const station = stations.find(s => s.id === selectedStation)
+      const stationTanks = tanks.filter(t => t.stationId === selectedStation)
 
       // Generate mock report data
       const tankReports: TankReport[] = stationTanks.map(tank => {
@@ -192,7 +186,7 @@ export default function TankReportPage() {
       }
 
       const stationReport: StationReport = {
-        stationId: contextSelectedStation,
+        stationId: selectedStation,
         stationName: station?.name || 'Unknown Station',
         reportDate: selectedDate,
         tanks: tankReports,
@@ -241,10 +235,22 @@ export default function TankReportPage() {
       <FormCard title="Generate Report">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <Label>Current Station</Label>
-            <div className="px-3 py-2 border rounded-md bg-gray-50 text-sm">
-              {isAllStations ? 'All Stations (Select specific station)' : (getSelectedStation()?.name || 'No station selected')}
-            </div>
+            <Label htmlFor="station">Station</Label>
+            <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
+              <SelectTrigger id="station">
+                <SelectValue placeholder="Select a station" />
+              </SelectTrigger>
+              <SelectContent>
+                {stations.map((station) => (
+                  <SelectItem key={station.id} value={station.id}>
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      {station.name} ({station.city})
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
@@ -260,7 +266,7 @@ export default function TankReportPage() {
           </div>
 
           <div className="flex items-end">
-            <Button onClick={generateReport} disabled={loading || isAllStations || !selectedDate}>
+            <Button onClick={generateReport} disabled={loading || !selectedStation || !selectedDate}>
               {loading ? 'Generating...' : (
                 <>
                   <Calculator className="mr-2 h-4 w-4" />

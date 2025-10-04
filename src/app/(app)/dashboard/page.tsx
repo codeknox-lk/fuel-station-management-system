@@ -37,15 +37,36 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadRecentActivities = async () => {
       try {
-        const url = isAllStations 
-          ? '/api/audit-log?recent=true&limit=5'
-          : `/api/audit-log?recent=true&limit=5&stationId=${selectedStation}`
+        // For now, use mock data since Python backend doesn't have audit log yet
+        const mockActivities = [
+          {
+            id: '1',
+            userName: 'John Manager',
+            userRole: 'MANAGER',
+            action: 'CREATE',
+            entity: 'SHIFT',
+            details: 'Opened morning shift for Station 1',
+            timestamp: '2024-10-04T06:00:00Z',
+            stationName: 'Station 1 - Colombo'
+          },
+          {
+            id: '2',
+            userName: 'Sarah Accounts',
+            userRole: 'ACCOUNTS',
+            action: 'UPDATE',
+            entity: 'POS_BATCH',
+            details: 'Reconciled POS batch for Station 2',
+            timestamp: '2024-10-04T05:30:00Z',
+            stationName: 'Station 2 - Kandy'
+          }
+        ]
         
-        const res = await fetch(url)
-        if (res.ok) {
-          const activities = await res.json()
-          setRecentActivities(activities)
-        }
+        // Filter by station if not "All Stations"
+        const filteredActivities = isAllStations 
+          ? mockActivities
+          : mockActivities.filter(activity => activity.stationName?.includes(selectedStation))
+        
+        setRecentActivities(filteredActivities)
       } catch (error) {
         console.error('Failed to load recent activities:', error)
       }
@@ -56,6 +77,7 @@ export default function DashboardPage() {
 
   // Get current station info for display
   const currentStation = getSelectedStation()
+  const stationName = isAllStations ? 'All Stations' : (currentStation?.name || 'Unknown Station')
 
   // Mock data - in real app, this would be fetched based on selected station
   const stats = [

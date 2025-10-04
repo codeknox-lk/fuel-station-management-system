@@ -122,7 +122,7 @@ export default function OwnerDashboardPage() {
 
       // Fetch aggregated data for each station
       const stationSummaries: StationSummary[] = await Promise.all(
-        stations.map(async (station: Station, index: number) => {
+        stations.map(async (station: any, index: number) => {
           // Fetch real data for each station
           const today = new Date().toISOString().split('T')[0]
           
@@ -146,7 +146,7 @@ export default function OwnerDashboardPage() {
           
           // Calculate tank fill levels
           const tanksFillLevel = tanks.length > 0 
-            ? tanks.reduce((avg: number, tank: { currentLevel: number; capacity: number }) => avg + ((tank.currentLevel / tank.capacity) * 100), 0) / tanks.length
+            ? tanks.reduce((avg: number, tank: any) => avg + ((tank.currentLevel / tank.capacity) * 100), 0) / tanks.length
             : Math.floor(Math.random() * 40) + 40
           
           // Determine status based on real metrics
