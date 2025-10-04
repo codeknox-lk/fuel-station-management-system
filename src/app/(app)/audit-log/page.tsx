@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { FormCard } from '@/components/ui/FormCard'
+import { useStation } from '@/contexts/StationContext'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DataTable, Column } from '@/components/ui/DataTable'
@@ -46,6 +47,7 @@ interface ActivityStats {
 }
 
 export default function AuditLogPage() {
+  const { selectedStation: contextSelectedStation, isAllStations } = useStation()
   const [auditEntries, setAuditEntries] = useState<AuditLogEntry[]>([])
   const [stats, setStats] = useState<ActivityStats | null>(null)
   const [loading, setLoading] = useState(false)
@@ -55,7 +57,6 @@ export default function AuditLogPage() {
   const [startDate, setStartDate] = useState<Date>(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)) // 7 days ago
   const [endDate, setEndDate] = useState<Date>(new Date())
   const [selectedUser, setSelectedUser] = useState<string>('all')
-  const [selectedStation, setSelectedStation] = useState<string>('all')
   const [selectedEntity, setSelectedEntity] = useState<string>('all')
   const [selectedAction, setSelectedAction] = useState<string>('all')
 
@@ -63,7 +64,7 @@ export default function AuditLogPage() {
   useEffect(() => {
     loadAuditLog()
     loadStats()
-  }, [])
+  }, [contextSelectedStation])
 
   const loadAuditLog = async () => {
     setLoading(true)
@@ -77,7 +78,7 @@ export default function AuditLogPage() {
         params.append('endDate', endDate.toISOString())
       }
       if (selectedUser && selectedUser !== 'all') params.append('userId', selectedUser)
-      if (selectedStation && selectedStation !== 'all') params.append('stationId', selectedStation)
+      if (!isAllStations) params.append('stationId', contextSelectedStation)
       if (selectedEntity && selectedEntity !== 'all') params.append('entity', selectedEntity)
       if (selectedAction && selectedAction !== 'all') params.append('action', selectedAction)
 
@@ -120,7 +121,6 @@ export default function AuditLogPage() {
     setStartDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
     setEndDate(new Date())
     setSelectedUser('')
-    setSelectedStation('')
     setSelectedEntity('')
     setSelectedAction('')
     setTimeout(() => loadAuditLog(), 100)
@@ -346,19 +346,6 @@ export default function AuditLogPage() {
             </Select>
           </div>
 
-          <div>
-            <Label htmlFor="station">Station</Label>
-            <Select value={selectedStation} onValueChange={setSelectedStation}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Stations" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Stations</SelectItem>
-                <SelectItem value="1">Station 1 - Colombo</SelectItem>
-                <SelectItem value="2">Station 2 - Kandy</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
 
           <div>
             <Label htmlFor="entity">Entity</Label>
