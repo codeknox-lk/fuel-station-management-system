@@ -48,7 +48,31 @@ const roleColors = {
 
 export function TopBar({ userRole }: TopBarProps) {
   const [notifications, setNotifications] = useState<Notification[]>([])
+  const [stations, setStations] = useState<any[]>([])
+  const [selectedStation, setSelectedStation] = useState<string>('all')
   const router = useRouter()
+
+  // Load selected station from localStorage on mount
+  useEffect(() => {
+    const savedStation = localStorage.getItem('selectedStation')
+    if (savedStation) {
+      setSelectedStation(savedStation)
+    }
+  }, [])
+
+  // Fetch stations on component mount
+  useEffect(() => {
+    const fetchStations = async () => {
+      try {
+        const response = await fetch('/api/stations?active=true')
+        const data = await response.json()
+        setStations(data)
+      } catch (error) {
+        console.error('Failed to fetch stations:', error)
+      }
+    }
+    fetchStations()
+  }, [])
 
   // Mock notifications - in real app, this would come from API
   useEffect(() => {
@@ -112,6 +136,20 @@ export function TopBar({ userRole }: TopBarProps) {
   const handleLogout = () => {
     localStorage.removeItem('userRole')
     router.push('/login')
+  }
+
+  const handleStationSelect = (stationId: string) => {
+    setSelectedStation(stationId)
+    // Store selected station in localStorage for persistence
+    localStorage.setItem('selectedStation', stationId)
+    // You can also emit an event or use context to notify other components
+    window.dispatchEvent(new CustomEvent('stationChanged', { detail: { stationId } }))
+  }
+
+  const getSelectedStationName = () => {
+    if (selectedStation === 'all') return 'All Stations'
+    const station = stations.find(s => s.id === selectedStation)
+    return station ? station.name : 'All Stations'
   }
 
   const handleNotificationClick = (notification: Notification) => {
@@ -253,14 +291,27 @@ export function TopBar({ userRole }: TopBarProps) {
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
                 <Building2 className="h-4 w-4" />
-                Station 1
+                {getSelectedStationName()}
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>Station 1 - Colombo</DropdownMenuItem>
-              <DropdownMenuItem>Station 2 - Kandy</DropdownMenuItem>
-              <DropdownMenuItem>All Stations</DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => handleStationSelect('all')}
+                className={selectedStation === 'all' ? 'bg-blue-50' : ''}
+              >
+                All Stations
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {stations.map((station) => (
+                <DropdownMenuItem 
+                  key={station.id}
+                  onClick={() => handleStationSelect(station.id)}
+                  className={selectedStation === station.id ? 'bg-blue-50' : ''}
+                >
+                  {station.name}
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
 
