@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { Tank } from '@/data/tanks.seed'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { DataTable, Column } from '@/components/ui/DataTable'
@@ -122,7 +123,7 @@ export default function OwnerDashboardPage() {
 
       // Fetch aggregated data for each station
       const stationSummaries: StationSummary[] = await Promise.all(
-        stations.map(async (station: any, index: number) => {
+        stations.map(async (station: Station, index: number) => {
           // Fetch real data for each station
           const today = new Date().toISOString().split('T')[0]
           
@@ -146,7 +147,7 @@ export default function OwnerDashboardPage() {
           
           // Calculate tank fill levels
           const tanksFillLevel = tanks.length > 0 
-            ? tanks.reduce((avg: number, tank: any) => avg + ((tank.currentLevel / tank.capacity) * 100), 0) / tanks.length
+            ? tanks.reduce((avg: number, tank: Tank) => avg + ((tank.currentLevel / tank.capacity) * 100), 0) / tanks.length
             : Math.floor(Math.random() * 40) + 40
           
           // Determine status based on real metrics

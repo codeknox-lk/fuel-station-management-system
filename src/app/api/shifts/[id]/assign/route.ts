@@ -1,37 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getShiftById } from '@/data/shifts.seed'
+import { addShiftAssignment } from '@/data/shifts.seed'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params
+    const shiftId = params.id
     const body = await request.json()
     
-    const shift = getShiftById(id)
-    if (!shift) {
-      return NextResponse.json({ error: 'Shift not found' }, { status: 404 })
+    // Validate required fields
+    if (!body.nozzleId || !body.pumperId) {
+      return NextResponse.json({ error: 'Missing required fields: nozzleId, pumperId' }, { status: 400 })
     }
 
-    if (shift.status === 'CLOSED') {
-      return NextResponse.json({ error: 'Cannot assign to closed shift' }, { status: 400 })
-    }
+    const assignment = addShiftAssignment({
+      shiftId,
+      nozzleId: body.nozzleId,
+      pumperId: body.pumperId,
+      startMeter: body.startMeter || 0,
+      startTime: body.startTime || new Date().toISOString()
+    })
 
-    // In a real app, this would validate and save to database
-    const newAssignment = {
-      id: Date.now().toString(),
-      shiftId: id,
-      ...body,
-      status: 'ACTIVE',
-      assignedAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }
-
-    return NextResponse.json(newAssignment, { status: 201 })
+    return NextResponse.json(assignment, { status: 201 })
   } catch (error) {
-    console.error('Error assigning shift:', error)
+    console.error('Error creating shift assignment:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
