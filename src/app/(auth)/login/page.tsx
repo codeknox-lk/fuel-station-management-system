@@ -144,9 +144,9 @@ export default function LoginPage() {
         <div className="text-center text-xs text-gray-500">
           <div className="mb-2">Test Credentials:</div>
           <div className="space-y-1">
-            <div><strong>Owner:</strong> admin / admin123</div>
-            <div><strong>Manager:</strong> manager1 / manager123</div>
-            <div><strong>Accounts:</strong> accounts1 / accounts123</div>
+            <div><strong>Owner:</strong> admin / FuelStation2024!Admin</div>
+            <div><strong>Manager:</strong> manager1 / ManagerSecure2024!</div>
+            <div><strong>Accounts:</strong> accounts1 / AccountsSafe2024!</div>
           </div>
         </div>
       </CardContent>
