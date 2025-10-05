@@ -16,7 +16,8 @@ import {
   Settings,
   Building2,
   FileText,
-  Bell
+  Bell,
+  User
 } from 'lucide-react'
 
 type UserRole = 'OWNER' | 'MANAGER' | 'ACCOUNTS'
@@ -92,6 +93,12 @@ const navigation: NavItem[] = [
     href: '/settings',
     icon: Settings,
     roles: ['OWNER']
+  },
+  {
+    title: 'Profile',
+    href: '/settings/profile',
+    icon: User,
+    roles: ['OWNER', 'MANAGER', 'ACCOUNTS']
   }
 ]
 
