@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef, useState } from 'react'
+import { forwardRef, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { 
@@ -56,6 +56,18 @@ export const DateTimePicker = forwardRef<HTMLInputElement, DateTimePickerProps>(
       }
     })
 
+    // Sync internal state with external value prop
+    useEffect(() => {
+      setSelectedDate(value)
+      if (value) {
+        setTime({
+          hours: value.getHours().toString().padStart(2, '0'),
+          minutes: value.getMinutes().toString().padStart(2, '0'),
+          seconds: showSeconds ? value.getSeconds().toString().padStart(2, '0') : '00'
+        })
+      }
+    }, [value, showSeconds])
+
     const handleDateSelect = (date: Date | undefined) => {
       setSelectedDate(date)
       if (date && showTime) {
@@ -63,8 +75,18 @@ export const DateTimePicker = forwardRef<HTMLInputElement, DateTimePickerProps>(
         const newDate = new Date(date)
         newDate.setHours(parseInt(time.hours), parseInt(time.minutes), parseInt(time.seconds))
         onChange?.(newDate)
+      } else if (date) {
+        // If no time selection, use current time
+        const now = new Date()
+        const newDate = new Date(date)
+        newDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds())
+        onChange?.(newDate)
       } else {
         onChange?.(date)
+      }
+      // Close popover after date selection (unless time selection is enabled)
+      if (date && !showTime) {
+        setIsOpen(false)
       }
     }
 
