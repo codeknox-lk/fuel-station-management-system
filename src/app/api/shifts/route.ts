@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getShifts, getShiftsByStationId, getActiveShifts, getShiftById } from '@/data/shifts.seed'
+import { getShifts, getShiftsByStationId, getActiveShifts, getShiftById, createShift } from '@/data/shifts.seed'
 import { getStationById } from '@/data/stations.seed'
 import { auditOperations } from '@/lib/auditMiddleware'
 
@@ -37,14 +37,11 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    // In a real app, this would validate and save to database
-    const newShift = {
-      id: Date.now().toString(),
+    // Create the shift using the new function
+    const newShift = createShift({
       ...body,
-      status: 'OPEN',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }
+      status: 'OPEN'
+    })
 
     // Get station info for audit logging
     const station = getStationById(body.stationId)

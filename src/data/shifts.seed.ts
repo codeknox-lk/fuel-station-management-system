@@ -50,7 +50,8 @@ export interface TestPour {
   updatedAt: string
 }
 
-export const shifts: Shift[] = [
+// Dynamic shifts array that can be modified at runtime
+let shifts: Shift[] = [
   {
     id: '1',
     stationId: '1',
@@ -290,4 +291,42 @@ export function closeAssignment(assignmentId: string, endMeterReading: number, e
   assignment.updatedAt = new Date().toISOString()
 
   return assignment
+}
+
+// Dynamic shift management functions
+export function createShift(shiftData: Omit<Shift, 'id' | 'createdAt' | 'updatedAt'>): Shift {
+  const newShift: Shift = {
+    id: Date.now().toString(),
+    ...shiftData,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }
+  
+  shifts.push(newShift)
+  return newShift
+}
+
+export function updateShift(id: string, updates: Partial<Shift>): Shift | null {
+  const shiftIndex = shifts.findIndex(s => s.id === id)
+  if (shiftIndex === -1) return null
+  
+  shifts[shiftIndex] = {
+    ...shifts[shiftIndex],
+    ...updates,
+    updatedAt: new Date().toISOString()
+  }
+  
+  return shifts[shiftIndex]
+}
+
+export function createShiftAssignment(assignmentData: Omit<ShiftAssignment, 'id' | 'createdAt' | 'updatedAt'>): ShiftAssignment {
+  const newAssignment: ShiftAssignment = {
+    id: Date.now().toString(),
+    ...assignmentData,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }
+  
+  shiftAssignments.push(newAssignment)
+  return newAssignment
 }
