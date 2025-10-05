@@ -136,12 +136,21 @@ export default function ProfilePage() {
       })
 
       if (response.ok) {
-        setSuccess('Password updated successfully')
+        setSuccess('Password updated successfully. Please log in again with your new password.')
         setPasswordForm({
           current_password: '',
           new_password: '',
           confirm_password: ''
         })
+        // Clear the current session since password changed
+        localStorage.removeItem('accessToken')
+        localStorage.removeItem('userRole')
+        localStorage.removeItem('userId')
+        localStorage.removeItem('username')
+        // Redirect to login after a short delay
+        setTimeout(() => {
+          window.location.href = '/login'
+        }, 2000)
       } else {
         const errorData = await response.json()
         setError(errorData.detail || 'Failed to change password')
