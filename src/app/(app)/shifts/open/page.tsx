@@ -303,6 +303,7 @@ export default function OpenShiftPage() {
       title: 'Start Meter',
       render: (value: unknown, row: Assignment) => (
         <Input
+          id={`meter-${row.nozzleId}`}
           type="number"
           value={value as number}
           onChange={(e) => handleUpdateAssignment(row.nozzleId, 'startMeterReading', parseInt(e.target.value) || 0)}
