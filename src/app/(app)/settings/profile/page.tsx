@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, User, Lock, Mail, Shield } from 'lucide-react'
+import { Loader2, User, Lock, Shield } from 'lucide-react'
 
 interface UserProfile {
   id: string
@@ -28,8 +28,7 @@ export default function ProfilePage() {
 
   // Profile update form
   const [profileForm, setProfileForm] = useState({
-    username: '',
-    email: ''
+    username: ''
   })
 
   // Password change form
@@ -58,8 +57,7 @@ export default function ProfilePage() {
         const data = await response.json()
         setProfile(data)
         setProfileForm({
-          username: data.username,
-          email: data.email
+          username: data.username
         })
       } else {
         setError('Failed to load profile')
@@ -202,10 +200,6 @@ export default function ProfilePage() {
                   <p className="text-lg font-semibold">{profile.username}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">Email</Label>
-                  <p className="text-lg font-semibold">{profile.email}</p>
-                </div>
-                <div>
                   <Label className="text-sm font-medium text-gray-500">Role</Label>
                   <div className="mt-1">
                     <Badge className={getRoleColor(profile.role)}>
@@ -245,11 +239,11 @@ export default function ProfilePage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
+                <User className="h-5 w-5" />
                 Update Profile
               </CardTitle>
               <CardDescription>
-                Update your username and email address
+                Update your username
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -278,18 +272,6 @@ export default function ProfilePage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={profileForm.email}
-                    onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                    placeholder="Enter your email"
-                    disabled={updating}
-                    required
-                  />
-                </div>
 
                 <Button type="submit" disabled={updating} className="w-full">
                   {updating ? (
