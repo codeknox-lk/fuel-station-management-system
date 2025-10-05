@@ -9,8 +9,12 @@ export async function POST(
     const { id } = await params
     const body = await request.json()
     
+    console.log('Looking for shift with ID:', id)
     const shift = getShiftById(id)
+    console.log('Found shift:', shift)
+    
     if (!shift) {
+      console.log('Shift not found, returning 404')
       return NextResponse.json({ error: 'Shift not found' }, { status: 404 })
     }
 

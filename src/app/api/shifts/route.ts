@@ -43,6 +43,9 @@ export async function POST(request: NextRequest) {
       status: 'OPEN'
     })
 
+    console.log('Created shift with ID:', newShift.id)
+    console.log('Shift data:', newShift)
+
     // Get station info for audit logging
     const station = getStationById(body.stationId)
     if (station) {
