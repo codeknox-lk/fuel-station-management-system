@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTanks, getTanksByStationId, getTankById, getPumps, getPumpsByStationId, getNozzles, getNozzlesByPumpId } from '@/data/tanks.seed'
+import { getTanks, getTanksByStationId, getTankById, getPumps, getPumpsByStationId, getNozzles, getNozzlesByPumpId, getNozzlesByStationIdWithFuelType } from '@/data/tanks.seed'
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,6 +27,9 @@ export async function GET(request: NextRequest) {
       const pumpId = searchParams.get('pumpId')
       if (pumpId) {
         return NextResponse.json(getNozzlesByPumpId(pumpId))
+      }
+      if (stationId) {
+        return NextResponse.json(getNozzlesByStationIdWithFuelType(stationId))
       }
       return NextResponse.json(getNozzles())
     }

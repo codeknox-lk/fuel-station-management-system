@@ -219,3 +219,29 @@ export function getNozzlesByTankId(tankId: string): Nozzle[] {
 export function getNozzleById(id: string): Nozzle | undefined {
   return nozzles.find(nozzle => nozzle.id === id)
 }
+
+// Enhanced nozzle functions that include fuel type
+export function getNozzlesWithFuelType(): (Nozzle & { fuelType: string })[] {
+  return nozzles.map(nozzle => {
+    const tank = tanks.find(t => t.id === nozzle.tankId)
+    return {
+      ...nozzle,
+      fuelType: tank?.fuelType || 'UNKNOWN'
+    }
+  })
+}
+
+export function getNozzlesByStationIdWithFuelType(stationId: string): (Nozzle & { fuelType: string })[] {
+  const stationTanks = tanks.filter(tank => tank.stationId === stationId && tank.isActive)
+  const stationTankIds = stationTanks.map(tank => tank.id)
+  
+  return nozzles
+    .filter(nozzle => stationTankIds.includes(nozzle.tankId) && nozzle.isActive)
+    .map(nozzle => {
+      const tank = tanks.find(t => t.id === nozzle.tankId)
+      return {
+        ...nozzle,
+        fuelType: tank?.fuelType || 'UNKNOWN'
+      }
+    })
+}
