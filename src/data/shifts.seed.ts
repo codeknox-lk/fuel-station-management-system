@@ -229,6 +229,9 @@ export function getShifts(): Shift[] {
   return shifts
 }
 
+// Export the shifts array for direct access (for debugging)
+export { shifts }
+
 export function getShiftsByStationId(stationId: string): Shift[] {
   return shifts.filter(shift => shift.stationId === stationId)
 }

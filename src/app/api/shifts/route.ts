@@ -45,6 +45,10 @@ export async function POST(request: NextRequest) {
 
     console.log('Created shift with ID:', newShift.id)
     console.log('Shift data:', newShift)
+    
+    // Debug: Verify the shift was actually stored
+    const allShifts = getShifts()
+    console.log('All shifts after creation:', allShifts.map(s => ({ id: s.id, status: s.status })))
 
     // Get station info for audit logging
     const station = getStationById(body.stationId)
