@@ -344,7 +344,7 @@ export default function OpenShiftPage() {
           <div className="space-y-2">
             <Label htmlFor="station">Station *</Label>
             <Select value={selectedStation} onValueChange={setSelectedStation}>
-              <SelectTrigger>
+              <SelectTrigger id="station">
                 <SelectValue placeholder="Select station" />
               </SelectTrigger>
               <SelectContent>
@@ -360,7 +360,7 @@ export default function OpenShiftPage() {
           <div className="space-y-2">
             <Label htmlFor="template">Shift Template *</Label>
             <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-              <SelectTrigger>
+              <SelectTrigger id="template">
                 <SelectValue placeholder="Select template" />
               </SelectTrigger>
               <SelectContent>
@@ -376,6 +376,7 @@ export default function OpenShiftPage() {
           <div className="space-y-2">
             <Label htmlFor="startTime">Start Time *</Label>
             <DateTimePicker
+              id="startTime"
               value={startTime}
               onChange={(date) => setStartTime(date || new Date())}
               placeholder="Select start time"

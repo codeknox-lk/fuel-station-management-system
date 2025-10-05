@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getShiftById, createShiftAssignment } from '@/data/shifts.seed'
+import { getShiftById, createShiftAssignment, getShifts } from '@/data/shifts.seed'
 
 export async function POST(
   request: NextRequest,
@@ -10,6 +10,11 @@ export async function POST(
     const body = await request.json()
     
     console.log('Looking for shift with ID:', id)
+    
+    // Debug: List all shifts to see what's in memory
+    const allShifts = getShifts()
+    console.log('All shifts in memory:', allShifts.map(s => ({ id: s.id, status: s.status, stationId: s.stationId })))
+    
     const shift = getShiftById(id)
     console.log('Found shift:', shift)
     
