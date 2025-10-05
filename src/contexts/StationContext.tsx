@@ -30,40 +30,11 @@ export function StationProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const fetchStations = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/stations')
+        const response = await fetch('/api/stations?active=true')
         const data = await response.json()
-        // Transform the data to match our interface (is_active -> isActive)
-        const transformedData = data.map((station: any) => ({
-          ...station,
-          isActive: station.is_active,
-          createdAt: station.created_at,
-          updatedAt: station.updated_at
-        }))
-        setStations(transformedData)
+        setStations(data)
       } catch (error) {
         console.error('Failed to fetch stations:', error)
-        // Fallback to mock data if backend is not available
-        const mockStations = [
-          {
-            id: '1',
-            name: 'Station 1 - Colombo',
-            address: '123 Galle Road, Colombo 03',
-            city: 'Colombo',
-            isActive: true,
-            createdAt: '2024-01-01T00:00:00Z',
-            updatedAt: '2024-01-01T00:00:00Z'
-          },
-          {
-            id: '2',
-            name: 'Station 2 - Kandy',
-            address: '456 Peradeniya Road, Kandy',
-            city: 'Kandy',
-            isActive: true,
-            createdAt: '2024-01-01T00:00:00Z',
-            updatedAt: '2024-01-01T00:00:00Z'
-          }
-        ]
-        setStations(mockStations)
       }
     }
     fetchStations()

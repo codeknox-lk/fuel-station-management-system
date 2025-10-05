@@ -70,18 +70,6 @@ const navigation: NavItem[] = [
     roles: ['OWNER', 'MANAGER', 'ACCOUNTS']
   },
   {
-    title: 'Credit',
-    href: '/credit',
-    icon: Users,
-    roles: ['OWNER', 'MANAGER', 'ACCOUNTS']
-  },
-  {
-    title: 'Safe',
-    href: '/safe',
-    icon: Shield,
-    roles: ['OWNER', 'ACCOUNTS']
-  },
-  {
     title: 'Reports',
     href: '/reports',
     icon: BarChart3,
