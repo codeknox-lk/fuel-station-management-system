@@ -40,6 +40,7 @@ interface Nozzle {
   tankId: string
   nozzleNumber: string
   fuelType: string
+  pumpNumber: string
 }
 
 interface Pumper {
@@ -56,6 +57,7 @@ interface Assignment {
   nozzleId: string
   nozzleNumber: string
   fuelType: string
+  pumpNumber: string
   pumperId: string
   pumperName: string
   startMeterReading: number
@@ -133,6 +135,7 @@ export default function OpenShiftPage() {
       nozzleId,
       nozzleNumber: nozzle.nozzleNumber,
       fuelType: nozzle.fuelType,
+      pumpNumber: nozzle.pumpNumber,
       pumperId: '',
       pumperName: '',
       startMeterReading: 0
@@ -244,7 +247,7 @@ export default function OpenShiftPage() {
       render: (value: unknown, row: Assignment) => (
         <div className="flex items-center gap-2">
           <Fuel className="h-4 w-4 text-gray-500" />
-          <span className="font-medium">{value as string}</span>
+          <span className="font-medium">{row.pumpNumber} {value as string}</span>
           <Badge variant="outline">{row.fuelType}</Badge>
         </div>
       )
@@ -394,7 +397,7 @@ export default function OpenShiftPage() {
                 <SelectContent>
                   {availableNozzles.map((nozzle) => (
                     <SelectItem key={nozzle.id} value={nozzle.id}>
-                      {nozzle.nozzleNumber} - {nozzle.fuelType}
+                      {nozzle.pumpNumber} {nozzle.nozzleNumber} - {nozzle.fuelType}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -220,18 +220,20 @@ export function getNozzleById(id: string): Nozzle | undefined {
   return nozzles.find(nozzle => nozzle.id === id)
 }
 
-// Enhanced nozzle functions that include fuel type
-export function getNozzlesWithFuelType(): (Nozzle & { fuelType: string })[] {
+// Enhanced nozzle functions that include fuel type and pump information
+export function getNozzlesWithFuelType(): (Nozzle & { fuelType: string; pumpNumber: string })[] {
   return nozzles.map(nozzle => {
     const tank = tanks.find(t => t.id === nozzle.tankId)
+    const pump = pumps.find(p => p.id === nozzle.pumpId)
     return {
       ...nozzle,
-      fuelType: tank?.fuelType || 'UNKNOWN'
+      fuelType: tank?.fuelType || 'UNKNOWN',
+      pumpNumber: pump?.pumpNumber || 'UNKNOWN'
     }
   })
 }
 
-export function getNozzlesByStationIdWithFuelType(stationId: string): (Nozzle & { fuelType: string })[] {
+export function getNozzlesByStationIdWithFuelType(stationId: string): (Nozzle & { fuelType: string; pumpNumber: string })[] {
   const stationTanks = tanks.filter(tank => tank.stationId === stationId && tank.isActive)
   const stationTankIds = stationTanks.map(tank => tank.id)
   
@@ -239,9 +241,11 @@ export function getNozzlesByStationIdWithFuelType(stationId: string): (Nozzle & 
     .filter(nozzle => stationTankIds.includes(nozzle.tankId) && nozzle.isActive)
     .map(nozzle => {
       const tank = tanks.find(t => t.id === nozzle.tankId)
+      const pump = pumps.find(p => p.id === nozzle.pumpId)
       return {
         ...nozzle,
-        fuelType: tank?.fuelType || 'UNKNOWN'
+        fuelType: tank?.fuelType || 'UNKNOWN',
+        pumpNumber: pump?.pumpNumber || 'UNKNOWN'
       }
     })
 }
