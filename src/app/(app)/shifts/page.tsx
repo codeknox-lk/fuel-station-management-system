@@ -1,12 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useStation } from '@/contexts/StationContext'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DataTable } from '@/components/ui/DataTable'
 import { FormCard } from '@/components/ui/FormCard'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { 
   Clock, 
   Users, 
@@ -14,9 +19,27 @@ import {
   StopCircle,
   Calendar,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  Filter,
+  X
 } from 'lucide-react'
 import Link from 'next/link'
+
+// Function to format duration in a more readable way
+const formatDuration = (hours: number): string => {
+  if (hours === 0) return '0h'
+  
+  const wholeHours = Math.floor(hours)
+  const minutes = Math.round((hours - wholeHours) * 60)
+  
+  if (minutes === 0) {
+    return `${wholeHours}h`
+  } else if (wholeHours === 0) {
+    return `${minutes}m`
+  } else {
+    return `${wholeHours}h ${minutes}m`
+  }
+}
 
 interface Shift {
   id: string
@@ -30,6 +53,14 @@ interface Shift {
   closedBy?: string
   assignmentCount: number
   totalSales?: number
+  statistics?: {
+    durationHours: number
+    totalSales: number
+    totalLiters: number
+    averagePricePerLiter: number
+    assignmentCount: number
+    closedAssignments: number
+  }
 }
 
 interface ShiftStats {
@@ -40,6 +71,7 @@ interface ShiftStats {
 }
 
 export default function ShiftsPage() {
+  const router = useRouter()
   const { selectedStation, isAllStations, getSelectedStation } = useStation()
   const [shifts, setShifts] = useState<Shift[]>([])
   const [stats, setStats] = useState<ShiftStats>({
@@ -49,10 +81,85 @@ export default function ShiftsPage() {
     averageShiftDuration: 0
   })
   const [loading, setLoading] = useState(true)
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [filters, setFilters] = useState({
+    status: 'all',
+    dateFrom: '',
+    dateTo: '',
+    openedBy: '',
+    minSales: '',
+    maxSales: ''
+  })
+  const [filteredShifts, setFilteredShifts] = useState<Shift[]>([])
+
+  // Handle row click to navigate to shift details
+  const handleRowClick = (shift: Shift) => {
+    router.push(`/shifts/${shift.id}`)
+  }
+
+  const handleFilterClick = () => {
+    setFilterOpen(true)
+  }
+
+  const applyFilters = () => {
+    let filtered = [...shifts]
+
+    // Status filter
+    if (filters.status && filters.status !== 'all') {
+      filtered = filtered.filter(shift => shift.status === filters.status)
+    }
+
+    // Date range filter
+    if (filters.dateFrom) {
+      filtered = filtered.filter(shift => new Date(shift.startTime) >= new Date(filters.dateFrom))
+    }
+    if (filters.dateTo) {
+      filtered = filtered.filter(shift => new Date(shift.startTime) <= new Date(filters.dateTo))
+    }
+
+    // Opened by filter
+    if (filters.openedBy) {
+      filtered = filtered.filter(shift => 
+        shift.openedBy.toLowerCase().includes(filters.openedBy.toLowerCase())
+      )
+    }
+
+    // Sales range filter
+    if (filters.minSales) {
+      filtered = filtered.filter(shift => (shift.totalSales || 0) >= parseInt(filters.minSales))
+    }
+    if (filters.maxSales) {
+      filtered = filtered.filter(shift => (shift.totalSales || 0) <= parseInt(filters.maxSales))
+    }
+
+    setFilteredShifts(filtered)
+    setFilterOpen(false)
+  }
+
+  const clearFilters = () => {
+    setFilters({
+      status: 'all',
+      dateFrom: '',
+      dateTo: '',
+      openedBy: '',
+      minSales: '',
+      maxSales: ''
+    })
+    setFilteredShifts(shifts)
+    setFilterOpen(false)
+  }
+
+  const getActiveFilterCount = () => {
+    return Object.values(filters).filter(value => value !== '' && value !== 'all').length
+  }
 
   useEffect(() => {
     fetchShifts()
   }, [selectedStation])
+
+  useEffect(() => {
+    setFilteredShifts(shifts)
+  }, [shifts])
 
   const fetchShifts = async () => {
     try {
@@ -64,31 +171,52 @@ export default function ShiftsPage() {
       const response = await fetch(url)
       const data = await response.json()
       
-      // Transform the data to include station names and calculate stats
-      const transformedShifts = data.map((shift: { id: string; stationId: string; templateId: string; startTime: string; endTime?: string; status: string }) => ({
-        ...shift,
-        stationName: `Station ${shift.stationId}`,
-        templateName: `Template ${shift.templateId}`, // Map templateId to templateName
-        assignmentCount: 4, // Mock assignment count
-        totalSales: shift.status === 'CLOSED' ? Math.floor(Math.random() * 500000) + 100000 : undefined
-      }))
+      // Handle new API response format
+      const shiftsData = data.shifts || data // Support both old and new format
+      const summary = data.summary || {}
+      
+      // Transform the data to include station names and use real statistics
+      const transformedShifts = shiftsData.map((shift: { id: string; stationId: string; templateId: string; startTime: string; endTime?: string; status: string; statistics?: any }) => {
+        // Calculate duration
+        const start = new Date(shift.startTime)
+        const end = shift.endTime ? new Date(shift.endTime) : new Date()
+        const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
+        
+        return {
+          ...shift,
+          stationName: `Station ${shift.stationId}`,
+          templateName: `Template ${shift.templateId}`,
+          assignmentCount: shift.statistics?.assignmentCount || 0,
+          totalSales: shift.statistics?.totalSales || 0,
+          durationHours: Math.round(durationHours * 100) / 100,
+          totalLiters: shift.statistics?.totalLiters || 0
+        }
+      })
       
       setShifts(transformedShifts)
       
-      // Calculate stats
-      const activeShifts = transformedShifts.filter((s: Shift) => s.status === 'OPEN').length
+      // Use API summary or calculate from real data
+      const activeShifts = summary.active || transformedShifts.filter((s: Shift) => s.status === 'OPEN').length
       const today = new Date().toDateString()
       const todayShifts = transformedShifts.filter((s: Shift) => 
         new Date(s.startTime).toDateString() === today
       ).length
-      const closedShifts = transformedShifts.filter((s: Shift) => s.status === 'CLOSED' && s.totalSales)
-      const totalSales = closedShifts.reduce((sum: number, s: Shift) => sum + (s.totalSales || 0), 0)
+      
+      // Calculate real sales from closed shifts with actual data
+      const closedShifts = transformedShifts.filter((s: Shift) => s.status === 'CLOSED' && s.statistics?.totalSales && s.statistics.totalSales > 0)
+      const totalSales = closedShifts.reduce((sum: number, s: Shift) => sum + (s.statistics?.totalSales || 0), 0)
+      
+      // Calculate average duration from closed shifts with real data
+      const closedShiftsWithDuration = transformedShifts.filter((s: Shift) => s.status === 'CLOSED' && s.statistics?.durationHours && s.statistics.durationHours > 0)
+      const averageDuration = closedShiftsWithDuration.length > 0 
+        ? closedShiftsWithDuration.reduce((sum: number, s: Shift) => sum + (s.statistics?.durationHours || 0), 0) / closedShiftsWithDuration.length
+        : 0
       
       setStats({
         activeShifts,
         todayShifts,
         totalSales,
-        averageShiftDuration: 8.5 // Mock average
+        averageShiftDuration: Math.round(averageDuration * 100) / 100
       })
     } catch (error) {
       console.error('Error fetching shifts:', error)
@@ -274,7 +402,7 @@ export default function ShiftsPage() {
             <Clock className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.averageShiftDuration}h</div>
+            <div className="text-2xl font-bold">{formatDuration(stats.averageShiftDuration)}</div>
             <p className="text-xs text-gray-600">Per shift</p>
           </CardContent>
         </Card>
@@ -307,16 +435,154 @@ export default function ShiftsPage() {
         title="Recent Shifts" 
         description="View and manage all station shifts"
       >
-        <DataTable
-          data={shifts}
-          columns={shiftColumns}
-          searchable={true}
-          searchPlaceholder="Search shifts..."
-          pagination={true}
-          pageSize={10}
-          emptyMessage="No shifts found"
-        />
+        <div className="space-y-4">
+          {/* Filter Button with Count */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleFilterClick}
+                className="flex items-center gap-2"
+              >
+                <Filter className="h-4 w-4" />
+                Filters
+                {getActiveFilterCount() > 0 && (
+                  <Badge variant="secondary" className="ml-1">
+                    {getActiveFilterCount()}
+                  </Badge>
+                )}
+              </Button>
+              {getActiveFilterCount() > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Clear
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <DataTable
+            data={filteredShifts}
+            columns={shiftColumns}
+            searchable={true}
+            searchPlaceholder="Search shifts..."
+            pagination={true}
+            pageSize={10}
+            emptyMessage="No shifts found"
+            onRowClick={handleRowClick}
+          />
+        </div>
       </FormCard>
+
+      {/* Filter Modal */}
+      <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Filter Shifts
+            </DialogTitle>
+            <DialogDescription>
+              Apply filters to find specific shifts based on your criteria.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+            {/* Status Filter */}
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={filters.status}
+                onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="OPEN">Open</SelectItem>
+                  <SelectItem value="CLOSED">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Opened By Filter */}
+            <div className="space-y-2">
+              <Label htmlFor="openedBy">Opened By</Label>
+              <Input
+                id="openedBy"
+                placeholder="Enter name..."
+                value={filters.openedBy}
+                onChange={(e) => setFilters(prev => ({ ...prev, openedBy: e.target.value }))}
+              />
+            </div>
+
+            {/* Date From Filter */}
+            <div className="space-y-2">
+              <Label htmlFor="dateFrom">From Date</Label>
+              <Input
+                id="dateFrom"
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+              />
+            </div>
+
+            {/* Date To Filter */}
+            <div className="space-y-2">
+              <Label htmlFor="dateTo">To Date</Label>
+              <Input
+                id="dateTo"
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+              />
+            </div>
+
+            {/* Min Sales Filter */}
+            <div className="space-y-2">
+              <Label htmlFor="minSales">Min Sales (Rs.)</Label>
+              <Input
+                id="minSales"
+                type="number"
+                placeholder="0"
+                value={filters.minSales}
+                onChange={(e) => setFilters(prev => ({ ...prev, minSales: e.target.value }))}
+              />
+            </div>
+
+            {/* Max Sales Filter */}
+            <div className="space-y-2">
+              <Label htmlFor="maxSales">Max Sales (Rs.)</Label>
+              <Input
+                id="maxSales"
+                type="number"
+                placeholder="No limit"
+                value={filters.maxSales}
+                onChange={(e) => setFilters(prev => ({ ...prev, maxSales: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={clearFilters}>
+              Clear All
+            </Button>
+            <Button variant="outline" onClick={() => setFilterOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={applyFilters}>
+              Apply Filters
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

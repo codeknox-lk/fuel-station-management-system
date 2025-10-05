@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useStation } from '@/contexts/StationContext'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -89,7 +90,7 @@ export default function ShiftReportsPage() {
   const [error, setError] = useState('')
 
   // Form state
-  const [selectedStation, setSelectedStation] = useState('')
+  const { selectedStation } = useStation()
   const [selectedShift, setSelectedShift] = useState('')
 
   // Load initial data

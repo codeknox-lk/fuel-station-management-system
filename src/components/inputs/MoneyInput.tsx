@@ -36,14 +36,18 @@ export const MoneyInput = forwardRef<HTMLInputElement, MoneyInputProps>(
       const inputValue = e.target.value
       const numericValue = parseValue(inputValue)
       
-      // Format the display value
+      // Call onChange with numeric value (don't format during typing)
+      onChange?.(numericValue)
+    }
+
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+      // Format the value only when user finishes typing (on blur)
+      const inputValue = e.target.value
+      const numericValue = parseValue(inputValue)
       const formattedValue = formatValue(numericValue)
       
       // Update the input with formatted value
       e.target.value = formattedValue
-      
-      // Call onChange with numeric value
-      onChange?.(numericValue)
     }
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -72,8 +76,9 @@ export const MoneyInput = forwardRef<HTMLInputElement, MoneyInputProps>(
         </div>
         <Input
           ref={ref}
-          value={formatValue(value)}
+          value={value !== undefined ? value.toString() : ''}
           onChange={handleChange}
+          onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           className={cn('pl-12', className)}
           placeholder="0.00"
@@ -85,3 +90,4 @@ export const MoneyInput = forwardRef<HTMLInputElement, MoneyInputProps>(
 )
 
 MoneyInput.displayName = 'MoneyInput'
+

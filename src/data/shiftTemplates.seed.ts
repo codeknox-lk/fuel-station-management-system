@@ -73,3 +73,4 @@ export function getActiveShiftTemplates(): ShiftTemplate[] {
 export function getShiftTemplateById(id: string): ShiftTemplate | undefined {
   return shiftTemplates.find(template => template.id === id)
 }
+

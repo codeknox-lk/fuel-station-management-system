@@ -32,6 +32,36 @@ export default function DashboardPage() {
   const router = useRouter()
   const { selectedStation, isAllStations, getSelectedStation } = useStation()
   const [recentActivities, setRecentActivities] = useState<AuditLogEntry[]>([])
+  const [stats, setStats] = useState([
+    {
+      title: 'Today\'s Sales',
+      value: 'Rs. 0',
+      change: 'No data',
+      changeType: 'neutral' as const,
+      icon: DollarSign
+    },
+    {
+      title: 'Active Shifts',
+      value: '0',
+      change: 'No active shifts',
+      changeType: 'neutral' as const,
+      icon: Clock
+    },
+    {
+      title: 'Avg Duration',
+      value: '0h',
+      change: 'No data',
+      changeType: 'neutral' as const,
+      icon: Clock
+    },
+    {
+      title: 'Total Shifts',
+      value: '0',
+      change: 'No shifts',
+      changeType: 'neutral' as const,
+      icon: Activity
+    }
+  ])
 
   // Load recent activities based on selected station
   useEffect(() => {
@@ -54,41 +84,88 @@ export default function DashboardPage() {
     loadRecentActivities()
   }, [selectedStation, isAllStations])
 
+  // Load real statistics
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const url = isAllStations 
+          ? '/api/shifts'
+          : `/api/shifts?stationId=${selectedStation}`
+        
+        const response = await fetch(url)
+        const data = await response.json()
+        const shifts = Array.isArray(data) ? data : data.shifts || []
+        
+        // Calculate real statistics
+        const activeShifts = shifts.filter((s: Shift) => s.status === 'OPEN')
+        const closedShifts = shifts.filter((s: Shift) => s.status === 'CLOSED')
+        
+                // Calculate total sales from all closed shifts (to match shifts page)
+                const totalSales = closedShifts.reduce((sum: number, s: Shift) => 
+                  sum + (s.statistics?.totalSales || 0), 0
+                )
+                
+                // Also calculate today's sales for reference
+                const today = new Date().toDateString()
+                const todayShifts = closedShifts.filter((s: Shift) => 
+                  new Date(s.startTime).toDateString() === today
+                )
+                const todaySales = todayShifts.reduce((sum: number, s: Shift) => 
+                  sum + (s.statistics?.totalSales || 0), 0
+                )
+                
+                // Calculate average duration from closed shifts
+                const shiftsWithDuration = closedShifts.filter((s: Shift) => 
+                  s.statistics?.durationHours && s.statistics.durationHours > 0
+                )
+                const avgDuration = shiftsWithDuration.length > 0 
+                  ? shiftsWithDuration.reduce((sum: number, s: Shift) => 
+                      sum + s.statistics.durationHours, 0
+                    ) / shiftsWithDuration.length
+                  : 0
+        
+        setStats([
+          {
+            title: 'Total Sales',
+            value: `Rs. ${totalSales.toLocaleString()}`,
+            change: totalSales > 0 ? `From ${closedShifts.length} shifts` : 'No sales yet',
+            changeType: totalSales > 0 ? 'positive' as const : 'neutral' as const,
+            icon: DollarSign
+          },
+          {
+            title: 'Active Shifts',
+            value: activeShifts.length.toString(),
+            change: activeShifts.length > 0 ? `${activeShifts.length} running` : 'No active shifts',
+            changeType: activeShifts.length > 0 ? 'positive' as const : 'neutral' as const,
+            icon: Clock
+          },
+          {
+            title: 'Avg Duration',
+            value: `${Math.round(avgDuration * 10) / 10}h`,
+            change: shiftsWithDuration.length > 0 ? `From ${shiftsWithDuration.length} shifts` : 'No data',
+            changeType: avgDuration > 0 ? 'positive' as const : 'neutral' as const,
+            icon: Clock
+          },
+          {
+            title: 'Total Shifts',
+            value: shifts.length.toString(),
+            change: `${closedShifts.length} closed, ${activeShifts.length} active`,
+            changeType: 'neutral' as const,
+            icon: Activity
+          }
+        ])
+      } catch (error) {
+        console.error('Failed to load statistics:', error)
+      }
+    }
+
+    loadStats()
+  }, [selectedStation, isAllStations])
+
   // Get current station info for display
   const currentStation = getSelectedStation()
   const stationName = isAllStations ? 'All Stations' : (currentStation?.name || 'Unknown Station')
 
-  // Mock data - in real app, this would be fetched based on selected station
-  const stats = [
-    {
-      title: 'Today\'s Sales',
-      value: isAllStations ? 'Rs. 2,500,000' : 'Rs. 1,250,000',
-      change: '+12.5%',
-      changeType: 'positive' as const,
-      icon: DollarSign
-    },
-    {
-      title: 'Active Shifts',
-      value: isAllStations ? '6' : '3',
-      change: isAllStations ? '4 pumps active' : '2 pumps active',
-      changeType: 'neutral' as const,
-      icon: Clock
-    },
-    {
-      title: 'Tank Levels',
-      value: '85%',
-      change: isAllStations ? '4 tanks low' : '2 tanks low',
-      changeType: 'warning' as const,
-      icon: Fuel
-    },
-    {
-      title: 'POS Transactions',
-      value: isAllStations ? '312' : '156',
-      change: '+8.2%',
-      changeType: 'positive' as const,
-      icon: CreditCard
-    }
-  ]
 
 
   const getChangeColor = (changeType: string) => {

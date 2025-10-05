@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useStation } from '@/contexts/StationContext'
 import { useRouter } from 'next/navigation'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
@@ -84,7 +85,7 @@ export default function ChequesPage() {
   const [success, setSuccess] = useState('')
 
   // Form state
-  const [selectedStation, setSelectedStation] = useState('')
+  const { selectedStation } = useStation()
   const [chequeNumber, setChequeNumber] = useState('')
   const [bankName, setBankName] = useState('')
   const [amount, setAmount] = useState(0)

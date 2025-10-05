@@ -190,3 +190,4 @@ async function getClientIP(): Promise<string> {
 
 // Export a singleton instance
 export const auditLogger = new AuditLogger()
+

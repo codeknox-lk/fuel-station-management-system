@@ -342,3 +342,4 @@ export function getChequesByStationId(stationId: string): Cheque[] {
 export function getChequeById(id: string): Cheque | undefined {
   return cheques.find(cheque => cheque.id === id)
 }
+

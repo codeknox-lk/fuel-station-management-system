@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useStation } from '@/contexts/StationContext'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -55,7 +56,7 @@ export default function TestsPage() {
   const [success, setSuccess] = useState('')
 
   // Form state
-  const [selectedStation, setSelectedStation] = useState('')
+  const { selectedStation } = useStation()
   const [selectedNozzle, setSelectedNozzle] = useState('')
   const [testTime, setTestTime] = useState<Date>(new Date())
   const [litres, setLitres] = useState(5)
@@ -248,23 +249,18 @@ export default function TestsPage() {
       )}
 
       <FormCard title="Record Test Pour" description="Document test pours for quality control">
+        {/* Display current station */}
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+            <span className="text-sm font-medium text-blue-900">
+              Station: {stations.find(s => s.id === selectedStation)?.name || 'No station selected'}
+            </span>
+          </div>
+        </div>
+        
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="station">Station *</Label>
-              <Select value={selectedStation} onValueChange={setSelectedStation}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select station" />
-                </SelectTrigger>
-                <SelectContent>
-                  {stations.map((station) => (
-                    <SelectItem key={station.id} value={station.id}>
-                      {station.name} - {station.city}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
 
             <div className="space-y-2">
               <Label htmlFor="nozzle">Nozzle *</Label>

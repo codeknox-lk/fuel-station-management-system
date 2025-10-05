@@ -152,3 +152,4 @@ export function getBankAccountsByBankId(bankId: string): BankAccount[] {
 export function getBankAccountById(id: string): BankAccount | undefined {
   return bankAccounts.find(account => account.id === id)
 }
+

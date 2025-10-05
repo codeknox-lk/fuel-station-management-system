@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useStation } from '@/contexts/StationContext'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -113,7 +114,7 @@ export default function ProfitReportsPage() {
   const [error, setError] = useState('')
 
   // Form state
-  const [selectedStation, setSelectedStation] = useState('')
+  const { selectedStation } = useStation()
   const [selectedMonth, setSelectedMonth] = useState(String(new Date().getMonth() + 1).padStart(2, '0'))
   const [selectedYear, setSelectedYear] = useState(String(currentYear))
 

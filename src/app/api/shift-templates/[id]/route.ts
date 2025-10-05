@@ -44,3 +44,4 @@ export async function DELETE(
     return NextResponse.json({ error: 'Failed to delete shift template' }, { status: 500 })
   }
 }
+

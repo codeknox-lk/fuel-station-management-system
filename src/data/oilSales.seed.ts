@@ -168,3 +168,4 @@ export function getOilSalesSummary(stationId?: string, startDate?: string, endDa
     averageSaleAmount: salesCount > 0 ? totalSales / salesCount : 0
   }
 }
+

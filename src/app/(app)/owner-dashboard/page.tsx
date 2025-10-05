@@ -122,7 +122,7 @@ export default function OwnerDashboardPage() {
 
       // Fetch aggregated data for each station
       const stationSummaries: StationSummary[] = await Promise.all(
-        stations.map(async (station: any, index: number) => {
+        stations.map(async (station: Station, index: number) => {
           // Fetch real data for each station
           const today = new Date().toISOString().split('T')[0]
           

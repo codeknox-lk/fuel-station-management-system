@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useStation } from '@/contexts/StationContext'
 import { useRouter } from 'next/navigation'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
@@ -80,7 +81,7 @@ export default function POSBatchesPage() {
   const [success, setSuccess] = useState('')
 
   // Form state
-  const [selectedStation, setSelectedStation] = useState('')
+  const { selectedStation } = useStation()
   const [selectedTerminal, setSelectedTerminal] = useState('')
   const [batchDate, setBatchDate] = useState(new Date().toISOString().split('T')[0])
   const [batchNumber, setBatchNumber] = useState('')
@@ -473,3 +474,4 @@ export default function POSBatchesPage() {
     </div>
   )
 }
+

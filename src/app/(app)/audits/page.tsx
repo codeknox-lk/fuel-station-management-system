@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useStation } from '@/contexts/StationContext'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -54,7 +55,7 @@ export default function AuditsPage() {
   const [success, setSuccess] = useState('')
 
   // Form state
-  const [selectedStation, setSelectedStation] = useState('')
+  const { selectedStation } = useStation()
   const [auditTime, setAuditTime] = useState<Date>(new Date())
   const [nozzleReadings, setNozzleReadings] = useState<Record<string, number>>({})
   const [auditedBy, setAuditedBy] = useState('')

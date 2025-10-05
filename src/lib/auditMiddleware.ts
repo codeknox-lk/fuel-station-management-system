@@ -223,3 +223,4 @@ export const auditOperations = {
       details: `Updated ${settingType}: ${details}`
     }, request)
 }
+

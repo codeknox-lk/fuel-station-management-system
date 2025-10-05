@@ -12,8 +12,7 @@ import { Input } from '@/components/ui/input'
 import { 
   ChevronLeft, 
   ChevronRight, 
-  Search,
-  Filter
+  Search
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -96,7 +95,7 @@ export function DataTable<T = Record<string, unknown>>({
 
   return (
     <div className={cn('space-y-4', className)}>
-      {/* Search and Filters */}
+      {/* Search */}
       {searchable && (
         <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-sm">
@@ -108,10 +107,6 @@ export function DataTable<T = Record<string, unknown>>({
               className="pl-10"
             />
           </div>
-          <Button variant="outline" size="sm">
-            <Filter className="h-4 w-4 mr-2" />
-            Filters
-          </Button>
         </div>
       )}
 

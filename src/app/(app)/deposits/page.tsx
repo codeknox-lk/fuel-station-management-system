@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useStation } from '@/contexts/StationContext'
 import { useRouter } from 'next/navigation'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
@@ -106,7 +107,7 @@ export default function DepositsPage() {
   const [success, setSuccess] = useState('')
 
   // Form state
-  const [selectedStation, setSelectedStation] = useState('')
+  const { selectedStation } = useStation()
   const [selectedBankAccount, setSelectedBankAccount] = useState('')
   const [amount, setAmount] = useState(0)
   const [depositDate, setDepositDate] = useState<Date>(new Date())

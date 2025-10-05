@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useStation } from '@/contexts/StationContext'
 import { useRouter } from 'next/navigation'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
@@ -83,7 +84,7 @@ export default function ExpensesPage() {
   const [success, setSuccess] = useState('')
 
   // Form state
-  const [selectedStation, setSelectedStation] = useState('')
+  const { selectedStation } = useStation()
   const [category, setCategory] = useState('')
   const [amount, setAmount] = useState('')
   const [fromSafe, setFromSafe] = useState(false)
@@ -473,3 +474,4 @@ export default function ExpensesPage() {
     </div>
   )
 }
+

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useStation } from '@/contexts/StationContext'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -55,7 +56,7 @@ export default function AuditLogPage() {
   const [startDate, setStartDate] = useState<Date>(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)) // 7 days ago
   const [endDate, setEndDate] = useState<Date>(new Date())
   const [selectedUser, setSelectedUser] = useState<string>('all')
-  const [selectedStation, setSelectedStation] = useState<string>('all')
+  const { selectedStation } = useStation()
   const [selectedEntity, setSelectedEntity] = useState<string>('all')
   const [selectedAction, setSelectedAction] = useState<string>('all')
 

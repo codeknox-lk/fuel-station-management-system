@@ -1,6 +1,120 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Remove any potential dashes or underlines from h1 elements */
+h1 {
+  text-decoration: none !important;
+  border-bottom: none !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: none !important;
+  background-image: none !important;
+  background-size: none !important;
+  background-position: none !important;
+  background-repeat: none !important;
+}
+
+h1::after {
+  content: none !important;
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  background: none !important;
+}
+
+h1::before {
+  content: none !important;
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  background: none !important;
+}
+
+/* Specific rule for shift details page */
+.shift-details-title {
+  text-decoration: none !important;
+  border-bottom: none !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: none !important;
+  background-image: none !important;
+  background-size: none !important;
+  background-position: none !important;
+  background-repeat: none !important;
+}
+
+.shift-details-title::after {
+  content: none !important;
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  background: none !important;
+}
+
+.shift-details-title::before {
+  content: none !important;
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  background: none !important;
+}
+
+/* Force remove any potential underlines or dashes */
+.text-3xl {
+  text-decoration: none !important;
+  border-bottom: none !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: none !important;
+  background-image: none !important;
+}
+
+.text-3xl::after,
+.text-3xl::before {
+  content: none !important;
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  background: none !important;
+}
+
+/* Force remove any potential dashes from the div containing the h1 */
+.shift-details-title + * {
+  display: none !important;
+}
+
+.shift-details-title + p {
+  display: block !important;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

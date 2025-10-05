@@ -69,8 +69,8 @@ export default function POSPage() {
       const transformedTerminals = terminalsData.map((terminal: { id: string; name: string; stationId: string; status: string; lastSeen: string }) => ({
         ...terminal,
         stationName: `Station ${terminal.stationId}`,
-        todayTransactions: Math.floor(Math.random() * 100) + 20, // Mock data
-        todayAmount: Math.floor(Math.random() * 50000) + 10000 // Mock data
+        todayTransactions: 0, // Will be calculated from real batch data
+        todayAmount: 0 // Will be calculated from real batch data
       }))
 
       setTerminals(transformedTerminals)

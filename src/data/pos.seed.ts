@@ -215,3 +215,4 @@ export function getPosMissingSlipsByTerminalId(terminalId: string): PosMissingSl
 export function getPosMissingSlipById(id: string): PosMissingSlip | undefined {
   return posMissingSlips.find(slip => slip.id === id)
 }
+

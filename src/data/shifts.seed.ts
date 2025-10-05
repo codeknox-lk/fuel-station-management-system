@@ -9,6 +9,21 @@ export interface Shift {
   closedBy?: string
   createdAt: string
   updatedAt: string
+  statistics?: {
+    durationHours: number
+    totalSales: number
+    totalLiters: number
+    averagePricePerLiter: number
+    assignmentCount: number
+    closedAssignments: number
+  }
+  declaredAmounts?: {
+    cash: number
+    card: number
+    credit: number
+    cheque: number
+    total: number
+  }
 }
 
 export interface ShiftAssignment {
@@ -50,105 +65,21 @@ export interface TestPour {
   updatedAt: string
 }
 
-// Dynamic shifts array that can be modified at runtime
-let shifts: Shift[] = [
-  {
-    id: '1',
-    stationId: '1',
-    templateId: '1',
-    startTime: '2024-10-01T06:00:00Z',
-    endTime: '2024-10-01T18:00:00Z',
-    status: 'CLOSED',
-    openedBy: 'Manager John',
-    closedBy: 'Manager John',
-    createdAt: '2024-10-01T06:00:00Z',
-    updatedAt: '2024-10-01T18:00:00Z'
-  },
-  {
-    id: '2',
-    stationId: '1',
-    templateId: '2',
-    startTime: '2024-10-01T18:00:00Z',
-    status: 'OPEN',
-    openedBy: 'Manager Jane',
-    createdAt: '2024-10-01T18:00:00Z',
-    updatedAt: '2024-10-01T18:00:00Z'
-  },
-  {
-    id: '3',
-    stationId: '2',
-    templateId: '1',
-    startTime: '2024-10-01T06:00:00Z',
-    status: 'OPEN',
-    openedBy: 'Manager Mike',
-    createdAt: '2024-10-01T06:00:00Z',
-    updatedAt: '2024-10-01T06:00:00Z'
-  }
-]
+// Global shifts array that persists across API calls
+// Using a module-level variable that gets initialized once
+let shifts: Shift[] = []
 
-export const shiftAssignments: ShiftAssignment[] = [
-  {
-    id: '1',
-    shiftId: '1',
-    nozzleId: '1',
-    pumperName: 'Kamal Perera',
-    startMeterReading: 1000,
-    endMeterReading: 1200,
-    status: 'CLOSED',
-    assignedAt: '2024-10-01T06:00:00Z',
-    closedAt: '2024-10-01T18:00:00Z',
-    createdAt: '2024-10-01T06:00:00Z',
-    updatedAt: '2024-10-01T18:00:00Z'
-  },
-  {
-    id: '2',
-    shiftId: '1',
-    nozzleId: '2',
-    pumperName: 'Nimal Silva',
-    startMeterReading: 2000,
-    endMeterReading: 2150,
-    status: 'CLOSED',
-    assignedAt: '2024-10-01T06:00:00Z',
-    closedAt: '2024-10-01T18:00:00Z',
-    createdAt: '2024-10-01T06:00:00Z',
-    updatedAt: '2024-10-01T18:00:00Z'
-  },
-  {
-    id: '3',
-    shiftId: '1',
-    nozzleId: '3',
-    pumperName: 'Sunil Fernando',
-    startMeterReading: 3000,
-    endMeterReading: 3200,
-    status: 'CLOSED',
-    assignedAt: '2024-10-01T06:00:00Z',
-    closedAt: '2024-10-01T18:00:00Z',
-    createdAt: '2024-10-01T06:00:00Z',
-    updatedAt: '2024-10-01T18:00:00Z'
-  },
-  {
-    id: '4',
-    shiftId: '2',
-    nozzleId: '1',
-    pumperName: 'Kamal Perera',
-    startMeterReading: 1200,
-    status: 'ACTIVE',
-    assignedAt: '2024-10-01T18:00:00Z',
-    createdAt: '2024-10-01T18:00:00Z',
-    updatedAt: '2024-10-01T18:00:00Z'
-  },
-  {
-    id: '5',
-    shiftId: '2',
-    nozzleId: '2',
-    pumperName: 'Nimal Silva',
-    startMeterReading: 2150,
-    status: 'ACTIVE',
-    assignedAt: '2024-10-01T18:00:00Z',
-    createdAt: '2024-10-01T18:00:00Z',
-    updatedAt: '2024-10-01T18:00:00Z'
-  }
-]
+// Initialize global shifts only if not already set
+if (!globalThis.__shifts) {
+  globalThis.__shifts = []
+}
+
+export const shiftAssignments: ShiftAssignment[] = []
+
+// Initialize global assignments only if not already set
+if (!globalThis.__shiftAssignments) {
+  globalThis.__shiftAssignments = []
+}
 
 export const meterAudits: MeterAudit[] = [
   {
@@ -226,34 +157,39 @@ export const testPours: TestPour[] = [
 ]
 
 export function getShifts(): Shift[] {
-  return shifts
+  return globalThis.__shifts || [...shifts]
 }
 
 // Export the shifts array for direct access (for debugging)
 export { shifts }
 
 export function getShiftsByStationId(stationId: string): Shift[] {
-  return shifts.filter(shift => shift.stationId === stationId)
+  const allShifts = globalThis.__shifts || [...shifts]
+  return allShifts.filter(shift => shift.stationId === stationId)
 }
 
 export function getActiveShifts(): Shift[] {
-  return shifts.filter(shift => shift.status === 'OPEN')
+  const allShifts = globalThis.__shifts || [...shifts]
+  return allShifts.filter(shift => shift.status === 'OPEN')
 }
 
 export function getShiftById(id: string): Shift | undefined {
-  return shifts.find(shift => shift.id === id)
+  const allShifts = globalThis.__shifts || [...shifts]
+  return allShifts.find(shift => shift.id === id)
 }
 
 export function getShiftAssignments(): ShiftAssignment[] {
-  return shiftAssignments
+  return globalThis.__shiftAssignments || [...shiftAssignments]
 }
 
 export function getShiftAssignmentsByShiftId(shiftId: string): ShiftAssignment[] {
-  return shiftAssignments.filter(assignment => assignment.shiftId === shiftId)
+  const allAssignments = globalThis.__shiftAssignments || [...shiftAssignments]
+  return allAssignments.filter(assignment => assignment.shiftId === shiftId)
 }
 
 export function getShiftAssignmentById(id: string): ShiftAssignment | undefined {
-  return shiftAssignments.find(assignment => assignment.id === id)
+  const allAssignments = globalThis.__shiftAssignments || [...shiftAssignments]
+  return allAssignments.find(assignment => assignment.id === id)
 }
 
 export function getMeterAudits(): MeterAudit[] {
@@ -281,11 +217,13 @@ export function getTestPourById(id: string): TestPour | undefined {
 }
 
 export function getAssignmentsByShiftId(shiftId: string): ShiftAssignment[] {
-  return shiftAssignments.filter(assignment => assignment.shiftId === shiftId)
+  const allAssignments = globalThis.__shiftAssignments || [...shiftAssignments]
+  return allAssignments.filter(assignment => assignment.shiftId === shiftId)
 }
 
 export function closeAssignment(assignmentId: string, endMeterReading: number, endTime: string): ShiftAssignment | null {
-  const assignment = shiftAssignments.find(a => a.id === assignmentId)
+  const allAssignments = globalThis.__shiftAssignments || [...shiftAssignments]
+  const assignment = allAssignments.find(a => a.id === assignmentId)
   if (!assignment) return null
 
   assignment.endMeterReading = endMeterReading
@@ -305,21 +243,31 @@ export function createShift(shiftData: Omit<Shift, 'id' | 'createdAt' | 'updated
     updatedAt: new Date().toISOString()
   }
   
-  shifts.push(newShift)
+  // Initialize global array if not exists
+  if (!globalThis.__shifts) {
+    globalThis.__shifts = []
+  }
+  
+  globalThis.__shifts.push(newShift)
   return newShift
 }
 
 export function updateShift(id: string, updates: Partial<Shift>): Shift | null {
-  const shiftIndex = shifts.findIndex(s => s.id === id)
+  // Initialize global array if not exists
+  if (!globalThis.__shifts) {
+    globalThis.__shifts = []
+  }
+  
+  const shiftIndex = globalThis.__shifts.findIndex(s => s.id === id)
   if (shiftIndex === -1) return null
   
-  shifts[shiftIndex] = {
-    ...shifts[shiftIndex],
+  globalThis.__shifts[shiftIndex] = {
+    ...globalThis.__shifts[shiftIndex],
     ...updates,
     updatedAt: new Date().toISOString()
   }
   
-  return shifts[shiftIndex]
+  return globalThis.__shifts[shiftIndex]
 }
 
 export function createShiftAssignment(assignmentData: Omit<ShiftAssignment, 'id' | 'createdAt' | 'updatedAt'>): ShiftAssignment {
@@ -330,6 +278,11 @@ export function createShiftAssignment(assignmentData: Omit<ShiftAssignment, 'id'
     updatedAt: new Date().toISOString()
   }
   
-  shiftAssignments.push(newAssignment)
+  // Initialize global array if not exists
+  if (!globalThis.__shiftAssignments) {
+    globalThis.__shiftAssignments = []
+  }
+  
+  globalThis.__shiftAssignments.push(newAssignment)
   return newAssignment
 }

@@ -165,3 +165,4 @@ export function getPriceAtDateTime(fuelType: string, datetime: string): Price | 
       return targetDate >= effectiveFrom && targetDate <= effectiveTo
     })
 }
+

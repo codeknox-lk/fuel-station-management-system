@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useStation } from '@/contexts/StationContext'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -76,7 +77,7 @@ export default function CreditAgingPage() {
   const [error, setError] = useState('')
 
   // Form state
-  const [selectedStation, setSelectedStation] = useState('all')
+  const { selectedStation } = useStation()
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0])
 
   // Load initial data
@@ -99,59 +100,19 @@ export default function CreditAgingPage() {
     setError('')
 
     try {
-      // In a real app, this would call the API endpoint
-      // For now, we'll generate mock aging data
-      
+      // Call real API endpoint for aging data
       const station = selectedStation === 'all' ? null : stations.find(s => s.id === selectedStation)
       
-      // Generate mock aging data
-      const mockCustomers = [
-        'John Silva', 'Kamal Perera', 'Sunil Fernando', 'Ravi Kumar', 'Nimal Bandara',
-        'Priya Jayawardena', 'Chaminda Rathnayake', 'Dilshan Mendis', 'Tharaka Wijesinghe', 'Mahesh Gunasekara'
-      ]
-
-      const agingCustomers: CustomerAging[] = mockCustomers.map((name, index) => {
-        const creditLimit = Math.floor(Math.random() * 100000) + 50000
-        const totalOutstanding = Math.floor(Math.random() * creditLimit * 0.8)
-        
-        // Distribute outstanding across aging buckets
-        const current = Math.floor(totalOutstanding * (0.4 + Math.random() * 0.3)) // 40-70%
-        const days31to60 = Math.floor((totalOutstanding - current) * (0.3 + Math.random() * 0.3)) // 30-60%
-        const days61to90 = Math.floor((totalOutstanding - current - days31to60) * (0.2 + Math.random() * 0.4)) // 20-60%
-        const over90Days = totalOutstanding - current - days31to60 - days61to90
-        
-        const daysPastDue = Math.floor(Math.random() * 120)
-        const oldestInvoiceDate = new Date(Date.now() - daysPastDue * 24 * 60 * 60 * 1000).toISOString()
-        
-        // Determine risk level
-        let riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = 'LOW'
-        const utilizationRate = totalOutstanding / creditLimit
-        
-        if (over90Days > 0 || daysPastDue > 90) {
-          riskLevel = 'CRITICAL'
-        } else if (days61to90 > 0 || daysPastDue > 60 || utilizationRate > 0.8) {
-          riskLevel = 'HIGH'
-        } else if (days31to60 > 0 || daysPastDue > 30 || utilizationRate > 0.6) {
-          riskLevel = 'MEDIUM'
-        }
-
-        return {
-          customerId: `customer-${index + 1}`,
-          customerName: name,
-          nicOrBrn: `${Math.floor(Math.random() * 900000000) + 100000000}V`,
-          creditLimit,
-          totalOutstanding,
-          current,
-          days31to60,
-          days61to90,
-          over90Days,
-          oldestInvoiceDate,
-          daysPastDue,
-          riskLevel,
-          lastPaymentDate: Math.random() > 0.3 ? new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString() : undefined,
-          lastPaymentAmount: Math.random() > 0.3 ? Math.floor(Math.random() * 20000) + 5000 : undefined
-        }
-      })
+      const url = station 
+        ? `/api/credit/aging?stationId=${station.id}`
+        : '/api/credit/aging'
+      
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error('Failed to fetch aging data')
+      }
+      
+      const agingCustomers: CustomerAging[] = await response.json()
 
       setAgingData(agingCustomers)
 

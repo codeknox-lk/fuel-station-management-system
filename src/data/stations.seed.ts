@@ -49,3 +49,4 @@ export function getStationById(id: string): Station | undefined {
 export function getActiveStations(): Station[] {
   return stations.filter(station => station.isActive)
 }
+

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useStation } from '@/contexts/StationContext'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,7 +19,7 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
 import { DateTimePicker } from '@/components/inputs/DateTimePicker'
-import { Clock, Fuel, DollarSign, CreditCard, FileText, Plus, Trash2 } from 'lucide-react'
+import { Clock, Fuel, DollarSign, CreditCard, FileText, Plus, Trash2, Printer } from 'lucide-react'
 
 interface Station {
   id: string
@@ -85,7 +86,7 @@ export default function CloseShiftPage() {
   const [success, setSuccess] = useState('')
 
   // Form state
-  const [selectedStation, setSelectedStation] = useState('')
+  const { selectedStation } = useStation()
   const [selectedShift, setSelectedShift] = useState('')
   const [endTime, setEndTime] = useState<Date>(new Date())
   
@@ -125,7 +126,19 @@ export default function CloseShiftPage() {
         try {
           const res = await fetch(`/api/shifts?stationId=${selectedStation}&active=true`)
           const shiftsData = await res.json()
-          setShifts(shiftsData)
+          console.log('Shifts API response:', shiftsData)
+          
+          // Handle both old format (array) and new format (object with shifts property)
+          if (Array.isArray(shiftsData)) {
+            console.log('Using array format, shifts count:', shiftsData.length)
+            setShifts(shiftsData)
+          } else if (shiftsData.shifts && Array.isArray(shiftsData.shifts)) {
+            console.log('Using object format, shifts count:', shiftsData.shifts.length)
+            setShifts(shiftsData.shifts)
+          } else {
+            console.log('No valid shifts data found, setting empty array')
+            setShifts([])
+          }
         } catch (err) {
           setError('Failed to load shifts')
         }
@@ -142,7 +155,15 @@ export default function CloseShiftPage() {
         try {
           const res = await fetch(`/api/shifts/${selectedShift}/assignments`)
           const assignmentsData = await res.json()
-          setAssignments(assignmentsData)
+          console.log('Assignments API response:', assignmentsData)
+          
+          // Ensure assignmentsData is an array
+          if (Array.isArray(assignmentsData)) {
+            setAssignments(assignmentsData)
+          } else {
+            console.error('Assignments data is not an array:', assignmentsData)
+            setAssignments([])
+          }
         } catch (err) {
           setError('Failed to load assignments')
         }
@@ -211,8 +232,9 @@ export default function CloseShiftPage() {
     setCardAmounts(prev => ({ ...prev, [bankId]: amount }))
   }
 
-  const handleCloseShift = async () => {
-    if (!selectedShift || assignments.some(a => !a.endMeterReading)) {
+
+  const handleCloseShiftAndPrint = async () => {
+    if (!selectedShift || !Array.isArray(assignments) || assignments.some(a => !a.endMeterReading)) {
       setError('Please fill in all end meter readings')
       return
     }
@@ -221,32 +243,83 @@ export default function CloseShiftPage() {
     setError('')
 
     try {
+      // Use the selected end time, or current time if not set
+      const finalEndTime = endTime || new Date()
+      
+      // Calculate total card amount
+      const totalCardAmount = Object.values(cardAmounts).reduce((sum, amount) => sum + amount, 0)
+      
+      console.log('Closing shift:', selectedShift)
+      console.log('Assignments to close:', assignments)
+      
       // Update assignments with end meter readings
       for (const assignment of assignments) {
-        await fetch(`/api/shifts/${selectedShift}/assignments/${assignment.id}/close`, {
+        console.log('Closing assignment:', assignment.id, 'with end reading:', assignment.endMeterReading)
+        const res = await fetch(`/api/shifts/${selectedShift}/assignments/${assignment.id}/close`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             endMeterReading: assignment.endMeterReading,
-            endTime: endTime.toISOString()
+            endTime: finalEndTime.toISOString()
           })
         })
+        
+        if (!res.ok) {
+          const error = await res.json()
+          throw new Error(`Failed to close assignment ${assignment.id}: ${error.error}`)
+        }
+        
+        const result = await res.json()
+        console.log('Assignment closed successfully:', result)
       }
 
       // Close shift
-      await fetch(`/api/shifts/${selectedShift}/close`, {
+      console.log('Closing shift:', selectedShift)
+      
+      // Ensure end time is after start time
+      // Get shift data to check start time
+      const shiftResponse = await fetch(`/api/shifts/${selectedShift}`)
+      const shiftData = await shiftResponse.json()
+      const shiftStartTime = new Date(shiftData.startTime)
+      const validatedEndTime = finalEndTime > shiftStartTime ? finalEndTime : new Date()
+      
+      console.log('🔍 FRONTEND DEBUG:')
+      console.log('  Shift start time:', shiftStartTime)
+      console.log('  Selected end time:', finalEndTime)
+      console.log('  Validated end time:', validatedEndTime)
+      console.log('  Final end time ISO:', validatedEndTime.toISOString())
+      
+      const shiftRes = await fetch(`/api/shifts/${selectedShift}/close`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          endTime: endTime.toISOString(),
-          closedBy: 'Current User'
+          endTime: validatedEndTime.toISOString(),
+          closedBy: 'Current User',
+          cashAmount: cashAmount,
+          cardAmount: totalCardAmount,
+          creditAmount: creditAmount,
+          chequeAmount: chequeAmount
         })
       })
+      
+      if (!shiftRes.ok) {
+        const error = await shiftRes.json()
+        throw new Error(`Failed to close shift: ${error.error}`)
+      }
+      
+      const shiftResult = await shiftRes.json()
+      console.log('Shift closed successfully:', shiftResult)
 
       setSuccess('Shift closed successfully!')
+      
+      // Print the page after successful closure
+      setTimeout(() => {
+        window.print()
+      }, 500) // Small delay to ensure success message is shown
+      
       setTimeout(() => {
         router.push('/shifts')
-      }, 2000)
+      }, 3000) // Increased delay to allow printing
     } catch (err) {
       setError('Failed to close shift')
     } finally {
@@ -353,22 +426,17 @@ export default function CloseShiftPage() {
       )}
 
       <FormCard title="Shift Selection" description="Select the station and shift to close">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="station">Station *</Label>
-            <Select value={selectedStation} onValueChange={setSelectedStation}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select station" />
-              </SelectTrigger>
-              <SelectContent>
-                {stations.map((station) => (
-                  <SelectItem key={station.id} value={station.id}>
-                    {station.name} - {station.city}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Display current station */}
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+            <span className="text-sm font-medium text-blue-900">
+              Station: {stations.find(s => s.id === selectedStation)?.name || 'No station selected'}
+            </span>
           </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
           <div className="space-y-2">
             <Label htmlFor="shift">Shift *</Label>
@@ -377,11 +445,17 @@ export default function CloseShiftPage() {
                 <SelectValue placeholder="Select shift" />
               </SelectTrigger>
               <SelectContent>
-                {shifts.map((shift) => (
-                  <SelectItem key={shift.id} value={shift.id}>
-                    {new Date(shift.startTime).toLocaleString()} - {shift.openedBy}
-                  </SelectItem>
-                ))}
+                {Array.isArray(shifts) && shifts.length > 0 ? (
+                  shifts.map((shift) => (
+                    <SelectItem key={shift.id} value={shift.id}>
+                      {new Date(shift.startTime).toLocaleString()} - {shift.openedBy}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                    No active shifts found
+                  </div>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -585,7 +659,7 @@ export default function CloseShiftPage() {
               <div className="flex justify-between">
                 <span className="text-gray-600">Status:</span>
                 <Badge 
-                  variant={tenderSummary?.varianceClassification?.isNormal ? "default" : "destructive"}
+                  variant={tenderSummary?.varianceClassification?.isNormal ? "success" : "destructive"}
                 >
                   {tenderSummary?.varianceClassification?.isNormal ? 'Normal' : 'Suspicious'}
                 </Badge>
@@ -600,11 +674,12 @@ export default function CloseShiftPage() {
           Cancel
         </Button>
         <Button 
-          onClick={handleCloseShift}
-          disabled={loading || !selectedShift || assignments.some(a => !a.endMeterReading)}
+          onClick={handleCloseShiftAndPrint}
+          disabled={loading || !selectedShift || !Array.isArray(assignments) || assignments.some(a => !a.endMeterReading)}
           className="bg-purple-600 hover:bg-purple-700"
         >
-          {loading ? 'Closing...' : 'Close Shift & Print PDF'}
+          <Printer className="h-4 w-4 mr-2" />
+          {loading ? 'Closing...' : 'Close Shift & Print'}
         </Button>
       </div>
     </div>

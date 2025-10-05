@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { useStation } from '@/contexts/StationContext'
 import { auditLogger } from '@/lib/auditLogger'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
@@ -68,12 +70,14 @@ export default function OpenShiftPage() {
   const [stations, setStations] = useState<Station[]>([])
   const [shiftTemplates, setShiftTemplates] = useState<ShiftTemplate[]>([])
   const [nozzles, setNozzles] = useState<Nozzle[]>([])
+  const [unavailableNozzles, setUnavailableNozzles] = useState<Nozzle[]>([])
   const [pumpers, setPumpers] = useState<Pumper[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   // Form state
-  const [selectedStation, setSelectedStation] = useState('')
+  const { selectedStation } = useStation()
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [startTime, setStartTime] = useState<Date>(new Date())
   const [assignments, setAssignments] = useState<Assignment[]>([])
@@ -82,18 +86,33 @@ export default function OpenShiftPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
+        console.log('Loading stations and templates...')
         const [stationsRes, templatesRes] = await Promise.all([
           fetch('/api/stations?active=true'),
           fetch('/api/shift-templates?active=true')
         ])
         
+        console.log('Stations response:', stationsRes.status)
+        console.log('Templates response:', templatesRes.status)
+        
+        if (!stationsRes.ok) {
+          throw new Error(`Stations API error: ${stationsRes.status}`)
+        }
+        if (!templatesRes.ok) {
+          throw new Error(`Templates API error: ${templatesRes.status}`)
+        }
+        
         const stationsData = await stationsRes.json()
         const templatesData = await templatesRes.json()
+        
+        console.log('Stations data:', stationsData)
+        console.log('Templates data:', templatesData)
         
         setStations(stationsData)
         setShiftTemplates(templatesData)
       } catch (err) {
-        setError('Failed to load data')
+        console.error('Error loading data:', err)
+        setError(`Failed to load data: ${err instanceof Error ? err.message : 'Unknown error'}`)
       }
     }
     
@@ -105,21 +124,72 @@ export default function OpenShiftPage() {
     if (selectedStation) {
       const loadStationData = async () => {
         try {
-          const [nozzlesRes, pumpersRes] = await Promise.all([
+          console.log('Loading data for station:', selectedStation)
+          const [nozzlesRes, pumpersRes, activeShiftsRes] = await Promise.all([
             fetch(`/api/tanks?stationId=${selectedStation}&type=nozzles`),
-            fetch(`/api/pumpers?stationId=${selectedStation}&active=true`)
+            fetch(`/api/pumpers?stationId=${selectedStation}&active=true`),
+            fetch(`/api/shifts?stationId=${selectedStation}&active=true`)
           ])
+          
+          console.log('Nozzles response:', nozzlesRes.status)
+          console.log('Pumpers response:', pumpersRes.status)
+          console.log('Active shifts response:', activeShiftsRes.status)
+          
+          if (!nozzlesRes.ok) {
+            throw new Error(`Nozzles API error: ${nozzlesRes.status}`)
+          }
+          if (!pumpersRes.ok) {
+            throw new Error(`Pumpers API error: ${pumpersRes.status}`)
+          }
+          if (!activeShiftsRes.ok) {
+            throw new Error(`Active shifts API error: ${activeShiftsRes.status}`)
+          }
           
           const nozzlesData = await nozzlesRes.json()
           const pumpersData = await pumpersRes.json()
+          const activeShiftsData = await activeShiftsRes.json()
           
-          setNozzles(nozzlesData)
+          console.log('Nozzles data:', nozzlesData)
+          console.log('Pumpers data:', pumpersData)
+          console.log('Active shifts data:', activeShiftsData)
+          
+          // Get all assigned nozzle IDs from active shifts
+          const assignedNozzleIds = new Set<string>()
+          if (activeShiftsData.shifts && Array.isArray(activeShiftsData.shifts)) {
+            for (const shift of activeShiftsData.shifts) {
+              if (shift.assignments && Array.isArray(shift.assignments)) {
+                for (const assignment of shift.assignments) {
+                  if (assignment.nozzleId) {
+                    assignedNozzleIds.add(assignment.nozzleId)
+                  }
+                }
+              }
+            }
+          }
+          
+          console.log('Assigned nozzle IDs:', Array.from(assignedNozzleIds))
+          
+          // Filter out already assigned nozzles
+          const availableNozzles = nozzlesData.filter((nozzle: Nozzle) => 
+            !assignedNozzleIds.has(nozzle.id)
+          )
+          
+          const unavailableNozzles = nozzlesData.filter((nozzle: Nozzle) => 
+            assignedNozzleIds.has(nozzle.id)
+          )
+          
+          console.log('Available nozzles:', availableNozzles)
+          console.log('Unavailable nozzles:', unavailableNozzles)
+          
+          setNozzles(availableNozzles)
+          setUnavailableNozzles(unavailableNozzles)
           setPumpers(pumpersData)
           
           // Reset assignments when station changes
           setAssignments([])
         } catch (err) {
-          setError('Failed to load station data')
+          console.error('Error loading station data:', err)
+          setError(`Failed to load station data: ${err instanceof Error ? err.message : 'Unknown error'}`)
         }
       }
       
@@ -159,7 +229,7 @@ export default function OpenShiftPage() {
   }
 
   const handleOpenShift = async () => {
-    if (!selectedStation || !selectedTemplate || assignments.length === 0) {
+    if (!selectedTemplate || assignments.length === 0) {
       setError('Please fill in all required fields and add at least one assignment')
       return
     }
@@ -173,22 +243,40 @@ export default function OpenShiftPage() {
 
     setLoading(true)
     setError('')
+    setSuccess('')
 
     try {
       // Create shift
+      const shiftData = {
+        stationId: selectedStation,
+        templateId: selectedTemplate,
+        startTime: startTime.toISOString(),
+        openedBy: 'Current User' // In real app, get from auth context
+      }
+      
+      console.log('Creating shift with data:', shiftData)
+      
       const shiftRes = await fetch('/api/shifts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          stationId: selectedStation,
-          templateId: selectedTemplate,
-          startTime: startTime.toISOString(),
-          openedBy: 'Current User' // In real app, get from auth context
-        })
+        body: JSON.stringify(shiftData)
       })
 
       if (!shiftRes.ok) {
-        throw new Error('Failed to create shift')
+        const errorData = await shiftRes.json()
+        console.error('Shift creation error:', errorData)
+        
+        // Handle specific error cases with user-friendly messages
+        if (errorData.error === 'Another shift is already active at this station') {
+          throw new Error('There is already an open shift at this station. Please close the existing shift before opening a new one.')
+        }
+        
+        // Handle validation errors
+        if (errorData.error && errorData.error.includes('validation')) {
+          throw new Error(`Please check your input: ${errorData.error}`)
+        }
+        
+        throw new Error(`Failed to create shift: ${errorData.error || 'Unknown error'}`)
       }
 
       const shift = await shiftRes.json()
@@ -228,9 +316,17 @@ export default function OpenShiftPage() {
         }
       }
 
-      router.push('/shifts')
+      setSuccess('Shift created successfully! Redirecting to shifts page...')
+      setTimeout(() => {
+        router.push('/shifts')
+      }, 1500)
     } catch (err) {
-      setError('Failed to open shift')
+      console.error('Shift creation failed:', err)
+      if (err instanceof Error) {
+        setError(err.message)
+      } else {
+        setError('Failed to open shift. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
@@ -336,27 +432,41 @@ export default function OpenShiftPage() {
 
       {error && (
         <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>
+            <div className="flex items-center justify-between">
+              <span>{error}</span>
+              {error.includes('already an open shift') && (
+                <Link href="/shifts/close">
+                  <Button variant="outline" size="sm" className="ml-4">
+                    Close Existing Shift
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {success && (
+        <Alert className="border-green-200 bg-green-50">
+          <AlertDescription className="text-green-800">
+            {success}
+          </AlertDescription>
         </Alert>
       )}
 
       <FormCard title="Shift Details" description="Configure the shift parameters">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="station">Station *</Label>
-            <Select value={selectedStation} onValueChange={setSelectedStation}>
-              <SelectTrigger id="station">
-                <SelectValue placeholder="Select station" />
-              </SelectTrigger>
-              <SelectContent>
-                {stations.map((station) => (
-                  <SelectItem key={station.id} value={station.id}>
-                    {station.name} - {station.city}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Display current station */}
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+            <span className="text-sm font-medium text-blue-900">
+              Station: {stations.find(s => s.id === selectedStation)?.name || 'No station selected'}
+            </span>
           </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
           <div className="space-y-2">
             <Label htmlFor="template">Shift Template *</Label>
@@ -375,9 +485,8 @@ export default function OpenShiftPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="startTime">Start Time *</Label>
+            <Label>Start Time *</Label>
             <DateTimePicker
-              id="startTime"
               value={startTime}
               onChange={(date) => setStartTime(date || new Date())}
               placeholder="Select start time"
@@ -397,25 +506,57 @@ export default function OpenShiftPage() {
                   <SelectValue placeholder="Add nozzle" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableNozzles.map((nozzle) => (
+                  {nozzles.map((nozzle) => (
                     <SelectItem key={nozzle.id} value={nozzle.id}>
                       {nozzle.pumpNumber} {nozzle.nozzleNumber} - {nozzle.fuelType}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Button size="sm" disabled={availableNozzles.length === 0}>
+              <Button size="sm" disabled={nozzles.length === 0}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add
               </Button>
             </div>
           }
         >
+          {/* Show unavailable nozzles info */}
+          {unavailableNozzles.length > 0 && (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <div className="w-2 h-2 bg-amber-500 rounded-full mt-2"></div>
+                <div>
+                  <p className="text-sm font-medium text-amber-900 mb-1">
+                    {unavailableNozzles.length} nozzle{unavailableNozzles.length > 1 ? 's' : ''} currently in use:
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {unavailableNozzles.map((nozzle) => (
+                      <Badge key={nozzle.id} variant="outline" className="text-amber-700 border-amber-300">
+                        {nozzle.pumpNumber} {nozzle.nozzleNumber} - {nozzle.fuelType}
+                      </Badge>
+                    ))}
+                  </div>
+                  <p className="text-xs text-amber-700 mt-2">
+                    These nozzles are assigned to active shifts and cannot be used for new assignments.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           {assignments.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <User className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p>No assignments added yet</p>
-              <p className="text-sm">Add nozzles and assign pumpers to start the shift</p>
+              {nozzles.length === 0 ? (
+                <>
+                  <p>No nozzles available for assignment</p>
+                  <p className="text-sm">All nozzles are currently in use by active shifts</p>
+                </>
+              ) : (
+                <>
+                  <p>No assignments added yet</p>
+                  <p className="text-sm">Add nozzles and assign pumpers to start the shift</p>
+                </>
+              )}
             </div>
           ) : (
             <DataTable
@@ -434,7 +575,7 @@ export default function OpenShiftPage() {
         </Button>
         <Button 
           onClick={handleOpenShift}
-          disabled={loading || !selectedStation || !selectedTemplate || assignments.length === 0}
+          disabled={loading || !selectedTemplate || assignments.length === 0}
           className="bg-purple-600 hover:bg-purple-700"
         >
           {loading ? 'Opening...' : 'Open Shift'}

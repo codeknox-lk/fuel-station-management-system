@@ -168,7 +168,27 @@ export default function NotificationsPage() {
         category: 'operations'
       }
     ]
-    setNotifications(mockNotifications)
+    // Load real notifications from API
+    const loadNotifications = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/notifications')
+        if (response.ok) {
+          const data = await response.json()
+          setNotifications(data)
+        } else {
+          // If no API endpoint exists, start with empty array
+          setNotifications([])
+        }
+      } catch (error) {
+        console.error('Failed to load notifications:', error)
+        setNotifications([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadNotifications()
   }, [])
 
   // Filter notifications based on search and filters
