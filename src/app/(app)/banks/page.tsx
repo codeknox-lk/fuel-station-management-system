@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Building2,
   DollarSign,
@@ -24,14 +25,17 @@ import {
   ArrowDownRight,
   Filter,
   RefreshCw,
-  Eye,
   Calendar,
   Plus,
-  Minus,
-  Wallet
+  Wallet,
+  History,
+  PiggyBank,
+  AlertCircle,
+  ArrowRightLeft
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { DataTable } from '@/components/ui/DataTable'
+import { Textarea } from '@/components/ui/textarea'
 
 interface BankAccount {
   id: string
@@ -90,7 +94,7 @@ export default function BankAccountsPage() {
   const [loading, setLoading] = useState(true)
   const [loadingTransactions, setLoadingTransactions] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [manualTransactionDialogOpen, setManualTransactionDialogOpen] = useState(false)
+  const [transactionDialogOpen, setTransactionDialogOpen] = useState(false)
   const [selectedBankForTransaction, setSelectedBankForTransaction] = useState<BankAccount | null>(null)
   
   // Manual transaction form
@@ -180,27 +184,30 @@ export default function BankAccountsPage() {
     setEndDate('')
   }
 
-  const handleApplyFilters = () => {
-    if (selectedBank) {
-      fetchBankTransactions(selectedBank.id)
-    }
-  }
-
-  const handleOpenManualTransaction = (bank: BankAccount, transactionType: 'add' | 'remove') => {
+  const handleOpenTransaction = (bank: BankAccount) => {
     setSelectedBankForTransaction(bank)
     setManualTransactionForm({
-      type: transactionType === 'add' ? 'DEPOSIT' : 'WITHDRAWAL',
+      type: 'DEPOSIT',
       amount: '',
       description: '',
       referenceNumber: '',
       transactionDate: new Date().toISOString().split('T')[0],
       notes: ''
     })
-    setManualTransactionDialogOpen(true)
+    setTransactionDialogOpen(true)
   }
 
   const handleSubmitManualTransaction = async () => {
     if (!selectedBankForTransaction) return
+
+    if (!manualTransactionForm.amount || !manualTransactionForm.description) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      })
+      return
+    }
 
     try {
       const response = await fetch('/api/banks/transactions', {
@@ -210,20 +217,21 @@ export default function BankAccountsPage() {
           bankId: selectedBankForTransaction.id,
           stationId: selectedStation || null,
           ...manualTransactionForm,
-          createdBy: 'User' // Replace with actual user when auth is implemented
+          createdBy: 'User'
         })
       })
 
       if (!response.ok) throw new Error('Failed to create transaction')
 
+      const isDeposit = ['DEPOSIT', 'TRANSFER_IN', 'INTEREST', 'ADJUSTMENT'].includes(manualTransactionForm.type)
+      
       toast({
         title: "Success",
-        description: "Manual transaction added successfully"
+        description: `Successfully ${isDeposit ? 'added' : 'removed'} Rs. ${parseFloat(manualTransactionForm.amount).toLocaleString()} ${isDeposit ? 'to' : 'from'} ${selectedBankForTransaction.name}`
       })
 
-      // Refresh data
       fetchBankAccounts()
-      setManualTransactionDialogOpen(false)
+      setTransactionDialogOpen(false)
       setManualTransactionForm({
         type: 'DEPOSIT',
         amount: '',
@@ -236,25 +244,31 @@ export default function BankAccountsPage() {
       console.error('Error creating manual transaction:', error)
       toast({
         title: "Error",
-        description: "Failed to create manual transaction",
+        description: "Failed to create transaction",
         variant: "destructive"
       })
     }
   }
 
+  const handleApplyFilters = () => {
+    if (selectedBank) {
+      fetchBankTransactions(selectedBank.id)
+    }
+  }
+
   const getTransactionTypeColor = (type: string) => {
     switch (type) {
-      case 'DEPOSIT': return 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
-      case 'CHEQUE': return 'bg-purple-500/10 text-purple-600 dark:text-purple-400'
-      case 'CREDIT_PAYMENT': return 'bg-green-500/10 text-green-600 dark:text-green-400'
-      case 'MANUAL': return 'bg-orange-500/10 text-orange-600 dark:text-orange-400'
-      case 'WITHDRAWAL': return 'bg-red-500/10 text-red-600 dark:text-red-400'
-      case 'TRANSFER_IN': return 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
-      case 'TRANSFER_OUT': return 'bg-pink-500/10 text-pink-600 dark:text-pink-400'
-      case 'FEE': return 'bg-gray-500/10 text-gray-600 dark:text-gray-400'
-      case 'INTEREST': return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-      case 'ADJUSTMENT': return 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
-      default: return 'bg-gray-500/10 text-gray-600 dark:text-gray-400'
+      case 'DEPOSIT': return 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
+      case 'CHEQUE': return 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
+      case 'CREDIT_PAYMENT': return 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20'
+      case 'MANUAL': return 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20'
+      case 'WITHDRAWAL': return 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'
+      case 'TRANSFER_IN': return 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
+      case 'TRANSFER_OUT': return 'bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20'
+      case 'FEE': return 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20'
+      case 'INTEREST': return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+      case 'ADJUSTMENT': return 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20'
+      default: return 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20'
     }
   }
 
@@ -263,13 +277,11 @@ export default function BankAccountsPage() {
     
     switch (status) {
       case 'CLEARED':
-        return <Badge variant="default" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20"><CheckCircle className="h-3 w-3 mr-1" />Cleared</Badge>
+        return <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20"><CheckCircle className="h-3 w-3 mr-1" />Cleared</Badge>
       case 'PENDING':
-        return <Badge variant="default" className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20"><Clock className="h-3 w-3 mr-1" />Pending</Badge>
+        return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20"><Clock className="h-3 w-3 mr-1" />Pending</Badge>
       case 'BOUNCED':
-        return <Badge variant="default" className="bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"><XCircle className="h-3 w-3 mr-1" />Bounced</Badge>
-      case 'CANCELLED':
-        return <Badge variant="secondary"><XCircle className="h-3 w-3 mr-1" />Cancelled</Badge>
+        return <Badge variant="outline" className="bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"><XCircle className="h-3 w-3 mr-1" />Bounced</Badge>
       default:
         return null
     }
@@ -349,11 +361,11 @@ export default function BankAccountsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <Building2 className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+            <PiggyBank className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             Bank Accounts
           </h1>
           <p className="text-muted-foreground mt-1">
-            View all bank accounts, balances, and transactions
+            Manage all bank accounts, balances, and transactions
           </p>
         </div>
         <Button onClick={fetchBankAccounts} variant="outline">
@@ -364,10 +376,10 @@ export default function BankAccountsPage() {
 
       {/* Overall Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="border-2 border-green-500/20 bg-green-500/5">
+          <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-green-600" />
+              <DollarSign className="h-5 w-5 text-green-600" />
               Total Balance
             </CardTitle>
           </CardHeader>
@@ -378,10 +390,10 @@ export default function BankAccountsPage() {
             <p className="text-xs text-muted-foreground mt-1">Across all bank accounts</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="border-blue-500/20">
+          <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-blue-600" />
+              <TrendingUp className="h-5 w-5 text-blue-600" />
               Total Deposits
             </CardTitle>
           </CardHeader>
@@ -392,10 +404,10 @@ export default function BankAccountsPage() {
             <p className="text-xs text-muted-foreground mt-1">All time deposits</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="border-yellow-500/20">
+          <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Clock className="h-4 w-4 text-yellow-600" />
+              <Clock className="h-5 w-5 text-yellow-600" />
               Pending Cheques
             </CardTitle>
           </CardHeader>
@@ -408,83 +420,110 @@ export default function BankAccountsPage() {
         </Card>
       </div>
 
-      {/* Bank Accounts List */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Bank Accounts Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {bankAccounts.map((bank) => (
-          <Card key={bank.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader>
+          <Card key={bank.id} className="hover:shadow-xl transition-all duration-300 border-2">
+            <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <div className="flex-1">
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <Building2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                     {bank.name}
                   </CardTitle>
-                  <CardDescription className="mt-1">
-                    {bank.branch && `${bank.branch} • `}
-                    {bank.accountNumber && `A/C: ${bank.accountNumber}`}
+                  <CardDescription className="mt-2">
+                    {bank.branch && <div className="flex items-center gap-1"><span className="font-medium">Branch:</span> {bank.branch}</div>}
+                    {bank.accountNumber && <div className="flex items-center gap-1"><span className="font-medium">A/C:</span> {bank.accountNumber}</div>}
                   </CardDescription>
                 </div>
-                <Badge variant={bank.isActive ? 'default' : 'secondary'}>
+                <Badge variant={bank.isActive ? 'default' : 'secondary'} className="ml-2">
                   {bank.isActive ? 'Active' : 'Inactive'}
                 </Badge>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Current Balance */}
-              <div className="flex items-center justify-between p-4 bg-green-500/5 rounded-lg border border-green-500/20">
-                <div>
-                  <p className="text-sm text-muted-foreground">Current Balance</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    Rs. {bank.currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
+              {/* Current Balance - Prominent Display */}
+              <div className="p-6 bg-gradient-to-br from-green-500/10 to-green-600/5 rounded-xl border-2 border-green-500/20">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-1">Current Balance</p>
+                    <p className="text-4xl font-bold text-green-600">
+                      Rs. {bank.currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <Wallet className="h-12 w-12 text-green-600 opacity-50" />
                 </div>
-                <DollarSign className="h-8 w-8 text-green-600" />
               </div>
 
-              {/* Transaction Summary */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-card rounded-lg border">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <TrendingUp className="h-3 w-3" />
-                    Deposits
-                  </p>
-                  <p className="font-mono font-semibold text-blue-600">
-                    Rs. {bank.totalDeposits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                </div>
-                <div className="p-3 bg-card rounded-lg border">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <CheckCircle className="h-3 w-3" />
-                    Cleared Cheques
-                  </p>
-                  <p className="font-mono font-semibold text-green-600">
-                    Rs. {bank.clearedCheques.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                </div>
-                <div className="p-3 bg-card rounded-lg border">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    Pending Cheques
-                  </p>
-                  <p className="font-mono font-semibold text-yellow-600">
-                    Rs. {bank.pendingCheques.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                </div>
-                <div className="p-3 bg-card rounded-lg border">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <CreditCard className="h-3 w-3" />
-                    Credit Payments
-                  </p>
-                  <p className="font-mono font-semibold text-purple-600">
-                    Rs. {bank.totalCreditPayments.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
+              {/* Breakdown Section */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-muted-foreground">Balance Breakdown</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-3 bg-blue-500/5 rounded-lg border border-blue-500/20">
+                    <p className="text-xs text-muted-foreground">Deposits</p>
+                    <p className="font-mono font-semibold text-blue-600 text-sm">
+                      Rs. {bank.totalDeposits.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-green-500/5 rounded-lg border border-green-500/20">
+                    <p className="text-xs text-muted-foreground">Cleared Cheques</p>
+                    <p className="font-mono font-semibold text-green-600 text-sm">
+                      Rs. {bank.clearedCheques.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-purple-500/5 rounded-lg border border-purple-500/20">
+                    <p className="text-xs text-muted-foreground">Credit Payments</p>
+                    <p className="font-mono font-semibold text-purple-600 text-sm">
+                      Rs. {bank.totalCreditPayments.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-orange-500/5 rounded-lg border border-orange-500/20">
+                    <p className="text-xs text-muted-foreground">Manual Adjustments</p>
+                    <p className="font-mono font-semibold text-orange-600 text-sm">
+                      +{bank.manualDeposits.toLocaleString(undefined, { minimumFractionDigits: 2 })} / -{bank.manualWithdrawals.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
                 </div>
               </div>
+
+              {/* Pending & Issues */}
+              {(bank.pendingCheques > 0 || bank.bouncedCheques > 0) && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold text-muted-foreground flex items-center gap-1">
+                    <AlertCircle className="h-4 w-4" />
+                    Attention Required
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {bank.pendingCheques > 0 && (
+                      <div className="p-3 bg-yellow-500/5 rounded-lg border border-yellow-500/20">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3" /> Pending
+                        </p>
+                        <p className="font-mono font-semibold text-yellow-600 text-sm">
+                          Rs. {bank.pendingCheques.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                    )}
+                    {bank.bouncedCheques > 0 && (
+                      <div className="p-3 bg-red-500/5 rounded-lg border border-red-500/20">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <XCircle className="h-3 w-3" /> Bounced
+                        </p>
+                        <p className="font-mono font-semibold text-red-600 text-sm">
+                          Rs. {bank.bouncedCheques.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* POS Terminals */}
               {bank.posTerminals.length > 0 && (
                 <div className="pt-2 border-t">
-                  <p className="text-xs text-muted-foreground mb-2">POS Terminals:</p>
+                  <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                    <CreditCard className="h-3 w-3" /> POS Terminals
+                  </p>
                   <div className="flex flex-wrap gap-2">
                     {bank.posTerminals.map(terminal => (
                       <Badge key={terminal.id} variant="outline" className="text-xs">
@@ -495,31 +534,23 @@ export default function BankAccountsPage() {
                 </div>
               )}
 
-              {/* View Details Button */}
-              <div className="grid grid-cols-3 gap-2">
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-2 pt-2">
                 <Button 
-                  onClick={() => handleOpenManualTransaction(bank, 'add')}
-                  variant="outline"
-                  className="text-green-600 border-green-600 hover:bg-green-500/10"
+                  onClick={() => handleOpenTransaction(bank)}
+                  variant="default"
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
                 >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add
-                </Button>
-                <Button 
-                  onClick={() => handleOpenManualTransaction(bank, 'remove')}
-                  variant="outline"
-                  className="text-red-600 border-red-600 hover:bg-red-500/10"
-                >
-                  <Minus className="h-4 w-4 mr-1" />
-                  Remove
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Transaction
                 </Button>
                 <Button 
                   onClick={() => handleViewDetails(bank)} 
                   variant="outline"
-                  className="col-span-3"
+                  className="w-full"
                 >
-                  <Eye className="h-4 w-4 mr-2" />
-                  Transactions ({bank.transactionCount})
+                  <History className="h-4 w-4 mr-2" />
+                  History ({bank.transactionCount})
                 </Button>
               </div>
             </CardContent>
@@ -537,19 +568,28 @@ export default function BankAccountsPage() {
       )}
 
       {/* Manual Transaction Dialog */}
-      <Dialog open={manualTransactionDialogOpen} onOpenChange={setManualTransactionDialogOpen}>
+      <Dialog open={transactionDialogOpen} onOpenChange={setTransactionDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Wallet className="h-6 w-6 text-orange-600" />
-              {manualTransactionForm.type === 'DEPOSIT' ? 'Add Money' : 'Remove Money'} - {selectedBankForTransaction?.name}
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <ArrowRightLeft className="h-6 w-6 text-blue-600" />
+              New Transaction - {selectedBankForTransaction?.name}
             </DialogTitle>
             <DialogDescription>
-              Manually add or remove money from bank account
+              Add or remove money from this bank account
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
+            <Card className="bg-muted/50">
+              <CardContent className="pt-4">
+                <div className="text-sm text-muted-foreground">Current Balance</div>
+                <div className="text-2xl font-bold text-green-600">
+                  Rs. {selectedBankForTransaction?.currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </div>
+              </CardContent>
+            </Card>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="transactionType">Transaction Type *</Label>
@@ -561,13 +601,13 @@ export default function BankAccountsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="DEPOSIT">Deposit (Add Money)</SelectItem>
-                    <SelectItem value="WITHDRAWAL">Withdrawal (Remove Money)</SelectItem>
-                    <SelectItem value="TRANSFER_IN">Transfer In</SelectItem>
-                    <SelectItem value="TRANSFER_OUT">Transfer Out</SelectItem>
-                    <SelectItem value="FEE">Bank Fee</SelectItem>
-                    <SelectItem value="INTEREST">Interest Earned</SelectItem>
-                    <SelectItem value="ADJUSTMENT">Adjustment</SelectItem>
+                    <SelectItem value="DEPOSIT">💰 Deposit (Add Money)</SelectItem>
+                    <SelectItem value="WITHDRAWAL">💸 Withdrawal (Remove Money)</SelectItem>
+                    <SelectItem value="TRANSFER_IN">⬇️ Transfer In</SelectItem>
+                    <SelectItem value="TRANSFER_OUT">⬆️ Transfer Out</SelectItem>
+                    <SelectItem value="FEE">💳 Bank Fee/Charge</SelectItem>
+                    <SelectItem value="INTEREST">💵 Interest Earned</SelectItem>
+                    <SelectItem value="ADJUSTMENT">⚖️ Manual Adjustment</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -577,10 +617,12 @@ export default function BankAccountsPage() {
                   id="amount"
                   type="number"
                   step="0.01"
+                  min="0"
                   value={manualTransactionForm.amount}
                   onChange={(e) => setManualTransactionForm({ ...manualTransactionForm, amount: e.target.value })}
                   placeholder="0.00"
                   required
+                  className="text-lg font-semibold"
                 />
               </div>
             </div>
@@ -591,7 +633,7 @@ export default function BankAccountsPage() {
                 id="description"
                 value={manualTransactionForm.description}
                 onChange={(e) => setManualTransactionForm({ ...manualTransactionForm, description: e.target.value })}
-                placeholder="e.g., Cash deposit, Expense payment, etc."
+                placeholder="e.g., Salary payment, Utility bill, Cash deposit"
                 required
               />
             </div>
@@ -620,39 +662,63 @@ export default function BankAccountsPage() {
 
             <div>
               <Label htmlFor="notes">Notes</Label>
-              <Input
+              <Textarea
                 id="notes"
                 value={manualTransactionForm.notes}
                 onChange={(e) => setManualTransactionForm({ ...manualTransactionForm, notes: e.target.value })}
-                placeholder="Optional notes"
+                placeholder="Optional additional notes"
+                rows={3}
               />
             </div>
+
+            {/* New Balance Preview */}
+            {manualTransactionForm.amount && selectedBankForTransaction && (
+              <Card className="bg-blue-500/5 border-blue-500/20">
+                <CardContent className="pt-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-muted-foreground">New Balance (After Transaction)</div>
+                    <div className="text-xl font-bold text-blue-600">
+                      Rs. {(
+                        selectedBankForTransaction.currentBalance + 
+                        (['DEPOSIT', 'TRANSFER_IN', 'INTEREST', 'ADJUSTMENT'].includes(manualTransactionForm.type) ? 1 : -1) * 
+                        parseFloat(manualTransactionForm.amount || '0')
+                      ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             <div className="flex justify-end gap-2 pt-4">
               <Button
                 variant="outline"
-                onClick={() => setManualTransactionDialogOpen(false)}
+                onClick={() => setTransactionDialogOpen(false)}
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSubmitManualTransaction}
                 disabled={!manualTransactionForm.amount || !manualTransactionForm.description}
+                className="min-w-[120px]"
               >
-                {manualTransactionForm.type === 'DEPOSIT' || manualTransactionForm.type === 'TRANSFER_IN' || manualTransactionForm.type === 'INTEREST' ? 'Add Money' : 'Remove Money'}
+                {['DEPOSIT', 'TRANSFER_IN', 'INTEREST'].includes(manualTransactionForm.type) ? (
+                  <><TrendingUp className="h-4 w-4 mr-2" /> Add Money</>
+                ) : (
+                  <><TrendingDown className="h-4 w-4 mr-2" /> Remove Money</>
+                )}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Transaction Details Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      {/* Transaction History Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={handleCloseDialog}>
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Building2 className="h-6 w-6 text-blue-600" />
-              {selectedBank?.name} - Transactions
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <History className="h-6 w-6 text-blue-600" />
+              Transaction History - {selectedBank?.name}
             </DialogTitle>
             <DialogDescription>
               {selectedBank?.branch && `${selectedBank.branch} • `}
@@ -665,50 +731,50 @@ export default function BankAccountsPage() {
               {/* Transaction Summary */}
               {transactionSummary && (
                 <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-                  <Card className="bg-blue-500/5">
+                  <Card className="bg-blue-500/5 border-blue-500/20">
                     <CardContent className="p-3">
                       <p className="text-xs text-muted-foreground">Deposits</p>
-                      <p className="font-mono font-bold text-blue-600">
+                      <p className="font-mono font-bold text-blue-600 text-sm">
                         Rs. {transactionSummary.totalDeposits.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </p>
                     </CardContent>
                   </Card>
-                  <Card className="bg-green-500/5">
+                  <Card className="bg-green-500/5 border-green-500/20">
                     <CardContent className="p-3">
                       <p className="text-xs text-muted-foreground">Cleared</p>
-                      <p className="font-mono font-bold text-green-600">
+                      <p className="font-mono font-bold text-green-600 text-sm">
                         Rs. {transactionSummary.clearedCheques.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </p>
                     </CardContent>
                   </Card>
-                  <Card className="bg-yellow-500/5">
+                  <Card className="bg-yellow-500/5 border-yellow-500/20">
                     <CardContent className="p-3">
                       <p className="text-xs text-muted-foreground">Pending</p>
-                      <p className="font-mono font-bold text-yellow-600">
+                      <p className="font-mono font-bold text-yellow-600 text-sm">
                         Rs. {transactionSummary.pendingCheques.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </p>
                     </CardContent>
                   </Card>
-                  <Card className="bg-red-500/5">
+                  <Card className="bg-red-500/5 border-red-500/20">
                     <CardContent className="p-3">
                       <p className="text-xs text-muted-foreground">Bounced</p>
-                      <p className="font-mono font-bold text-red-600">
+                      <p className="font-mono font-bold text-red-600 text-sm">
                         Rs. {transactionSummary.bouncedCheques.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </p>
                     </CardContent>
                   </Card>
-                  <Card className="bg-purple-500/5">
+                  <Card className="bg-purple-500/5 border-purple-500/20">
                     <CardContent className="p-3">
                       <p className="text-xs text-muted-foreground">Credit</p>
-                      <p className="font-mono font-bold text-purple-600">
+                      <p className="font-mono font-bold text-purple-600 text-sm">
                         Rs. {transactionSummary.totalCreditPayments.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </p>
                     </CardContent>
                   </Card>
-                  <Card>
+                  <Card className="border-primary">
                     <CardContent className="p-3">
-                      <p className="text-xs text-muted-foreground">Total</p>
-                      <p className="font-mono font-bold">
+                      <p className="text-xs text-muted-foreground">Total Txns</p>
+                      <p className="font-mono font-bold text-lg">
                         {transactionSummary.transactionCount}
                       </p>
                     </CardContent>
@@ -718,7 +784,7 @@ export default function BankAccountsPage() {
 
               {/* Filters */}
               <Card>
-                <CardHeader>
+                <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <Filter className="h-4 w-4" />
                     Filters
@@ -760,6 +826,7 @@ export default function BankAccountsPage() {
                     </div>
                     <div className="flex items-end">
                       <Button onClick={handleApplyFilters} className="w-full">
+                        <Filter className="h-4 w-4 mr-2" />
                         Apply Filters
                       </Button>
                     </div>
