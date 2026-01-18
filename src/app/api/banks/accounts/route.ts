@@ -1,0 +1,135 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/db'
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const stationId = searchParams.get('stationId')
+    const bankId = searchParams.get('bankId')
+
+    // Get all banks with their transaction summaries
+    const banks = await prisma.bank.findMany({
+      where: bankId ? { id: bankId, isActive: true } : { isActive: true },
+      orderBy: { name: 'asc' },
+      include: {
+        deposits: stationId 
+          ? { 
+              where: { stationId },
+              orderBy: { depositDate: 'desc' }
+            }
+          : { orderBy: { depositDate: 'desc' } },
+        cheques: stationId
+          ? {
+              where: { stationId },
+              orderBy: { receivedDate: 'desc' }
+            }
+          : { orderBy: { receivedDate: 'desc' } },
+        creditPayments: stationId
+          ? {
+              where: { stationId },
+              orderBy: { paymentDate: 'desc' }
+            }
+          : { orderBy: { paymentDate: 'desc' } },
+        posTerminals: {
+          where: { isActive: true }
+        }
+      }
+    })
+
+    // Calculate balances and summaries for each bank
+    const bankAccounts = banks.map(bank => {
+      // Total deposits
+      const totalDeposits = bank.deposits.reduce((sum, deposit) => sum + deposit.amount, 0)
+      
+      // Total cheques (received)
+      const totalCheques = bank.cheques.reduce((sum, cheque) => sum + cheque.amount, 0)
+      
+      // Cleared cheques
+      const clearedCheques = bank.cheques
+        .filter(cheque => cheque.status === 'CLEARED')
+        .reduce((sum, cheque) => sum + cheque.amount, 0)
+      
+      // Pending cheques
+      const pendingCheques = bank.cheques
+        .filter(cheque => cheque.status === 'PENDING')
+        .reduce((sum, cheque) => sum + cheque.amount, 0)
+      
+      // Bounced cheques
+      const bouncedCheques = bank.cheques
+        .filter(cheque => cheque.status === 'BOUNCED')
+        .reduce((sum, cheque) => sum + cheque.amount, 0)
+      
+      // Credit payments received
+      const totalCreditPayments = bank.creditPayments.reduce((sum, payment) => sum + payment.amount, 0)
+
+      // Current balance (deposits + cleared cheques + credit payments)
+      const currentBalance = totalDeposits + clearedCheques + totalCreditPayments
+
+      // Transaction count
+      const transactionCount = bank.deposits.length + bank.cheques.length + bank.creditPayments.length
+
+      // Recent transactions (last 10)
+      const allTransactions: Array<{
+        id: string
+        type: 'DEPOSIT' | 'CHEQUE' | 'CREDIT_PAYMENT'
+        amount: number
+        date: Date
+        status?: string
+        description: string
+      }> = [
+        ...bank.deposits.map(d => ({
+          id: d.id,
+          type: 'DEPOSIT' as const,
+          amount: d.amount,
+          date: d.depositDate,
+          description: `Deposit by ${d.depositedBy}${d.depositSlip ? ` - Slip: ${d.depositSlip}` : ''}`
+        })),
+        ...bank.cheques.map(c => ({
+          id: c.id,
+          type: 'CHEQUE' as const,
+          amount: c.amount,
+          date: c.receivedDate,
+          status: c.status,
+          description: `Cheque ${c.chequeNumber} from ${c.receivedFrom}`
+        })),
+        ...bank.creditPayments.map(cp => ({
+          id: cp.id,
+          type: 'CREDIT_PAYMENT' as const,
+          amount: cp.amount,
+          date: cp.paymentDate,
+          description: `Credit payment${cp.chequeNumber ? ` - Cheque: ${cp.chequeNumber}` : ''}`
+        }))
+      ]
+
+      // Sort by date descending and take last 10
+      const recentTransactions = allTransactions
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 10)
+
+      return {
+        id: bank.id,
+        name: bank.name,
+        branch: bank.branch,
+        accountNumber: bank.accountNumber,
+        isActive: bank.isActive,
+        currentBalance,
+        totalDeposits,
+        totalCheques,
+        clearedCheques,
+        pendingCheques,
+        bouncedCheques,
+        totalCreditPayments,
+        transactionCount,
+        recentTransactions,
+        posTerminals: bank.posTerminals,
+        createdAt: bank.createdAt,
+        updatedAt: bank.updatedAt
+      }
+    })
+
+    return NextResponse.json({ bankAccounts })
+  } catch (error) {
+    console.error('Error fetching bank accounts:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}

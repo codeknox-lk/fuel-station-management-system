@@ -20,7 +20,8 @@ import {
   User,
   Wallet,
   DollarSign,
-  Handshake
+  Handshake,
+  Landmark
 } from 'lucide-react'
 
 type UserRole = 'OWNER' | 'MANAGER' | 'ACCOUNTS'
@@ -83,6 +84,12 @@ const navigation: NavItem[] = [
     title: 'Loans',
     href: '/loans',
     icon: Handshake,
+    roles: ['OWNER', 'MANAGER', 'ACCOUNTS']
+  },
+  {
+    title: 'Bank Accounts',
+    href: '/banks',
+    icon: Landmark,
     roles: ['OWNER', 'MANAGER', 'ACCOUNTS']
   },
   {
