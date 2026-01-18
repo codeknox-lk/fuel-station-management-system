@@ -137,19 +137,19 @@ export default function CreditPage() {
 
   const getRiskColor = (risk: string) => {
     switch (risk) {
-      case 'LOW': return 'bg-green-100 text-green-800'
-      case 'MEDIUM': return 'bg-yellow-100 text-yellow-800'
-      case 'HIGH': return 'bg-orange-100 text-orange-800'
-      case 'CRITICAL': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'LOW': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      case 'MEDIUM': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
+      case 'HIGH': return 'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300'
+      case 'CRITICAL': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+      default: return 'bg-muted text-foreground'
     }
   }
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'SALE': return <CreditCard className="h-4 w-4 text-red-500" />
-      case 'PAYMENT': return <DollarSign className="h-4 w-4 text-green-500" />
-      default: return <FileText className="h-4 w-4 text-gray-500" />
+      case 'SALE': return <CreditCard className="h-4 w-4 text-red-600 dark:text-red-400" />
+      case 'PAYMENT': return <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
+      default: return <FileText className="h-4 w-4 text-muted-foreground" />
     }
   }
 
@@ -159,10 +159,10 @@ export default function CreditPage() {
       title: 'Customer',
       render: (value: unknown, row: CreditCustomer) => (
         <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-gray-500" />
+          <Users className="h-4 w-4 text-muted-foreground" />
           <div className="flex flex-col">
             <span className="font-medium">{value as string}</span>
-            <span className="text-xs text-gray-500">{row.nicOrBrn}</span>
+            <span className="text-xs text-muted-foreground">{row.nicOrBrn}</span>
           </div>
         </div>
       )
@@ -171,7 +171,7 @@ export default function CreditPage() {
       key: 'creditLimit' as keyof CreditCustomer,
       title: 'Credit Limit',
       render: (value: unknown) => (
-        <span className="font-mono text-blue-600">
+        <span className="font-mono text-blue-600 dark:text-blue-400">
           Rs. {(value as number)?.toLocaleString() || 0}
         </span>
       )
@@ -180,7 +180,7 @@ export default function CreditPage() {
       key: 'currentBalance' as keyof CreditCustomer,
       title: 'Outstanding',
       render: (value: unknown) => (
-        <span className="font-mono font-semibold text-red-600">
+        <span className="font-mono font-semibold text-red-600 dark:text-red-400">
           Rs. {(value as number)?.toLocaleString() || 0}
         </span>
       )
@@ -191,7 +191,7 @@ export default function CreditPage() {
       render: (value: unknown) => {
         const numValue = value as number
         return (
-          <span className={`font-mono font-semibold ${numValue > 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <span className={`font-mono font-semibold ${numValue > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
             Rs. {numValue?.toLocaleString() || 0}
           </span>
         )
@@ -204,11 +204,11 @@ export default function CreditPage() {
         const days = value as number
         return (
           <div className="flex items-center gap-1">
-            <Clock className="h-4 w-4 text-gray-500" />
+            <Clock className="h-4 w-4 text-muted-foreground" />
             <span className={`font-semibold ${
-              days > 90 ? 'text-red-600' : 
-              days > 60 ? 'text-orange-600' : 
-              days > 30 ? 'text-yellow-600' : 'text-green-600'
+              days > 90 ? 'text-red-600 dark:text-red-400' : 
+              days > 60 ? 'text-orange-600 dark:text-orange-400' : 
+              days > 30 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'
             }`}>
               {days} days
             </span>
@@ -242,7 +242,7 @@ export default function CreditPage() {
       title: 'Date',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-gray-500" />
+          <Calendar className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm">
             {new Date(value as string).toLocaleDateString()}
           </span>
@@ -271,7 +271,7 @@ export default function CreditPage() {
       title: 'Amount',
       render: (value: unknown, row: RecentActivity) => (
         <span className={`font-mono font-semibold ${
-          row.type === 'SALE' ? 'text-red-600' : 'text-green-600'
+          row.type === 'SALE' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
         }`}>
           {row.type === 'SALE' ? '+' : '-'}Rs. {(value as number)?.toLocaleString() || 0}
         </span>
@@ -281,7 +281,7 @@ export default function CreditPage() {
       key: 'description' as keyof RecentActivity,
       title: 'Description',
       render: (value: unknown) => (
-        <span className="text-sm text-gray-600">{value as string}</span>
+        <span className="text-sm text-muted-foreground">{value as string}</span>
       )
     },
     {
@@ -295,7 +295,7 @@ export default function CreditPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-gray-900">Credit Management</h1>
+      <h1 className="text-3xl font-bold text-foreground">Credit Management</h1>
 
       {error && (
         <Alert variant="destructive">
@@ -308,32 +308,32 @@ export default function CreditPage() {
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4">
-          <h3 className="text-lg font-semibold text-gray-700">Total Customers</h3>
-          <p className="text-3xl font-bold text-purple-600">
+          <h3 className="text-lg font-semibold text-foreground">Total Customers</h3>
+          <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
             {stats.totalCustomers}
           </p>
-          <p className="text-sm text-gray-500">{stats.activeCustomers} active</p>
+          <p className="text-sm text-muted-foreground">{stats.activeCustomers} active</p>
         </Card>
         <Card className="p-4">
-          <h3 className="text-lg font-semibold text-gray-700">Total Credit Limit</h3>
-          <p className="text-3xl font-bold text-blue-600">
+          <h3 className="text-lg font-semibold text-foreground">Total Credit Limit</h3>
+          <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
             Rs. {stats.totalCreditLimit.toLocaleString()}
           </p>
-          <p className="text-sm text-gray-500">{stats.utilizationRate}% utilized</p>
+          <p className="text-sm text-muted-foreground">{stats.utilizationRate}% utilized</p>
         </Card>
         <Card className="p-4">
-          <h3 className="text-lg font-semibold text-gray-700">Outstanding Balance</h3>
-          <p className="text-3xl font-bold text-red-600">
+          <h3 className="text-lg font-semibold text-foreground">Outstanding Balance</h3>
+          <p className="text-3xl font-bold text-red-600 dark:text-red-400">
             Rs. {stats.totalOutstanding.toLocaleString()}
           </p>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Available: Rs. {stats.availableCredit.toLocaleString()}
           </p>
         </Card>
         <Card className="p-4">
-          <h3 className="text-lg font-semibold text-gray-700">High Risk Customers</h3>
-          <p className="text-3xl font-bold text-orange-600">{stats.highRiskCustomers}</p>
-          <p className="text-sm text-gray-500">Require attention</p>
+          <h3 className="text-lg font-semibold text-foreground">High Risk Customers</h3>
+          <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">{stats.highRiskCustomers}</p>
+          <p className="text-sm text-muted-foreground">Require attention</p>
         </Card>
       </div>
 

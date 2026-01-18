@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     users.push(newUser)
     return NextResponse.json(newUser, { status: 201 })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
   }
 }

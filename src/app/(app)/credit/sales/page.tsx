@@ -154,7 +154,7 @@ export default function CreditSalesPage() {
           fuelType: fuelType || undefined,
           litres: litres ? parseFloat(litres) : undefined,
           signedSlipUrl: signedSlipFile ? `uploads/credit-slips/${signedSlipFile.name}` : undefined,
-          recordedBy: 'Current User' // In real app, get from auth context
+          recordedBy: typeof window !== 'undefined' ? localStorage.getItem('username') || 'System User' : 'System User'
         })
       })
 
@@ -198,10 +198,10 @@ export default function CreditSalesPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'APPROVED': return 'bg-green-100 text-green-800'
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800'
-      case 'REJECTED': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'APPROVED': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      case 'PENDING': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
+      case 'REJECTED': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+      default: return 'bg-muted text-foreground'
     }
   }
 
@@ -213,7 +213,7 @@ export default function CreditSalesPage() {
       title: 'Date',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-gray-500" />
+          <Calendar className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm">
             {new Date(value as string).toLocaleDateString()}
           </span>
@@ -227,7 +227,7 @@ export default function CreditSalesPage() {
         const customer = customers.find(c => c.id === row.customerId)
         return (
           <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-gray-500" />
+            <Users className="h-4 w-4 text-muted-foreground" />
             <span className="font-medium">{customer?.name || (value as string)}</span>
           </div>
         )
@@ -240,7 +240,7 @@ export default function CreditSalesPage() {
         const station = stations.find(s => s.id === row.stationId)
         return (
           <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-gray-500" />
+            <Building2 className="h-4 w-4 text-muted-foreground" />
             <span className="font-medium">{station?.name || (value as string)}</span>
           </div>
         )
@@ -251,7 +251,7 @@ export default function CreditSalesPage() {
       title: 'Amount',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <DollarSign className="h-4 w-4 text-green-500" />
+          <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
           <span className="font-mono font-semibold text-green-700">
             Rs. {(value as number)?.toLocaleString() || 0}
           </span>
@@ -266,13 +266,13 @@ export default function CreditSalesPage() {
           <div className="flex flex-col">
             <Badge variant="outline">{value as string}</Badge>
             {row.litres && (
-              <span className="text-xs text-gray-500 mt-1">
+              <span className="text-xs text-muted-foreground mt-1">
                 {row.litres}L
               </span>
             )}
           </div>
         ) : (
-          <span className="text-gray-400">-</span>
+          <span className="text-muted-foreground">-</span>
         )
       )
     },
@@ -281,7 +281,7 @@ export default function CreditSalesPage() {
       title: 'Slip Number',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-gray-500" />
+          <FileText className="h-4 w-4 text-muted-foreground" />
           <span className="font-mono text-sm">{value as string}</span>
         </div>
       )
@@ -291,7 +291,7 @@ export default function CreditSalesPage() {
       title: 'Signed Slip',
       render: (value: unknown) => (
         <div className="flex items-center gap-1">
-          <Camera className="h-4 w-4 text-gray-500" />
+          <Camera className="h-4 w-4 text-muted-foreground" />
           <Badge variant={value ? 'default' : 'secondary'}>
             {value ? 'Yes' : 'No'}
           </Badge>
@@ -311,14 +311,14 @@ export default function CreditSalesPage() {
       key: 'recordedBy' as keyof CreditSale,
       title: 'Recorded By',
       render: (value: unknown) => (
-        <span className="text-sm text-gray-600">{value as string}</span>
+        <span className="text-sm text-muted-foreground">{value as string}</span>
       )
     }
   ]
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-gray-900">Credit Sales</h1>
+      <h1 className="text-3xl font-bold text-foreground">Credit Sales</h1>
 
       {error && (
         <Alert variant="destructive">
@@ -353,7 +353,7 @@ export default function CreditSalesPage() {
                         <Users className="h-4 w-4" />
                         <div className="flex flex-col">
                           <span className="font-medium">{customer.name}</span>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-muted-foreground">
                             Available: Rs. {customer.availableCredit.toLocaleString()}
                           </span>
                         </div>
@@ -363,7 +363,7 @@ export default function CreditSalesPage() {
                 </SelectContent>
               </Select>
               {selectedCustomerData && (
-                <div className="mt-2 p-2 bg-blue-50 rounded-md">
+                <div className="mt-2 p-2 bg-blue-500/10 dark:bg-blue-500/20 rounded-md">
                   <div className="text-xs text-blue-700">
                     <div>Credit Limit: Rs. {selectedCustomerData.creditLimit.toLocaleString()}</div>
                     <div>Current Balance: Rs. {selectedCustomerData.currentBalance.toLocaleString()}</div>
@@ -470,7 +470,7 @@ export default function CreditSalesPage() {
               acceptedTypes={["image/*"]}
               placeholder="Upload signed slip photo (required for approval)"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Upload a clear photo of the signed credit slip for verification
             </p>
           </div>

@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getShiftById, getAssignmentsByShiftId } from '@/data/shifts.seed'
-import { getPriceByFuelType } from '@/data/prices.seed'
-import { getNozzleById, getTankById } from '@/data/tanks.seed'
+import { prisma } from '@/lib/db'
 
 export async function GET(
   request: NextRequest,
@@ -9,45 +7,109 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const shift = getShiftById(id)
+    const shift = await prisma.shift.findUnique({
+      where: { id },
+      include: {
+        station: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        template: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
+    })
     
     if (!shift) {
       return NextResponse.json({ error: 'Shift not found' }, { status: 404 })
     }
 
-    const assignments = getAssignmentsByShiftId(id)
+    const assignments = await prisma.shiftAssignment.findMany({
+      where: { shiftId: id },
+      include: {
+        nozzle: {
+          include: {
+            tank: true
+          }
+        }
+      }
+    })
     
     // Calculate comprehensive report data
-    const shiftStart = new Date(shift.startTime)
-    const shiftEnd = shift.endTime ? new Date(shift.endTime) : new Date()
+    const shiftStart = shift.startTime
+    const shiftEnd = shift.endTime || new Date()
     const durationHours = (shiftEnd.getTime() - shiftStart.getTime()) / (1000 * 60 * 60)
     
-    // Sales calculations using real price data
-    const totalSales = assignments.reduce((sum, assignment) => {
+    // Generate report data with prices from database
+    let totalSales = 0
+    let totalLiters = 0
+    
+    const assignmentReports = await Promise.all(assignments.map(async (assignment) => {
+      let litersSold = 0
+      
       if (assignment.endMeterReading && assignment.startMeterReading) {
-        const litersSold = assignment.endMeterReading - assignment.startMeterReading
-        // Get real price data
-        const nozzle = getNozzleById(assignment.nozzleId)
-        const tank = nozzle ? getTankById(nozzle.tankId) : null
-        const fuelType = tank?.fuelType || 'PETROL_92'
-        const pricePerLiter = Number(getPriceByFuelType(fuelType)) || 200 // Fallback price
-        return sum + (litersSold * pricePerLiter)
+        // Validate meter readings
+        if (assignment.endMeterReading < assignment.startMeterReading) {
+          console.error(`Invalid meter reading for assignment ${assignment.id}: end (${assignment.endMeterReading}) < start (${assignment.startMeterReading})`)
+          litersSold = 0 // Set to 0 for invalid readings
+        } else {
+          const calculated = assignment.endMeterReading - assignment.startMeterReading
+          // Validate non-negative liters
+          if (calculated < 0) {
+            console.error(`Negative liters calculated for assignment ${assignment.id}: ${calculated}`)
+            litersSold = 0 // Set to 0 for invalid calculations
+          } else {
+            litersSold = calculated
+          }
+        }
       }
-      return sum
-    }, 0)
-
-    const totalLiters = assignments.reduce((sum, assignment) => {
-      if (assignment.endMeterReading && assignment.startMeterReading) {
-        return sum + (assignment.endMeterReading - assignment.startMeterReading)
+      
+      totalLiters += litersSold
+      
+      // Get current price for the fuel type
+      const fuelType = assignment.nozzle.tank.fuelType
+      const price = await prisma.price.findFirst({
+        where: {
+          fuelType,
+          stationId: shift.stationId,
+          effectiveDate: { lte: shift.startTime },
+          isActive: true
+        },
+        orderBy: { effectiveDate: 'desc' }
+      })
+      
+      const pricePerLiter = price ? price.price : 470 // Fallback price
+      const sales = litersSold * pricePerLiter
+      totalSales += sales
+      
+      return {
+        id: assignment.id,
+        nozzleId: assignment.nozzleId,
+        nozzleNumber: assignment.nozzle.nozzleNumber,
+        pumperName: assignment.pumperName,
+        startMeterReading: assignment.startMeterReading,
+        endMeterReading: assignment.endMeterReading,
+        litersSold: Math.round(litersSold * 100) / 100,
+        sales: Math.round(sales),
+        pricePerLiter: Math.round(pricePerLiter * 100) / 100,
+        fuelType: fuelType,
+        status: assignment.status,
+        assignedAt: assignment.assignedAt,
+        closedAt: assignment.closedAt
       }
-      return sum
-    }, 0)
+    }))
 
-    // Generate report data
     const reportData = {
       shift: {
         id: shift.id,
         stationId: shift.stationId,
+        stationName: shift.station.name,
+        templateName: shift.template.name,
         status: shift.status,
         startTime: shift.startTime,
         endTime: shift.endTime,
@@ -62,46 +124,18 @@ export async function GET(
         assignmentCount: assignments.length,
         averageLitersPerHour: durationHours > 0 ? Math.round((totalLiters / durationHours) * 100) / 100 : 0
       },
-      assignments: assignments.map(assignment => {
-        const litersSold = assignment.endMeterReading && assignment.startMeterReading 
-          ? assignment.endMeterReading - assignment.startMeterReading 
-          : 0
-        
-        // Get real price data for each assignment
-        const nozzle = getNozzleById(assignment.nozzleId)
-        const tank = nozzle ? getTankById(nozzle.tankId) : null
-        const fuelType = tank?.fuelType || 'PETROL_92'
-        const pricePerLiter = Number(getPriceByFuelType(fuelType)) || 200 // Fallback price
-        const sales = litersSold * pricePerLiter
-        
-        return {
-          id: assignment.id,
-          nozzleId: assignment.nozzleId,
-          pumperName: assignment.pumperName,
-          startMeterReading: assignment.startMeterReading,
-          endMeterReading: assignment.endMeterReading,
-          litersSold: Math.round(litersSold * 100) / 100,
-          sales: Math.round(sales),
-          pricePerLiter: Math.round(pricePerLiter * 100) / 100,
-          fuelType: fuelType,
-          status: assignment.status,
-          assignedAt: assignment.assignedAt,
-          closedAt: assignment.closedAt
-        }
-      }),
+      assignments: assignmentReports,
       generatedAt: new Date().toISOString(),
       reportType: 'SHIFT_SUMMARY'
     }
 
-    // In a real application, this would generate a PDF
-    // For now, return the structured data that would be used for PDF generation
     return NextResponse.json({
       success: true,
       message: 'Report data generated successfully',
       data: reportData,
       pdfStub: {
         filename: `shift-report-${shift.id}-${new Date().toISOString().split('T')[0]}.pdf`,
-        downloadUrl: `/api/shifts/${id}/report/download`, // Stub for PDF download
+        downloadUrl: `/api/shifts/${id}/report/download`,
         generatedAt: new Date().toISOString()
       }
     })
@@ -118,11 +152,6 @@ export async function POST(
 ) {
   try {
     const { id } = await params
-    
-    // In a real application, this would:
-    // 1. Generate the PDF using a library like puppeteer or jsPDF
-    // 2. Store the PDF file
-    // 3. Return the file or a download URL
     
     return NextResponse.json({
       success: true,

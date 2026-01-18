@@ -35,7 +35,7 @@ export class PDFExporter {
     this.doc.line(20, 45, 190, 45)
   }
 
-  addTable(headers: string[], data: any[][], title?: string) {
+  addTable(headers: string[], data: (string | number)[][], title?: string) {
     let startY = 55
     
     if (title) {
@@ -65,6 +65,7 @@ export class PDFExporter {
   }
 
   addSummaryCards(summaryData: { label: string; value: string | number }[]) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const startY = (this.doc as any).lastAutoTable?.finalY + 20 || 70
     
     this.doc.setFontSize(12)
@@ -103,13 +104,13 @@ export class PDFExporter {
 // Excel Export Utilities
 export class ExcelExporter {
   private workbook: XLSX.WorkBook
-  private worksheets: { [key: string]: any[][] } = {}
+  private worksheets: { [key: string]: (string | number)[][] } = {}
 
   constructor() {
     this.workbook = XLSX.utils.book_new()
   }
 
-  addWorksheet(name: string, headers: string[], data: any[][]) {
+  addWorksheet(name: string, headers: string[], data: (string | number)[][]) {
     const worksheetData = [headers, ...data]
     this.worksheets[name] = worksheetData
     
@@ -143,7 +144,20 @@ export class ExcelExporter {
 }
 
 // Report-specific export functions
-export const exportDailyReportPDF = (reportData: any, stationName: string, date: string) => {
+interface DailyReportData {
+  salesBreakdown?: {
+    petrol92?: { litres: number; amount: number }
+    petrol95?: { litres: number; amount: number }
+    diesel?: { litres: number; amount: number }
+    superDiesel?: { litres: number; amount: number }
+  }
+  totalSales?: number
+  totalExpenses?: number
+  netProfit?: number
+  variancePercentage?: number
+}
+
+export const exportDailyReportPDF = (reportData: DailyReportData, stationName: string, date: string): void => {
   const pdf = new PDFExporter(`Daily Report - ${stationName} - ${date}`)
   
   // Sales breakdown
@@ -167,7 +181,7 @@ export const exportDailyReportPDF = (reportData: any, stationName: string, date:
   pdf.save(`daily-report-${stationName}-${date}.pdf`)
 }
 
-export const exportDailyReportExcel = (reportData: any, stationName: string, date: string) => {
+export const exportDailyReportExcel = (reportData: DailyReportData, stationName: string, date: string) => {
   const excel = new ExcelExporter()
   
   // Sales breakdown
@@ -191,11 +205,25 @@ export const exportDailyReportExcel = (reportData: any, stationName: string, dat
   excel.save(`daily-report-${stationName}-${date}.xlsx`)
 }
 
-export const exportShiftReportPDF = (shiftData: any, stationName: string, shiftId: string) => {
+interface ShiftReportData {
+  nozzlePerformance?: Array<{
+    nozzleName: string
+    pumperName: string
+    litresSold: number
+    amount: number
+    variancePercentage: number
+  }>
+  totalSales?: number
+  totalDeclared?: number
+  variance?: number
+  overallStatus?: string
+}
+
+export const exportShiftReportPDF = (shiftData: ShiftReportData, stationName: string, shiftId: string) => {
   const pdf = new PDFExporter(`Shift Report - ${stationName} - Shift ${shiftId}`)
   
   // Nozzle performance
-  const nozzleData = shiftData.nozzlePerformance?.map((nozzle: any) => [
+  const nozzleData = shiftData.nozzlePerformance?.map((nozzle) => [
     nozzle.nozzleName,
     nozzle.pumperName,
     `${nozzle.litresSold}L`,
@@ -217,7 +245,21 @@ export const exportShiftReportPDF = (shiftData: any, stationName: string, shiftI
   pdf.save(`shift-report-${stationName}-${shiftId}.pdf`)
 }
 
-export const exportTankReportPDF = (tankData: any[], stationName: string, date: string) => {
+interface TankReportData {
+  tankName: string
+  fuelType: string
+  openingStock: number
+  deliveries: number
+  sales: number
+  testReturns: number
+  closingBook: number
+  closingDip: number
+  variance: number
+  variancePercentage: number
+  status: string
+}
+
+export const exportTankReportPDF = (tankData: TankReportData[], stationName: string, date: string) => {
   const pdf = new PDFExporter(`Tank Movement Report - ${stationName} - ${date}`, 'landscape')
   
   const tankMovementData = tankData.map(tank => [
@@ -242,11 +284,28 @@ export const exportTankReportPDF = (tankData: any[], stationName: string, date: 
   pdf.save(`tank-report-${stationName}-${date}.pdf`)
 }
 
-export const exportProfitReportPDF = (profitData: any, stationName: string, month: string) => {
+interface ProfitReportData {
+  revenueBreakdown?: Array<{
+    source: string
+    amount: number
+    percentage: number
+  }>
+  expenseBreakdown?: Array<{
+    category: string
+    amount: number
+    percentage: number
+  }>
+  totalRevenue?: number
+  totalExpenses?: number
+  netProfit?: number
+  profitMargin?: number
+}
+
+export const exportProfitReportPDF = (profitData: ProfitReportData, stationName: string, month: string) => {
   const pdf = new PDFExporter(`Profit Report - ${stationName} - ${month}`)
   
   // Revenue breakdown
-  const revenueData = profitData.revenueBreakdown?.map((item: any) => [
+  const revenueData = profitData.revenueBreakdown?.map((item) => [
     item.source,
     `Rs. ${item.amount.toLocaleString()}`,
     `${item.percentage.toFixed(1)}%`
@@ -255,7 +314,7 @@ export const exportProfitReportPDF = (profitData: any, stationName: string, mont
   pdf.addTable(['Revenue Source', 'Amount', 'Percentage'], revenueData, 'Revenue Breakdown')
   
   // Expense breakdown
-  const expenseData = profitData.expenseBreakdown?.map((item: any) => [
+  const expenseData = profitData.expenseBreakdown?.map((item) => [
     item.category,
     `Rs. ${item.amount.toLocaleString()}`,
     `${item.percentage.toFixed(1)}%`
@@ -275,3 +334,75 @@ export const exportProfitReportPDF = (profitData: any, stationName: string, mont
   pdf.save(`profit-report-${stationName}-${month}.pdf`)
 }
 
+interface SalaryReportData {
+  pumperId: string
+  pumperName: string
+  employeeId?: string
+  baseSalary: number
+  shiftCount: number
+  totalHours: number
+  totalSales: number
+  totalAdvances: number
+  totalLoans: number
+  varianceAdd: number
+  varianceDeduct: number
+  netSalary: number
+}interface SalaryReportResponse {
+  month: string
+  startDate: string
+  endDate: string
+  salaryData: SalaryReportData[]
+}
+
+export const exportSalaryReportPDF = (salaryData: SalaryReportData[], monthLabel: string, response: SalaryReportResponse) => {
+  const pdf = new PDFExporter(`Monthly Salary Report - ${monthLabel}`, 'landscape')
+  
+  // Salary breakdown table
+  const salaryTableData = salaryData.map((pumper) => [
+    pumper.pumperName,
+    pumper.employeeId || 'N/A',
+    `${pumper.shiftCount}`,
+    `${pumper.totalHours.toFixed(1)}h`,
+    `Rs. ${pumper.totalSales.toLocaleString()}`,
+    `Rs. ${pumper.baseSalary.toLocaleString()}`,
+    `Rs. ${pumper.totalAdvances.toLocaleString()}`,
+    `Rs. ${pumper.totalLoans.toLocaleString()}`,
+    pumper.varianceAdd > 0 ? `+Rs. ${pumper.varianceAdd.toLocaleString()}` : 
+    pumper.varianceDeduct > 0 ? `-Rs. ${pumper.varianceDeduct.toLocaleString()}` : '-',
+    `Rs. ${pumper.netSalary.toLocaleString()}`
+  ])
+  
+  pdf.addTable([
+    'Pumper',
+    'Employee ID',
+    'Shifts',
+    'Hours',
+    'Total Sales',
+    'Base Salary',
+    'Advances',
+    'Loans',
+    'Variance',
+    'Net Salary'
+  ], salaryTableData, 'Monthly Salary Breakdown')
+  
+  // Summary
+  const totalBaseSalary = salaryData.reduce((sum, p) => sum + p.baseSalary, 0)
+  const totalAdvances = salaryData.reduce((sum, p) => sum + p.totalAdvances, 0)
+  const totalLoans = salaryData.reduce((sum, p) => sum + p.totalLoans, 0)
+  const totalVarianceAdd = salaryData.reduce((sum, p) => sum + p.varianceAdd, 0)
+  const totalVarianceDeduct = salaryData.reduce((sum, p) => sum + p.varianceDeduct, 0)
+  const totalNetSalary = salaryData.reduce((sum, p) => sum + p.netSalary, 0)
+  
+  const summaryData = [
+    { label: 'Total Pumpers', value: salaryData.length.toString() },
+    { label: 'Total Base Salary', value: `Rs. ${totalBaseSalary.toLocaleString()}` },
+    { label: 'Total Advances', value: `Rs. ${totalAdvances.toLocaleString()}` },
+    { label: 'Total Loans', value: `Rs. ${totalLoans.toLocaleString()}` },
+    { label: 'Total Variance Bonuses', value: `Rs. ${totalVarianceAdd.toLocaleString()}` },
+    { label: 'Total Variance Deductions', value: `Rs. ${totalVarianceDeduct.toLocaleString()}` },
+    { label: 'Total Net Salary', value: `Rs. ${totalNetSalary.toLocaleString()}` }
+  ]
+  pdf.addSummaryCards(summaryData)
+  
+  pdf.save(`salary-report-${monthLabel.replace(/\s+/g, '-')}.pdf`)
+}

@@ -1,25 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getDeposits, getDepositsByStationId, getDepositById } from '@/data/financial.seed'
+import { prisma } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const stationId = searchParams.get('stationId')
     const id = searchParams.get('id')
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+    const bankId = searchParams.get('bankId')
 
     if (id) {
-      const deposit = getDepositById(id)
+      const deposit = await prisma.deposit.findUnique({
+        where: { id },
+        include: {
+          station: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          bank: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        }
+      })
+      
       if (!deposit) {
         return NextResponse.json({ error: 'Deposit not found' }, { status: 404 })
       }
       return NextResponse.json(deposit)
     }
 
+    const where: any = {}
     if (stationId) {
-      return NextResponse.json(getDepositsByStationId(stationId))
+      where.stationId = stationId
+    }
+    if (bankId) {
+      where.bankId = bankId
+    }
+    if (startDate && endDate) {
+      where.depositDate = {
+        gte: new Date(startDate),
+        lte: new Date(endDate)
+      }
     }
 
-    return NextResponse.json(getDeposits())
+    const deposits = await prisma.deposit.findMany({
+      where,
+      include: {
+        station: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        bank: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      },
+      orderBy: { depositDate: 'desc' }
+    })
+
+    return NextResponse.json(deposits)
   } catch (error) {
     console.error('Error fetching deposits:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -30,17 +79,124 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    // In a real app, this would validate and save to database
-    const newDeposit = {
-      id: Date.now().toString(),
-      ...body,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+    const { stationId, amount, bankId, accountId, depositSlip, depositedBy, depositDate } = body
+    
+    if (!stationId || !amount || !bankId || !accountId || !depositedBy || !depositDate) {
+      return NextResponse.json(
+        { error: 'Station ID, amount, bank ID, account ID, deposited by, and deposit date are required' },
+        { status: 400 }
+      )
     }
 
-    return NextResponse.json(newDeposit, { status: 201 })
+    // Create deposit and deduct from safe in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      const deposit = await tx.deposit.create({
+        data: {
+          stationId,
+          amount: parseFloat(amount),
+          bankId,
+          accountId,
+          depositSlip: depositSlip || null,
+          depositedBy,
+          depositDate: new Date(depositDate)
+        },
+        include: {
+          station: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          bank: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        }
+      })
+
+      // Deduct from safe
+      let safe = await tx.safe.findUnique({
+        where: { stationId }
+      })
+
+      if (!safe) {
+        safe = await tx.safe.create({
+          data: {
+            stationId,
+            openingBalance: 0,
+            currentBalance: 0
+          }
+        })
+      }
+
+      // Calculate balance before transaction chronologically
+      const depositTimestamp = new Date(depositDate)
+      const allTransactions = await tx.safeTransaction.findMany({
+        where: { 
+          safeId: safe.id,
+          timestamp: { lte: depositTimestamp }
+        },
+        orderBy: [{ timestamp: 'asc' }, { createdAt: 'asc' }]
+      })
+
+      // Calculate balance before transaction chronologically
+      // OPENING_BALANCE transactions set the balance, they don't add/subtract
+      let balanceBefore = safe.openingBalance
+      for (const safeTx of allTransactions) {
+        if (safeTx.type === 'OPENING_BALANCE') {
+          balanceBefore = safeTx.amount
+        } else {
+          const txIsIncome = [
+            'CASH_FUEL_SALES',
+            'POS_CARD_PAYMENT',
+            'CREDIT_PAYMENT',
+            'CHEQUE_RECEIVED',
+            'LOAN_REPAID'
+          ].includes(safeTx.type)
+          balanceBefore += txIsIncome ? safeTx.amount : -safeTx.amount
+        }
+      }
+
+      const balanceAfter = balanceBefore - parseFloat(amount)
+
+      // Create safe transaction
+      await tx.safeTransaction.create({
+        data: {
+          safeId: safe.id,
+          type: 'DEPOSIT',
+          amount: parseFloat(amount),
+          balanceBefore,
+          balanceAfter,
+          depositId: deposit.id,
+          description: `Bank deposit - ${deposit.bank.name} (${accountId})${depositSlip ? ` - Slip: ${depositSlip}` : ''}`,
+          performedBy: depositedBy,
+          timestamp: depositTimestamp
+        }
+      })
+
+      // Update safe balance
+      await tx.safe.update({
+        where: { id: safe.id },
+        data: { currentBalance: balanceAfter }
+      })
+
+      return deposit
+    })
+
+    return NextResponse.json(result, { status: 201 })
   } catch (error) {
     console.error('Error creating deposit:', error)
+    
+    // Handle foreign key constraint violations
+    if (error instanceof Error && error.message.includes('Foreign key constraint')) {
+      return NextResponse.json(
+        { error: 'Invalid station or bank ID' },
+        { status: 400 }
+      )
+    }
+    
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

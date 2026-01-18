@@ -145,8 +145,12 @@ export default function OwnerDashboardPage() {
           const variancePercentage = dailyReport?.variancePercentage || ((variance / todayRevenue) * 100)
           
           // Calculate tank fill levels
+          interface Tank {
+            currentLevel: number
+            capacity: number
+          }
           const tanksFillLevel = tanks.length > 0 
-            ? tanks.reduce((avg: number, tank: any) => avg + ((tank.currentLevel / tank.capacity) * 100), 0) / tanks.length
+            ? tanks.reduce((avg: number, tank: Tank) => avg + ((tank.currentLevel / tank.capacity) * 100), 0) / tanks.length
             : Math.floor(Math.random() * 40) + 40
           
           // Determine status based on real metrics
@@ -285,29 +289,29 @@ export default function OwnerDashboardPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'EXCELLENT': return 'bg-green-100 text-green-800'
-      case 'GOOD': return 'bg-blue-100 text-blue-800'
-      case 'NEEDS_ATTENTION': return 'bg-yellow-100 text-yellow-800'
-      case 'CRITICAL': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'EXCELLENT': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      case 'GOOD': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'NEEDS_ATTENTION': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
+      case 'CRITICAL': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+      default: return 'bg-muted text-foreground'
     }
   }
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'HIGH': return 'bg-red-100 text-red-800'
-      case 'MEDIUM': return 'bg-yellow-100 text-yellow-800'
-      case 'LOW': return 'bg-blue-100 text-blue-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'HIGH': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+      case 'MEDIUM': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
+      case 'LOW': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
+      default: return 'bg-muted text-foreground'
     }
   }
 
   const getExceptionStatusColor = (status: string) => {
     switch (status) {
-      case 'RESOLVED': return 'bg-green-100 text-green-800'
-      case 'INVESTIGATING': return 'bg-yellow-100 text-yellow-800'
-      case 'OPEN': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'RESOLVED': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      case 'INVESTIGATING': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
+      case 'OPEN': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+      default: return 'bg-muted text-foreground'
     }
   }
 
@@ -317,10 +321,10 @@ export default function OwnerDashboardPage() {
       title: 'Station',
       render: (value: unknown, row: StationSummary) => (
         <div className="flex items-center gap-2">
-          <Building2 className="h-4 w-4 text-gray-500" />
+          <Building2 className="h-4 w-4 text-muted-foreground" />
           <div>
             <div className="font-medium">{value as string}</div>
-            <div className="text-xs text-gray-500">{row.city}</div>
+            <div className="text-xs text-muted-foreground">{row.city}</div>
           </div>
         </div>
       )
@@ -329,7 +333,7 @@ export default function OwnerDashboardPage() {
       key: 'todayRevenue' as keyof StationSummary,
       title: 'Today Revenue',
       render: (value: unknown) => (
-        <span className="font-mono font-semibold text-green-600">
+        <span className="font-mono font-semibold text-green-600 dark:text-green-400">
           Rs. {(value as number)?.toLocaleString() || 0}
         </span>
       )
@@ -338,7 +342,7 @@ export default function OwnerDashboardPage() {
       key: 'todayProfit' as keyof StationSummary,
       title: 'Today Profit',
       render: (value: unknown) => (
-        <span className="font-mono font-semibold text-blue-600">
+        <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
           Rs. {(value as number)?.toLocaleString() || 0}
         </span>
       )
@@ -357,10 +361,10 @@ export default function OwnerDashboardPage() {
       title: 'Variance',
       render: (value: unknown, row: StationSummary) => (
         <div className="text-center">
-          <div className={`font-mono font-semibold ${Math.abs(row.variancePercentage) <= 1 ? 'text-green-600' : 'text-red-600'}`}>
+          <div className={`font-mono font-semibold ${Math.abs(row.variancePercentage) <= 1 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
             {(value as number) >= 0 ? '+' : ''}Rs. {(value as number)?.toLocaleString() || 0}
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-muted-foreground">
             {row.variancePercentage >= 0 ? '+' : ''}{row.variancePercentage.toFixed(2)}%
           </div>
         </div>
@@ -394,7 +398,7 @@ export default function OwnerDashboardPage() {
       title: 'Time',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-gray-500" />
+          <Calendar className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm">
             {new Date(value as string).toLocaleTimeString()}
           </span>
@@ -429,11 +433,11 @@ export default function OwnerDashboardPage() {
       title: 'Amount',
       render: (value: unknown) => (
         value ? (
-          <span className="font-mono font-semibold text-red-600">
+          <span className="font-mono font-semibold text-red-600 dark:text-red-400">
             Rs. {(value as number).toLocaleString()}
           </span>
         ) : (
-          <span className="text-gray-400">-</span>
+          <span className="text-muted-foreground">-</span>
         )
       )
     },
@@ -474,7 +478,7 @@ export default function OwnerDashboardPage() {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Owner Dashboard</h1>
+        <h1 className="text-3xl font-bold text-foreground">Owner Dashboard</h1>
         <div className="flex items-center gap-4">
           <Button 
             variant="outline" 
@@ -505,25 +509,25 @@ export default function OwnerDashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-green-600">Total Revenue</CardTitle>
+                <CardTitle className="text-sm font-medium text-green-600 dark:text-green-400">Total Revenue</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-700">
                   Rs. {combinedStats.totalRevenue.toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500">All stations today</div>
+                <div className="text-xs text-muted-foreground">All stations today</div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-blue-600">Total Profit</CardTitle>
+                <CardTitle className="text-sm font-medium text-blue-600 dark:text-blue-400">Total Profit</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-700">
                   Rs. {combinedStats.totalProfit.toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-muted-foreground">
                   {combinedStats.averageProfitMargin.toFixed(1)}% avg margin
                 </div>
               </CardContent>
@@ -531,37 +535,37 @@ export default function OwnerDashboardPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-purple-600">Total Variance</CardTitle>
+                <CardTitle className="text-sm font-medium text-purple-600 dark:text-purple-400">Total Variance</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-purple-700">
                   Rs. {combinedStats.totalVariance.toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500">Absolute variance</div>
+                <div className="text-xs text-muted-foreground">Absolute variance</div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-red-600">Active Alerts</CardTitle>
+                <CardTitle className="text-sm font-medium text-red-600 dark:text-red-400">Active Alerts</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-700">
                   {combinedStats.totalAlerts}
                 </div>
-                <div className="text-xs text-gray-500">Require attention</div>
+                <div className="text-xs text-muted-foreground">Require attention</div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Stations</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Stations</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-700">
+                <div className="text-2xl font-bold text-foreground">
                   {stationSummaries.length}
                 </div>
-                <div className="text-xs text-gray-500">Active locations</div>
+                <div className="text-xs text-muted-foreground">Active locations</div>
               </CardContent>
             </Card>
           </div>
@@ -570,11 +574,11 @@ export default function OwnerDashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-green-600">Best Performing Station</CardTitle>
+                <CardTitle className="text-green-600 dark:text-green-400">Best Performing Station</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-xl font-bold">{combinedStats.bestPerformingStation}</div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-muted-foreground">
                   Highest profit margin: {stationSummaries.find(s => s.stationName === combinedStats.bestPerformingStation)?.profitMargin.toFixed(1)}%
                 </div>
               </CardContent>
@@ -582,11 +586,11 @@ export default function OwnerDashboardPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-red-600">Needs Attention</CardTitle>
+                <CardTitle className="text-red-600 dark:text-red-400">Needs Attention</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-xl font-bold">{combinedStats.worstPerformingStation}</div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-muted-foreground">
                   Lowest profit margin: {stationSummaries.find(s => s.stationName === combinedStats.worstPerformingStation)?.profitMargin.toFixed(1)}%
                 </div>
               </CardContent>
@@ -666,7 +670,7 @@ export default function OwnerDashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                 Top Exceptions & Alerts
               </CardTitle>
             </CardHeader>

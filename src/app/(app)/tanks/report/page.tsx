@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useStation } from '@/contexts/StationContext'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
@@ -26,7 +27,8 @@ import {
   Droplets,
   Truck,
   TestTube,
-  Calculator
+  Calculator,
+  ArrowLeft
 } from 'lucide-react'
 
 interface Station {
@@ -71,6 +73,7 @@ interface StationReport {
 }
 
 export default function TankReportPage() {
+  const router = useRouter()
   const [stations, setStations] = useState<Station[]>([])
   const [tanks, setTanks] = useState<Tank[]>([])
   const [report, setReport] = useState<StationReport | null>(null)
@@ -78,7 +81,7 @@ export default function TankReportPage() {
   const [error, setError] = useState('')
 
   // Form state
-  const { selectedStation } = useStation()
+  const { selectedStation, setSelectedStation } = useStation()
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
 
   // Load initial data
@@ -125,56 +128,36 @@ export default function TankReportPage() {
     setError('')
 
     try {
-      // In a real app, this would call an API endpoint
-      // For now, we'll generate mock data based on the selected parameters
+      // Call the real API endpoint
+      const response = await fetch(`/api/tanks/report?stationId=${selectedStation}&date=${selectedDate}`)
       
-      const station = stations.find(s => s.id === selectedStation)
-      const stationTanks = tanks.filter(t => t.stationId === selectedStation)
+      if (!response.ok) {
+        throw new Error('Failed to generate report')
+      }
 
-      // Generate mock report data
-      const tankReports: TankReport[] = stationTanks.map(tank => {
-        // Mock calculations - in real app, these would come from the API
-        const openingStock = Math.floor(Math.random() * tank.capacity * 0.8) + tank.capacity * 0.1
-        const deliveries = Math.floor(Math.random() * 20000)
-        const sales = Math.floor(Math.random() * 15000) + 5000
-        const testReturns = Math.floor(Math.random() * 100)
-        
-        const closingBookStock = openingStock + deliveries - sales + testReturns
-        const closingDipStock = closingBookStock + (Math.random() - 0.5) * 500 // Add some variance
-        
-        const variance = closingDipStock - closingBookStock
-        const variancePercentage = closingBookStock > 0 ? (variance / closingBookStock) * 100 : 0
-        
-        // Tolerance calculation (2% or 200L, whichever is greater)
-        const toleranceLimit = Math.max(closingBookStock * 0.02, 200)
-        
-        let toleranceStatus: 'NORMAL' | 'WARNING' | 'CRITICAL' = 'NORMAL'
-        if (Math.abs(variance) > toleranceLimit) {
-          toleranceStatus = Math.abs(variance) > toleranceLimit * 2 ? 'CRITICAL' : 'WARNING'
-        }
+      const apiData = await response.json()
+      
+      // Transform API data to match our interface
+      const tankReports: TankReport[] = apiData.tanks.map((tank: any) => ({
+        tankId: tank.tankId,
+        tankNumber: tank.tankNumber,
+        fuelType: tank.fuelType,
+        capacity: tank.capacity,
+        openingStock: tank.openingStock,
+        deliveries: tank.deliveries,
+        sales: tank.sales,
+        testReturns: tank.testReturns,
+        closingBookStock: tank.closingBookStock,
+        closingDipStock: tank.closingDipStock,
+        variance: tank.variance,
+        variancePercentage: tank.variancePercentage,
+        toleranceStatus: tank.toleranceStatus,
+        toleranceLimit: tank.toleranceLimit
+      }))
 
-        return {
-          tankId: tank.id,
-          tankNumber: tank.tankNumber,
-          fuelType: tank.fuelType,
-          capacity: tank.capacity,
-          openingStock: Math.round(openingStock),
-          deliveries: Math.round(deliveries),
-          sales: Math.round(sales),
-          testReturns: Math.round(testReturns),
-          closingBookStock: Math.round(closingBookStock),
-          closingDipStock: Math.round(closingDipStock),
-          variance: Math.round(variance),
-          variancePercentage: parseFloat(variancePercentage.toFixed(2)),
-          toleranceStatus,
-          toleranceLimit: Math.round(toleranceLimit)
-        }
-      })
-
-      // Calculate overall station metrics
-      const totalVariance = tankReports.reduce((sum, tank) => sum + tank.variance, 0)
-      const totalBookStock = tankReports.reduce((sum, tank) => sum + tank.closingBookStock, 0)
-      const totalVariancePercentage = totalBookStock > 0 ? (totalVariance / totalBookStock) * 100 : 0
+      // Use data from API
+      const totalVariance = apiData.totalVariance
+      const totalVariancePercentage = apiData.totalVariancePercentage
 
       const criticalTanks = tankReports.filter(t => t.toleranceStatus === 'CRITICAL').length
       const warningTanks = tankReports.filter(t => t.toleranceStatus === 'WARNING').length
@@ -188,11 +171,11 @@ export default function TankReportPage() {
 
       const stationReport: StationReport = {
         stationId: selectedStation,
-        stationName: station?.name || 'Unknown Station',
+        stationName: apiData.stationName || 'Unknown Station',
         reportDate: selectedDate,
         tanks: tankReports,
-        totalVariance: Math.round(totalVariance),
-        totalVariancePercentage: parseFloat(totalVariancePercentage.toFixed(2)),
+        totalVariance: totalVariance,
+        totalVariancePercentage: totalVariancePercentage,
         overallStatus
       }
 
@@ -207,9 +190,9 @@ export default function TankReportPage() {
 
   const getStatusColor = (status: 'NORMAL' | 'WARNING' | 'CRITICAL') => {
     switch (status) {
-      case 'NORMAL': return 'text-green-600 bg-green-50 border-green-200'
-      case 'WARNING': return 'text-yellow-600 bg-yellow-50 border-yellow-200'
-      case 'CRITICAL': return 'text-red-600 bg-red-50 border-red-200'
+      case 'NORMAL': return 'text-green-600 dark:text-green-400 bg-green-500/10 dark:bg-green-500/20 border-green-500/20 dark:border-green-500/30'
+      case 'WARNING': return 'text-yellow-600 dark:text-yellow-400 bg-yellow-500/10 dark:bg-yellow-500/20 border-yellow-500/20 dark:border-yellow-500/30'
+      case 'CRITICAL': return 'text-red-600 dark:text-red-400 bg-red-500/10 dark:bg-red-500/20 border-red-500/20 dark:border-red-500/30'
     }
   }
 
@@ -223,7 +206,13 @@ export default function TankReportPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-gray-900">Tank Variance Report</h1>
+      <div className="flex items-center gap-4">
+        <Button variant="outline" onClick={() => router.push('/tanks')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <h1 className="text-3xl font-bold text-foreground">Tank Variance Report</h1>
+      </div>
 
       {error && (
         <Alert variant="destructive">
@@ -288,30 +277,30 @@ export default function TankReportPage() {
                 <Calendar className="h-5 w-5" />
                 Tank Variance Report - {report.stationName}
               </CardTitle>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 Report Date: {new Date(report.reportDate).toLocaleDateString()}
               </p>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">
+                  <div className="text-2xl font-bold text-foreground">
                     {report.tanks.length}
                   </div>
-                  <div className="text-sm text-gray-600">Total Tanks</div>
+                  <div className="text-sm text-muted-foreground">Total Tanks</div>
                 </div>
                 <div className="text-center">
-                  <div className={`text-2xl font-bold ${report.totalVariance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <div className={`text-2xl font-bold ${report.totalVariance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     {report.totalVariance >= 0 ? '+' : ''}{report.totalVariance.toLocaleString()}L
                   </div>
-                  <div className="text-sm text-gray-600">Total Variance</div>
+                  <div className="text-sm text-muted-foreground">Total Variance</div>
                 </div>
                 <div className="text-center">
                   <Badge className={getStatusColor(report.overallStatus)}>
                     {getStatusIcon(report.overallStatus)}
                     <span className="ml-1">{report.overallStatus}</span>
                   </Badge>
-                  <div className="text-sm text-gray-600 mt-1">Overall Status</div>
+                  <div className="text-sm text-muted-foreground mt-1">Overall Status</div>
                 </div>
               </div>
             </CardContent>
@@ -338,7 +327,7 @@ export default function TankReportPage() {
                     {/* Opening Stock */}
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-1 mb-1">
-                        <Droplets className="h-4 w-4 text-blue-500" />
+                        <Droplets className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                         <span className="font-medium">Opening</span>
                       </div>
                       <div className="font-mono text-lg">{tank.openingStock.toLocaleString()}L</div>
@@ -347,34 +336,34 @@ export default function TankReportPage() {
                     {/* Deliveries */}
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-1 mb-1">
-                        <Truck className="h-4 w-4 text-green-500" />
+                        <Truck className="h-4 w-4 text-green-600 dark:text-green-400" />
                         <span className="font-medium">Deliveries</span>
                       </div>
-                      <div className="font-mono text-lg text-green-600">+{tank.deliveries.toLocaleString()}L</div>
+                      <div className="font-mono text-lg text-green-600 dark:text-green-400">+{tank.deliveries.toLocaleString()}L</div>
                     </div>
 
                     {/* Sales */}
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-1 mb-1">
-                        <TrendingDown className="h-4 w-4 text-red-500" />
+                        <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
                         <span className="font-medium">Sales</span>
                       </div>
-                      <div className="font-mono text-lg text-red-600">-{tank.sales.toLocaleString()}L</div>
+                      <div className="font-mono text-lg text-red-600 dark:text-red-400">-{tank.sales.toLocaleString()}L</div>
                     </div>
 
                     {/* Test Returns */}
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-1 mb-1">
-                        <TestTube className="h-4 w-4 text-purple-500" />
+                        <TestTube className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                         <span className="font-medium">Test Returns</span>
                       </div>
-                      <div className="font-mono text-lg text-purple-600">+{tank.testReturns.toLocaleString()}L</div>
+                      <div className="font-mono text-lg text-purple-600 dark:text-purple-400">+{tank.testReturns.toLocaleString()}L</div>
                     </div>
 
                     {/* Book Stock */}
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-1 mb-1">
-                        <Calculator className="h-4 w-4 text-gray-500" />
+                        <Calculator className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">Book Stock</span>
                       </div>
                       <div className="font-mono text-lg">{tank.closingBookStock.toLocaleString()}L</div>
@@ -383,7 +372,7 @@ export default function TankReportPage() {
                     {/* Dip Stock */}
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-1 mb-1">
-                        <Droplets className="h-4 w-4 text-blue-500" />
+                        <Droplets className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                         <span className="font-medium">Dip Stock</span>
                       </div>
                       <div className="font-mono text-lg font-semibold">{tank.closingDipStock.toLocaleString()}L</div>
@@ -393,16 +382,16 @@ export default function TankReportPage() {
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-1 mb-1">
                         {tank.variance >= 0 ? (
-                          <TrendingUp className="h-4 w-4 text-green-500" />
+                          <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
                         ) : (
-                          <TrendingDown className="h-4 w-4 text-red-500" />
+                          <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
                         )}
                         <span className="font-medium">Variance</span>
                       </div>
-                      <div className={`font-mono text-lg font-bold ${tank.variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <div className={`font-mono text-lg font-bold ${tank.variance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                         {tank.variance >= 0 ? '+' : ''}{tank.variance.toLocaleString()}L
                       </div>
-                      <div className={`text-xs ${Math.abs(tank.variancePercentage) <= 2 ? 'text-gray-500' : 'text-red-500'}`}>
+                      <div className={`text-xs ${Math.abs(tank.variancePercentage) <= 2 ? 'text-muted-foreground' : 'text-red-600 dark:text-red-400'}`}>
                         ({tank.variancePercentage >= 0 ? '+' : ''}{tank.variancePercentage.toFixed(2)}%)
                       </div>
                     </div>
@@ -411,10 +400,10 @@ export default function TankReportPage() {
                   {/* Tolerance Information */}
                   <div className="mt-4 pt-4 border-t">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">
+                      <span className="text-muted-foreground">
                         Tolerance Limit: ±{tank.toleranceLimit.toLocaleString()}L
                       </span>
-                      <span className={`font-medium ${tank.toleranceStatus === 'NORMAL' ? 'text-green-600' : 'text-red-600'}`}>
+                      <span className={`font-medium ${tank.toleranceStatus === 'NORMAL' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                         {Math.abs(tank.variance) <= tank.toleranceLimit ? 'Within Tolerance' : 'Exceeds Tolerance'}
                       </span>
                     </div>
@@ -432,20 +421,20 @@ export default function TankReportPage() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <div className="text-sm text-gray-600">Tanks within tolerance</div>
-                  <div className="text-2xl font-bold text-green-600">
+                  <div className="text-sm text-muted-foreground">Tanks within tolerance</div>
+                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                     {report.tanks.filter(t => t.toleranceStatus === 'NORMAL').length}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-600">Tanks with warnings</div>
-                  <div className="text-2xl font-bold text-yellow-600">
+                  <div className="text-sm text-muted-foreground">Tanks with warnings</div>
+                  <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                     {report.tanks.filter(t => t.toleranceStatus === 'WARNING').length}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-600">Critical tanks</div>
-                  <div className="text-2xl font-bold text-red-600">
+                  <div className="text-sm text-muted-foreground">Critical tanks</div>
+                  <div className="text-2xl font-bold text-red-600 dark:text-red-400">
                     {report.tanks.filter(t => t.toleranceStatus === 'CRITICAL').length}
                   </div>
                 </div>

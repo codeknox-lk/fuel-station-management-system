@@ -31,10 +31,16 @@ export function StationProvider({ children }: { children: ReactNode }) {
     const fetchStations = async () => {
       try {
         const response = await fetch('/api/stations?active=true')
+        if (!response.ok) {
+          console.error('Failed to fetch stations:', response.status)
+          setStations([])
+          return
+        }
         const data = await response.json()
-        setStations(data)
+        setStations(Array.isArray(data) ? data : [])
       } catch (error) {
         console.error('Failed to fetch stations:', error)
+        setStations([])
       }
     }
     fetchStations()

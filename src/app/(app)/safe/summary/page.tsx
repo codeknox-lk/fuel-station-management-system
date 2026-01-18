@@ -132,171 +132,72 @@ export default function SafeSummaryPage() {
     setError('')
 
     try {
-      // In a real app, this would call the API endpoint
-      // For now, we'll generate mock safe summary data
+      // Call the API endpoint to get real safe summary data
+      const response = await fetch(`/api/safe/summary?stationId=${selectedStation}&date=${selectedDate}`)
       
-      const station = stations.find(s => s.id === selectedStation)
-      
-      // Generate mock safe summary
-      const openingBalance = Math.floor(Math.random() * 50000) + 20000
-      
-      // Mock inflows
-      const cashSales = Math.floor(Math.random() * 100000) + 50000
-      const creditPayments = Math.floor(Math.random() * 30000) + 10000
-      const loanReceipts = Math.floor(Math.random() * 20000)
-      const otherInflows = Math.floor(Math.random() * 10000)
-      const totalInflows = cashSales + creditPayments + loanReceipts + otherInflows
-      
-      // Mock outflows
-      const expenses = Math.floor(Math.random() * 25000) + 10000
-      const loanPayments = Math.floor(Math.random() * 15000) + 5000
-      const deposits = Math.floor(Math.random() * 80000) + 40000
-      const otherOutflows = Math.floor(Math.random() * 5000)
-      const totalOutflows = expenses + loanPayments + deposits + otherOutflows
-      
-      const expectedBalance = openingBalance + totalInflows - totalOutflows
-      const actualBalance = expectedBalance + (Math.random() * 2000 - 1000) // Add some variance
-      const variance = actualBalance - expectedBalance
-      const isBalanced = Math.abs(variance) <= 500 // Tolerance of Rs. 500
-
-      // Mock inflow details
-      const inflowDetails: InflowDetail[] = [
-        {
-          id: '1',
-          type: 'CASH_SALES',
-          description: 'Cash sales from all pumps',
-          amount: cashSales,
-          time: '18:00',
-          reference: 'SHIFT-001'
-        },
-        {
-          id: '2',
-          type: 'CREDIT_PAYMENT',
-          description: 'Credit customer payments',
-          amount: creditPayments,
-          time: '16:30',
-          reference: 'CREDIT-PAY-001'
-        }
-      ]
-
-      if (loanReceipts > 0) {
-        inflowDetails.push({
-          id: '3',
-          type: 'LOAN_RECEIPT',
-          description: 'Loan receipt from external source',
-          amount: loanReceipts,
-          time: '14:00',
-          reference: 'LOAN-REC-001'
-        })
+      if (!response.ok) {
+        throw new Error('Failed to fetch safe summary')
       }
 
-      if (otherInflows > 0) {
-        inflowDetails.push({
-          id: '4',
-          type: 'OTHER',
-          description: 'Miscellaneous receipts',
-          amount: otherInflows,
-          time: '12:00'
-        })
-      }
-
-      // Mock outflow details
-      const outflowDetails: OutflowDetail[] = [
-        {
-          id: '1',
-          type: 'EXPENSE',
-          description: 'Daily operational expenses',
-          amount: expenses,
-          time: '15:00',
-          reference: 'EXP-001',
-          approvedBy: 'Manager'
-        },
-        {
-          id: '2',
-          type: 'DEPOSIT',
-          description: 'Bank deposit - BOC Main Branch',
-          amount: deposits,
-          time: '11:00',
-          reference: 'DEP-001',
-          approvedBy: 'Owner'
-        },
-        {
-          id: '3',
-          type: 'LOAN_PAYMENT',
-          description: 'External loan payment',
-          amount: loanPayments,
-          time: '10:00',
-          reference: 'LOAN-PAY-001',
-          approvedBy: 'Owner'
-        }
-      ]
-
-      if (otherOutflows > 0) {
-        outflowDetails.push({
-          id: '4',
-          type: 'OTHER',
-          description: 'Miscellaneous payments',
-          amount: otherOutflows,
-          time: '13:30',
-          approvedBy: 'Manager'
-        })
-      }
-
+      const apiData = await response.json()
+      
+      // Transform API response to match frontend interface
       const summary: SafeSummary = {
-        stationId: selectedStation,
-        stationName: station?.name || 'Unknown Station',
-        date: selectedDate,
-        openingBalance,
-        cashSales,
-        creditPayments,
-        loanReceipts,
-        otherInflows,
-        totalInflows,
-        expenses,
-        loanPayments,
-        deposits,
-        otherOutflows,
-        totalOutflows,
-        expectedBalance,
-        actualBalance,
-        variance,
-        isBalanced,
-        inflowDetails,
-        outflowDetails
+        stationId: apiData.stationId || selectedStation,
+        stationName: apiData.stationName || stations.find(s => s.id === selectedStation)?.name || 'Unknown Station',
+        date: apiData.date || selectedDate,
+        openingBalance: apiData.openingBalance || 0,
+        cashSales: apiData.cashSales || 0,
+        creditPayments: apiData.creditPayments || 0,
+        loanReceipts: apiData.loanReceipts || 0,
+        otherInflows: apiData.otherInflows || 0,
+        totalInflows: apiData.totalInflows || 0,
+        expenses: apiData.expenses || 0,
+        loanPayments: apiData.loanPayments || 0,
+        deposits: apiData.deposits || 0,
+        otherOutflows: apiData.otherOutflows || 0,
+        totalOutflows: apiData.totalOutflows || 0,
+        expectedBalance: apiData.expectedBalance || 0,
+        actualBalance: apiData.actualBalance || 0,
+        variance: apiData.variance || 0,
+        isBalanced: apiData.isBalanced || false,
+        inflowDetails: apiData.inflowDetails || [],
+        outflowDetails: apiData.outflowDetails || []
       }
 
       setSafeSummary(summary)
 
     } catch (err) {
-      setError('Failed to generate safe summary')
+      console.error('Error fetching safe summary:', err)
+      setError('Failed to generate safe summary: ' + (err instanceof Error ? err.message : 'Unknown error'))
     } finally {
       setLoading(false)
     }
   }
 
   const getVarianceColor = (variance: number) => {
-    if (Math.abs(variance) <= 500) return 'text-green-600'
-    if (Math.abs(variance) <= 1000) return 'text-yellow-600'
-    return 'text-red-600'
+    if (Math.abs(variance) <= 500) return 'text-green-600 dark:text-green-400'
+    if (Math.abs(variance) <= 1000) return 'text-yellow-600 dark:text-yellow-400'
+    return 'text-red-600 dark:text-red-400'
   }
 
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'CASH_SALES':
       case 'CREDIT_PAYMENT':
-        return <TrendingUp className="h-4 w-4 text-green-500" />
+        return <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
       case 'EXPENSE':
       case 'LOAN_PAYMENT':
       case 'DEPOSIT':
-        return <TrendingDown className="h-4 w-4 text-red-500" />
+        return <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
       default:
-        return <DollarSign className="h-4 w-4 text-gray-500" />
+        return <DollarSign className="h-4 w-4 text-muted-foreground" />
     }
   }
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-gray-900">Safe Summary</h1>
+      <h1 className="text-3xl font-bold text-foreground">Safe Summary</h1>
 
       {error && (
         <Alert variant="destructive">
@@ -371,17 +272,17 @@ export default function SafeSummaryPage() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600">
+                  <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
                     Rs. {safeSummary.actualBalance.toLocaleString()}
                   </div>
-                  <div className="text-sm text-gray-600">Actual Balance</div>
+                  <div className="text-sm text-muted-foreground">Actual Balance</div>
                 </div>
                 <div className="text-center">
                   <Badge 
                     className={`text-lg py-2 px-4 ${
                       safeSummary.isBalanced 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
+                        ? 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300' 
+                        : 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
                     }`}
                   >
                     {safeSummary.isBalanced ? (
@@ -405,10 +306,10 @@ export default function SafeSummaryPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Opening Balance</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Opening Balance</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-700">
+                <div className="text-2xl font-bold text-foreground">
                   Rs. {safeSummary.openingBalance.toLocaleString()}
                 </div>
               </CardContent>
@@ -416,7 +317,7 @@ export default function SafeSummaryPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-green-600">Total Inflows</CardTitle>
+                <CardTitle className="text-sm font-medium text-green-600 dark:text-green-400">Total Inflows</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-700">
@@ -427,7 +328,7 @@ export default function SafeSummaryPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-red-600">Total Outflows</CardTitle>
+                <CardTitle className="text-sm font-medium text-red-600 dark:text-red-400">Total Outflows</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-700">
@@ -438,7 +339,7 @@ export default function SafeSummaryPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-blue-600">Expected Balance</CardTitle>
+                <CardTitle className="text-sm font-medium text-blue-600 dark:text-blue-400">Expected Balance</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-700">
@@ -456,19 +357,19 @@ export default function SafeSummaryPage() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="text-center">
-                  <div className="text-lg font-semibold text-gray-600">Expected</div>
-                  <div className="text-2xl font-bold text-blue-600">
+                  <div className="text-lg font-semibold text-muted-foreground">Expected</div>
+                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                     Rs. {safeSummary.expectedBalance.toLocaleString()}
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="text-lg font-semibold text-gray-600">Actual</div>
-                  <div className="text-2xl font-bold text-purple-600">
+                  <div className="text-lg font-semibold text-muted-foreground">Actual</div>
+                  <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                     Rs. {safeSummary.actualBalance.toLocaleString()}
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="text-lg font-semibold text-gray-600">Variance</div>
+                  <div className="text-lg font-semibold text-muted-foreground">Variance</div>
                   <div className={`text-2xl font-bold ${getVarianceColor(safeSummary.variance)}`}>
                     {safeSummary.variance >= 0 ? '+' : ''}Rs. {safeSummary.variance.toLocaleString()}
                   </div>
@@ -481,10 +382,10 @@ export default function SafeSummaryPage() {
           <Card>
             <Collapsible open={inflowsExpanded} onOpenChange={setInflowsExpanded}>
               <CollapsibleTrigger asChild>
-                <CardHeader className="cursor-pointer hover:bg-gray-50">
+                <CardHeader className="cursor-pointer hover:bg-muted">
                   <CardTitle className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Plus className="h-5 w-5 text-green-500" />
+                      <Plus className="h-5 w-5 text-green-600 dark:text-green-400" />
                       Inflows - Rs. {safeSummary.totalInflows.toLocaleString()}
                     </div>
                     {inflowsExpanded ? (
@@ -499,12 +400,12 @@ export default function SafeSummaryPage() {
                 <CardContent>
                   <div className="space-y-3">
                     {safeSummary.inflowDetails.map((inflow) => (
-                      <div key={inflow.id} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                      <div key={inflow.id} className="flex items-center justify-between p-3 bg-green-500/10 dark:bg-green-500/20 rounded-lg">
                         <div className="flex items-center gap-3">
                           {getTypeIcon(inflow.type)}
                           <div>
                             <div className="font-medium">{inflow.description}</div>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-muted-foreground">
                               {inflow.time} {inflow.reference && `• ${inflow.reference}`}
                             </div>
                           </div>
@@ -524,10 +425,10 @@ export default function SafeSummaryPage() {
           <Card>
             <Collapsible open={outflowsExpanded} onOpenChange={setOutflowsExpanded}>
               <CollapsibleTrigger asChild>
-                <CardHeader className="cursor-pointer hover:bg-gray-50">
+                <CardHeader className="cursor-pointer hover:bg-muted">
                   <CardTitle className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Minus className="h-5 w-5 text-red-500" />
+                      <Minus className="h-5 w-5 text-red-600 dark:text-red-400" />
                       Outflows - Rs. {safeSummary.totalOutflows.toLocaleString()}
                     </div>
                     {outflowsExpanded ? (
@@ -542,12 +443,12 @@ export default function SafeSummaryPage() {
                 <CardContent>
                   <div className="space-y-3">
                     {safeSummary.outflowDetails.map((outflow) => (
-                      <div key={outflow.id} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                      <div key={outflow.id} className="flex items-center justify-between p-3 bg-red-500/10 dark:bg-red-500/20 rounded-lg">
                         <div className="flex items-center gap-3">
                           {getTypeIcon(outflow.type)}
                           <div>
                             <div className="font-medium">{outflow.description}</div>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-muted-foreground">
                               {outflow.time} {outflow.reference && `• ${outflow.reference}`}
                               {outflow.approvedBy && ` • Approved by ${outflow.approvedBy}`}
                             </div>

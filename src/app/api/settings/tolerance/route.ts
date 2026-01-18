@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Mock tolerance configuration
+// Tolerance configuration - Flat Rs. 20 for any sale
 let toleranceConfig = {
   id: 'tolerance_1',
-  percentageTolerance: 0.3, // 0.3%
-  flatAmountTolerance: 200, // Rs. 200
-  useMaximum: true, // max(%, Rs)
-  description: 'Default tolerance configuration - maximum of 0.3% or Rs. 200',
+  percentageTolerance: 0, // Not used - flat amount only
+  flatAmountTolerance: 20, // Rs. 20 flat tolerance for any sale
+  useMaximum: false, // Not used - flat amount only
+  description: 'Flat Rs. 20 tolerance for any sale amount',
   updatedBy: 'System Admin',
-  updatedAt: '2024-01-01T00:00:00Z'
+  updatedAt: new Date().toISOString()
 }
 
 export async function GET() {
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     toleranceConfig = {
       ...toleranceConfig,
       ...body,
-      updatedBy: 'Current User', // In a real app, this would come from auth
+      updatedBy: 'System User', // Note: In production, this should come from auth headers
       updatedAt: new Date().toISOString()
     }
 

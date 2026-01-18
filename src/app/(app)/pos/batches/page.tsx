@@ -28,8 +28,10 @@ import {
   CheckCircle, 
   Plus,
   DollarSign,
-  Clock
+  Clock,
+  Wallet
 } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface Station {
   id: string
@@ -40,35 +42,43 @@ interface Station {
 interface POSTerminal {
   id: string
   stationId: string
-  terminalId: string
-  bankName: string
-  status: 'ACTIVE' | 'INACTIVE'
+  terminalNumber: string
+  name: string
+  isActive: boolean
+  station?: {
+    id: string
+    name: string
+  }
 }
 
 interface POSBatch {
   id: string
-  stationId: string
+  stationId?: string
   stationName?: string
   terminalId: string
-  bankName?: string
-  batchDate: string
-  batchNumber: string
-  visaTotal: number
-  mastercardTotal: number
-  amexTotal: number
-  otherTotal: number
+  terminal?: {
+    id: string
+    terminalNumber: string
+    name: string
+  }
+  startNumber: string
+  endNumber: string
+  transactionCount: number
+  visaAmount: number
+  masterAmount: number
+  amexAmount: number
+  qrAmount: number
   totalAmount: number
-  photoUrl?: string
-  recordedBy: string
+  isReconciled: boolean
   createdAt: string
-  status: 'PENDING' | 'RECONCILED' | 'DISPUTED'
+  notes?: string
 }
 
 const cardSchemes = [
-  { key: 'visa', label: 'Visa', color: 'bg-blue-100 text-blue-800' },
-  { key: 'mastercard', label: 'Mastercard', color: 'bg-red-100 text-red-800' },
-  { key: 'amex', label: 'American Express', color: 'bg-green-100 text-green-800' },
-  { key: 'other', label: 'Other Cards', color: 'bg-gray-100 text-gray-800' }
+  { key: 'visa', label: 'Visa', color: 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300' },
+  { key: 'mastercard', label: 'Mastercard', color: 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300' },
+  { key: 'amex', label: 'American Express', color: 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300' },
+  { key: 'qr', label: 'QR Payments', color: 'bg-purple-500/20 text-purple-400 dark:bg-purple-600/30 dark:text-purple-300' }
 ]
 
 export default function POSBatchesPage() {
@@ -81,15 +91,16 @@ export default function POSBatchesPage() {
   const [success, setSuccess] = useState('')
 
   // Form state
-  const { selectedStation } = useStation()
+  const { selectedStation, setSelectedStation } = useStation()
   const [selectedTerminal, setSelectedTerminal] = useState('')
-  const [batchDate, setBatchDate] = useState(new Date().toISOString().split('T')[0])
-  const [batchNumber, setBatchNumber] = useState('')
-  const [visaTotal, setVisaTotal] = useState('')
-  const [mastercardTotal, setMastercardTotal] = useState('')
-  const [amexTotal, setAmexTotal] = useState('')
-  const [otherTotal, setOtherTotal] = useState('')
-  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [startNumber, setStartNumber] = useState('')
+  const [endNumber, setEndNumber] = useState('')
+  const [visaAmount, setVisaAmount] = useState('')
+  const [masterAmount, setMasterAmount] = useState('')
+  const [amexAmount, setAmexAmount] = useState('')
+  const [qrAmount, setQrAmount] = useState('')
+  const [notes, setNotes] = useState('')
+  const [addToSafe, setAddToSafe] = useState(false)
 
   // Load initial data
   useEffect(() => {
@@ -118,17 +129,17 @@ export default function POSBatchesPage() {
 
   // Filter terminals by selected station
   const availableTerminals = terminals.filter(terminal => 
-    terminal.stationId === selectedStation && terminal.status === 'ACTIVE'
+    terminal.stationId === selectedStation && terminal.isActive
   )
 
   // Calculate total amount
-  const totalAmount = [visaTotal, mastercardTotal, amexTotal, otherTotal]
+  const totalAmount = [visaAmount, masterAmount, amexAmount, qrAmount]
     .reduce((sum, amount) => sum + (parseFloat(amount) || 0), 0)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!selectedStation || !selectedTerminal || !batchDate || !batchNumber) {
+    if (!selectedStation || !selectedTerminal || !startNumber || !endNumber) {
       setError('Please fill in all required fields')
       return
     }
@@ -147,17 +158,16 @@ export default function POSBatchesPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          stationId: selectedStation,
           terminalId: selectedTerminal,
-          batchDate,
-          batchNumber,
-          visaTotal: parseFloat(visaTotal) || 0,
-          mastercardTotal: parseFloat(mastercardTotal) || 0,
-          amexTotal: parseFloat(amexTotal) || 0,
-          otherTotal: parseFloat(otherTotal) || 0,
+          startNumber,
+          endNumber,
+          visaAmount: parseFloat(visaAmount) || 0,
+          masterAmount: parseFloat(masterAmount) || 0,
+          amexAmount: parseFloat(amexAmount) || 0,
+          qrAmount: parseFloat(qrAmount) || 0,
           totalAmount,
-          photoUrl: photoFile ? `uploads/pos-batches/${photoFile.name}` : undefined,
-          recordedBy: 'Current User' // In real app, get from auth context
+          notes: notes || undefined,
+          addToSafe: addToSafe
         })
       })
 
@@ -167,17 +177,23 @@ export default function POSBatchesPage() {
 
       const newBatch = await response.json()
       
-      // Add to recent batches list
-      setRecentBatches(prev => [newBatch, ...prev.slice(0, 9)])
+      // Reload batches to get proper data
+      const batchesRes = await fetch('/api/pos/batches?limit=10')
+      if (batchesRes.ok) {
+        const batchesData = await batchesRes.json()
+        setRecentBatches(batchesData)
+      }
       
       // Reset form
       setSelectedTerminal('')
-      setBatchNumber('')
-      setVisaTotal('')
-      setMastercardTotal('')
-      setAmexTotal('')
-      setOtherTotal('')
-      setPhotoFile(null)
+      setStartNumber('')
+      setEndNumber('')
+      setVisaAmount('')
+      setMasterAmount('')
+      setAmexAmount('')
+      setQrAmount('')
+      setNotes('')
+      setAddToSafe(false)
       
       setSuccess('POS batch created successfully!')
       
@@ -191,22 +207,13 @@ export default function POSBatchesPage() {
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'RECONCILED': return 'bg-green-100 text-green-800'
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800'
-      case 'DISPUTED': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
-
   const batchColumns: Column<POSBatch>[] = [
     {
-      key: 'batchDate' as keyof POSBatch,
+      key: 'createdAt' as keyof POSBatch,
       title: 'Date',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-gray-500" />
+          <Calendar className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm">
             {new Date(value as string).toLocaleDateString()}
           </span>
@@ -214,103 +221,101 @@ export default function POSBatchesPage() {
       )
     },
     {
-      key: 'stationName' as keyof POSBatch,
-      title: 'Station',
-      render: (value: unknown, row: POSBatch) => {
-        const station = stations.find(s => s.id === row.stationId)
-        return (
-          <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-gray-500" />
-            <span className="font-medium">{station?.name || (value as string)}</span>
-          </div>
-        )
-      }
-    },
-    {
-      key: 'terminalId' as keyof POSBatch,
+      key: 'terminal' as keyof POSBatch,
       title: 'Terminal',
-      render: (value: unknown, row: POSBatch) => {
-        const terminal = terminals.find(t => t.id === row.terminalId)
+      render: (value: unknown) => {
+        const terminal = value as { terminalNumber: string; name: string } | undefined
+        if (!terminal) return '-'
         return (
           <div className="flex items-center gap-2">
-            <CreditCard className="h-4 w-4 text-gray-500" />
+            <CreditCard className="h-4 w-4 text-muted-foreground" />
             <div className="flex flex-col">
-              <span className="font-medium">{value as string}</span>
-              {terminal && <span className="text-xs text-gray-500">{terminal.bankName}</span>}
+              <span className="font-medium">{terminal.terminalNumber}</span>
+              <span className="text-xs text-muted-foreground">{terminal.name}</span>
             </div>
           </div>
         )
       }
     },
     {
-      key: 'batchNumber' as keyof POSBatch,
-      title: 'Batch #',
-      render: (value: unknown) => (
-        <span className="font-mono text-sm">{value as string}</span>
+      key: 'startNumber' as keyof POSBatch,
+      title: 'Slip Range',
+      render: (value: unknown, row: POSBatch) => (
+        <span className="font-mono text-sm">{value as string} - {row.endNumber}</span>
       )
     },
     {
-      key: 'visaTotal' as keyof POSBatch,
+      key: 'transactionCount' as keyof POSBatch,
+      title: 'Txn Count',
+      render: (value: unknown) => (
+        <span className="font-mono text-sm">{(value as number) || 0}</span>
+      )
+    },
+    {
+      key: 'visaAmount' as keyof POSBatch,
       title: 'Visa',
       render: (value: unknown) => (
         <div className="flex items-center gap-1">
-          <Badge className="bg-blue-100 text-blue-800 text-xs">VISA</Badge>
-          <span className="font-mono text-sm">
-            Rs. {(value as number)?.toLocaleString() || '0'}
+          <Badge className="bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300 text-xs">VISA</Badge>
+          <span className="font-mono text-xs">
+            {(value as number)?.toLocaleString() || '0'}
           </span>
         </div>
       )
     },
     {
-      key: 'mastercardTotal' as keyof POSBatch,
-      title: 'Mastercard',
+      key: 'masterAmount' as keyof POSBatch,
+      title: 'Master',
       render: (value: unknown) => (
         <div className="flex items-center gap-1">
-          <Badge className="bg-red-100 text-red-800 text-xs">MC</Badge>
-          <span className="font-mono text-sm">
-            Rs. {(value as number)?.toLocaleString() || '0'}
+          <Badge className="bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300 text-xs">MC</Badge>
+          <span className="font-mono text-xs">
+            {(value as number)?.toLocaleString() || '0'}
+          </span>
+        </div>
+      )
+    },
+    {
+      key: 'qrAmount' as keyof POSBatch,
+      title: 'QR',
+      render: (value: unknown) => (
+        <div className="flex items-center gap-1">
+          <Badge className="bg-purple-500/20 text-purple-400 dark:bg-purple-600/30 dark:text-purple-300 text-xs">QR</Badge>
+          <span className="font-mono text-xs">
+            {(value as number)?.toLocaleString() || '0'}
           </span>
         </div>
       )
     },
     {
       key: 'totalAmount' as keyof POSBatch,
-      title: 'Total Amount',
+      title: 'Total',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <DollarSign className="h-4 w-4 text-green-500" />
+          <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
           <span className="font-mono font-semibold text-green-700">
-            Rs. {(value as number)?.toLocaleString() || '0'}
+            {(value as number)?.toLocaleString() || '0'}
           </span>
         </div>
       )
     },
     {
-      key: 'status' as keyof POSBatch,
+      key: 'isReconciled' as keyof POSBatch,
       title: 'Status',
-      render: (value: unknown) => (
-        <Badge className={getStatusColor(value as string)}>
-          {value as string}
-        </Badge>
-      )
-    },
-    {
-      key: 'photoUrl' as keyof POSBatch,
-      title: 'Photo',
-      render: (value: unknown) => (
-        <div className="flex items-center gap-1">
-          <Camera className="h-4 w-4 text-gray-500" />
-          <Badge variant={value ? 'default' : 'secondary'}>
-            {value ? 'Yes' : 'No'}
+      render: (value: unknown) => {
+        const isReconciled = value as boolean
+        return (
+          <Badge className={isReconciled ? 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300' : 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'}>
+            {isReconciled ? 'RECONCILED' : 'PENDING'}
           </Badge>
-        </div>
-      )
+        )
+      }
     }
   ]
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-gray-900">POS Batches</h1>
+      <h1 className="text-3xl font-bold text-foreground">POS Batches</h1>
 
       {error && (
         <Alert variant="destructive">
@@ -363,8 +368,8 @@ export default function POSBatchesPage() {
                       <div className="flex items-center gap-2">
                         <CreditCard className="h-4 w-4" />
                         <div className="flex flex-col">
-                          <span className="font-medium">{terminal.terminalId}</span>
-                          <span className="text-xs text-gray-500">{terminal.bankName}</span>
+                          <span className="font-medium">{terminal.terminalNumber}</span>
+                          <span className="text-xs text-muted-foreground">{terminal.name}</span>
                         </div>
                       </div>
                     </SelectItem>
@@ -372,36 +377,34 @@ export default function POSBatchesPage() {
                 </SelectContent>
               </Select>
             </div>
+          </div>
 
+          {/* Batch Numbers */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="batchDate">Batch Date *</Label>
-              <input
-                id="batchDate"
-                type="date"
-                value={batchDate}
-                onChange={(e) => setBatchDate(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              <Label htmlFor="startNumber">Start Slip Number *</Label>
+              <Input
+                id="startNumber"
+                value={startNumber}
+                onChange={(e) => setStartNumber(e.target.value)}
+                placeholder="e.g., 0001"
                 disabled={loading}
                 required
               />
             </div>
-          </div>
-
-          {/* Batch Number */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="batchNumber">Batch Number *</Label>
+              <Label htmlFor="endNumber">End Slip Number *</Label>
               <Input
-                id="batchNumber"
-                value={batchNumber}
-                onChange={(e) => setBatchNumber(e.target.value)}
-                placeholder="e.g., B001234"
+                id="endNumber"
+                value={endNumber}
+                onChange={(e) => setEndNumber(e.target.value)}
+                placeholder="e.g., 0125"
                 disabled={loading}
                 required
               />
             </div>
             <div className="flex items-end">
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-muted-foreground">
                 <strong>Total Amount: Rs. {totalAmount.toLocaleString()}</strong>
               </div>
             </div>
@@ -419,15 +422,15 @@ export default function POSBatchesPage() {
                   <MoneyInput
                     id={scheme.key}
                     value={
-                      scheme.key === 'visa' ? visaTotal :
-                      scheme.key === 'mastercard' ? mastercardTotal :
-                      scheme.key === 'amex' ? amexTotal : otherTotal
+                      scheme.key === 'visa' ? visaAmount :
+                      scheme.key === 'mastercard' ? masterAmount :
+                      scheme.key === 'amex' ? amexAmount : qrAmount
                     }
                     onChange={(value) => {
-                      if (scheme.key === 'visa') setVisaTotal(value)
-                      else if (scheme.key === 'mastercard') setMastercardTotal(value)
-                      else if (scheme.key === 'amex') setAmexTotal(value)
-                      else setOtherTotal(value)
+                      if (scheme.key === 'visa') setVisaAmount(value)
+                      else if (scheme.key === 'mastercard') setMasterAmount(value)
+                      else if (scheme.key === 'amex') setAmexAmount(value)
+                      else setQrAmount(value)
                     }}
                     placeholder="0.00"
                     disabled={loading}
@@ -437,15 +440,37 @@ export default function POSBatchesPage() {
             </div>
           </div>
 
-          {/* Photo Upload */}
+          {/* Notes */}
           <div>
-            <Label>Batch Receipt Photo</Label>
-            <FileUploadStub
-              onFileSelect={setPhotoFile}
-              accept="image/*"
-              placeholder="Upload batch receipt photo (optional)"
+            <Label htmlFor="notes">Notes (Optional)</Label>
+            <Input
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Additional notes about this batch"
+              disabled={loading}
             />
           </div>
+
+          {/* Safe Integration */}
+          {totalAmount > 0 && (
+            <FormCard className="p-4">
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  id="addToSafeBatch"
+                  checked={addToSafe}
+                  onCheckedChange={(checked) => setAddToSafe(checked as boolean)}
+                />
+                <Label htmlFor="addToSafeBatch" className="flex items-center gap-2 cursor-pointer">
+                  <Wallet className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <span className="font-medium">Put batch total (Rs. {totalAmount.toLocaleString()}) into Safe</span>
+                </Label>
+              </div>
+              <p className="text-sm text-muted-foreground mt-2 ml-7">
+                The batch total will be automatically added to the safe.
+              </p>
+            </FormCard>
+          )}
 
           <div className="flex justify-end gap-4">
             <Button type="button" variant="outline" onClick={() => router.push('/pos')} disabled={loading}>

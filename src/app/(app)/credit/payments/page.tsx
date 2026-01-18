@@ -159,7 +159,7 @@ export default function CreditPaymentsPage() {
           chequeNumber: chequeNumber || undefined,
           bankName: bankName || undefined,
           notes: notes || undefined,
-          recordedBy: 'Current User' // In real app, get from auth context
+          recordedBy: typeof window !== 'undefined' ? localStorage.getItem('username') || 'System User' : 'System User'
         })
       })
 
@@ -207,10 +207,10 @@ export default function CreditPaymentsPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'CLEARED': return 'bg-green-100 text-green-800'
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800'
-      case 'BOUNCED': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'CLEARED': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      case 'PENDING': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
+      case 'BOUNCED': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+      default: return 'bg-muted text-foreground'
     }
   }
 
@@ -218,9 +218,9 @@ export default function CreditPaymentsPage() {
     const methodConfig = paymentMethods.find(m => m.value === method)
     if (methodConfig) {
       const Icon = methodConfig.icon
-      return <Icon className="h-4 w-4 text-gray-500" />
+      return <Icon className="h-4 w-4 text-muted-foreground" />
     }
-    return <DollarSign className="h-4 w-4 text-gray-500" />
+    return <DollarSign className="h-4 w-4 text-muted-foreground" />
   }
 
   const selectedCustomerData = customers.find(c => c.id === selectedCustomer)
@@ -232,7 +232,7 @@ export default function CreditPaymentsPage() {
       title: 'Date',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-gray-500" />
+          <Calendar className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm">
             {new Date(value as string).toLocaleDateString()}
           </span>
@@ -246,7 +246,7 @@ export default function CreditPaymentsPage() {
         const customer = customers.find(c => c.id === row.customerId)
         return (
           <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-gray-500" />
+            <Users className="h-4 w-4 text-muted-foreground" />
             <span className="font-medium">{customer?.name || (value as string)}</span>
           </div>
         )
@@ -257,7 +257,7 @@ export default function CreditPaymentsPage() {
       title: 'Amount',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <DollarSign className="h-4 w-4 text-green-500" />
+          <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
           <span className="font-mono font-semibold text-green-700">
             Rs. {(value as number)?.toLocaleString() || 0}
           </span>
@@ -283,12 +283,12 @@ export default function CreditPaymentsPage() {
             <span className="font-mono text-sm">{value as string}</span>
           ) : null}
           {row.chequeNumber ? (
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-muted-foreground">
               Cheque: {row.chequeNumber}
             </span>
           ) : null}
           {row.bankName ? (
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-muted-foreground">
               {row.bankName}
             </span>
           ) : null}
@@ -308,14 +308,14 @@ export default function CreditPaymentsPage() {
       key: 'recordedBy' as keyof CreditPayment,
       title: 'Recorded By',
       render: (value: unknown) => (
-        <span className="text-sm text-gray-600">{value as string}</span>
+        <span className="text-sm text-muted-foreground">{value as string}</span>
       )
     }
   ]
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-gray-900">Credit Payments</h1>
+      <h1 className="text-3xl font-bold text-foreground">Credit Payments</h1>
 
       {error && (
         <Alert variant="destructive">
@@ -349,7 +349,7 @@ export default function CreditPaymentsPage() {
                       <Users className="h-4 w-4" />
                       <div className="flex flex-col">
                         <span className="font-medium">{customer.name}</span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-muted-foreground">
                           Outstanding: Rs. {customer.currentBalance.toLocaleString()}
                         </span>
                       </div>
@@ -359,7 +359,7 @@ export default function CreditPaymentsPage() {
               </SelectContent>
             </Select>
             {selectedCustomerData && (
-              <div className="mt-2 p-2 bg-blue-50 rounded-md">
+              <div className="mt-2 p-2 bg-blue-500/10 dark:bg-blue-500/20 rounded-md">
                 <div className="text-xs text-blue-700">
                   <div>Credit Limit: Rs. {selectedCustomerData.creditLimit.toLocaleString()}</div>
                   <div className="font-semibold">Outstanding Balance: Rs. {selectedCustomerData.currentBalance.toLocaleString()}</div>

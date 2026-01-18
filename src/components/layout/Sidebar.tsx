@@ -17,7 +17,10 @@ import {
   Building2,
   FileText,
   Bell,
-  User
+  User,
+  Wallet,
+  DollarSign,
+  Handshake
 } from 'lucide-react'
 
 type UserRole = 'OWNER' | 'MANAGER' | 'ACCOUNTS'
@@ -46,18 +49,18 @@ const navigation: NavItem[] = [
     icon: Clock,
     roles: ['OWNER', 'MANAGER']
   },
-  {
-    title: 'Audits',
-    href: '/audits',
-    icon: Search,
-    roles: ['OWNER', 'MANAGER']
-  },
-  {
-    title: 'Tests',
-    href: '/tests',
-    icon: TestTube,
-    roles: ['OWNER', 'MANAGER']
-  },
+  // {
+  //   title: 'Audits',
+  //   href: '/audits',
+  //   icon: Search,
+  //   roles: ['OWNER', 'MANAGER']
+  // },
+  // {
+  //   title: 'Tests',
+  //   href: '/tests',
+  //   icon: TestTube,
+  //   roles: ['OWNER', 'MANAGER']
+  // },
   {
     title: 'Tanks',
     href: '/tanks',
@@ -65,8 +68,26 @@ const navigation: NavItem[] = [
     roles: ['OWNER', 'MANAGER']
   },
   {
-    title: 'POS',
-    href: '/pos',
+    title: 'Safe & POS',
+    href: '/safe',
+    icon: Wallet,
+    roles: ['OWNER', 'MANAGER', 'ACCOUNTS']
+  },
+  {
+    title: 'Salary',
+    href: '/salary',
+    icon: DollarSign,
+    roles: ['OWNER', 'MANAGER', 'ACCOUNTS']
+  },
+  {
+    title: 'Loans',
+    href: '/loans',
+    icon: Handshake,
+    roles: ['OWNER', 'MANAGER', 'ACCOUNTS']
+  },
+  {
+    title: 'Credit Customers',
+    href: '/credit/customers',
     icon: CreditCard,
     roles: ['OWNER', 'MANAGER', 'ACCOUNTS']
   },
@@ -110,14 +131,14 @@ export function Sidebar({ userRole }: SidebarProps) {
   )
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 h-screen flex flex-col">
+    <div className="w-64 bg-sidebar border-r border-border h-screen flex flex-col">
       {/* Header */}
       <div className="p-6 flex-shrink-0">
           <div className="flex items-center gap-2">
-            <Building2 className="h-8 w-8 text-purple-600" />
+            <Building2 className="h-8 w-8 text-purple-600 dark:text-purple-400" />
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Fuel Station</h1>
-              <p className="text-sm text-gray-500">Management System</p>
+              <h1 className="text-xl font-bold text-sidebar-foreground">Fuel Station</h1>
+              <p className="text-sm text-muted-foreground">Management System</p>
             </div>
           </div>
       </div>
@@ -136,8 +157,8 @@ export function Sidebar({ userRole }: SidebarProps) {
                 className={cn(
                   'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                   isActive
-                    ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                    ? 'bg-primary/10 text-primary border border-primary/20'
+                    : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                 )}
               >
                 <Icon className="h-5 w-5" />
@@ -150,9 +171,9 @@ export function Sidebar({ userRole }: SidebarProps) {
 
       {/* Role Display - fixed at bottom */}
       <div className="p-4 flex-shrink-0">
-        <div className="bg-gray-50 rounded-lg p-3">
-          <div className="text-xs text-gray-500 mb-1">Current Role</div>
-          <div className="text-sm font-medium text-gray-900 capitalize">
+        <div className="bg-sidebar-accent rounded-lg p-3 border border-sidebar-border">
+          <div className="text-xs text-muted-foreground mb-1">Current Role</div>
+          <div className="text-sm font-medium text-sidebar-foreground capitalize">
             {userRole.toLowerCase()}
           </div>
         </div>

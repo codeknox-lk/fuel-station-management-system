@@ -136,19 +136,19 @@ export default function UsersPage() {
 
   const getStatusColor = (status: SystemUser['status']) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800'
-      case 'inactive': return 'bg-gray-100 text-gray-800'
-      case 'suspended': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'active': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      case 'inactive': return 'bg-muted text-foreground'
+      case 'suspended': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+      default: return 'bg-muted text-foreground'
     }
   }
 
   const getRoleColor = (role: SystemUser['role']) => {
     switch (role) {
-      case 'OWNER': return 'bg-purple-100 text-purple-800'
-      case 'MANAGER': return 'bg-blue-100 text-blue-800'
-      case 'ACCOUNTS': return 'bg-green-100 text-green-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'OWNER': return 'bg-purple-500/20 text-purple-400 dark:bg-purple-600/30 dark:text-purple-300'
+      case 'MANAGER': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'ACCOUNTS': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      default: return 'bg-muted text-foreground'
     }
   }
 
@@ -179,12 +179,12 @@ export default function UsersPage() {
       title: 'Name',
       render: (value: unknown, row: SystemUser) => (
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-            <User className="h-4 w-4 text-gray-600" />
+          <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
+            <User className="h-4 w-4 text-muted-foreground" />
           </div>
           <div>
             <div className="font-medium">{value as string}</div>
-            <div className="text-sm text-gray-500 flex items-center gap-1">
+            <div className="text-sm text-muted-foreground flex items-center gap-1">
               <Mail className="h-3 w-3" />
               {row.email}
             </div>
@@ -209,7 +209,7 @@ export default function UsersPage() {
       title: 'Status',
       render: (value: unknown) => {
         const status = value as string
-        if (!status) return <Badge className="bg-gray-100 text-gray-800">Unknown</Badge>
+        if (!status) return <Badge className="bg-muted text-foreground">Unknown</Badge>
         return (
           <Badge className={getStatusColor(status as SystemUser['status'])}>
             {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -221,7 +221,7 @@ export default function UsersPage() {
       key: 'lastLogin' as keyof SystemUser,
       title: 'Last Login',
       render: (value: unknown) => (
-        <span className="text-sm text-gray-600">
+        <span className="text-sm text-muted-foreground">
           {formatLastLogin(value as string)}
         </span>
       )
@@ -230,7 +230,7 @@ export default function UsersPage() {
       key: 'createdAt' as keyof SystemUser,
       title: 'Created',
       render: (value: unknown) => (
-        <span className="text-sm text-gray-600">
+        <span className="text-sm text-muted-foreground">
           {new Date(value as string).toLocaleDateString()}
         </span>
       )
@@ -251,7 +251,7 @@ export default function UsersPage() {
             variant="ghost"
             size="sm"
             onClick={() => handleDelete(row)}
-            className="text-red-600 hover:text-red-700"
+            className="text-red-600 dark:text-red-400 hover:text-red-700"
             disabled={row.role === 'OWNER'}
           >
             <Trash2 className="h-4 w-4" />
@@ -266,25 +266,25 @@ export default function UsersPage() {
       title: 'Total Users',
       value: users.length.toString(),
       description: 'System users',
-      icon: <Users className="h-5 w-5 text-blue-500" />
+      icon: <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
     },
     {
       title: 'Active',
       value: users.filter(u => u.status === 'active').length.toString(),
       description: 'Currently active',
-      icon: <div className="h-5 w-5 bg-green-500 rounded-full" />
+      icon: <div className="h-5 w-5 bg-green-500/10 dark:bg-green-500/200 rounded-full" />
     },
     {
       title: 'Owners',
       value: users.filter(u => u.role === 'OWNER').length.toString(),
       description: 'System owners',
-      icon: <Crown className="h-5 w-5 text-purple-500" />
+      icon: <Crown className="h-5 w-5 text-purple-600 dark:text-purple-400" />
     },
     {
       title: 'Managers',
       value: users.filter(u => u.role === 'MANAGER').length.toString(),
       description: 'Station managers',
-      icon: <Shield className="h-5 w-5 text-blue-500" />
+      icon: <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
     }
   ]
 
@@ -316,8 +316,8 @@ export default function UsersPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-3xl font-bold text-foreground">User Management</h1>
+          <p className="text-muted-foreground mt-2">
             Manage system users, roles, and access permissions
           </p>
         </div>
@@ -391,15 +391,15 @@ export default function UsersPage() {
               </div>
 
               {/* Role Permissions Preview */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+              <div className="bg-muted p-4 rounded-lg">
+                <h4 className="font-medium text-foreground mb-2 flex items-center gap-2">
                   {getRoleIcon(formData.role)}
                   {formData.role} Permissions
                 </h4>
-                <ul className="text-sm text-gray-600 space-y-1">
+                <ul className="text-sm text-muted-foreground space-y-1">
                   {rolePermissions[formData.role].map((permission, index) => (
                     <li key={index} className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full flex-shrink-0"></div>
+                      <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full flex-shrink-0"></div>
                       {permission}
                     </li>
                   ))}
@@ -426,9 +426,9 @@ export default function UsersPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
-                  <div className="text-sm font-medium text-gray-700">{stat.title}</div>
-                  <div className="text-xs text-gray-500">{stat.description}</div>
+                  <div className="text-2xl font-bold text-foreground">{stat.value}</div>
+                  <div className="text-sm font-medium text-foreground">{stat.title}</div>
+                  <div className="text-xs text-muted-foreground">{stat.description}</div>
                 </div>
                 <div className="flex-shrink-0">
                   {stat.icon}
@@ -455,8 +455,8 @@ export default function UsersPage() {
             <CardContent>
               <ul className="space-y-2">
                 {permissions.map((permission, index) => (
-                  <li key={index} className="flex items-center gap-2 text-sm text-gray-600">
-                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full flex-shrink-0"></div>
+                  <li key={index} className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full flex-shrink-0"></div>
                     {permission}
                   </li>
                 ))}

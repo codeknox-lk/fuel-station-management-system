@@ -166,10 +166,10 @@ export default function PricesPage() {
 
   const getStatusColor = (status: Price['status']) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800'
-      case 'scheduled': return 'bg-blue-100 text-blue-800'
-      case 'expired': return 'bg-gray-100 text-gray-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'active': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      case 'scheduled': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'expired': return 'bg-muted text-foreground'
+      default: return 'bg-muted text-foreground'
     }
   }
 
@@ -216,7 +216,7 @@ export default function PricesPage() {
       render: (value: unknown) => (
         <div className="text-sm">
           <div className="flex items-center gap-1">
-            <Calendar className="h-3 w-3 text-gray-400" />
+            <Calendar className="h-3 w-3 text-muted-foreground" />
             {formatDateTime(value as string)}
           </div>
         </div>
@@ -226,7 +226,7 @@ export default function PricesPage() {
       key: 'effectiveTo' as keyof Price,
       title: 'Effective To',
       render: (value: unknown) => (
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-muted-foreground">
           {value ? formatDateTime(value as string) : 'Ongoing'}
         </div>
       )
@@ -236,7 +236,7 @@ export default function PricesPage() {
       title: 'Status',
       render: (value: unknown) => {
         const status = value as string
-        if (!status) return <Badge className="bg-gray-100 text-gray-800">Unknown</Badge>
+        if (!status) return <Badge className="bg-muted text-foreground">Unknown</Badge>
         return (
           <Badge className={getStatusColor(status as Price['status'])}>
             {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -267,7 +267,7 @@ export default function PricesPage() {
             variant="ghost"
             size="sm"
             onClick={() => handleDelete(row)}
-            className="text-red-600 hover:text-red-700"
+            className="text-red-600 dark:text-red-400 hover:text-red-700"
             disabled={row.status === 'active'}
           >
             <Trash2 className="h-4 w-4" />
@@ -282,25 +282,25 @@ export default function PricesPage() {
       title: 'Active Prices',
       value: prices.filter(p => p.status === 'active').length.toString(),
       description: 'Currently effective',
-      icon: <DollarSign className="h-5 w-5 text-green-500" />
+      icon: <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
     },
     {
       title: 'Scheduled',
       value: prices.filter(p => p.status === 'scheduled').length.toString(),
       description: 'Future price changes',
-      icon: <Calendar className="h-5 w-5 text-blue-500" />
+      icon: <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
     },
     {
       title: 'Price History',
       value: prices.filter(p => p.status === 'expired').length.toString(),
       description: 'Historical records',
-      icon: <div className="h-5 w-5 bg-gray-500 rounded-full" />
+      icon: <div className="h-5 w-5 bg-muted0 rounded-full" />
     },
     {
       title: 'Fuel Types',
       value: new Set(prices.map(p => p.fuelType)).size.toString(),
       description: 'Different fuel types',
-      icon: <div className="h-5 w-5 bg-purple-500 rounded-full" />
+      icon: <div className="h-5 w-5 bg-purple-500/10 dark:bg-purple-500/200 rounded-full" />
     }
   ]
 
@@ -308,8 +308,8 @@ export default function PricesPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Fuel Price Management</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-3xl font-bold text-foreground">Fuel Price Management</h1>
+          <p className="text-muted-foreground mt-2">
             Manage fuel pricing with history tracking and future price scheduling
           </p>
         </div>
@@ -392,18 +392,18 @@ export default function PricesPage() {
 
       {/* Next Price Changes Banner */}
       {nextPrices.length > 0 && (
-        <Alert className="border-blue-200 bg-blue-50">
-          <Bell className="h-4 w-4 text-blue-600" />
+        <Alert className="border-blue-500/20 dark:border-blue-500/30 bg-blue-500/10 dark:bg-blue-500/20">
+          <Bell className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           <AlertDescription>
             <div className="flex items-center justify-between">
               <div>
-                <strong className="text-blue-900">Upcoming Price Changes:</strong>
+                <strong className="text-blue-700 dark:text-blue-300">Upcoming Price Changes:</strong>
                 <div className="mt-1 space-y-1">
                   {nextPrices.map((nextPrice, index) => (
-                    <div key={index} className="text-sm text-blue-800">
+                    <div key={index} className="text-sm text-blue-700 dark:text-blue-300">
                       <span className="font-medium">{getFuelTypeLabel(nextPrice.fuelType as Price['fuelType'])}</span>
                       : Rs. {nextPrice.currentPrice.toFixed(2)} → Rs. {nextPrice.nextPrice.toFixed(2)}
-                      <span className={`ml-2 inline-flex items-center gap-1 ${nextPrice.changeAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      <span className={`ml-2 inline-flex items-center gap-1 ${nextPrice.changeAmount > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                         {nextPrice.changeAmount > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                         Rs. {Math.abs(nextPrice.changeAmount).toFixed(2)} ({nextPrice.changePercent > 0 ? '+' : ''}{nextPrice.changePercent.toFixed(1)}%)
                       </span>
@@ -426,9 +426,9 @@ export default function PricesPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
-                  <div className="text-sm font-medium text-gray-700">{stat.title}</div>
-                  <div className="text-xs text-gray-500">{stat.description}</div>
+                  <div className="text-2xl font-bold text-foreground">{stat.value}</div>
+                  <div className="text-sm font-medium text-foreground">{stat.title}</div>
+                  <div className="text-xs text-muted-foreground">{stat.description}</div>
                 </div>
                 <div className="flex-shrink-0">
                   {stat.icon}
@@ -452,22 +452,22 @@ export default function PricesPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <div className="text-2xl font-bold text-gray-900">
+                  <div className="text-2xl font-bold text-foreground">
                     Rs. {currentPrice?.price.toFixed(2) || '0.00'}
                   </div>
                   {nextPrice && (
                     <div className="text-sm">
-                      <div className={`flex items-center gap-1 ${nextPrice.changeAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      <div className={`flex items-center gap-1 ${nextPrice.changeAmount > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                         {nextPrice.changeAmount > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                         Next: Rs. {nextPrice.nextPrice.toFixed(2)}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-muted-foreground">
                         {formatDateTime(nextPrice.effectiveFrom)}
                       </div>
                     </div>
                   )}
                   {currentPrice && (
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-muted-foreground">
                       Since: {formatDateTime(currentPrice.effectiveFrom)}
                     </div>
                   )}

@@ -154,11 +154,11 @@ export default function CreditAgingPage() {
 
   const getRiskColor = (risk: string) => {
     switch (risk) {
-      case 'LOW': return 'text-green-600 bg-green-50 border-green-200'
-      case 'MEDIUM': return 'text-yellow-600 bg-yellow-50 border-yellow-200'
-      case 'HIGH': return 'text-orange-600 bg-orange-50 border-orange-200'
-      case 'CRITICAL': return 'text-red-600 bg-red-50 border-red-200'
-      default: return 'text-gray-600 bg-gray-50 border-gray-200'
+      case 'LOW': return 'text-green-600 dark:text-green-400 bg-green-500/10 dark:bg-green-500/20 border-green-500/20 dark:border-green-500/30'
+      case 'MEDIUM': return 'text-yellow-600 dark:text-yellow-400 bg-yellow-500/10 dark:bg-yellow-500/20 border-yellow-500/20 dark:border-yellow-500/30'
+      case 'HIGH': return 'text-orange-600 dark:text-orange-400 bg-orange-500/10 dark:bg-orange-500/20 border-orange-500/20 dark:border-orange-500/30'
+      case 'CRITICAL': return 'text-red-600 dark:text-red-400 bg-red-500/10 dark:bg-red-500/20 border-red-500/20 dark:border-red-500/30'
+      default: return 'text-muted-foreground bg-muted border-border'
     }
   }
 
@@ -174,9 +174,9 @@ export default function CreditAgingPage() {
 
   const getBucketColor = (amount: number, total: number) => {
     const percentage = total > 0 ? (amount / total) * 100 : 0
-    if (percentage >= 50) return 'text-red-600'
-    if (percentage >= 25) return 'text-yellow-600'
-    return 'text-green-600'
+    if (percentage >= 50) return 'text-red-600 dark:text-red-400'
+    if (percentage >= 25) return 'text-yellow-600 dark:text-yellow-400'
+    return 'text-green-600 dark:text-green-400'
   }
 
   const agingColumns: Column<CustomerAging>[] = [
@@ -185,10 +185,10 @@ export default function CreditAgingPage() {
       title: 'Customer',
       render: (value: unknown, row: CustomerAging) => (
         <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-gray-500" />
+          <Users className="h-4 w-4 text-muted-foreground" />
           <div className="flex flex-col">
             <span className="font-medium">{value as string}</span>
-            <span className="text-xs text-gray-500">{row.nicOrBrn}</span>
+            <span className="text-xs text-muted-foreground">{row.nicOrBrn}</span>
           </div>
         </div>
       )
@@ -199,12 +199,12 @@ export default function CreditAgingPage() {
       render: (value: unknown, row: CustomerAging) => (
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4 text-red-500" />
+            <DollarSign className="h-4 w-4 text-red-600 dark:text-red-400" />
             <span className="font-mono font-semibold text-red-700">
               Rs. {(value as number)?.toLocaleString() || 0}
             </span>
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-muted-foreground">
             {row.creditLimit > 0 ? Math.round(((value as number) / row.creditLimit) * 100) : 0}% of limit
           </div>
         </div>
@@ -253,11 +253,11 @@ export default function CreditAgingPage() {
         const days = value as number
         return (
           <div className="flex items-center gap-1">
-            <Clock className="h-4 w-4 text-gray-500" />
+            <Clock className="h-4 w-4 text-muted-foreground" />
             <span className={`font-semibold ${
-              days > 90 ? 'text-red-600' : 
-              days > 60 ? 'text-orange-600' : 
-              days > 30 ? 'text-yellow-600' : 'text-green-600'
+              days > 90 ? 'text-red-600 dark:text-red-400' : 
+              days > 60 ? 'text-orange-600 dark:text-orange-400' : 
+              days > 30 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'
             }`}>
               {days} days
             </span>
@@ -287,13 +287,13 @@ export default function CreditAgingPage() {
               {new Date(value as string).toLocaleDateString()}
             </span>
             {row.lastPaymentAmount && (
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-muted-foreground">
                 Rs. {row.lastPaymentAmount.toLocaleString()}
               </span>
             )}
           </div>
         ) : (
-          <span className="text-gray-400">No payments</span>
+          <span className="text-muted-foreground">No payments</span>
         )
       )
     }
@@ -301,7 +301,7 @@ export default function CreditAgingPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-gray-900">Credit Aging Analysis</h1>
+      <h1 className="text-3xl font-bold text-foreground">Credit Aging Analysis</h1>
 
       {error && (
         <Alert variant="destructive">
@@ -364,13 +364,13 @@ export default function CreditAgingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Total Outstanding</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Outstanding</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-600">
+                <div className="text-2xl font-bold text-red-600 dark:text-red-400">
                   Rs. {summary.totalOutstanding.toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-muted-foreground">
                   {summary.totalCustomers} customers
                 </div>
               </CardContent>
@@ -378,13 +378,13 @@ export default function CreditAgingPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-green-600">0-30 Days</CardTitle>
+                <CardTitle className="text-sm font-medium text-green-600 dark:text-green-400">0-30 Days</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-700">
                   Rs. {summary.currentBucket.toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-muted-foreground">
                   {summary.totalOutstanding > 0 ? Math.round((summary.currentBucket / summary.totalOutstanding) * 100) : 0}%
                 </div>
               </CardContent>
@@ -392,13 +392,13 @@ export default function CreditAgingPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-yellow-600">31-60 Days</CardTitle>
+                <CardTitle className="text-sm font-medium text-yellow-600 dark:text-yellow-400">31-60 Days</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-yellow-700">
                   Rs. {summary.bucket31to60.toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-muted-foreground">
                   {summary.totalOutstanding > 0 ? Math.round((summary.bucket31to60 / summary.totalOutstanding) * 100) : 0}%
                 </div>
               </CardContent>
@@ -406,13 +406,13 @@ export default function CreditAgingPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-orange-600">61-90 Days</CardTitle>
+                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">61-90 Days</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-700">
                   Rs. {summary.bucket61to90.toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-muted-foreground">
                   {summary.totalOutstanding > 0 ? Math.round((summary.bucket61to90 / summary.totalOutstanding) * 100) : 0}%
                 </div>
               </CardContent>
@@ -420,13 +420,13 @@ export default function CreditAgingPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-red-600">90+ Days</CardTitle>
+                <CardTitle className="text-sm font-medium text-red-600 dark:text-red-400">90+ Days</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-700">
                   Rs. {summary.over90Bucket.toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-muted-foreground">
                   {summary.totalOutstanding > 0 ? Math.round((summary.over90Bucket / summary.totalOutstanding) * 100) : 0}%
                 </div>
               </CardContent>
@@ -444,28 +444,28 @@ export default function CreditAgingPage() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">
+                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                     {summary.riskDistribution.low}
                   </div>
-                  <div className="text-sm text-gray-600">Low Risk</div>
+                  <div className="text-sm text-muted-foreground">Low Risk</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-yellow-600">
+                  <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                     {summary.riskDistribution.medium}
                   </div>
-                  <div className="text-sm text-gray-600">Medium Risk</div>
+                  <div className="text-sm text-muted-foreground">Medium Risk</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-orange-600">
+                  <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                     {summary.riskDistribution.high}
                   </div>
-                  <div className="text-sm text-gray-600">High Risk</div>
+                  <div className="text-sm text-muted-foreground">High Risk</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-red-600">
+                  <div className="text-2xl font-bold text-red-600 dark:text-red-400">
                     {summary.riskDistribution.critical}
                   </div>
-                  <div className="text-sm text-gray-600">Critical Risk</div>
+                  <div className="text-sm text-muted-foreground">Critical Risk</div>
                 </div>
               </div>
             </CardContent>

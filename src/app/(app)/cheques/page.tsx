@@ -152,7 +152,7 @@ export default function ChequesPage() {
           depositReference: depositReference || undefined,
           receivedDate: receivedDate.toISOString(),
           notes: notes || undefined,
-          recordedBy: 'Current User' // In real app, get from auth context
+          recordedBy: typeof window !== 'undefined' ? localStorage.getItem('username') || 'System User' : 'System User'
         })
       })
 
@@ -189,10 +189,10 @@ export default function ChequesPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'RECEIVED': return 'bg-blue-100 text-blue-800'
-      case 'DEPOSITED': return 'bg-green-100 text-green-800'
-      case 'RETURNED': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'RECEIVED': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'DEPOSITED': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      case 'RETURNED': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+      default: return 'bg-muted text-foreground'
     }
   }
 
@@ -211,7 +211,7 @@ export default function ChequesPage() {
       title: 'Received Date',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-gray-500" />
+          <Calendar className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm">
             {new Date(value as string).toLocaleDateString()}
           </span>
@@ -225,7 +225,7 @@ export default function ChequesPage() {
         const station = stations.find(s => s.id === row.stationId)
         return (
           <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-gray-500" />
+            <Building2 className="h-4 w-4 text-muted-foreground" />
             <span className="font-medium">{station?.name || (value as string)}</span>
           </div>
         )
@@ -236,7 +236,7 @@ export default function ChequesPage() {
       title: 'Cheque Number',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-gray-500" />
+          <FileText className="h-4 w-4 text-muted-foreground" />
           <span className="font-mono font-medium">{value as string}</span>
         </div>
       )
@@ -246,7 +246,7 @@ export default function ChequesPage() {
       title: 'Bank',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <Building className="h-4 w-4 text-gray-500" />
+          <Building className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm">{value as string}</span>
         </div>
       )
@@ -256,7 +256,7 @@ export default function ChequesPage() {
       title: 'Amount',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <DollarSign className="h-4 w-4 text-green-500" />
+          <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
           <span className="font-mono font-semibold text-green-700">
             Rs. {(value as number)?.toLocaleString() || 0}
           </span>
@@ -281,11 +281,11 @@ export default function ChequesPage() {
       render: (value: unknown) => (
         value ? (
           <div className="flex items-center gap-2">
-            <ArrowUpCircle className="h-4 w-4 text-green-500" />
+            <ArrowUpCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
             <span className="font-mono text-sm">{value as string}</span>
           </div>
         ) : (
-          <span className="text-gray-400">-</span>
+          <span className="text-muted-foreground">-</span>
         )
       )
     },
@@ -298,7 +298,7 @@ export default function ChequesPage() {
             {new Date(value as string).toLocaleDateString()}
           </span>
         ) : (
-          <span className="text-gray-400">-</span>
+          <span className="text-muted-foreground">-</span>
         )
       )
     },
@@ -307,11 +307,11 @@ export default function ChequesPage() {
       title: 'Returned Date',
       render: (value: unknown) => (
         value ? (
-          <span className="text-sm text-red-600">
+          <span className="text-sm text-red-600 dark:text-red-400">
             {new Date(value as string).toLocaleDateString()}
           </span>
         ) : (
-          <span className="text-gray-400">-</span>
+          <span className="text-muted-foreground">-</span>
         )
       )
     },
@@ -319,7 +319,7 @@ export default function ChequesPage() {
       key: 'notes' as keyof Cheque,
       title: 'Notes',
       render: (value: unknown) => (
-        <span className="text-sm text-gray-600 max-w-xs truncate">
+        <span className="text-sm text-muted-foreground max-w-xs truncate">
           {value as string || '-'}
         </span>
       )
@@ -328,7 +328,7 @@ export default function ChequesPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-gray-900">Cheques Management</h1>
+      <h1 className="text-3xl font-bold text-foreground">Cheques Management</h1>
 
       {error && (
         <Alert variant="destructive">

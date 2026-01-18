@@ -45,8 +45,16 @@ export default function ProfilePage() {
   const fetchProfile = async () => {
     try {
       setLoading(true)
+      setError('')
       const token = localStorage.getItem('accessToken')
-      const response = await fetch('http://localhost:8000/api/profile', {
+      
+      if (!token) {
+        setError('No authentication token found. Please log in again.')
+        setLoading(false)
+        return
+      }
+
+      const response = await fetch('/api/auth/me', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -60,10 +68,31 @@ export default function ProfilePage() {
           username: data.username
         })
       } else {
-        setError('Failed to load profile')
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Profile fetch error:', response.status, errorData)
+        
+        // Handle 401 Unauthorized - token expired or invalid
+        if (response.status === 401) {
+          setError('Your session has expired. Please log in again.')
+          // Clear invalid token and redirect to login
+          localStorage.removeItem('accessToken')
+          localStorage.removeItem('userRole')
+          localStorage.removeItem('userId')
+          localStorage.removeItem('username')
+          
+          // Redirect to login after a short delay
+          setTimeout(() => {
+            if (typeof window !== 'undefined') {
+              window.location.href = '/login'
+            }
+          }, 2000)
+        } else {
+          setError(errorData.detail || errorData.error || `Failed to load profile (${response.status})`)
+        }
       }
     } catch (error) {
-      setError('Unable to connect to server')
+      console.error('Profile fetch exception:', error)
+      setError(`Unable to connect to server: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
     }
@@ -77,7 +106,14 @@ export default function ProfilePage() {
 
     try {
       const token = localStorage.getItem('accessToken')
-      const response = await fetch('http://localhost:8000/api/profile/update', {
+      
+      if (!token) {
+        setError('No authentication token found. Please log in again.')
+        setUpdating(false)
+        return
+      }
+
+      const response = await fetch('/api/profile', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -123,7 +159,14 @@ export default function ProfilePage() {
 
     try {
       const token = localStorage.getItem('accessToken')
-      const response = await fetch('http://localhost:8000/api/profile/change-password', {
+      
+      if (!token) {
+        setError('No authentication token found. Please log in again.')
+        setUpdating(false)
+        return
+      }
+
+      const response = await fetch('/api/profile/change-password', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -164,10 +207,10 @@ export default function ProfilePage() {
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'OWNER': return 'bg-purple-100 text-purple-800'
-      case 'MANAGER': return 'bg-blue-100 text-blue-800'
-      case 'ACCOUNTS': return 'bg-green-100 text-green-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'OWNER': return 'bg-purple-500/20 text-purple-400 dark:bg-purple-600/30 dark:text-purple-300'
+      case 'MANAGER': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'ACCOUNTS': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      default: return 'bg-muted text-foreground'
     }
   }
 
@@ -183,8 +226,8 @@ export default function ProfilePage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
-        <p className="text-gray-600 mt-1">
+        <h1 className="text-3xl font-bold text-foreground">Profile Settings</h1>
+        <p className="text-muted-foreground mt-1">
           Manage your account information and security settings
         </p>
       </div>
@@ -205,11 +248,11 @@ export default function ProfilePage() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">Username</Label>
+                  <Label className="text-sm font-medium text-muted-foreground">Username</Label>
                   <p className="text-lg font-semibold">{profile.username}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">Role</Label>
+                  <Label className="text-sm font-medium text-muted-foreground">Role</Label>
                   <div className="mt-1">
                     <Badge className={getRoleColor(profile.role)}>
                       {profile.role}
@@ -217,7 +260,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">Status</Label>
+                  <Label className="text-sm font-medium text-muted-foreground">Status</Label>
                   <div className="mt-1">
                     <Badge variant={profile.is_active ? 'default' : 'secondary'}>
                       {profile.is_active ? 'Active' : 'Inactive'}
@@ -262,8 +305,8 @@ export default function ProfilePage() {
                 </Alert>
               )}
               {success && (
-                <Alert className="mb-4 border-green-200 bg-green-50">
-                  <AlertDescription className="text-green-800">{success}</AlertDescription>
+                <Alert className="mb-4 border-green-500/20 dark:border-green-500/30 bg-green-500/10 dark:bg-green-500/20">
+                  <AlertDescription className="text-green-700 dark:text-green-300">{success}</AlertDescription>
                 </Alert>
               )}
 
@@ -316,8 +359,8 @@ export default function ProfilePage() {
                 </Alert>
               )}
               {success && (
-                <Alert className="mb-4 border-green-200 bg-green-50">
-                  <AlertDescription className="text-green-800">{success}</AlertDescription>
+                <Alert className="mb-4 border-green-500/20 dark:border-green-500/30 bg-green-500/10 dark:bg-green-500/20">
+                  <AlertDescription className="text-green-700 dark:text-green-300">{success}</AlertDescription>
                 </Alert>
               )}
 

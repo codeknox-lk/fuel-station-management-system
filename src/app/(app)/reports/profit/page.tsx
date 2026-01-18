@@ -114,7 +114,7 @@ export default function ProfitReportsPage() {
   const [error, setError] = useState('')
 
   // Form state
-  const { selectedStation } = useStation()
+  const { selectedStation, setSelectedStation } = useStation()
   const [selectedMonth, setSelectedMonth] = useState(String(new Date().getMonth() + 1).padStart(2, '0'))
   const [selectedYear, setSelectedYear] = useState(String(currentYear))
 
@@ -143,73 +143,54 @@ export default function ProfitReportsPage() {
     setError('')
 
     try {
-      // In a real app, this would call the API endpoint
-      // For now, we'll generate mock profit report data
+      // Call API endpoint to get real profit report data
+      const monthStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`
+      const url = `/api/reports/profit?stationId=${selectedStation}&month=${selectedMonth}&year=${selectedYear}`
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Failed to fetch profit report: ${response.status}`)
+      }
+
+      const reportData = await response.json()
       
       const station = stations.find(s => s.id === selectedStation)
       const monthName = months.find(m => m.value === selectedMonth)?.label || 'Unknown'
+
+      // Transform API data to match frontend interface
+      const dailyData: ProfitData[] = reportData.dailyData || []
       
-      // Generate mock daily data for the month
-      const daysInMonth = new Date(parseInt(selectedYear), parseInt(selectedMonth), 0).getDate()
-      const dailyData: ProfitData[] = []
-      
-      for (let day = 1; day <= daysInMonth; day++) {
-        const baseRevenue = 180000 + Math.random() * 80000
-        const baseExpenses = 25000 + Math.random() * 15000
-        const revenue = Math.floor(baseRevenue + Math.sin(day / 7) * 20000) // Weekly pattern
-        const expenses = Math.floor(baseExpenses + Math.random() * 10000)
-        const profit = revenue - expenses
-        const margin = (profit / revenue) * 100
-        
-        dailyData.push({
-          day,
-          date: `${selectedYear}-${selectedMonth}-${String(day).padStart(2, '0')}`,
-          revenue,
-          expenses,
-          profit,
-          margin
-        })
-      }
+      // Transform breakdown data
+      const revenueBreakdown: ProfitBreakdown[] = (reportData.breakdown?.revenue || []).map((item: any) => ({
+        category: item.category,
+        amount: item.amount,
+        percentage: item.percentage,
+        trend: 'STABLE' as const, // Would need previous month data to calculate trend
+        previousMonth: 0 // Would need to fetch previous month for comparison
+      }))
 
-      // Calculate totals
-      const totalRevenue = dailyData.reduce((sum, day) => sum + day.revenue, 0)
-      const totalExpenses = dailyData.reduce((sum, day) => sum + day.expenses, 0)
-      const totalProfit = totalRevenue - totalExpenses
-      const averageMargin = (totalProfit / totalRevenue) * 100
+      const expenseBreakdown: ProfitBreakdown[] = (reportData.breakdown?.expenses || []).map((item: any) => ({
+        category: item.category,
+        amount: item.amount,
+        percentage: item.percentage,
+        trend: 'STABLE' as const,
+        previousMonth: 0
+      }))
 
-      // Generate breakdown data
-      const revenueBreakdown: ProfitBreakdown[] = [
-        {
-          category: 'Fuel Sales',
-          amount: totalRevenue * 0.85,
-          percentage: 85,
-          trend: 'UP',
-          previousMonth: totalRevenue * 0.82
-        },
-        {
-          category: 'Oil & Lubricants',
-          amount: totalRevenue * 0.10,
-          percentage: 10,
-          trend: 'STABLE',
-          previousMonth: totalRevenue * 0.11
-        },
-        {
-          category: 'Can Sales',
-          amount: totalRevenue * 0.03,
-          percentage: 3,
-          trend: 'DOWN',
-          previousMonth: totalRevenue * 0.04
-        },
-        {
-          category: 'Other Services',
-          amount: totalRevenue * 0.02,
-          percentage: 2,
-          trend: 'UP',
-          previousMonth: totalRevenue * 0.03
-        }
-      ]
+      // Calculate totals from API data
+      const totalRevenue = reportData.summary?.totalRevenue || 0
+      const totalExpenses = reportData.summary?.totalExpenses || 0
+      const totalProfit = reportData.summary?.totalProfit || 0
+      const averageMargin = reportData.summary?.averageMargin || 0
 
-      const expenseBreakdown: ProfitBreakdown[] = [
+      // Legacy expense breakdown format (keeping for compatibility)
+      const expenseBreakdownOld: ProfitBreakdown[] = [
         {
           category: 'Staff Salaries',
           amount: totalExpenses * 0.35,
@@ -309,17 +290,17 @@ export default function ProfitReportsPage() {
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
-      case 'UP': return <TrendingUp className="h-4 w-4 text-green-500" />
-      case 'DOWN': return <TrendingDown className="h-4 w-4 text-red-500" />
-      default: return <div className="h-4 w-4 bg-gray-400 rounded-full" />
+      case 'UP': return <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
+      case 'DOWN': return <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
+      default: return <div className="h-4 w-4 bg-muted-foreground rounded-full" />
     }
   }
 
   const getTrendColor = (trend: string) => {
     switch (trend) {
-      case 'UP': return 'text-green-600'
-      case 'DOWN': return 'text-red-600'
-      default: return 'text-gray-600'
+      case 'UP': return 'text-green-600 dark:text-green-400'
+      case 'DOWN': return 'text-red-600 dark:text-red-400'
+      default: return 'text-muted-foreground'
     }
   }
 
@@ -335,7 +316,7 @@ export default function ProfitReportsPage() {
       key: 'amount' as keyof ProfitBreakdown,
       title: 'Amount',
       render: (value: unknown) => (
-        <span className="font-mono font-semibold text-green-600">
+        <span className="font-mono font-semibold text-green-600 dark:text-green-400">
           Rs. {Math.floor(value as number).toLocaleString()}
         </span>
       )
@@ -373,7 +354,7 @@ export default function ProfitReportsPage() {
       key: 'amount' as keyof ProfitBreakdown,
       title: 'Amount',
       render: (value: unknown) => (
-        <span className="font-mono font-semibold text-red-600">
+        <span className="font-mono font-semibold text-red-600 dark:text-red-400">
           Rs. {Math.floor(value as number).toLocaleString()}
         </span>
       )
@@ -401,7 +382,7 @@ export default function ProfitReportsPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-gray-900">Profit Reports</h1>
+      <h1 className="text-3xl font-bold text-foreground">Profit Reports</h1>
 
       {error && (
         <Alert variant="destructive">
@@ -499,13 +480,13 @@ export default function ProfitReportsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-green-600">Total Revenue</CardTitle>
+                <CardTitle className="text-sm font-medium text-green-600 dark:text-green-400">Total Revenue</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-700">
                   Rs. {profitReport.totalRevenue.toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-muted-foreground">
                   Daily avg: Rs. {Math.floor(profitReport.totalRevenue / profitReport.dailyData.length).toLocaleString()}
                 </div>
               </CardContent>
@@ -513,13 +494,13 @@ export default function ProfitReportsPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-red-600">Total Expenses</CardTitle>
+                <CardTitle className="text-sm font-medium text-red-600 dark:text-red-400">Total Expenses</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-700">
                   Rs. {profitReport.totalExpenses.toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-muted-foreground">
                   {((profitReport.totalExpenses / profitReport.totalRevenue) * 100).toFixed(1)}% of revenue
                 </div>
               </CardContent>
@@ -527,13 +508,13 @@ export default function ProfitReportsPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-blue-600">Net Profit</CardTitle>
+                <CardTitle className="text-sm font-medium text-blue-600 dark:text-blue-400">Net Profit</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className={`text-2xl font-bold ${profitReport.totalProfit >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
                   Rs. {profitReport.totalProfit.toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-muted-foreground">
                   {profitReport.averageMargin.toFixed(1)}% margin
                 </div>
               </CardContent>
@@ -541,13 +522,13 @@ export default function ProfitReportsPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-purple-600">Growth</CardTitle>
+                <CardTitle className="text-sm font-medium text-purple-600 dark:text-purple-400">Growth</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className={`text-2xl font-bold ${profitReport.profitGrowth >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                   {profitReport.profitGrowth >= 0 ? '+' : ''}{profitReport.profitGrowth.toFixed(1)}%
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-muted-foreground">
                   vs previous month
                 </div>
               </CardContent>
@@ -610,7 +591,7 @@ export default function ProfitReportsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-green-600">Best Performing Day</CardTitle>
+                <CardTitle className="text-green-600 dark:text-green-400">Best Performing Day</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
@@ -620,15 +601,15 @@ export default function ProfitReportsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span>Revenue:</span>
-                    <span className="font-mono text-green-600">Rs. {profitReport.bestDay.revenue.toLocaleString()}</span>
+                    <span className="font-mono text-green-600 dark:text-green-400">Rs. {profitReport.bestDay.revenue.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Expenses:</span>
-                    <span className="font-mono text-red-600">Rs. {profitReport.bestDay.expenses.toLocaleString()}</span>
+                    <span className="font-mono text-red-600 dark:text-red-400">Rs. {profitReport.bestDay.expenses.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between border-t pt-2">
                     <span className="font-semibold">Profit:</span>
-                    <span className="font-mono font-bold text-blue-600">Rs. {profitReport.bestDay.profit.toLocaleString()}</span>
+                    <span className="font-mono font-bold text-blue-600 dark:text-blue-400">Rs. {profitReport.bestDay.profit.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Margin:</span>
@@ -640,7 +621,7 @@ export default function ProfitReportsPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-red-600">Lowest Performing Day</CardTitle>
+                <CardTitle className="text-red-600 dark:text-red-400">Lowest Performing Day</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
@@ -650,15 +631,15 @@ export default function ProfitReportsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span>Revenue:</span>
-                    <span className="font-mono text-green-600">Rs. {profitReport.worstDay.revenue.toLocaleString()}</span>
+                    <span className="font-mono text-green-600 dark:text-green-400">Rs. {profitReport.worstDay.revenue.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Expenses:</span>
-                    <span className="font-mono text-red-600">Rs. {profitReport.worstDay.expenses.toLocaleString()}</span>
+                    <span className="font-mono text-red-600 dark:text-red-400">Rs. {profitReport.worstDay.expenses.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between border-t pt-2">
                     <span className="font-semibold">Profit:</span>
-                    <span className="font-mono font-bold text-blue-600">Rs. {profitReport.worstDay.profit.toLocaleString()}</span>
+                    <span className="font-mono font-bold text-blue-600 dark:text-blue-400">Rs. {profitReport.worstDay.profit.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Margin:</span>

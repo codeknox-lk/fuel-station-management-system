@@ -2,666 +2,707 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { FormCard } from '@/components/ui/FormCard'
+import { useStation } from '@/contexts/StationContext'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { DateTimePicker } from '@/components/inputs/DateTimePicker'
-import { MoneyInput } from '@/components/inputs/MoneyInput'
-import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { MoneyInput } from '@/components/inputs/MoneyInput'
 import { 
-  Building2, 
+  CreditCard,
   DollarSign, 
-  Calendar, 
   User,
-  Users,
+  Building2,
+  Calendar,
+  CheckCircle,
   AlertCircle, 
-  CheckCircle, 
-  Plus,
-  Clock,
-  FileText,
-  Banknote
+  RefreshCw,
+  Eye
 } from 'lucide-react'
 
-interface Station {
+interface PumperLoan {
+  id: string
+  pumperName: string
+  amount: number
+  paidAmount?: number
+  monthlyRental?: number
+  reason: string
+  givenBy?: string
+  dueDate: string
+  status: 'ACTIVE' | 'PAID' | 'OVERDUE'
+  createdAt: string
+  station?: {
   id: string
   name: string
-  city: string
-}
-
-interface Pumper {
-  id: string
-  name: string
-  stationId: string
-  status: 'ACTIVE' | 'INACTIVE'
+  }
 }
 
 interface ExternalLoan {
   id: string
-  stationId: string
-  stationName?: string
-  lenderName: string
+  borrowerName: string
   amount: number
-  loanDate: string
-  notes?: string
-  approvedBy: string
+  dueDate: string
   status: 'ACTIVE' | 'PAID' | 'OVERDUE'
-  recordedBy: string
   createdAt: string
+  station?: {
+    id: string
+    name: string
+  }
 }
 
-interface PumperLoan {
+interface LoanPayment {
   id: string
-  pumperId: string
-  pumperName?: string
-  stationId: string
-  stationName?: string
   amount: number
-  loanDate: string
-  notes?: string
-  status: 'ACTIVE' | 'PAID' | 'OVERDUE'
-  recordedBy: string
-  createdAt: string
+  description: string
+  performedBy: string
+  timestamp: string
+  balanceAfter: number
 }
 
 export default function LoansPage() {
   const router = useRouter()
-  const [stations, setStations] = useState<Station[]>([])
-  const [pumpers, setPumpers] = useState<Pumper[]>([])
-  const [externalLoans, setExternalLoans] = useState<ExternalLoan[]>([])
-  const [pumperLoans, setPumperLoans] = useState<PumperLoan[]>([])
+  const { selectedStation } = useStation()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  // External loan form state
-  const [extSelectedStation, setExtSelectedStation] = useState('')
-  const [lenderName, setLenderName] = useState('')
-  const [extAmount, setExtAmount] = useState('')
-  const [extLoanDate, setExtLoanDate] = useState<Date>(new Date())
-  const [extNotes, setExtNotes] = useState('')
-  const [extApprovedBy, setExtApprovedBy] = useState('')
+  const [pumperLoans, setPumperLoans] = useState<PumperLoan[]>([])
+  const [externalLoans, setExternalLoans] = useState<ExternalLoan[]>([])
+  const [selectedLoan, setSelectedLoan] = useState<{ id: string; type: 'PUMPER' | 'EXTERNAL'; name: string } | null>(null)
+  const [loanPayments, setLoanPayments] = useState<LoanPayment[]>([])
+  const [paymentsDialogOpen, setPaymentsDialogOpen] = useState(false)
 
-  // Pumper loan form state
-  const [pumpSelectedStation, setPumpSelectedStation] = useState('')
-  const [selectedPumper, setSelectedPumper] = useState('')
-  const [pumpAmount, setPumpAmount] = useState('')
-  const [pumpLoanDate, setPumpLoanDate] = useState<Date>(new Date())
-  const [pumpNotes, setPumpNotes] = useState('')
+  // Payment dialog state
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
+  const [selectedLoanForPayment, setSelectedLoanForPayment] = useState<{ id: string; type: 'PUMPER' | 'EXTERNAL'; name: string; amount: number; paidAmount?: number } | null>(null)
+  const [paymentAmount, setPaymentAmount] = useState<number | undefined>(undefined)
+  const [paymentNotes, setPaymentNotes] = useState('')
+  const [processingPayment, setProcessingPayment] = useState(false)
 
-  // Load initial data
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [stationsRes, pumpersRes, extLoansRes, pumpLoansRes] = await Promise.all([
-          fetch('/api/stations?active=true'),
-          fetch('/api/pumpers'),
-          fetch('/api/loans/external?limit=10'),
-          fetch('/api/loans/pumper?limit=10')
-        ])
-
-        const stationsData = await stationsRes.json()
-        const pumpersData = await pumpersRes.json()
-        const extLoansData = await extLoansRes.json()
-        const pumpLoansData = await pumpLoansRes.json()
-
-        setStations(stationsData)
-        setPumpers(pumpersData)
-        setExternalLoans(extLoansData)
-        setPumperLoans(pumpLoansData)
-      } catch (err) {
-        setError('Failed to load initial data')
-      }
+    if (selectedStation) {
+      fetchAllLoans()
     }
+  }, [selectedStation])
 
-    loadData()
-  }, [])
-
-  // Filter pumpers by selected station
-  const availablePumpers = pumpers.filter(pumper => 
-    pumper.stationId === pumpSelectedStation && pumper.status === 'ACTIVE'
-  )
-
-  const handleExternalLoanSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!extSelectedStation || !lenderName || !extAmount || !extApprovedBy) {
-      setError('Please fill in all required fields for external loan')
-      return
-    }
-
-    const amountValue = parseFloat(extAmount)
-    if (amountValue <= 0) {
-      setError('Amount must be greater than 0')
-      return
-    }
-
-    setLoading(true)
-    setError('')
-    setSuccess('')
+  const fetchAllLoans = async () => {
+    if (!selectedStation) return
 
     try {
-      const response = await fetch('/api/loans/external', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          stationId: extSelectedStation,
-          lenderName,
-          amount: amountValue,
-          loanDate: extLoanDate.toISOString(),
-          notes: extNotes || undefined,
-          approvedBy: extApprovedBy,
-          recordedBy: 'Current User' // In real app, get from auth context
-        })
-      })
+    setLoading(true)
+    setError('')
+      
+      const [pumperRes, externalRes] = await Promise.all([
+        fetch(`/api/loans/pumper?stationId=${selectedStation}`),
+        fetch(`/api/loans/external?stationId=${selectedStation}`)
+      ])
 
-      if (!response.ok) {
-        throw new Error('Failed to record external loan')
+      if (pumperRes.ok) {
+        const pumperData = await pumperRes.json()
+        setPumperLoans(pumperData)
       }
 
-      const newLoan = await response.json()
-      
-      // Add to external loans list
-      setExternalLoans(prev => [newLoan, ...prev.slice(0, 9)])
-      
-      // Reset form
-      setExtSelectedStation('')
-      setLenderName('')
-      setExtAmount('')
-      setExtLoanDate(new Date())
-      setExtNotes('')
-      setExtApprovedBy('')
-      
-      setSuccess('External loan recorded successfully!')
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(''), 3000)
-
+      if (externalRes.ok) {
+        const externalData = await externalRes.json()
+        setExternalLoans(externalData)
+      }
     } catch (err) {
-      setError('Failed to record external loan')
+      console.error('Error fetching loans:', err)
+      setError('Failed to fetch loans')
     } finally {
       setLoading(false)
     }
   }
 
-  const handlePumperLoanSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const fetchLoanPayments = async (loanId: string, loanType: 'PUMPER' | 'EXTERNAL') => {
+    try {
+      const res = await fetch(`/api/loans/payments?stationId=${selectedStation}&loanId=${loanId}&loanType=${loanType}`)
+      if (res.ok) {
+        const data = await res.json()
+        setLoanPayments(data)
+      }
+    } catch (err) {
+      console.error('Error fetching loan payments:', err)
+    }
+  }
+
+  const handleViewPayments = (loan: PumperLoan | ExternalLoan, type: 'PUMPER' | 'EXTERNAL') => {
+    const loanName = type === 'PUMPER' ? (loan as PumperLoan).pumperName : (loan as ExternalLoan).borrowerName
+    setSelectedLoan({ id: loan.id, type, name: loanName })
+    fetchLoanPayments(loan.id, type)
+    setPaymentsDialogOpen(true)
+  }
+
+  const handlePayLoan = (loan: PumperLoan | ExternalLoan, type: 'PUMPER' | 'EXTERNAL') => {
+    const loanName = type === 'PUMPER' ? (loan as PumperLoan).pumperName : (loan as ExternalLoan).borrowerName
+    const pumperLoan = loan as PumperLoan
+    const paidAmount = type === 'PUMPER' ? (pumperLoan.paidAmount || 0) : undefined
+    const remainingAmount = type === 'PUMPER' ? (pumperLoan.amount - paidAmount) : loan.amount
     
-    if (!selectedPumper || !pumpAmount) {
-      setError('Please fill in all required fields for pumper loan')
+    setSelectedLoanForPayment({ 
+      id: loan.id, 
+      type, 
+      name: loanName, 
+      amount: loan.amount,
+      paidAmount: paidAmount
+    })
+    // Default to remaining amount if there's a remaining balance, otherwise allow full amount
+    setPaymentAmount(remainingAmount > 0 ? remainingAmount : undefined)
+    setPaymentNotes('')
+    setPaymentDialogOpen(true)
+  }
+
+  const handleProcessPayment = async () => {
+    if (!selectedLoanForPayment || paymentAmount === undefined || paymentAmount <= 0) {
+      setError('Please enter a valid payment amount')
       return
     }
 
-    const amountValue = parseFloat(pumpAmount)
-    if (amountValue <= 0) {
-      setError('Amount must be greater than 0')
+    if (!selectedStation) {
+      setError('Please select a station')
       return
     }
-
-    setLoading(true)
-    setError('')
-    setSuccess('')
 
     try {
-      const response = await fetch('/api/loans/pumper', {
+      setProcessingPayment(true)
+    setError('')
+      
+      const username = typeof window !== 'undefined' ? localStorage.getItem('username') || 'System' : 'System'
+      
+      let res
+      if (selectedLoanForPayment.type === 'PUMPER') {
+        res = await fetch(`/api/loans/pumper/${selectedLoanForPayment.id}/pay`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          pumperId: selectedPumper,
-          amount: amountValue,
-          loanDate: pumpLoanDate.toISOString(),
-          notes: pumpNotes || undefined,
-          recordedBy: 'Current User' // In real app, get from auth context
+            stationId: selectedStation,
+            amount: paymentAmount,
+            notes: paymentNotes || undefined,
+            performedBy: username
+          })
         })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to record pumper loan')
+      } else {
+        // External loan payment - need to create endpoint
+        setError('External loan payment not yet implemented')
+        return
       }
 
-      const newLoan = await response.json()
-      
-      // Add to pumper loans list
-      setPumperLoans(prev => [newLoan, ...prev.slice(0, 9)])
-      
-      // Reset form
-      setPumpSelectedStation('')
-      setSelectedPumper('')
-      setPumpAmount('')
-      setPumpLoanDate(new Date())
-      setPumpNotes('')
-      
-      setSuccess('Pumper loan recorded successfully!')
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(''), 3000)
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to process loan payment')
+      }
 
+      await fetchAllLoans()
+      
+      setPaymentDialogOpen(false)
+      setSelectedLoanForPayment(null)
+      setPaymentAmount(undefined)
+      setPaymentNotes('')
+      setSuccess('Loan payment processed successfully! Money has been added to safe.')
+      setTimeout(() => {
+        setSuccess('')
+      }, 5000)
     } catch (err) {
-      setError('Failed to record pumper loan')
+      setSuccess('')
+      setError(err instanceof Error ? err.message : 'Failed to process loan payment')
+      setTimeout(() => {
+        setError('')
+      }, 5000)
     } finally {
-      setLoading(false)
+      setProcessingPayment(false)
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'PAID': return 'bg-green-100 text-green-800'
-      case 'ACTIVE': return 'bg-blue-100 text-blue-800'
-      case 'OVERDUE': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
+  const activePumperLoans = pumperLoans.filter(l => l.status === 'ACTIVE')
+  const paidPumperLoans = pumperLoans.filter(l => l.status === 'PAID')
+  const activeExternalLoans = externalLoans.filter(l => l.status === 'ACTIVE')
+  const paidExternalLoans = externalLoans.filter(l => l.status === 'PAID')
 
-  const externalLoanColumns: Column<ExternalLoan>[] = [
-    {
-      key: 'loanDate' as keyof ExternalLoan,
-      title: 'Date',
-      render: (value: unknown) => (
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-gray-500" />
-          <span className="text-sm">
-            {new Date(value as string).toLocaleDateString()}
-          </span>
-        </div>
-      )
-    },
-    {
-      key: 'stationName' as keyof ExternalLoan,
-      title: 'Station',
-      render: (value: unknown, row: ExternalLoan) => {
-        const station = stations.find(s => s.id === row.stationId)
-        return (
-          <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-gray-500" />
-            <span className="font-medium">{station?.name || (value as string)}</span>
-          </div>
-        )
-      }
-    },
-    {
-      key: 'lenderName' as keyof ExternalLoan,
-      title: 'Lender',
-      render: (value: unknown) => (
-        <div className="flex items-center gap-2">
-          <User className="h-4 w-4 text-gray-500" />
-          <span className="font-medium">{value as string}</span>
-        </div>
-      )
-    },
-    {
-      key: 'amount' as keyof ExternalLoan,
-      title: 'Amount',
-      render: (value: unknown) => (
-        <div className="flex items-center gap-2">
-          <DollarSign className="h-4 w-4 text-blue-500" />
-          <span className="font-mono font-semibold text-blue-700">
-            Rs. {(value as number)?.toLocaleString() || 0}
-          </span>
-        </div>
-      )
-    },
-    {
-      key: 'approvedBy' as keyof ExternalLoan,
-      title: 'Approved By',
-      render: (value: unknown) => (
-        <span className="text-sm text-gray-600">{value as string}</span>
-      )
-    },
-    {
-      key: 'status' as keyof ExternalLoan,
-      title: 'Status',
-      render: (value: unknown) => (
-        <Badge className={getStatusColor(value as string)}>
-          {value as string}
-        </Badge>
-      )
-    },
-    {
-      key: 'notes' as keyof ExternalLoan,
-      title: 'Notes',
-      render: (value: unknown) => (
-        <span className="text-sm text-gray-600 max-w-xs truncate">
-          {value as string || '-'}
-        </span>
-      )
-    }
-  ]
-
-  const pumperLoanColumns: Column<PumperLoan>[] = [
-    {
-      key: 'loanDate' as keyof PumperLoan,
-      title: 'Date',
-      render: (value: unknown) => (
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-gray-500" />
-          <span className="text-sm">
-            {new Date(value as string).toLocaleDateString()}
-          </span>
-        </div>
-      )
-    },
-    {
-      key: 'pumperName' as keyof PumperLoan,
-      title: 'Pumper',
-      render: (value: unknown, row: PumperLoan) => {
-        const pumper = pumpers.find(p => p.id === row.pumperId)
-        return (
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-gray-500" />
-            <span className="font-medium">{pumper?.name || (value as string)}</span>
-          </div>
-        )
-      }
-    },
-    {
-      key: 'stationName' as keyof PumperLoan,
-      title: 'Station',
-      render: (value: unknown, row: PumperLoan) => {
-        const station = stations.find(s => s.id === row.stationId)
-        return (
-          <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-gray-500" />
-            <span className="font-medium">{station?.name || (value as string)}</span>
-          </div>
-        )
-      }
-    },
-    {
-      key: 'amount' as keyof PumperLoan,
-      title: 'Amount',
-      render: (value: unknown) => (
-        <div className="flex items-center gap-2">
-          <DollarSign className="h-4 w-4 text-orange-500" />
-          <span className="font-mono font-semibold text-orange-700">
-            Rs. {(value as number)?.toLocaleString() || 0}
-          </span>
-        </div>
-      )
-    },
-    {
-      key: 'status' as keyof PumperLoan,
-      title: 'Status',
-      render: (value: unknown) => (
-        <Badge className={getStatusColor(value as string)}>
-          {value as string}
-        </Badge>
-      )
-    },
-    {
-      key: 'notes' as keyof PumperLoan,
-      title: 'Notes',
-      render: (value: unknown) => (
-        <span className="text-sm text-gray-600 max-w-xs truncate">
-          {value as string || '-'}
-        </span>
-      )
-    }
-  ]
+  const totalActivePumper = activePumperLoans.reduce((sum, l) => sum + l.amount, 0)
+  const totalActiveExternal = activeExternalLoans.reduce((sum, l) => sum + l.amount, 0)
+  const totalMonthlyRental = activePumperLoans.reduce((sum, l) => sum + (l.monthlyRental || 0), 0)
 
   return (
-    <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-gray-900">Loans Management</h1>
+    <div className="container mx-auto py-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Loans Management</h1>
+          <p className="text-muted-foreground mt-1">View and manage all loans and payments</p>
+        </div>
+        <Button onClick={fetchAllLoans} variant="outline" disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+          </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Active Pumper Loans</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{activePumperLoans.length}</div>
+            <div className="text-sm text-muted-foreground mt-1">
+              Rs. {totalActivePumper.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Rental</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">
+              Rs. {totalMonthlyRental.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Active External Loans</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{activeExternalLoans.length}</div>
+            <div className="text-sm text-muted-foreground mt-1">
+              Rs. {totalActiveExternal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Paid</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {paidPumperLoans.length + paidExternalLoans.length}
+          </div>
+            <div className="text-sm text-muted-foreground mt-1">Loans fully paid</div>
+          </CardContent>
+        </Card>
+          </div>
 
+      {/* Messages */}
       {success && (
-        <Alert>
-          <CheckCircle className="h-4 w-4" />
-          <AlertTitle>Success</AlertTitle>
-          <AlertDescription>{success}</AlertDescription>
-        </Alert>
+        <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+          <p className="text-sm text-green-600 font-medium">{success}</p>
+        </div>
+      )}
+      {error && (
+        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
       )}
 
-      <Tabs defaultValue="external" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="external" className="flex items-center gap-2">
-            <Banknote className="h-4 w-4" />
-            External Loans
+      {/* Loans Tabs */}
+      <Tabs defaultValue="pumper" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="pumper">
+            Pumper Loans ({pumperLoans.length})
           </TabsTrigger>
-          <TabsTrigger value="pumper" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Pumper Loans
+          <TabsTrigger value="external">
+            External Loans ({externalLoans.length})
           </TabsTrigger>
         </TabsList>
 
-        {/* External Loans Tab */}
-        <TabsContent value="external" className="space-y-6">
-          <FormCard title="Record External Loan">
-            <form onSubmit={handleExternalLoanSubmit} className="space-y-6">
-              {/* Station and Lender */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="extStation">Station *</Label>
-                  <Select value={extSelectedStation} onValueChange={setExtSelectedStation} disabled={loading}>
-                    <SelectTrigger id="extStation">
-                      <SelectValue placeholder="Select a station" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {stations.map((station) => (
-                        <SelectItem key={station.id} value={station.id}>
-                          <div className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4" />
-                            {station.name} ({station.city})
-                          </div>
-                        </SelectItem>
+        {/* Pumper Loans */}
+        <TabsContent value="pumper" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Active Pumper Loans</CardTitle>
+              <CardDescription>Loans given to pumpers that are currently active</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+                </div>
+              ) : activePumperLoans.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CreditCard className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p>No active pumper loans</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Pumper</TableHead>
+                        <TableHead className="text-right">Loan Amount</TableHead>
+                        <TableHead className="text-right">Paid</TableHead>
+                        <TableHead className="text-right">Remaining</TableHead>
+                        <TableHead className="text-right">Monthly Rental</TableHead>
+                        <TableHead>Reason</TableHead>
+                        <TableHead>Given By</TableHead>
+                        <TableHead>Due Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {activePumperLoans.map((loan) => {
+                        const paidAmount = loan.paidAmount || 0
+                        const remainingAmount = loan.amount - paidAmount
+                        return (
+                          <TableRow key={loan.id}>
+                            <TableCell className="font-medium">{loan.pumperName}</TableCell>
+                            <TableCell className="text-right font-mono">
+                              Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-green-600">
+                              Rs. {paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </TableCell>
+                            <TableCell className="text-right font-mono font-semibold text-orange-600">
+                              Rs. {remainingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              Rs. {(loan.monthlyRental || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </TableCell>
+                            <TableCell className="max-w-xs truncate" title={loan.reason}>
+                              {loan.reason}
+                            </TableCell>
+                            <TableCell>{loan.givenBy || '-'}</TableCell>
+                            <TableCell>{new Date(loan.dueDate).toLocaleDateString()}</TableCell>
+                            <TableCell>
+                              <Badge variant={loan.status === 'ACTIVE' ? 'default' : loan.status === 'PAID' ? 'secondary' : 'destructive'}>
+                                {loan.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleViewPayments(loan, 'PUMPER')}
+                                >
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  Payments
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={() => handlePayLoan(loan, 'PUMPER')}
+                                >
+                                  <DollarSign className="h-4 w-4 mr-1" />
+                                  Pay
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {paidPumperLoans.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Paid Pumper Loans</CardTitle>
+                <CardDescription>Loans that have been fully paid</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Pumper</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-right">Monthly Rental</TableHead>
+                        <TableHead>Reason</TableHead>
+                        <TableHead>Given By</TableHead>
+                        <TableHead>Due Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paidPumperLoans.map((loan) => (
+                        <TableRow key={loan.id}>
+                          <TableCell className="font-medium">{loan.pumperName}</TableCell>
+                          <TableCell className="text-right font-mono">
+                            Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            Rs. {(loan.monthlyRental || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell className="max-w-xs truncate" title={loan.reason}>
+                            {loan.reason}
+                          </TableCell>
+                          <TableCell>{loan.givenBy || '-'}</TableCell>
+                          <TableCell>{new Date(loan.dueDate).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{loan.status}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleViewPayments(loan, 'PUMPER')}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Payments
+                            </Button>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </TableBody>
+                  </Table>
                 </div>
-
-                <div>
-                  <Label htmlFor="lenderName">Lender Name *</Label>
-                  <Input
-                    id="lenderName"
-                    value={lenderName}
-                    onChange={(e) => setLenderName(e.target.value)}
-                    placeholder="Bank/Individual/Company name"
-                    disabled={loading}
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Amount and Approved By */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="extAmount">Loan Amount (Rs.) *</Label>
-                  <MoneyInput
-                    id="extAmount"
-                    value={extAmount}
-                    onChange={setExtAmount}
-                    placeholder="0.00"
-                    disabled={loading}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="extApprovedBy">Approved By *</Label>
-                  <Input
-                    id="extApprovedBy"
-                    value={extApprovedBy}
-                    onChange={(e) => setExtApprovedBy(e.target.value)}
-                    placeholder="Owner/Manager name"
-                    disabled={loading}
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Date and Notes */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="extLoanDate">Loan Date *</Label>
-                  <DateTimePicker
-                    value={extLoanDate}
-                    onChange={setExtLoanDate}
-                    disabled={loading}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="extNotes">Notes</Label>
-                  <Input
-                    id="extNotes"
-                    value={extNotes}
-                    onChange={(e) => setExtNotes(e.target.value)}
-                    placeholder="Purpose, terms, or other details..."
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-4">
-                <Button type="button" variant="outline" disabled={loading}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={loading}>
-                  {loading ? 'Recording...' : (
-                    <>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Record External Loan
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </FormCard>
-
-          <FormCard title="Recent External Loans" className="p-6">
-            <DataTable
-              data={externalLoans}
-              columns={externalLoanColumns}
-              searchPlaceholder="Search external loans..."
-              emptyMessage="No external loans recorded yet."
-            />
-          </FormCard>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
-        {/* Pumper Loans Tab */}
-        <TabsContent value="pumper" className="space-y-6">
-          <FormCard title="Record Pumper Loan">
-            <form onSubmit={handlePumperLoanSubmit} className="space-y-6">
-              {/* Station and Pumper */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="pumpStation">Station *</Label>
-                  <Select value={pumpSelectedStation} onValueChange={setPumpSelectedStation} disabled={loading}>
-                    <SelectTrigger id="pumpStation">
-                      <SelectValue placeholder="Select a station" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {stations.map((station) => (
-                        <SelectItem key={station.id} value={station.id}>
-                          <div className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4" />
-                            {station.name} ({station.city})
-                          </div>
-                        </SelectItem>
+        {/* External Loans */}
+        <TabsContent value="external" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Active External Loans</CardTitle>
+              <CardDescription>Loans given to external parties that are currently active</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+                </div>
+              ) : activeExternalLoans.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CreditCard className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p>No active external loans</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Borrower</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>Due Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {activeExternalLoans.map((loan) => (
+                        <TableRow key={loan.id}>
+                          <TableCell className="font-medium">{loan.borrowerName}</TableCell>
+                          <TableCell className="text-right font-mono">
+                            Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell>{new Date(loan.dueDate).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            <Badge variant={loan.status === 'ACTIVE' ? 'default' : loan.status === 'PAID' ? 'secondary' : 'destructive'}>
+                              {loan.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleViewPayments(loan, 'EXTERNAL')}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                Payments
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => handlePayLoan(loan, 'EXTERNAL')}
+                              >
+                                <DollarSign className="h-4 w-4 mr-1" />
+                                Pay
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </TableBody>
+                  </Table>
                 </div>
+              )}
+            </CardContent>
+          </Card>
 
-                <div>
-                  <Label htmlFor="pumper">Pumper *</Label>
-                  <Select value={selectedPumper} onValueChange={setSelectedPumper} disabled={loading || !pumpSelectedStation}>
-                    <SelectTrigger id="pumper">
-                      <SelectValue placeholder="Select a pumper" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availablePumpers.map((pumper) => (
-                        <SelectItem key={pumper.id} value={pumper.id}>
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4" />
-                            {pumper.name}
-                          </div>
-                        </SelectItem>
+          {paidExternalLoans.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Paid External Loans</CardTitle>
+                <CardDescription>External loans that have been fully paid</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Borrower</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>Due Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paidExternalLoans.map((loan) => (
+                        <TableRow key={loan.id}>
+                          <TableCell className="font-medium">{loan.borrowerName}</TableCell>
+                          <TableCell className="text-right font-mono">
+                            Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell>{new Date(loan.dueDate).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{loan.status}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleViewPayments(loan, 'EXTERNAL')}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Payments
+                            </Button>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </TableBody>
+                  </Table>
                 </div>
-              </div>
-
-              {/* Amount and Date */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="pumpAmount">Loan Amount (Rs.) *</Label>
-                  <MoneyInput
-                    id="pumpAmount"
-                    value={pumpAmount}
-                    onChange={setPumpAmount}
-                    placeholder="0.00"
-                    disabled={loading}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="pumpLoanDate">Loan Date *</Label>
-                  <DateTimePicker
-                    value={pumpLoanDate}
-                    onChange={setPumpLoanDate}
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-
-              {/* Notes */}
-              <div>
-                <Label htmlFor="pumpNotes">Notes</Label>
-                <Input
-                  id="pumpNotes"
-                  value={pumpNotes}
-                  onChange={(e) => setPumpNotes(e.target.value)}
-                  placeholder="Purpose, repayment terms, or other details..."
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="flex justify-end gap-4">
-                <Button type="button" variant="outline" disabled={loading}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={loading}>
-                  {loading ? 'Recording...' : (
-                    <>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Record Pumper Loan
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </FormCard>
-
-          <FormCard title="Recent Pumper Loans" className="p-6">
-            <DataTable
-              data={pumperLoans}
-              columns={pumperLoanColumns}
-              searchPlaceholder="Search pumper loans..."
-              emptyMessage="No pumper loans recorded yet."
-            />
-          </FormCard>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
+
+      {/* Payment History Dialog */}
+      <Dialog open={paymentsDialogOpen} onOpenChange={setPaymentsDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Payment History - {selectedLoan?.name}</DialogTitle>
+            <DialogDescription>
+              All payments made for this loan
+            </DialogDescription>
+          </DialogHeader>
+          {loanPayments.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <DollarSign className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <p>No payments recorded for this loan</p>
+                </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Paid By</TableHead>
+                  <TableHead>Balance After</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loanPayments.map((payment) => (
+                  <TableRow key={payment.id}>
+                    <TableCell>{new Date(payment.timestamp).toLocaleString()}</TableCell>
+                    <TableCell className="font-mono font-semibold text-green-600">
+                      Rs. {payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </TableCell>
+                    <TableCell>{payment.description}</TableCell>
+                    <TableCell>{payment.performedBy}</TableCell>
+                    <TableCell className="font-mono">
+                      Rs. {payment.balanceAfter.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Dialog */}
+      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Pay Loan - {selectedLoanForPayment?.name}</DialogTitle>
+            <DialogDescription>
+              Record a loan payment. This will add money to the safe and update the loan status.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedLoanForPayment && (
+            <div className="space-y-4 py-4">
+              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <div className="text-sm font-medium mb-2">Loan Details</div>
+                <div className="text-sm space-y-1 text-muted-foreground">
+                  <div>Loan Amount: Rs. {selectedLoanForPayment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  {selectedLoanForPayment.paidAmount !== undefined && (
+                    <>
+                      <div>Paid: Rs. {selectedLoanForPayment.paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                      <div>Remaining: Rs. {(selectedLoanForPayment.amount - (selectedLoanForPayment.paidAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    </>
+                  )}
+                  <div>Loan Type: {selectedLoanForPayment.type === 'PUMPER' ? 'Pumper Loan' : 'External Loan'}</div>
+                </div>
+              </div>
+                <div>
+                <Label>Payment Amount (Rs.)</Label>
+                  <MoneyInput
+                  value={paymentAmount}
+                  onChange={(value) => setPaymentAmount(value)}
+                  placeholder="Enter payment amount"
+                />
+                {selectedLoanForPayment.paidAmount !== undefined && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Remaining: Rs. {(selectedLoanForPayment.amount - (selectedLoanForPayment.paidAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                )}
+                {selectedLoanForPayment.paidAmount === undefined && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Full amount: Rs. {selectedLoanForPayment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label>Notes (Optional)</Label>
+                <Textarea
+                  value={paymentNotes}
+                  onChange={(e) => setPaymentNotes(e.target.value)}
+                  placeholder="Add any notes about this payment"
+                  rows={3}
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setPaymentDialogOpen(false)
+                    setSelectedLoanForPayment(null)
+                    setPaymentAmount(undefined)
+                    setPaymentNotes('')
+                  }}
+                  disabled={processingPayment}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleProcessPayment}
+                  disabled={processingPayment || paymentAmount === undefined || paymentAmount <= 0}
+                >
+                  {processingPayment ? 'Processing...' : 'Pay Loan'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
-

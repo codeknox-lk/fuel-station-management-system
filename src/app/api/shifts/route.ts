@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getShifts, getShiftsByStationId, getActiveShifts, getShiftById, createShift, getAssignmentsByShiftId } from '@/data/shifts.seed'
-import { getStationById } from '@/data/stations.seed'
+import { prisma } from '@/lib/db'
 import { auditOperations } from '@/lib/auditMiddleware'
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('=== SHIFTS API GET REQUEST ===')
     const { searchParams } = new URL(request.url)
     const stationId = searchParams.get('stationId')
     const active = searchParams.get('active')
@@ -16,138 +14,300 @@ export async function GET(request: NextRequest) {
     const openedBy = searchParams.get('openedBy')
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '50')
-    
-    console.log('Request params:', { stationId, active, id, status, startDate, endDate, openedBy, page, limit })
 
     if (id) {
-      console.log('Looking for shift with ID:', id)
-      const shift = getShiftById(id)
-      console.log('Found shift:', shift)
+      const shift = await prisma.shift.findUnique({
+        where: { id },
+        include: {
+          station: {
+            select: {
+              id: true,
+              name: true,
+              city: true
+            }
+          },
+          template: {
+            select: {
+              id: true,
+              name: true,
+              startTime: true,
+              endTime: true
+            }
+          },
+          assignments: {
+            include: {
+              nozzle: {
+                select: {
+                  id: true,
+                  nozzleNumber: true
+                }
+              }
+            }
+          },
+          _count: {
+            select: {
+              assignments: true
+            }
+          }
+        }
+      })
+      
       if (!shift) {
         return NextResponse.json({ error: 'Shift not found' }, { status: 404 })
       }
+      
       return NextResponse.json(shift)
     }
 
-    // Get base shifts data
-    let shifts = getShifts()
-
-    // Apply filters
+    // Build where clause
+    const where: any = {}
     if (stationId) {
-      shifts = shifts.filter(shift => shift.stationId === stationId)
+      where.stationId = stationId
     }
-
     if (active === 'true') {
-      shifts = shifts.filter(shift => shift.status === 'OPEN')
+      where.status = 'OPEN'
     }
-
     if (status) {
-      shifts = shifts.filter(shift => shift.status === status)
+      where.status = status
     }
-
     if (openedBy) {
-      shifts = shifts.filter(shift => 
-        shift.openedBy.toLowerCase().includes(openedBy.toLowerCase())
-      )
-    }
-
-    if (startDate) {
-      const start = new Date(startDate)
-      shifts = shifts.filter(shift => new Date(shift.startTime) >= start)
-    }
-
-    if (endDate) {
-      const end = new Date(endDate)
-      shifts = shifts.filter(shift => new Date(shift.startTime) <= end)
-    }
-
-    // Sort by start time (newest first)
-    shifts.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
-
-    // Add assignment counts to each shift, use stored statistics if available
-    const shiftsWithStats = shifts.map(shift => {
-      const assignments = getAssignmentsByShiftId(shift.id)
-      
-      // If shift is closed but doesn't have statistics, calculate them
-      if (shift.status === 'CLOSED' && !shift.statistics) {
-        const totalLiters = assignments.reduce((sum, assignment) => {
-          if (assignment.endMeterReading && assignment.startMeterReading) {
-            return sum + (assignment.endMeterReading - assignment.startMeterReading)
-          }
-          return sum
-        }, 0)
-        
-        const totalSales = assignments.reduce((sum, assignment) => {
-          if (assignment.endMeterReading && assignment.startMeterReading) {
-            const litersSold = assignment.endMeterReading - assignment.startMeterReading
-            return sum + (litersSold * 470) // Rs. 470 per liter
-          }
-          return sum
-        }, 0)
-        
-        const durationHours = shift.endTime ? 
-          (new Date(shift.endTime).getTime() - new Date(shift.startTime).getTime()) / (1000 * 60 * 60) : 0
-        
-        return {
-          ...shift,
-          statistics: {
-            durationHours: Math.round(durationHours * 100) / 100,
-            totalSales: Math.round(totalSales),
-            totalLiters: Math.round(totalLiters * 100) / 100,
-            averagePricePerLiter: totalLiters > 0 ? Math.round((totalSales / totalLiters) * 100) / 100 : 0,
-            assignmentCount: assignments.length,
-            closedAssignments: assignments.filter(a => a.status === 'CLOSED').length
-          }
-        }
+      where.openedBy = {
+        contains: openedBy,
+        mode: 'insensitive'
       }
-      
-      return {
-        ...shift,
-        statistics: shift.statistics || {
-          assignmentCount: assignments.length,
-          totalSales: 0, // Will be calculated when shift is closed
-          totalLiters: 0, // Will be calculated when shift is closed
-          durationHours: 0, // Will be calculated when shift is closed
-          averagePricePerLiter: 0,
-          closedAssignments: assignments.filter(a => a.status === 'CLOSED').length
+    }
+    if (startDate) {
+      where.startTime = {
+        gte: new Date(startDate)
+      }
+    }
+    if (endDate) {
+      where.startTime = {
+        ...where.startTime,
+        lte: new Date(endDate)
+      }
+    }
+
+    // Get total count for pagination
+    const total = await prisma.shift.count({ where })
+
+    // Get shifts with pagination
+    const shifts = await prisma.shift.findMany({
+      where,
+      include: {
+        station: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        template: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        _count: {
+          select: {
+            assignments: true
+          }
         }
+      },
+      orderBy: { startTime: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit
+    })
+
+    // Add assignment counts and statistics
+    const shiftsWithStats = await Promise.all(shifts.map(async (shift) => {
+      try {
+        const assignmentCount = await prisma.shiftAssignment.count({
+          where: { shiftId: shift.id }
+        })
+        
+        const closedAssignments = await prisma.shiftAssignment.count({
+          where: {
+            shiftId: shift.id,
+            status: 'CLOSED'
+          }
+        })
+
+        let statistics = shift.statistics as any
+        
+        // If shift is closed but doesn't have statistics, calculate them
+        if (shift.status === 'CLOSED' && !statistics) {
+          try {
+            const assignments = await prisma.shiftAssignment.findMany({
+              where: { shiftId: shift.id },
+              include: {
+                nozzle: {
+                  include: {
+                    tank: {
+                      select: {
+                        id: true,
+                        fuelType: true
+                      }
+                    }
+                  }
+                }
+              }
+            })
+
+            let totalLiters = 0
+            let totalSales = 0
+
+            for (const assignment of assignments) {
+              if (assignment.endMeterReading && assignment.startMeterReading) {
+                // Validate meter readings
+                if (assignment.endMeterReading < assignment.startMeterReading) {
+                  console.error(`Invalid meter reading for assignment ${assignment.id}: end (${assignment.endMeterReading}) < start (${assignment.startMeterReading})`)
+                  continue // Skip invalid assignments
+                }
+                
+                const litersSold = assignment.endMeterReading - assignment.startMeterReading
+                
+                // Validate non-negative liters
+                if (litersSold < 0) {
+                  console.error(`Negative liters calculated for assignment ${assignment.id}: ${litersSold}`)
+                  continue // Skip invalid assignments
+                }
+                
+                totalLiters += litersSold
+                
+                // Get price effective at shift start time (for consistency)
+                // Add null checks for nested properties
+                const fuelType = assignment.nozzle?.tank?.fuelType
+                if (fuelType) {
+                  try {
+                    const price = await prisma.price.findFirst({
+                      where: {
+                        fuelType,
+                        stationId: shift.stationId,
+                        effectiveDate: { lte: shift.startTime },
+                        isActive: true
+                      },
+                      orderBy: { effectiveDate: 'desc' }
+                    })
+                    
+                    const pricePerLiter = price ? price.price : 470 // Fallback price
+                    totalSales += litersSold * pricePerLiter
+                  } catch (priceError) {
+                    console.error(`Error fetching price for fuelType ${fuelType}:`, priceError)
+                    // Use fallback price
+                    totalSales += litersSold * 470
+                  }
+                } else {
+                  // Use fallback price if fuelType is not available
+                  totalSales += litersSold * 470
+                }
+              }
+            }
+
+            const durationHours = shift.endTime ? 
+              (shift.endTime.getTime() - shift.startTime.getTime()) / (1000 * 60 * 60) : 0
+
+            statistics = {
+              durationHours: Math.round(durationHours * 100) / 100,
+              totalSales: Math.round(totalSales),
+              totalLiters: Math.round(totalLiters * 100) / 100,
+              averagePricePerLiter: totalLiters > 0 ? Math.round((totalSales / totalLiters) * 100) / 100 : 0,
+              assignmentCount,
+              closedAssignments
+            }
+          } catch (calcError) {
+            console.error(`Error calculating statistics for shift ${shift.id}:`, calcError)
+            // Use default statistics on error
+            statistics = {
+              assignmentCount,
+              totalSales: 0,
+              totalLiters: 0,
+              durationHours: 0,
+              averagePricePerLiter: 0,
+              closedAssignments
+            }
+          }
+        } else {
+          statistics = statistics || {
+            assignmentCount,
+            totalSales: 0,
+            totalLiters: 0,
+            durationHours: 0,
+            averagePricePerLiter: 0,
+            closedAssignments
+          }
+        }
+
+          const shiftData: any = {
+            ...shift,
+            statistics
+          }
+
+          // Include assignments for active shifts when requested
+          if (active === 'true' && shift.status === 'OPEN') {
+            try {
+              const assignments = await prisma.shiftAssignment.findMany({
+                where: { shiftId: shift.id },
+                include: {
+                  nozzle: {
+                    include: {
+                      pump: {
+                        include: {
+                          tank: {
+                            select: {
+                              id: true,
+                              fuelType: true,
+                              capacity: true,
+                              currentLevel: true
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              })
+              shiftData.assignments = assignments
+            } catch (assignError) {
+              console.error(`Error fetching assignments for shift ${shift.id}:`, assignError)
+              shiftData.assignments = []
+            }
+          }
+
+          return shiftData
+        } catch (shiftError) {
+          console.error(`Error processing shift ${shift.id}:`, shiftError)
+          // Return shift with minimal data on error
+          return {
+            ...shift,
+            statistics: shift.statistics || {},
+            assignments: []
+          }
+        }
+      }))
+
+    // Calculate summary statistics
+    const allShifts = await prisma.shift.findMany({
+      where: {
+        ...(stationId ? { stationId } : {})
+      },
+      select: {
+        status: true,
+        startTime: true
       }
     })
 
-    // Pagination
-    const total = shiftsWithStats.length
-    const startIndex = (page - 1) * limit
-    const endIndex = startIndex + limit
-    const paginatedShifts = shiftsWithStats.slice(startIndex, endIndex)
-
-    // Calculate summary statistics
     const summary = {
       total,
-      active: shifts.filter(s => s.status === 'OPEN').length,
-      closed: shifts.filter(s => s.status === 'CLOSED').length,
-      today: shifts.filter(s => {
+      active: allShifts.filter(s => s.status === 'OPEN').length,
+      closed: allShifts.filter(s => s.status === 'CLOSED').length,
+      today: allShifts.filter(s => {
         const today = new Date().toDateString()
         return new Date(s.startTime).toDateString() === today
       }).length
     }
 
-    console.log('Filtered shifts:', paginatedShifts.length)
-    console.log('Summary:', summary)
-    
-    // Include assignments for active shifts when requested
-    const shiftsWithAssignments = paginatedShifts.map(shift => {
-      if (active === 'true' && shift.status === 'OPEN') {
-        const assignments = getAssignmentsByShiftId(shift.id)
-        return {
-          ...shift,
-          assignments: assignments
-        }
-      }
-      return shift
-    })
-
     return NextResponse.json({
-      shifts: shiftsWithAssignments,
+      shifts: shiftsWithStats,
       pagination: {
         page,
         limit,
@@ -158,7 +318,15 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error fetching shifts:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    // Log more details for debugging
+    if (error instanceof Error) {
+      console.error('Error message:', error.message)
+      console.error('Error stack:', error.stack)
+    }
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 
@@ -174,7 +342,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate station exists and is active
-    const station = getStationById(body.stationId)
+    const station = await prisma.station.findUnique({
+      where: { id: body.stationId }
+    })
     if (!station || !station.isActive) {
       return NextResponse.json({ 
         error: 'Station not found or inactive' 
@@ -182,46 +352,55 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate template exists
-    const { getShiftTemplateById } = await import('@/data/shiftTemplates.seed')
-    const template = getShiftTemplateById(body.templateId)
+    const template = await prisma.shiftTemplate.findUnique({
+      where: { id: body.templateId }
+    })
     if (!template) {
       return NextResponse.json({ 
         error: 'Shift template not found' 
       }, { status: 400 })
     }
 
-    // Note: Removed station-level shift overlap validation
-    // Multiple shifts can now run at the same station simultaneously
-    // Nozzle-level conflicts are handled in the frontend by filtering available nozzles
-
-    // Create the shift with validation
-    const newShift = createShift({
-      stationId: body.stationId,
-      templateId: body.templateId,
-      startTime: body.startTime,
-      openedBy: body.openedBy || 'System',
-      status: 'OPEN'
+    // Create the shift
+    const newShift = await prisma.shift.create({
+      data: {
+        stationId: body.stationId,
+        templateId: body.templateId,
+        startTime: new Date(body.startTime),
+        openedBy: body.openedBy || 'System',
+        status: 'OPEN'
+      },
+      include: {
+        station: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        template: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
     })
 
-    console.log('=== SHIFT CREATION DEBUG ===')
-    console.log('Created shift with ID:', newShift.id)
-    console.log('Shift data:', newShift)
-    
-    // Debug: Verify the shift was actually stored
-    const allShifts = getShifts()
-    console.log('All shifts after creation:', allShifts.map(s => ({ id: s.id, status: s.status })))
-    console.log('Global shifts array:', globalThis.__shifts)
-    console.log('Global shifts length:', globalThis.__shifts?.length || 0)
-    console.log('=== END SHIFT CREATION DEBUG ===')
-
     // Audit logging
-    if (station) {
-      await auditOperations.shiftOpened(request, newShift.id, station.id, station.name)
-    }
+    await auditOperations.shiftOpened(request, newShift.id, station.id, station.name)
 
     return NextResponse.json(newShift, { status: 201 })
   } catch (error) {
     console.error('Error creating shift:', error)
+    
+    // Handle foreign key constraint violations
+    if (error instanceof Error && error.message.includes('Foreign key constraint')) {
+      return NextResponse.json(
+        { error: 'Invalid station or template ID' },
+        { status: 400 }
+      )
+    }
+    
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

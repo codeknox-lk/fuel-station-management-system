@@ -95,8 +95,8 @@ export function FileUploadStub({
         className={cn(
           'border-2 border-dashed transition-colors',
           isDragOver 
-            ? 'border-purple-500 bg-purple-50' 
-            : 'border-gray-300 hover:border-gray-400'
+            ? 'border-purple-500 bg-purple-500/10 dark:bg-purple-500/20' 
+            : 'border-border hover:border-border'
         )}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -104,11 +104,11 @@ export function FileUploadStub({
       >
         <CardContent className="p-6">
           <div className="text-center">
-            <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <p className="text-sm text-gray-600 mb-2">
+            <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-sm text-muted-foreground mb-2">
               {placeholder}
             </p>
-            <p className="text-xs text-gray-500 mb-4">
+            <p className="text-xs text-muted-foreground mb-4">
               Accepted formats: {acceptedTypes.join(', ')} (Max {maxSize}MB)
             </p>
             <Button
@@ -135,17 +135,17 @@ export function FileUploadStub({
       {/* File List */}
       {files.length > 0 && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-gray-700">Selected Files:</h4>
+          <h4 className="text-sm font-medium text-foreground">Selected Files:</h4>
           {files.map((file, index) => (
             <div
               key={index}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+              className="flex items-center justify-between p-3 bg-muted rounded-lg"
             >
               <div className="flex items-center gap-3">
                 <span className="text-lg">{getFileIcon(file)}</span>
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{file.name}</p>
-                  <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                  <p className="text-sm font-medium text-foreground">{file.name}</p>
+                  <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">

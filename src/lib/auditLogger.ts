@@ -17,6 +17,12 @@ export interface AuditLogParams {
  */
 export async function logAuditEntry(params: AuditLogParams): Promise<void> {
   try {
+    // Validate required fields
+    if (!params.userId || !params.userName || !params.userRole || !params.action || !params.entity || !params.details) {
+      console.error('Missing required fields for audit log:', params)
+      return
+    }
+    
     // Get client IP (in a real app, this would be handled server-side)
     const ipAddress = await getClientIP()
     
@@ -32,7 +38,8 @@ export async function logAuditEntry(params: AuditLogParams): Promise<void> {
     })
 
     if (!response.ok) {
-      console.error('Failed to log audit entry:', response.statusText)
+      const errorData = await response.json().catch(() => ({}))
+      console.error('Failed to log audit entry:', response.status, response.statusText, errorData)
     }
   } catch (error) {
     console.error('Error logging audit entry:', error)
@@ -48,21 +55,22 @@ export function getCurrentUser(): { userId: string; userName: string; userRole: 
   if (typeof window === 'undefined') return null
   
   try {
+    const userId = localStorage.getItem('userId')
+    const userName = localStorage.getItem('username') || 'System User'
     const userRole = localStorage.getItem('userRole') as 'OWNER' | 'MANAGER' | 'ACCOUNTS'
-    if (!userRole) return null
-
-    // Mock user data based on role
-    const userMap = {
-      'OWNER': { userId: 'user3', userName: 'Owner Admin' },
-      'MANAGER': { userId: 'user1', userName: 'John Manager' },
-      'ACCOUNTS': { userId: 'user2', userName: 'Sarah Accounts' }
+    
+    if (!userId || !userRole) {
+      console.warn('Missing userId or userRole in localStorage for audit logging')
+      return null
     }
 
     return {
-      ...userMap[userRole],
+      userId,
+      userName,
       userRole
     }
-  } catch {
+  } catch (error) {
+    console.error('Error getting current user for audit logging:', error)
     return null
   }
 }
@@ -101,8 +109,8 @@ export class AuditLogger {
     await this.log('UPDATE', 'SHIFT', `Closed shift with ${varianceText}`, shiftId, stationId, stationName)
   }
 
-  async logPumperAssigned(assignmentId: string, pumperName: string, nozzleId: string, stationId: string, stationName: string) {
-    await this.log('CREATE', 'SHIFT_ASSIGNMENT', `Assigned ${pumperName} to Nozzle ${nozzleId}`, assignmentId, stationId, stationName)
+  async logPumperAssigned(assignmentId: string, pumperName: string, nozzleDisplayName: string, stationId: string, stationName: string) {
+    await this.log('CREATE', 'SHIFT_ASSIGNMENT', `Assigned ${pumperName} to ${nozzleDisplayName}`, assignmentId, stationId, stationName)
   }
 
   // Price operations

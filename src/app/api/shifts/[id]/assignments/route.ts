@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAssignmentsByShiftId } from '@/data/shifts.seed'
+import { prisma } from '@/lib/db'
 
 export async function GET(
   request: NextRequest,
@@ -8,11 +8,43 @@ export async function GET(
   try {
     const { id } = await params
     
-    const assignments = getAssignmentsByShiftId(id)
+    const assignments = await prisma.shiftAssignment.findMany({
+      where: { shiftId: id },
+      include: {
+        nozzle: {
+          include: {
+            pump: {
+              select: {
+                id: true,
+                pumpNumber: true,
+                isActive: true
+              }
+            },
+            tank: {
+              select: {
+                id: true,
+                fuelType: true,
+                capacity: true,
+                currentLevel: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { assignedAt: 'asc' }
+    })
     
     return NextResponse.json(assignments)
   } catch (error) {
     console.error('Error fetching assignments:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    // Log more details for debugging
+    if (error instanceof Error) {
+      console.error('Error message:', error.message)
+      console.error('Error stack:', error.stack)
+    }
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }

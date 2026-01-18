@@ -1,5 +1,57 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { posTerminals } from '@/data/pos.seed'
+import { prisma } from '@/lib/db'
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    
+    const terminal = await prisma.posTerminal.findUnique({
+      where: { id },
+      include: {
+        station: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        bank: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        batchEntries: {
+          take: 10,
+          orderBy: { startNumber: 'desc' },
+          include: {
+            batch: {
+              select: {
+                createdAt: true
+              }
+            }
+          }
+        },
+        _count: {
+          select: {
+            batchEntries: true
+          }
+        }
+      }
+    })
+    
+    if (!terminal) {
+      return NextResponse.json({ error: 'POS terminal not found' }, { status: 404 })
+    }
+
+    return NextResponse.json(terminal)
+  } catch (error) {
+    console.error('Error fetching POS terminal:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
 
 export async function PUT(
   request: NextRequest,
@@ -9,19 +61,52 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
     
-    const terminalIndex = posTerminals.findIndex(t => t.id === id)
-    if (terminalIndex === -1) {
+    const terminal = await prisma.posTerminal.findUnique({
+      where: { id }
+    })
+    
+    if (!terminal) {
       return NextResponse.json({ error: 'POS terminal not found' }, { status: 404 })
     }
 
-    posTerminals[terminalIndex] = {
-      ...posTerminals[terminalIndex],
-      ...body,
-      updatedAt: new Date().toISOString()
-    }
+    const { name, terminalNumber, isActive, bankId } = body
+    
+    const updatedTerminal = await prisma.posTerminal.update({
+      where: { id },
+      data: {
+        ...(name && { name }),
+        ...(terminalNumber && { terminalNumber }),
+        ...(isActive !== undefined && { isActive }),
+        ...(bankId !== undefined && { bankId: bankId || null })
+      },
+      include: {
+        station: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        bank: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
+    })
 
-    return NextResponse.json(posTerminals[terminalIndex])
+    return NextResponse.json(updatedTerminal)
   } catch (error) {
+    console.error('Error updating POS terminal:', error)
+    
+    // Handle unique constraint violations
+    if (error instanceof Error && error.message.includes('Unique constraint')) {
+      return NextResponse.json(
+        { error: 'A terminal with this number already exists for this station' },
+        { status: 400 }
+      )
+    }
+    
     return NextResponse.json({ error: 'Failed to update POS terminal' }, { status: 500 })
   }
 }
@@ -33,14 +118,32 @@ export async function DELETE(
   try {
     const { id } = await params
     
-    const terminalIndex = posTerminals.findIndex(t => t.id === id)
-    if (terminalIndex === -1) {
+    const terminal = await prisma.posTerminal.findUnique({
+      where: { id }
+    })
+    
+    if (!terminal) {
       return NextResponse.json({ error: 'POS terminal not found' }, { status: 404 })
     }
 
-    posTerminals.splice(terminalIndex, 1)
-    return NextResponse.json({ success: true })
+    // Check for batch entries
+    const hasBatchEntries = await prisma.posBatchTerminalEntry.count({
+      where: { terminalId: id }
+    }) > 0
+    
+    if (hasBatchEntries) {
+      return NextResponse.json({ 
+        error: 'Cannot delete POS terminal with existing batch entries' 
+      }, { status: 400 })
+    }
+
+    await prisma.posTerminal.delete({
+      where: { id }
+    })
+
+    return NextResponse.json({ success: true, message: 'POS terminal deleted successfully' })
   } catch (error) {
+    console.error('Error deleting POS terminal:', error)
     return NextResponse.json({ error: 'Failed to delete POS terminal' }, { status: 500 })
   }
 }

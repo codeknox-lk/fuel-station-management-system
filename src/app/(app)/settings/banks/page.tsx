@@ -159,9 +159,9 @@ export default function BanksPage() {
 
   const getStatusColor = (status: Bank['status']) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800'
-      case 'inactive': return 'bg-gray-100 text-gray-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'active': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      case 'inactive': return 'bg-muted text-foreground'
+      default: return 'bg-muted text-foreground'
     }
   }
 
@@ -198,7 +198,7 @@ export default function BanksPage() {
       key: 'branch' as keyof Bank,
       title: 'Branch',
       render: (value: unknown) => (
-        <div className="flex items-center gap-1 text-sm text-gray-600">
+        <div className="flex items-center gap-1 text-sm text-muted-foreground">
           <Building className="h-3 w-3" />
           {value as string}
         </div>
@@ -210,7 +210,7 @@ export default function BanksPage() {
       render: (value: unknown, row: Bank) => (
         <div className="text-sm">
           <div className="font-medium">{value as string}</div>
-          <div className="flex items-center gap-1 text-gray-500">
+          <div className="flex items-center gap-1 text-muted-foreground">
             <Phone className="h-3 w-3" />
             {row.phone}
           </div>
@@ -222,7 +222,7 @@ export default function BanksPage() {
       title: 'Status',
       render: (value: unknown) => {
         const status = value as string
-        if (!status) return <Badge className="bg-gray-100 text-gray-800">Unknown</Badge>
+        if (!status) return <Badge className="bg-muted text-foreground">Unknown</Badge>
         return (
           <Badge className={getStatusColor(status as Bank['status'])}>
             {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -246,7 +246,7 @@ export default function BanksPage() {
             variant="ghost"
             size="sm"
             onClick={() => handleDelete(row)}
-            className="text-red-600 hover:text-red-700"
+            className="text-red-600 dark:text-red-400 hover:text-red-700"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -260,25 +260,25 @@ export default function BanksPage() {
       title: 'Total Banks',
       value: banks.length.toString(),
       description: 'Registered banks',
-      icon: <CreditCard className="h-5 w-5 text-blue-500" />
+      icon: <CreditCard className="h-5 w-5 text-blue-600 dark:text-blue-400" />
     },
     {
       title: 'Active',
       value: banks.filter(b => b.status === 'active').length.toString(),
       description: 'Currently active',
-      icon: <div className="h-5 w-5 bg-green-500 rounded-full" />
+      icon: <div className="h-5 w-5 bg-green-500/10 dark:bg-green-500/200 rounded-full" />
     },
     {
       title: 'Inactive',
       value: banks.filter(b => b.status === 'inactive').length.toString(),
       description: 'Not in use',
-      icon: <div className="h-5 w-5 bg-gray-500 rounded-full" />
+      icon: <div className="h-5 w-5 bg-muted0 rounded-full" />
     },
     {
       title: 'Accounts',
       value: banks.filter(b => b.accountNumber).length.toString(),
       description: 'With account details',
-      icon: <Building className="h-5 w-5 text-purple-500" />
+      icon: <Building className="h-5 w-5 text-purple-600 dark:text-purple-400" />
     }
   ]
 
@@ -286,8 +286,8 @@ export default function BanksPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Bank Management</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-3xl font-bold text-foreground">Bank Management</h1>
+          <p className="text-muted-foreground mt-2">
             Manage bank accounts and payment processing configurations
           </p>
         </div>
@@ -440,9 +440,9 @@ export default function BanksPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
-                  <div className="text-sm font-medium text-gray-700">{stat.title}</div>
-                  <div className="text-xs text-gray-500">{stat.description}</div>
+                  <div className="text-2xl font-bold text-foreground">{stat.value}</div>
+                  <div className="text-sm font-medium text-foreground">{stat.title}</div>
+                  <div className="text-xs text-muted-foreground">{stat.description}</div>
                 </div>
                 <div className="flex-shrink-0">
                   {stat.icon}

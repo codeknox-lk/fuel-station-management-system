@@ -9,23 +9,24 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Monitor, Plus, Edit, Trash2, CreditCard, Building2, Wifi, WifiOff } from 'lucide-react'
+import { Monitor, Plus, Edit, Trash2, Building2, Wifi, CreditCard } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
 interface POSTerminal {
   id: string
-  terminalId: string
+  terminalNumber: string
   name: string
   stationId: string
-  stationName: string
-  bankId: string
-  bankName: string
-  model: string
-  serialNumber: string
-  ipAddress: string
-  location: string
-  status: 'active' | 'inactive' | 'maintenance' | 'offline'
-  lastSeen: string
+  station?: {
+    id: string
+    name: string
+  }
+  bankId?: string
+  bank?: {
+    id: string
+    name: string
+  }
+  isActive: boolean
   createdAt: string
   updatedAt: string
 }
@@ -48,15 +49,11 @@ export default function POSTerminalsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingTerminal, setEditingTerminal] = useState<POSTerminal | null>(null)
   const [formData, setFormData] = useState({
-    terminalId: '',
+    terminalNumber: '',
     name: '',
     stationId: '',
     bankId: '',
-    model: '',
-    serialNumber: '',
-    ipAddress: '',
-    location: '',
-    status: 'active' as POSTerminal['status']
+    isActive: true
   })
   const { toast } = useToast()
 
@@ -96,9 +93,10 @@ export default function POSTerminalsPage() {
     try {
       const response = await fetch('/api/banks')
       const data = await response.json()
-      setBanks(data)
+      setBanks(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Failed to fetch banks:', error)
+      setBanks([])
     }
   }
 
@@ -137,15 +135,11 @@ export default function POSTerminalsPage() {
   const handleEdit = (terminal: POSTerminal) => {
     setEditingTerminal(terminal)
     setFormData({
-      terminalId: terminal.terminalId,
+      terminalNumber: terminal.terminalNumber,
       name: terminal.name,
       stationId: terminal.stationId,
-      bankId: terminal.bankId,
-      model: terminal.model,
-      serialNumber: terminal.serialNumber,
-      ipAddress: terminal.ipAddress,
-      location: terminal.location,
-      status: terminal.status
+      bankId: terminal.bankId || '',
+      isActive: terminal.isActive
     })
     setDialogOpen(true)
   }
@@ -178,52 +172,30 @@ export default function POSTerminalsPage() {
   const resetForm = () => {
     setEditingTerminal(null)
     setFormData({
-      terminalId: '',
+      terminalNumber: '',
       name: '',
       stationId: '',
       bankId: '',
-      model: '',
-      serialNumber: '',
-      ipAddress: '',
-      location: '',
-      status: 'active'
+      isActive: true
     })
   }
 
-  const getStatusColor = (status: POSTerminal['status']) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800'
-      case 'inactive': return 'bg-gray-100 text-gray-800'
-      case 'maintenance': return 'bg-yellow-100 text-yellow-800'
-      case 'offline': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
+  const getStatusColor = (isActive: boolean) => {
+    return isActive ? 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300' : 'bg-muted text-foreground'
   }
 
-  const getStatusIcon = (status: POSTerminal['status']) => {
-    switch (status) {
-      case 'active': return <Wifi className="h-3 w-3 text-green-600" />
-      case 'offline': return <WifiOff className="h-3 w-3 text-red-600" />
-      default: return <Monitor className="h-3 w-3 text-gray-600" />
-    }
+  const getStatusIcon = (isActive: boolean) => {
+    return isActive ? <Wifi className="h-3 w-3 text-green-600 dark:text-green-400" /> : <Monitor className="h-3 w-3 text-muted-foreground" />
   }
 
-  const formatLastSeen = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / (1000 * 60))
-    
-    if (diffMins < 1) return 'Just now'
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`
-    return date.toLocaleDateString()
+  const getStatusText = (isActive: boolean) => {
+    return isActive ? 'Active' : 'Inactive'
   }
 
   const columns = [
     {
-      key: 'terminalId' as keyof POSTerminal,
-      title: 'Terminal ID',
+      key: 'terminalNumber' as keyof POSTerminal,
+      title: 'Terminal Number',
       render: (value: unknown) => (
         <span className="font-mono font-medium">{value as string}</span>
       )
@@ -236,54 +208,41 @@ export default function POSTerminalsPage() {
       )
     },
     {
-      key: 'stationName' as keyof POSTerminal,
+      key: 'station' as keyof POSTerminal,
       title: 'Station',
-      render: (value: unknown) => (
-        <div className="flex items-center gap-1 text-sm">
-          <Building2 className="h-3 w-3 text-gray-400" />
-          {value as string}
-        </div>
-      )
-    },
-    {
-      key: 'bankName' as keyof POSTerminal,
-      title: 'Bank',
-      render: (value: unknown) => (
-        <div className="flex items-center gap-1 text-sm">
-          <CreditCard className="h-3 w-3 text-gray-400" />
-          {value as string}
-        </div>
-      )
-    },
-    {
-      key: 'model' as keyof POSTerminal,
-      title: 'Model',
-      render: (value: unknown) => (
-        <span className="text-sm text-gray-600">{value as string}</span>
-      )
-    },
-    {
-      key: 'location' as keyof POSTerminal,
-      title: 'Location',
-      render: (value: unknown) => (
-        <span className="text-sm text-gray-600">{value as string}</span>
-      )
-    },
-    {
-      key: 'status' as keyof POSTerminal,
-      title: 'Status',
-      render: (value: unknown, row: POSTerminal) => (
-        <div className="flex items-center gap-2">
-          <Badge className={getStatusColor(value as POSTerminal['status'])}>
-            <div className="flex items-center gap-1">
-              {getStatusIcon(value as POSTerminal['status'])}
-              {value ? (value as string).charAt(0).toUpperCase() + (value as string).slice(1) : 'Unknown'}
-            </div>
-          </Badge>
-          <div className="text-xs text-gray-500">
-            {formatLastSeen(row.lastSeen)}
+      render: (value: unknown) => {
+        const station = value as { name: string } | undefined
+        return (
+          <div className="flex items-center gap-1 text-sm">
+            <Building2 className="h-3 w-3 text-muted-foreground" />
+            {station?.name || 'Unknown'}
           </div>
-        </div>
+        )
+      }
+    },
+    {
+      key: 'bank' as keyof POSTerminal,
+      title: 'Bank',
+      render: (value: unknown) => {
+        const bank = value as { name: string } | undefined
+        return (
+          <div className="flex items-center gap-1 text-sm">
+            <CreditCard className="h-3 w-3 text-muted-foreground" />
+            {bank?.name || '-'}
+          </div>
+        )
+      }
+    },
+    {
+      key: 'isActive' as keyof POSTerminal,
+      title: 'Status',
+      render: (value: unknown) => (
+        <Badge className={getStatusColor(value as boolean)}>
+          <div className="flex items-center gap-1">
+            {getStatusIcon(value as boolean)}
+            {getStatusText(value as boolean)}
+          </div>
+        </Badge>
       )
     },
     {
@@ -302,7 +261,7 @@ export default function POSTerminalsPage() {
             variant="ghost"
             size="sm"
             onClick={() => handleDelete(row)}
-            className="text-red-600 hover:text-red-700"
+            className="text-red-600 dark:text-red-400 hover:text-red-700"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -311,30 +270,26 @@ export default function POSTerminalsPage() {
     }
   ]
 
+  const safeTerminals = Array.isArray(terminals) ? terminals : []
+  
   const stats = [
     {
       title: 'Total Terminals',
-      value: terminals.length.toString(),
+      value: safeTerminals.length.toString(),
       description: 'Registered terminals',
-      icon: <Monitor className="h-5 w-5 text-blue-500" />
+      icon: <Monitor className="h-5 w-5 text-blue-600 dark:text-blue-400" />
     },
     {
       title: 'Active',
-      value: terminals.filter(t => t.status === 'active').length.toString(),
+      value: safeTerminals.filter(t => t.isActive).length.toString(),
       description: 'Currently active',
-      icon: <div className="h-5 w-5 bg-green-500 rounded-full" />
+      icon: <div className="h-5 w-5 bg-green-500/10 dark:bg-green-500/200 rounded-full" />
     },
     {
-      title: 'Offline',
-      value: terminals.filter(t => t.status === 'offline').length.toString(),
-      description: 'Not responding',
-      icon: <div className="h-5 w-5 bg-red-500 rounded-full" />
-    },
-    {
-      title: 'Maintenance',
-      value: terminals.filter(t => t.status === 'maintenance').length.toString(),
-      description: 'Under maintenance',
-      icon: <div className="h-5 w-5 bg-yellow-500 rounded-full" />
+      title: 'Inactive',
+      value: safeTerminals.filter(t => !t.isActive).length.toString(),
+      description: 'Not active',
+      icon: <div className="h-5 w-5 bg-muted0 rounded-full" />
     }
   ]
 
@@ -342,8 +297,8 @@ export default function POSTerminalsPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">POS Terminal Management</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-3xl font-bold text-foreground">POS Terminal Management</h1>
+          <p className="text-muted-foreground mt-2">
             Configure point-of-sale terminals and payment processing devices
           </p>
         </div>
@@ -361,126 +316,82 @@ export default function POSTerminalsPage() {
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="terminalId">Terminal ID</Label>
-                  <Input
-                    id="terminalId"
-                    value={formData.terminalId}
-                    onChange={(e) => setFormData({ ...formData, terminalId: e.target.value })}
-                    placeholder="e.g., POS001"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="name">Terminal Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g., Main Counter POS"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="stationId">Station</Label>
-                  <select
-                    id="stationId"
-                    value={formData.stationId}
-                    onChange={(e) => setFormData({ ...formData, stationId: e.target.value })}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    required
-                  >
-                    <option value="">Select Station</option>
-                    {stations.map((station) => (
-                      <option key={station.id} value={station.id}>
-                        {station.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <Label htmlFor="bankId">Bank</Label>
-                  <select
-                    id="bankId"
-                    value={formData.bankId}
-                    onChange={(e) => setFormData({ ...formData, bankId: e.target.value })}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    required
-                  >
-                    <option value="">Select Bank</option>
-                    {banks.map((bank) => (
-                      <option key={bank.id} value={bank.id}>
-                        {bank.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="model">Model</Label>
-                  <Input
-                    id="model"
-                    value={formData.model}
-                    onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                    placeholder="e.g., Verifone VX520"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="serialNumber">Serial Number</Label>
-                  <Input
-                    id="serialNumber"
-                    value={formData.serialNumber}
-                    onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
-                    placeholder="Device serial number"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="ipAddress">IP Address</Label>
-                  <Input
-                    id="ipAddress"
-                    value={formData.ipAddress}
-                    onChange={(e) => setFormData({ ...formData, ipAddress: e.target.value })}
-                    placeholder="e.g., 192.168.1.100"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    placeholder="e.g., Counter 1, Office"
-                    required
-                  />
-                </div>
+              <div>
+                <Label htmlFor="terminalNumber">Terminal Number</Label>
+                <Input
+                  id="terminalNumber"
+                  value={formData.terminalNumber}
+                  onChange={(e) => setFormData({ ...formData, terminalNumber: e.target.value })}
+                  placeholder="e.g., POS001"
+                  required
+                />
               </div>
 
               <div>
-                <Label htmlFor="status">Status</Label>
+                <Label htmlFor="name">Terminal Name</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g., Main Counter POS"
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="stationId">Station</Label>
                 <select
-                  id="status"
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as POSTerminal['status'] })}
+                  id="stationId"
+                  value={formData.stationId}
+                  onChange={(e) => setFormData({ ...formData, stationId: e.target.value })}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   required
                 >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="maintenance">Maintenance</option>
-                  <option value="offline">Offline</option>
+                  <option value="">Select Station</option>
+                  {stations.map((station) => (
+                    <option key={station.id} value={station.id}>
+                      {station.name}
+                    </option>
+                  ))}
                 </select>
               </div>
+
+              <div>
+                <Label htmlFor="bankId">Bank</Label>
+                <select
+                  id="bankId"
+                  value={formData.bankId}
+                  onChange={(e) => setFormData({ ...formData, bankId: e.target.value })}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="">Select Bank (Optional)</option>
+                  {banks && banks.length > 0 ? (
+                    banks.map((bank) => (
+                      <option key={bank.id} value={bank.id}>
+                        {bank.name}
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled>Loading banks...</option>
+                  )}
+                </select>
+              </div>
+
+              {editingTerminal && (
+                <div>
+                  <Label htmlFor="isActive">Status</Label>
+                  <select
+                    id="isActive"
+                    value={formData.isActive ? 'true' : 'false'}
+                    onChange={(e) => setFormData({ ...formData, isActive: e.target.value === 'true' })}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    required
+                  >
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                  </select>
+                </div>
+              )}
 
               <div className="flex justify-end gap-3 pt-4">
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
@@ -496,15 +407,15 @@ export default function POSTerminalsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {stats.map((stat, index) => (
           <Card key={index}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
-                  <div className="text-sm font-medium text-gray-700">{stat.title}</div>
-                  <div className="text-xs text-gray-500">{stat.description}</div>
+                  <div className="text-2xl font-bold text-foreground">{stat.value}</div>
+                  <div className="text-sm font-medium text-foreground">{stat.title}</div>
+                  <div className="text-xs text-muted-foreground">{stat.description}</div>
                 </div>
                 <div className="flex-shrink-0">
                   {stat.icon}
@@ -518,7 +429,7 @@ export default function POSTerminalsPage() {
       {/* Terminals Table */}
       <FormCard title="POS Terminals" description="Manage point-of-sale terminals and payment processing devices">
         <DataTable
-          data={terminals}
+          data={safeTerminals}
           columns={columns}
           searchPlaceholder="Search terminals..."
         />

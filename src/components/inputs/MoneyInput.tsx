@@ -71,7 +71,7 @@ export const MoneyInput = forwardRef<HTMLInputElement, MoneyInputProps>(
 
     return (
       <div className="relative">
-        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
+        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground text-sm">
           {currency}
         </div>
         <Input

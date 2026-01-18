@@ -146,7 +146,7 @@ export default function ExpensesPage() {
           expenseDate: expenseDate.toISOString(),
           description: description || undefined,
           proofUrl: proofFile ? `uploads/expenses/${proofFile.name}` : undefined,
-          recordedBy: 'Current User' // In real app, get from auth context
+          recordedBy: typeof window !== 'undefined' ? localStorage.getItem('username') || 'System User' : 'System User'
         })
       })
 
@@ -183,21 +183,21 @@ export default function ExpensesPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'APPROVED': return 'bg-green-100 text-green-800'
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800'
-      case 'REJECTED': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'APPROVED': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      case 'PENDING': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
+      case 'REJECTED': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+      default: return 'bg-muted text-foreground'
     }
   }
 
   const getCategoryColor = (category: string) => {
     const colors = [
-      'bg-blue-100 text-blue-800',
-      'bg-green-100 text-green-800',
-      'bg-purple-100 text-purple-800',
-      'bg-orange-100 text-orange-800',
-      'bg-pink-100 text-pink-800',
-      'bg-indigo-100 text-indigo-800'
+      'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300',
+      'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300',
+      'bg-purple-500/20 text-purple-400 dark:bg-purple-600/30 dark:text-purple-300',
+      'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300',
+      'bg-pink-500/20 text-pink-600 dark:bg-pink-600/30 dark:text-pink-300',
+      'bg-indigo-500/20 text-indigo-600 dark:bg-indigo-600/30 dark:text-indigo-300'
     ]
     const index = category.length % colors.length
     return colors[index]
@@ -209,7 +209,7 @@ export default function ExpensesPage() {
       title: 'Date',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-gray-500" />
+          <Calendar className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm">
             {new Date(value as string).toLocaleDateString()}
           </span>
@@ -223,7 +223,7 @@ export default function ExpensesPage() {
         const station = stations.find(s => s.id === row.stationId)
         return (
           <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-gray-500" />
+            <Building2 className="h-4 w-4 text-muted-foreground" />
             <span className="font-medium">{station?.name || (value as string)}</span>
           </div>
         )
@@ -234,7 +234,7 @@ export default function ExpensesPage() {
       title: 'Category',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <Tag className="h-4 w-4 text-gray-500" />
+          <Tag className="h-4 w-4 text-muted-foreground" />
           <Badge className={getCategoryColor(value as string)}>
             {value as string}
           </Badge>
@@ -246,7 +246,7 @@ export default function ExpensesPage() {
       title: 'Amount',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <DollarSign className="h-4 w-4 text-red-500" />
+          <DollarSign className="h-4 w-4 text-red-600 dark:text-red-400" />
           <span className="font-mono font-semibold text-red-700">
             Rs. {(value as number)?.toLocaleString() || 0}
           </span>
@@ -258,7 +258,7 @@ export default function ExpensesPage() {
       title: 'From Safe',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <Shield className="h-4 w-4 text-gray-500" />
+          <Shield className="h-4 w-4 text-muted-foreground" />
           <Badge variant={value ? 'default' : 'secondary'}>
             {value ? 'Yes' : 'No'}
           </Badge>
@@ -270,7 +270,7 @@ export default function ExpensesPage() {
       title: 'Approved By',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <User className="h-4 w-4 text-gray-500" />
+          <User className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm">{value as string}</span>
         </div>
       )
@@ -280,7 +280,7 @@ export default function ExpensesPage() {
       title: 'Proof',
       render: (value: unknown) => (
         <div className="flex items-center gap-1">
-          <Camera className="h-4 w-4 text-gray-500" />
+          <Camera className="h-4 w-4 text-muted-foreground" />
           <Badge variant={value ? 'default' : 'secondary'}>
             {value ? 'Yes' : 'No'}
           </Badge>
@@ -300,7 +300,7 @@ export default function ExpensesPage() {
       key: 'description' as keyof Expense,
       title: 'Description',
       render: (value: unknown) => (
-        <span className="text-sm text-gray-600 max-w-xs truncate">
+        <span className="text-sm text-muted-foreground max-w-xs truncate">
           {value as string || '-'}
         </span>
       )
@@ -309,7 +309,7 @@ export default function ExpensesPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-gray-900">Expenses</h1>
+      <h1 className="text-3xl font-bold text-foreground">Expenses</h1>
 
       {error && (
         <Alert variant="destructive">
@@ -442,7 +442,7 @@ export default function ExpensesPage() {
               accept="image/*,.pdf"
               placeholder="Upload receipt or proof of expense"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Upload receipt, invoice, or other proof of expense (Image or PDF)
             </p>
           </div>

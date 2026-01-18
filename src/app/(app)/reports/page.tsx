@@ -42,7 +42,7 @@ export default function ReportsPage() {
         'Payment method breakdown',
         'Variance analysis with tolerance'
       ],
-      color: 'text-blue-600'
+      color: 'text-blue-600 dark:text-blue-400'
     },
     {
       title: 'Shift Reports',
@@ -56,7 +56,7 @@ export default function ReportsPage() {
         'Variance by assignment',
         'Print shift PDF'
       ],
-      color: 'text-green-600'
+      color: 'text-green-600 dark:text-green-400'
     },
     {
       title: 'Tank Reports',
@@ -70,7 +70,7 @@ export default function ReportsPage() {
         'Variance classification',
         'Print-optimized layout'
       ],
-      color: 'text-purple-600'
+      color: 'text-purple-600 dark:text-purple-400'
     },
     {
       title: 'Profit Reports',
@@ -84,7 +84,7 @@ export default function ReportsPage() {
         'Growth analysis',
         'Best/worst day tracking'
       ],
-      color: 'text-orange-600'
+      color: 'text-orange-600 dark:text-orange-400'
     },
     {
       title: 'Pumper Variance',
@@ -98,7 +98,21 @@ export default function ReportsPage() {
         'Variance accountability',
         'Recovery tracking'
       ],
-      color: 'text-red-600'
+      color: 'text-red-600 dark:text-red-400'
+    },
+    {
+      title: 'Daily Sales by Fuel Type',
+      description: 'Monthly sales trend with daily breakdown by fuel type',
+      icon: <TrendingUp className="h-8 w-8" />,
+      href: '/reports/daily-sales',
+      features: [
+        'Daily sales line chart',
+        'Fuel type breakdown',
+        'Monthly trend analysis',
+        'Interactive data visualization',
+        'Export capabilities'
+      ],
+      color: 'text-indigo-600 dark:text-indigo-400'
     }
   ]
 
@@ -107,25 +121,25 @@ export default function ReportsPage() {
       title: 'Reports Available',
       value: '5',
       description: 'Comprehensive reporting modules',
-      icon: <FileText className="h-5 w-5 text-blue-500" />
+      icon: <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
     },
     {
       title: 'Data Sources',
       value: '12+',
       description: 'Integrated data points',
-      icon: <BarChart3 className="h-5 w-5 text-green-500" />
+      icon: <BarChart3 className="h-5 w-5 text-green-600 dark:text-green-400" />
     },
     {
       title: 'Export Formats',
       value: '4',
       description: 'PDF, Excel, Print, Email',
-      icon: <DollarSign className="h-5 w-5 text-purple-500" />
+      icon: <DollarSign className="h-5 w-5 text-purple-600 dark:text-purple-400" />
     },
     {
       title: 'Real-time',
       value: 'Live',
       description: 'Up-to-date information',
-      icon: <AlertTriangle className="h-5 w-5 text-orange-500" />
+      icon: <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
     }
   ]
 
@@ -133,35 +147,75 @@ export default function ReportsPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Reports & Analytics</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-3xl font-bold text-foreground">Reports & Analytics</h1>
+          <p className="text-muted-foreground mt-2">
             Comprehensive reporting suite for business intelligence and operational insights
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Building2 className="h-6 w-6 text-gray-400" />
-          <span className="text-sm text-gray-500">Multi-station reporting</span>
+          <Building2 className="h-6 w-6 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Multi-station reporting</span>
         </div>
       </div>
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {quickStats.map((stat, index) => (
-          <Card key={index}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
-                  <div className="text-sm font-medium text-gray-700">{stat.title}</div>
-                  <div className="text-xs text-gray-500">{stat.description}</div>
-                </div>
-                <div className="flex-shrink-0">
-                  {stat.icon}
-                </div>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-foreground">{reports.length}</div>
+                <div className="text-sm font-medium text-foreground">Reports Available</div>
+                <div className="text-xs text-muted-foreground">Comprehensive reporting modules</div>
               </div>
-            </CardContent>
-          </Card>
-        ))}
+              <div className="flex-shrink-0">
+                <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-foreground">12+</div>
+                <div className="text-sm font-medium text-foreground">Data Sources</div>
+                <div className="text-xs text-muted-foreground">Integrated data points</div>
+              </div>
+              <div className="flex-shrink-0">
+                <BarChart3 className="h-5 w-5 text-green-600 dark:text-green-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-foreground">4</div>
+                <div className="text-sm font-medium text-foreground">Export Formats</div>
+                <div className="text-xs text-muted-foreground">PDF, Excel, Print, Email</div>
+              </div>
+              <div className="flex-shrink-0">
+                <DollarSign className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-foreground">Live</div>
+                <div className="text-sm font-medium text-foreground">Real-time</div>
+                <div className="text-xs text-muted-foreground">Up-to-date information</div>
+              </div>
+              <div className="flex-shrink-0">
+                <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Report Cards */}
@@ -174,18 +228,18 @@ export default function ReportsPage() {
                   {report.icon}
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-900">{report.title}</h3>
-                  <p className="text-sm text-gray-600 font-normal">{report.description}</p>
+                  <h3 className="text-xl font-semibold text-foreground">{report.title}</h3>
+                  <p className="text-sm text-muted-foreground font-normal">{report.description}</p>
                 </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <div className="text-sm font-medium text-gray-700 mb-2">Key Features:</div>
+                <div className="text-sm font-medium text-foreground mb-2">Key Features:</div>
                 <ul className="space-y-1">
                   {report.features.map((feature, featureIndex) => (
-                    <li key={featureIndex} className="flex items-center gap-2 text-sm text-gray-600">
-                      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full flex-shrink-0"></div>
+                    <li key={featureIndex} className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full flex-shrink-0"></div>
                       {feature}
                     </li>
                   ))}
@@ -211,11 +265,11 @@ export default function ReportsPage() {
       <FormCard title="Report Features & Capabilities">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div>
-            <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-blue-500" />
+            <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               Data Visualization
             </h4>
-            <ul className="text-sm text-gray-600 space-y-1">
+            <ul className="text-sm text-muted-foreground space-y-1">
               <li>• Interactive charts and graphs</li>
               <li>• Trend analysis with sparklines</li>
               <li>• Color-coded performance indicators</li>
@@ -224,11 +278,11 @@ export default function ReportsPage() {
           </div>
           
           <div>
-            <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-              <FileText className="h-4 w-4 text-green-500" />
+            <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+              <FileText className="h-4 w-4 text-green-600 dark:text-green-400" />
               Export Options
             </h4>
-            <ul className="text-sm text-gray-600 space-y-1">
+            <ul className="text-sm text-muted-foreground space-y-1">
               <li>• PDF reports with professional formatting</li>
               <li>• Excel exports for data analysis</li>
               <li>• Print-optimized layouts</li>
@@ -237,11 +291,11 @@ export default function ReportsPage() {
           </div>
           
           <div>
-            <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-orange-500" />
+            <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
               Business Intelligence
             </h4>
-            <ul className="text-sm text-gray-600 space-y-1">
+            <ul className="text-sm text-muted-foreground space-y-1">
               <li>• Variance analysis with tolerance checking</li>
               <li>• Performance rating systems</li>
               <li>• Exception tracking and alerts</li>

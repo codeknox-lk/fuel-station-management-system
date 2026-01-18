@@ -135,7 +135,7 @@ export default function StationsPage() {
   }
 
   const getStatusColor = (isActive: boolean) => {
-    return isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+    return isActive ? 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300' : 'bg-muted text-foreground'
   }
 
   const columns = [
@@ -150,7 +150,7 @@ export default function StationsPage() {
       key: 'address' as keyof Station,
       title: 'Address',
       render: (value: unknown) => (
-        <div className="flex items-center gap-1 text-sm text-gray-600">
+        <div className="flex items-center gap-1 text-sm text-muted-foreground">
           <MapPin className="h-3 w-3" />
           {value as string}
         </div>
@@ -188,7 +188,7 @@ export default function StationsPage() {
             variant="ghost"
             size="sm"
             onClick={() => handleDelete(row)}
-            className="text-red-600 hover:text-red-700"
+            className="text-red-600 dark:text-red-400 hover:text-red-700"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -202,25 +202,25 @@ export default function StationsPage() {
       title: 'Total Stations',
       value: stations.length.toString(),
       description: 'Registered stations',
-      icon: <Building2 className="h-5 w-5 text-blue-500" />
+      icon: <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
     },
     {
       title: 'Active',
       value: stations.filter(s => s.status === 'active').length.toString(),
       description: 'Currently operational',
-      icon: <div className="h-5 w-5 bg-green-500 rounded-full" />
+      icon: <div className="h-5 w-5 bg-green-500/10 dark:bg-green-500/200 rounded-full" />
     },
     {
       title: 'Maintenance',
       value: stations.filter(s => s.status === 'maintenance').length.toString(),
       description: 'Under maintenance',
-      icon: <div className="h-5 w-5 bg-yellow-500 rounded-full" />
+      icon: <div className="h-5 w-5 bg-yellow-500/10 dark:bg-yellow-500/200 rounded-full" />
     },
     {
       title: 'Inactive',
       value: stations.filter(s => s.status === 'inactive').length.toString(),
       description: 'Not operational',
-      icon: <div className="h-5 w-5 bg-gray-500 rounded-full" />
+      icon: <div className="h-5 w-5 bg-muted0 rounded-full" />
     }
   ]
 
@@ -228,8 +228,8 @@ export default function StationsPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Station Management</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-3xl font-bold text-foreground">Station Management</h1>
+          <p className="text-muted-foreground mt-2">
             Manage petrol stations, locations, and operational details
           </p>
         </div>
@@ -316,9 +316,9 @@ export default function StationsPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
-                  <div className="text-sm font-medium text-gray-700">{stat.title}</div>
-                  <div className="text-xs text-gray-500">{stat.description}</div>
+                  <div className="text-2xl font-bold text-foreground">{stat.value}</div>
+                  <div className="text-sm font-medium text-foreground">{stat.title}</div>
+                  <div className="text-xs text-muted-foreground">{stat.description}</div>
                 </div>
                 <div className="flex-shrink-0">
                   {stat.icon}

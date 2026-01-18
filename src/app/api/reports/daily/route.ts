@@ -1,46 +1,236 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSafeSummary } from '@/data/safeLedger.seed'
-import { getCreditAging } from '@/data/credit.seed'
-import { getTankVarianceSummary } from '@/data/tankOps.seed'
+import { prisma } from '@/lib/db'
 import { calculateDailyProfit } from '@/lib/calc'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const stationId = searchParams.get('stationId') || '1'
-    const date = searchParams.get('date') || new Date().toISOString().split('T')[0]
+    const stationId = searchParams.get('stationId')
+    const dateStr = searchParams.get('date') || new Date().toISOString().split('T')[0]
+    const date = new Date(dateStr)
+    const startOfDay = new Date(date)
+    startOfDay.setHours(0, 0, 0, 0)
+    const endOfDay = new Date(date)
+    endOfDay.setHours(23, 59, 59, 999)
 
-    // Get safe summary
-    const safeSummary = getSafeSummary(stationId, date)
-    
-    // Get credit aging
-    const creditAging = getCreditAging()
-    
-    // Get tank variance summary (mock data for now)
-    const tankVariances = [
-      getTankVarianceSummary('1'),
-      getTankVarianceSummary('2'),
-      getTankVarianceSummary('3'),
-      getTankVarianceSummary('4')
-    ]
+    if (!stationId) {
+      return NextResponse.json({ error: 'Station ID is required' }, { status: 400 })
+    }
+
+    // Get shifts for the day - get shifts that ENDED on this day for accurate reporting
+    const shifts = await prisma.shift.findMany({
+      where: {
+        stationId,
+        status: 'CLOSED', // Only include closed shifts
+        endTime: {
+          gte: startOfDay,
+          lte: endOfDay
+        }
+      },
+      include: {
+        assignments: {
+          include: {
+            nozzle: {
+              include: {
+                tank: true
+              }
+            }
+          }
+        }
+      }
+    })
+
+    // Calculate sales from shift assignments (only closed assignments)
+    let totalCashIn = 0
+    for (const shift of shifts) {
+      for (const assignment of shift.assignments) {
+        // Only include closed assignments with valid meter readings
+        if (assignment.status === 'CLOSED' && assignment.endMeterReading && assignment.startMeterReading) {
+          // Handle meter rollover
+          let litersSold = assignment.endMeterReading - assignment.startMeterReading
+          if (litersSold < 0) {
+            const METER_MAX = 99999
+            if (assignment.startMeterReading > 90000 && assignment.endMeterReading < 10000) {
+              litersSold = (METER_MAX - assignment.startMeterReading) + assignment.endMeterReading
+            } else {
+              continue // Skip invalid readings (not a rollover)
+            }
+          }
+          
+          if (litersSold <= 0) continue
+          
+          const fuelType = assignment.nozzle.tank.fuelType
+          
+          const price = await prisma.price.findFirst({
+            where: {
+              fuelType,
+              stationId,
+              effectiveDate: { lte: shift.endTime || new Date() },
+              isActive: true
+            },
+            orderBy: { effectiveDate: 'desc' }
+          })
+          
+          const pricePerLiter = price ? price.price : 0
+          totalCashIn += litersSold * pricePerLiter
+        }
+      }
+    }
+
+    // Get expenses for the day
+    const expenses = await prisma.expense.findMany({
+      where: {
+        stationId,
+        expenseDate: {
+          gte: startOfDay,
+          lte: endOfDay
+        }
+      }
+    })
+    const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0)
+
+    // Get loans given on the day
+    const loansGiven = await prisma.loanExternal.findMany({
+      where: {
+        stationId,
+        createdAt: {
+          gte: startOfDay,
+          lte: endOfDay
+        }
+      }
+    })
+    const totalLoansGiven = loansGiven.reduce((sum, loan) => sum + loan.amount, 0)
+
+    // Get credit repayments for the day
+    const creditRepayments = await prisma.creditPayment.findMany({
+      where: {
+        paymentDate: {
+          gte: startOfDay,
+          lte: endOfDay
+        },
+        customer: {
+          creditSales: {
+            some: {
+              shift: {
+                stationId
+              }
+            }
+          }
+        }
+      }
+    })
+    const totalCreditRepayments = creditRepayments.reduce((sum, payment) => sum + payment.amount, 0)
+
+    // Get cheques encashed for the day
+    const cheques = await prisma.cheque.findMany({
+      where: {
+        stationId,
+        clearedDate: {
+          gte: startOfDay,
+          lte: endOfDay
+        },
+        status: 'CLEARED'
+      }
+    })
+    const totalChequeEncashed = cheques.reduce((sum, cheque) => sum + cheque.amount, 0)
+
+    // Get deposits for the day
+    const deposits = await prisma.deposit.findMany({
+      where: {
+        stationId,
+        depositDate: {
+          gte: startOfDay,
+          lte: endOfDay
+        }
+      }
+    })
+    const totalDeposits = deposits.reduce((sum, deposit) => sum + deposit.amount, 0)
+
+    // Get credit customers with outstanding balances
+    const creditCustomers = await prisma.creditCustomer.findMany({
+      where: {
+        isActive: true,
+        currentBalance: { gt: 0 },
+        creditSales: {
+          some: {
+            shift: {
+              stationId
+            }
+          }
+        }
+      },
+      include: {
+        creditSales: {
+          take: 5,
+          orderBy: { timestamp: 'desc' }
+        },
+        creditPayments: {
+          take: 5,
+          orderBy: { paymentDate: 'desc' }
+        }
+      }
+    })
 
     // Calculate daily profit
     const dailyProfit = calculateDailyProfit(
-      safeSummary.totalCashIn,
-      safeSummary.totalExpenses,
-      safeSummary.totalLoansGiven,
-      safeSummary.totalCreditRepayments,
-      safeSummary.totalChequeEncashed,
-      safeSummary.totalDeposits
+      totalCashIn,
+      totalExpenses,
+      totalLoansGiven,
+      totalCreditRepayments,
+      totalChequeEncashed,
+      totalDeposits
     )
 
+    // Get tank variances (calculate from deliveries and assignments)
+    const tanks = await prisma.tank.findMany({
+      where: { stationId },
+      include: {
+        deliveries: {
+          where: {
+            deliveryDate: {
+              gte: startOfDay,
+              lte: endOfDay
+            }
+          }
+        }
+      }
+    })
+
+    const tankVariances = tanks.map(tank => {
+      const deliveries = tank.deliveries.reduce((sum, del) => sum + del.quantity, 0)
+      // Variance calculation would need more complex logic based on actual usage
+      return {
+        tankId: tank.id,
+        fuelType: tank.fuelType,
+        capacity: tank.capacity,
+        currentLevel: tank.currentLevel,
+        deliveries: deliveries,
+        currentVariance: 0 // Placeholder - needs more complex calculation
+      }
+    })
+
+    const safeSummary = {
+      totalCashIn,
+      totalExpenses,
+      totalLoansGiven,
+      totalCreditRepayments,
+      totalChequeEncashed,
+      totalDeposits,
+      netCash: totalCashIn - totalExpenses - totalDeposits
+    }
+
     const report = {
-      date,
+      date: dateStr,
       stationId,
       safe: safeSummary,
       credit: {
-        aging: creditAging,
-        totalOutstanding: creditAging.reduce((sum, customer) => sum + customer.currentBalance, 0)
+        aging: creditCustomers.map(c => ({
+          id: c.id,
+          name: c.name,
+          currentBalance: c.currentBalance,
+          creditLimit: c.creditLimit
+        })),
+        totalOutstanding: creditCustomers.reduce((sum, customer) => sum + customer.currentBalance, 0)
       },
       tanks: {
         variances: tankVariances,
@@ -48,9 +238,9 @@ export async function GET(request: NextRequest) {
       },
       profit: {
         daily: dailyProfit,
-        sales: safeSummary.totalCashIn,
-        expenses: safeSummary.totalExpenses,
-        netMargin: safeSummary.totalCashIn > 0 ? (dailyProfit / safeSummary.totalCashIn) * 100 : 0
+        sales: totalCashIn,
+        expenses: totalExpenses,
+        netMargin: totalCashIn > 0 ? (dailyProfit / totalCashIn) * 100 : 0
       }
     }
 

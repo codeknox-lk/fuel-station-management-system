@@ -158,7 +158,7 @@ export const DateTimePicker = forwardRef<HTMLInputElement, DateTimePickerProps>(
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <label className="text-xs text-gray-500">Hours</label>
+                    <label className="text-xs text-muted-foreground">Hours</label>
                     <Select value={time.hours} onValueChange={(value) => handleTimeChange('hours', value)}>
                       <SelectTrigger className="h-8">
                         <SelectValue />
@@ -173,7 +173,7 @@ export const DateTimePicker = forwardRef<HTMLInputElement, DateTimePickerProps>(
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500">Minutes</label>
+                    <label className="text-xs text-muted-foreground">Minutes</label>
                     <Select value={time.minutes} onValueChange={(value) => handleTimeChange('minutes', value)}>
                       <SelectTrigger className="h-8">
                         <SelectValue />
@@ -189,7 +189,7 @@ export const DateTimePicker = forwardRef<HTMLInputElement, DateTimePickerProps>(
                   </div>
                   {showSeconds && (
                     <div>
-                      <label className="text-xs text-gray-500">Seconds</label>
+                      <label className="text-xs text-muted-foreground">Seconds</label>
                       <Select value={time.seconds} onValueChange={(value) => handleTimeChange('seconds', value)}>
                         <SelectTrigger className="h-8">
                           <SelectValue />

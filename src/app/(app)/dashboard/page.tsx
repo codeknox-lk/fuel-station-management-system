@@ -170,10 +170,10 @@ export default function DashboardPage() {
 
   const getChangeColor = (changeType: string) => {
     switch (changeType) {
-      case 'positive': return 'text-green-600'
-      case 'negative': return 'text-red-600'
-      case 'warning': return 'text-yellow-600'
-      default: return 'text-gray-600'
+      case 'positive': return 'text-green-600 dark:text-green-400'
+      case 'negative': return 'text-red-600 dark:text-red-400'
+      case 'warning': return 'text-yellow-600 dark:text-yellow-400'
+      default: return 'text-muted-foreground'
     }
   }
 
@@ -199,13 +199,13 @@ export default function DashboardPage() {
           return (
             <Card key={index}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
                   {stat.title}
                 </CardTitle>
-                <Icon className="h-4 w-4 text-gray-400" />
+                <Icon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">
+                <div className="text-2xl font-bold text-foreground">
                   {stat.value}
                 </div>
                 <p className={`text-xs ${getChangeColor(stat.changeType)}`}>
@@ -233,7 +233,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <Button 
                 variant="outline" 
-                className="h-20 flex flex-col gap-2 hover:bg-blue-50 hover:border-blue-200 transition-colors"
+                className="h-20 flex flex-col gap-2 transition-colors"
                 onClick={() => router.push('/shifts/open')}
               >
                 <Clock className="h-5 w-5" />
@@ -241,7 +241,7 @@ export default function DashboardPage() {
               </Button>
               <Button 
                 variant="outline" 
-                className="h-20 flex flex-col gap-2 hover:bg-green-50 hover:border-green-200 transition-colors"
+                className="h-20 flex flex-col gap-2 transition-colors"
                 onClick={() => router.push('/tanks/dips')}
               >
                 <Fuel className="h-5 w-5" />
@@ -249,7 +249,7 @@ export default function DashboardPage() {
               </Button>
               <Button 
                 variant="outline" 
-                className="h-20 flex flex-col gap-2 hover:bg-purple-50 hover:border-purple-200 transition-colors"
+                className="h-20 flex flex-col gap-2 transition-colors"
                 onClick={() => router.push('/pos/batches')}
               >
                 <CreditCard className="h-5 w-5" />
@@ -257,7 +257,7 @@ export default function DashboardPage() {
               </Button>
               <Button 
                 variant="outline" 
-                className="h-20 flex flex-col gap-2 hover:bg-yellow-50 hover:border-yellow-200 transition-colors"
+                className="h-20 flex flex-col gap-2 transition-colors"
                 onClick={() => router.push('/audits')}
               >
                 <AlertTriangle className="h-5 w-5" />
@@ -265,7 +265,7 @@ export default function DashboardPage() {
               </Button>
               <Button 
                 variant="outline" 
-                className="h-20 flex flex-col gap-2 hover:bg-red-50 hover:border-red-200 transition-colors"
+                className="h-20 flex flex-col gap-2 transition-colors"
                 onClick={() => router.push('/shifts/close')}
               >
                 <Clock className="h-5 w-5" />
@@ -273,7 +273,7 @@ export default function DashboardPage() {
               </Button>
               <Button 
                 variant="outline" 
-                className="h-20 flex flex-col gap-2 hover:bg-indigo-50 hover:border-indigo-200 transition-colors"
+                className="h-20 flex flex-col gap-2 transition-colors"
                 onClick={() => router.push('/credit/sales')}
               >
                 <DollarSign className="h-5 w-5" />
@@ -281,7 +281,7 @@ export default function DashboardPage() {
               </Button>
               <Button 
                 variant="outline" 
-                className="h-20 flex flex-col gap-2 hover:bg-orange-50 hover:border-orange-200 transition-colors"
+                className="h-20 flex flex-col gap-2 transition-colors"
                 onClick={() => router.push('/reports/daily')}
               >
                 <FileText className="h-5 w-5" />
@@ -289,7 +289,7 @@ export default function DashboardPage() {
               </Button>
               <Button 
                 variant="outline" 
-                className="h-20 flex flex-col gap-2 hover:bg-teal-50 hover:border-teal-200 transition-colors"
+                className="h-20 flex flex-col gap-2 transition-colors"
                 onClick={() => router.push('/safe/summary')}
               >
                 <Activity className="h-5 w-5" />
@@ -301,9 +301,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Alerts */}
-      <Card className="border-yellow-200 bg-yellow-50">
+      <Card className="border-red-500/20 dark:border-red-500/30 bg-red-500/10 dark:bg-red-500/20">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-yellow-800">
+          <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-300">
             <AlertTriangle className="h-5 w-5" />
             System Alerts
           </CardTitle>
@@ -311,10 +311,10 @@ export default function DashboardPage() {
         <CardContent>
           <div className="space-y-2">
             <div 
-              className="flex items-center gap-2 text-sm cursor-pointer hover:bg-yellow-100 p-2 rounded transition-colors"
+              className="flex items-center gap-2 text-sm cursor-pointer hover:bg-red-500/10 dark:hover:bg-red-600/20 p-2 rounded transition-colors"
               onClick={() => router.push('/tanks')}
             >
-              <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+              <div className="w-2 h-2 bg-red-600 dark:bg-red-400 rounded-full" />
               <span>
                 {isAllStations 
                   ? 'Multiple tanks across stations are at low capacity'
@@ -323,10 +323,10 @@ export default function DashboardPage() {
               </span>
             </div>
             <div 
-              className="flex items-center gap-2 text-sm cursor-pointer hover:bg-yellow-100 p-2 rounded transition-colors"
+              className="flex items-center gap-2 text-sm cursor-pointer hover:bg-red-500/10 dark:hover:bg-red-600/20 p-2 rounded transition-colors"
               onClick={() => router.push('/pos/reconcile')}
             >
-              <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+              <div className="w-2 h-2 bg-red-600 dark:bg-red-400 rounded-full" />
               <span>
                 {isAllStations 
                   ? 'POS Batch reconciliation pending across multiple stations'
@@ -335,10 +335,10 @@ export default function DashboardPage() {
               </span>
             </div>
             <div 
-              className="flex items-center gap-2 text-sm cursor-pointer hover:bg-yellow-100 p-2 rounded transition-colors"
+              className="flex items-center gap-2 text-sm cursor-pointer hover:bg-red-500/10 dark:hover:bg-red-600/20 p-2 rounded transition-colors"
               onClick={() => router.push('/credit/aging')}
             >
-              <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+              <div className="w-2 h-2 bg-red-600 dark:bg-red-400 rounded-full" />
               <span>
                 {isAllStations 
                   ? 'Multiple credit customers have overdue payments'
@@ -363,29 +363,29 @@ export default function DashboardPage() {
           {recentActivities.length > 0 ? (
             <div className="space-y-3">
               {recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                <div key={activity.id} className="flex items-start gap-3 p-3 bg-muted rounded-lg">
                   <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                      <Activity className="h-4 w-4 text-purple-600" />
+                    <div className="w-8 h-8 bg-purple-500/20 dark:bg-purple-600/30 rounded-full flex items-center justify-center">
+                      <Activity className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium text-gray-900">{activity.userName}</span>
+                      <span className="text-sm font-medium text-foreground">{activity.userName}</span>
                       <Badge variant="outline" className="text-xs">
                         {activity.userRole}
                       </Badge>
                       <Badge className={`text-xs ${
-                        activity.action === 'CREATE' ? 'bg-green-100 text-green-800' :
-                        activity.action === 'UPDATE' ? 'bg-blue-100 text-blue-800' :
-                        activity.action === 'DELETE' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
+                        activity.action === 'CREATE' ? 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300' :
+                        activity.action === 'UPDATE' ? 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300' :
+                        activity.action === 'DELETE' ? 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300' :
+                        'bg-muted text-foreground'
                       }`}>
                         {activity.action}
                       </Badge>
                     </div>
-                    <p className="text-sm text-gray-700 mb-1">{activity.details}</p>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <p className="text-sm text-foreground mb-1">{activity.details}</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Clock className="h-3 w-3" />
                       <span>{new Date(activity.timestamp).toLocaleString()}</span>
                       {activity.stationName && (
@@ -411,8 +411,8 @@ export default function DashboardPage() {
               </div>
             </div>
           ) : (
-            <div className="text-center py-6 text-gray-500">
-              <Activity className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+            <div className="text-center py-6 text-muted-foreground">
+              <Activity className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
               <p>No recent activities</p>
             </div>
           )}

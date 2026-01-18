@@ -1,34 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getBanks, getBankById, getActiveBanks, getBankAccounts, getBankAccountsByBankId } from '@/data/banks.seed'
+import { prisma } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const active = searchParams.get('active')
     const id = searchParams.get('id')
-    const accounts = searchParams.get('accounts')
-    const bankId = searchParams.get('bankId')
 
     if (id) {
-      const bank = getBankById(id)
+      const bank = await prisma.bank.findUnique({
+        where: { id },
+        include: {
+          deposits: {
+            take: 5,
+            orderBy: { depositDate: 'desc' }
+          },
+          cheques: {
+            take: 5,
+            orderBy: { receivedDate: 'desc' }
+          }
+        }
+      })
+      
       if (!bank) {
         return NextResponse.json({ error: 'Bank not found' }, { status: 404 })
       }
       return NextResponse.json(bank)
     }
 
-    if (accounts === 'true') {
-      if (bankId) {
-        return NextResponse.json(getBankAccountsByBankId(bankId))
-      }
-      return NextResponse.json(getBankAccounts())
-    }
+    const where = active === 'true' ? { isActive: true } : {}
+    const banks = await prisma.bank.findMany({
+      where,
+      orderBy: { name: 'asc' }
+    })
 
-    if (active === 'true') {
-      return NextResponse.json(getActiveBanks())
-    }
-
-    return NextResponse.json(getBanks())
+    return NextResponse.json(banks)
   } catch (error) {
     console.error('Error fetching banks:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -39,14 +45,23 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    // In a real app, this would validate and save to database
-    const newBank = {
-      id: Date.now().toString(),
-      ...body,
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+    const { name, branch, accountNumber } = body
+    
+    if (!name) {
+      return NextResponse.json(
+        { error: 'Bank name is required' },
+        { status: 400 }
+      )
     }
+
+    const newBank = await prisma.bank.create({
+      data: {
+        name,
+        branch: branch || null,
+        accountNumber: accountNumber || null,
+        isActive: true
+      }
+    })
 
     return NextResponse.json(newBank, { status: 201 })
   } catch (error) {

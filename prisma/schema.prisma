@@ -1,0 +1,964 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = []
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Core Models
+// ============================================
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  email     String   @unique
+  password  String // Will be hashed
+  role      UserRole @default(MANAGER)
+  stationId String?
+  station   Station? @relation(fields: [stationId], references: [id])
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  auditLogs AuditLog[]
+
+  @@index([username])
+  @@index([email])
+  @@index([stationId])
+}
+
+enum UserRole {
+  OWNER
+  MANAGER
+  ACCOUNTS
+}
+
+model Station {
+  id        String   @id @default(uuid())
+  name      String
+  address   String
+  city      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users          User[]
+  tanks          Tank[]
+  pumps          Pump[]
+  shifts         Shift[]
+  expenses       Expense[]
+  deposits       Deposit[]
+  externalLoans  LoanExternal[]
+  pumperLoans    LoanPumper[]
+  cheques        Cheque[]
+  shiftTemplates ShiftTemplate[]
+  posTerminals   PosTerminal[]
+  deliveries     Delivery[]
+  tankDips       TankDip[]
+  oilSales       OilSale[]
+  prices         Price[]
+  pumpers        Pumper[]
+  officeStaff    OfficeStaff[]
+  officeStaffSalaryPayments OfficeStaffSalaryPayment[]
+  safe           Safe?
+  notifications  Notification[]
+  salaryPayments SalaryPayment[]
+
+  @@index([isActive])
+}
+
+// ============================================
+// Shifts & Assignments
+// ============================================
+
+model Shift {
+  id         String        @id @default(uuid())
+  stationId  String
+  station    Station       @relation(fields: [stationId], references: [id])
+  templateId String
+  template   ShiftTemplate @relation(fields: [templateId], references: [id])
+  startTime  DateTime
+  endTime    DateTime?
+  status     ShiftStatus   @default(OPEN)
+  openedBy   String
+  closedBy   String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  // Statistics (stored as JSON for flexibility)
+  statistics      Json?
+  declaredAmounts Json?
+
+  // Relations
+  assignments     ShiftAssignment[]
+  meterAudits     MeterAudit[]
+  testPours       TestPour[]
+  creditSales     CreditSale[]
+  tenders         Tender[]
+  posMissingSlips PosMissingSlip[]
+  posBatches      PosBatch[]
+
+  @@index([stationId])
+  @@index([status])
+  @@index([startTime])
+}
+
+enum ShiftStatus {
+  OPEN
+  CLOSED
+}
+
+model ShiftTemplate {
+  id        String   @id @default(uuid())
+  stationId String
+  station   Station  @relation(fields: [stationId], references: [id])
+  name      String
+  startTime String // e.g., "06:00"
+  endTime   String // e.g., "14:00"
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shifts Shift[]
+
+  @@index([stationId])
+}
+
+model ShiftAssignment {
+  id                String           @id @default(uuid())
+  shiftId           String
+  shift             Shift            @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  nozzleId          String
+  nozzle            Nozzle           @relation(fields: [nozzleId], references: [id])
+  pumperName        String
+  startMeterReading Float
+  endMeterReading   Float?
+  status            AssignmentStatus @default(ACTIVE)
+  assignedAt        DateTime         @default(now())
+  closedAt          DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([shiftId])
+  @@index([nozzleId])
+  @@index([status])
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  CLOSED
+}
+
+// ============================================
+// Tanks & Pumps
+// ============================================
+
+model Tank {
+  id           String   @id @default(uuid())
+  stationId    String
+  station      Station  @relation(fields: [stationId], references: [id])
+  tankNumber   String   @default("TANK-1")
+  fuelType     FuelType
+  capacity     Float // in liters
+  currentLevel Float // in liters
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  nozzles    Nozzle[]
+  deliveries Delivery[]
+  tankDips   TankDip[]
+
+  @@unique([stationId, tankNumber])
+  @@index([stationId])
+  @@index([fuelType])
+}
+
+enum FuelType {
+  PETROL_92
+  PETROL_95
+  DIESEL
+  SUPER_DIESEL
+  OIL
+}
+
+model Pump {
+  id         String   @id @default(uuid())
+  stationId  String
+  station    Station  @relation(fields: [stationId], references: [id])
+  pumpNumber String
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  nozzles Nozzle[]
+
+  @@unique([stationId, pumpNumber])
+  @@index([stationId])
+}
+
+model Nozzle {
+  id           String   @id @default(uuid())
+  pumpId       String
+  pump         Pump     @relation(fields: [pumpId], references: [id], onDelete: Cascade)
+  tankId       String
+  tank         Tank     @relation(fields: [tankId], references: [id])
+  nozzleNumber String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  assignments ShiftAssignment[]
+  meterAudits MeterAudit[]
+  testPours   TestPour[]
+
+  @@unique([pumpId, nozzleNumber])
+  @@index([tankId])
+}
+
+model TankDip {
+  id         String   @id @default(uuid())
+  stationId  String
+  station    Station  @relation(fields: [stationId], references: [id])
+  tankId     String
+  tank       Tank     @relation(fields: [tankId], references: [id])
+  reading    Float // in liters
+  recordedBy String
+  dipDate    DateTime
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([stationId])
+  @@index([tankId])
+  @@index([dipDate])
+}
+
+model Delivery {
+  id              String   @id @default(uuid())
+  stationId       String
+  station         Station  @relation(fields: [stationId], references: [id])
+  tankId          String
+  tank            Tank     @relation(fields: [tankId], references: [id])
+  quantity        Float // in liters - measured quantity
+  invoiceQuantity Float? // in liters - invoice quantity
+  supplier        String
+  deliveryDate    DateTime
+  receivedBy      String
+  invoiceNumber   String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([stationId])
+  @@index([tankId])
+  @@index([deliveryDate])
+}
+
+// ============================================
+// Financial
+// ============================================
+
+model Expense {
+  id          String   @id @default(uuid())
+  stationId   String
+  station     Station  @relation(fields: [stationId], references: [id])
+  category    String
+  description String
+  amount      Float
+  fromSafe    Boolean  @default(false)
+  paidBy      String
+  proof       String?
+  expenseDate DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([stationId])
+  @@index([expenseDate])
+  @@index([category])
+}
+
+model Deposit {
+  id          String   @id @default(uuid())
+  stationId   String
+  station     Station  @relation(fields: [stationId], references: [id])
+  amount      Float
+  bankId      String
+  bank        Bank     @relation(fields: [bankId], references: [id])
+  accountId   String
+  depositSlip String?
+  depositedBy String
+  depositDate DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([stationId])
+  @@index([bankId])
+  @@index([depositDate])
+}
+
+model LoanExternal {
+  id            String     @id @default(uuid())
+  stationId     String
+  station       Station    @relation(fields: [stationId], references: [id])
+  borrowerName  String
+  borrowerPhone String
+  amount        Float
+  interestRate  Float?
+  dueDate       DateTime
+  status        LoanStatus @default(ACTIVE)
+  notes         String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([stationId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model LoanPumper {
+  id            String     @id @default(uuid())
+  stationId     String
+  station       Station    @relation(fields: [stationId], references: [id])
+  pumperName    String
+  amount        Float
+  paidAmount    Float     @default(0) // Amount paid so far
+  monthlyRental Float?     @default(0) // Monthly rental amount to deduct from salary
+  reason        String
+  givenBy       String?    // Who gave the loan (username or pumper name)
+  dueDate       DateTime
+  status        LoanStatus @default(ACTIVE)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([stationId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+enum LoanStatus {
+  ACTIVE
+  PAID
+  OVERDUE
+}
+
+model Cheque {
+  id           String       @id @default(uuid())
+  stationId    String
+  station      Station      @relation(fields: [stationId], references: [id])
+  chequeNumber String       @unique
+  amount       Float
+  bankId       String
+  bank         Bank         @relation(fields: [bankId], references: [id])
+  receivedFrom String
+  receivedDate DateTime
+  status       ChequeStatus @default(PENDING)
+  clearedDate  DateTime?
+  notes        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([stationId])
+  @@index([bankId])
+  @@index([status])
+  @@index([receivedDate])
+}
+
+enum ChequeStatus {
+  PENDING
+  CLEARED
+  BOUNCED
+  CANCELLED
+}
+
+// ============================================
+// Credit Management
+// ============================================
+
+model CreditCustomer {
+  id             String   @id @default(uuid())
+  name           String
+  company        String?
+  address        String
+  phone          String
+  email          String?
+  creditLimit    Float    @default(0)
+  currentBalance Float    @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  creditSales    CreditSale[]
+  creditPayments CreditPayment[]
+
+  @@index([phone])
+  @@index([isActive])
+}
+
+model CreditSale {
+  id         String         @id @default(uuid())
+  customerId String
+  customer   CreditCustomer @relation(fields: [customerId], references: [id])
+  shiftId    String
+  shift      Shift          @relation(fields: [shiftId], references: [id])
+  nozzleId   String
+  amount     Float
+  liters     Float
+  price      Float
+  slipPhoto  String?
+  signedBy   String
+  timestamp  DateTime
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@index([customerId])
+  @@index([shiftId])
+  @@index([timestamp])
+}
+
+model CreditPayment {
+  id           String         @id @default(uuid())
+  customerId   String
+  customer     CreditCustomer @relation(fields: [customerId], references: [id])
+  amount       Float
+  paymentType  PaymentType
+  chequeNumber String?
+  bankId       String?
+  bank         Bank?          @relation(fields: [bankId], references: [id])
+  paymentDate  DateTime
+  receivedBy   String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([customerId])
+  @@index([paymentDate])
+}
+
+enum PaymentType {
+  CASH
+  CHEQUE
+  BANK_TRANSFER
+}
+
+// ============================================
+// POS System
+// ============================================
+
+model PosTerminal {
+  id             String   @id @default(uuid())
+  stationId      String
+  station        Station  @relation(fields: [stationId], references: [id])
+  bankId         String?
+  bank           Bank?    @relation(fields: [bankId], references: [id])
+  terminalNumber String
+  name           String
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  batchEntries PosBatchTerminalEntry[]
+  missingSlips PosMissingSlip[]
+
+  @@unique([stationId, terminalNumber])
+  @@index([stationId])
+  @@index([bankId])
+}
+
+model PosBatch {
+  id           String    @id @default(uuid())
+  shiftId      String
+  shift        Shift     @relation(fields: [shiftId], references: [id])
+  totalAmount  Float
+  isReconciled Boolean   @default(false)
+  reconciledBy String?
+  reconciledAt DateTime?
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  terminalEntries PosBatchTerminalEntry[]
+
+  @@index([shiftId])
+  @@index([isReconciled])
+}
+
+model PosBatchTerminalEntry {
+  id               String      @id @default(uuid())
+  batchId          String
+  batch            PosBatch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  terminalId       String
+  terminal         PosTerminal @relation(fields: [terminalId], references: [id])
+  startNumber      String
+  endNumber        String
+  transactionCount Int
+  visaAmount       Float       @default(0)
+  masterAmount     Float       @default(0)
+  amexAmount       Float       @default(0)
+  qrAmount         Float       @default(0)
+  dialogTouchAmount Float      @default(0)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([batchId])
+  @@index([terminalId])
+}
+
+model PosMissingSlip {
+  id             String      @id @default(uuid())
+  terminalId     String
+  terminal       PosTerminal @relation(fields: [terminalId], references: [id])
+  shiftId        String
+  shift          Shift       @relation(fields: [shiftId], references: [id])
+  amount         Float
+  lastFourDigits String
+  timestamp      DateTime
+  reportedBy     String
+  notes          String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([terminalId])
+  @@index([shiftId])
+  @@index([timestamp])
+}
+
+// ============================================
+// Safe System
+// ============================================
+
+model Safe {
+  id             String    @id @default(uuid())
+  stationId      String    @unique
+  station        Station   @relation(fields: [stationId], references: [id])
+  openingBalance Float     @default(0)
+  currentBalance Float     @default(0) // Calculated from transactions
+  lastCounted    DateTime?
+  countedBy      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  transactions SafeTransaction[]
+
+  @@index([stationId])
+}
+
+model SafeTransaction {
+  id            String              @id @default(uuid())
+  safeId        String
+  safe          Safe                @relation(fields: [safeId], references: [id], onDelete: Cascade)
+  type          SafeTransactionType
+  amount        Float
+  balanceBefore Float
+  balanceAfter  Float
+  shiftId       String?
+  batchId       String?
+  creditSaleId  String?
+  chequeId      String?
+  expenseId     String?
+  loanId        String?
+  depositId     String?
+  description   String
+  performedBy   String
+  timestamp     DateTime
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([safeId])
+  @@index([type])
+  @@index([timestamp])
+}
+
+enum SafeTransactionType {
+  CASH_FUEL_SALES
+  POS_CARD_PAYMENT
+  CREDIT_PAYMENT
+  CHEQUE_RECEIVED
+  LOAN_REPAID
+  EXPENSE
+  LOAN_GIVEN
+  BANK_DEPOSIT
+  CASH_TRANSFER
+  COUNT_ADJUSTMENT
+  OPENING_BALANCE
+}
+
+// ============================================
+// Prices
+// ============================================
+
+model Price {
+  id            String   @id @default(uuid())
+  stationId     String
+  station       Station  @relation(fields: [stationId], references: [id])
+  fuelType      FuelType
+  price         Float
+  effectiveDate DateTime
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([stationId])
+  @@index([fuelType])
+  @@index([effectiveDate])
+  @@index([isActive])
+}
+
+// ============================================
+// Settings
+// ============================================
+
+model Bank {
+  id            String   @id @default(uuid())
+  name          String
+  branch        String?
+  accountNumber String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  deposits       Deposit[]
+  cheques        Cheque[]
+  creditPayments CreditPayment[]
+  posTerminals   PosTerminal[]
+}
+
+model Pumper {
+  id              String       @id @default(uuid())
+  name            String
+  employeeId      String?
+  stationId       String?
+  station         Station?     @relation(fields: [stationId], references: [id])
+  phone           String?
+  status          PumperStatus @default(ACTIVE)
+  shift           PumperShift  @default(ANY)
+  hireDate        DateTime?
+  experience      Float? // in years
+  rating          Float? // 1-5 rating
+  specializations String[]     @default([])
+  baseSalary      Float?       @default(0) // Monthly base salary in LKR
+  holidayAllowance Float?      @default(4500) // Monthly holiday allowance in LKR
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relations
+  salaryPayments SalaryPayment[]
+
+  @@index([stationId])
+  @@index([status])
+  @@index([isActive])
+}
+
+enum PumperStatus {
+  ACTIVE
+  INACTIVE
+  ON_LEAVE
+}
+
+enum PumperShift {
+  MORNING
+  EVENING
+  NIGHT
+  ANY
+}
+
+model OfficeStaff {
+  id                String          @id @default(uuid())
+  name              String
+  employeeId        String?
+  stationId         String
+  station           Station         @relation(fields: [stationId], references: [id])
+  role              OfficeStaffRole @default(MANAGER)
+  phone             String?
+  email             String?
+  baseSalary        Float           @default(0) // Monthly base salary in LKR
+  specialAllowance  Float           @default(0) // Special allowance (different for each staff)
+  otherAllowances   Float           @default(0) // Other allowances
+  medicalAllowance  Float           @default(0) // Medical allowance
+  holidayAllowance  Float           @default(0) // Holiday allowance
+  fuelAllowance     Float           @default(0) // Fuel allowance (only for managers)
+  isActive          Boolean         @default(true)
+  hireDate          DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  // Relations
+  salaryPayments    OfficeStaffSalaryPayment[]
+
+  @@index([stationId])
+  @@index([role])
+  @@index([isActive])
+}
+
+enum OfficeStaffRole {
+  MANAGER
+  SUPERVISOR
+  OFFICE_STAFF
+  ACCOUNTANT
+  CASHIER
+}
+
+// ============================================
+// Salary Management
+// ============================================
+
+model SalaryPayment {
+  id               String              @id @default(uuid())
+  stationId        String
+  station          Station             @relation(fields: [stationId], references: [id])
+  pumperId         String
+  pumper           Pumper              @relation(fields: [pumperId], references: [id])
+  paymentMonth     String // Format: YYYY-MM
+  baseSalary       Float               @default(0)
+  varianceAdd      Float               @default(0)
+  varianceDeduct   Float               @default(0)
+  advances         Float               @default(0)
+  loans            Float               @default(0)
+  netSalary        Float
+  paymentDate      DateTime
+  paymentMethod    PaymentType         @default(CASH)
+  paymentReference String? // Cheque number, transfer reference, etc.
+  paidBy           String // User who processed the payment
+  notes            String?
+  status           SalaryPaymentStatus @default(PENDING)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([stationId])
+  @@index([pumperId])
+  @@index([paymentMonth])
+  @@index([paymentDate])
+  @@index([status])
+}
+
+enum SalaryPaymentStatus {
+  PENDING
+  PAID
+  PARTIAL
+  CANCELLED
+}
+
+model OfficeStaffSalaryPayment {
+  id               String              @id @default(uuid())
+  stationId        String
+  station          Station             @relation(fields: [stationId], references: [id])
+  officeStaffId    String
+  officeStaff      OfficeStaff         @relation(fields: [officeStaffId], references: [id])
+  paymentMonth     String // Format: YYYY-MM
+  baseSalary       Float               @default(0)
+  advances         Float               @default(0)
+  loans            Float               @default(0)
+  deductions       Float               @default(0) // Other deductions
+  netSalary        Float
+  paymentDate      DateTime?
+  paymentMethod    PaymentType         @default(CASH)
+  paymentReference String? // Cheque number, transfer reference, etc.
+  paidBy           String? // User who processed the payment
+  notes            String?
+  status           SalaryPaymentStatus @default(PENDING)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([stationId])
+  @@index([officeStaffId])
+  @@index([paymentMonth])
+  @@index([paymentDate])
+  @@index([status])
+}
+
+// ============================================
+// Audits & Tests
+// ============================================
+
+model MeterAudit {
+  id              String       @id @default(uuid())
+  shiftId         String?
+  shift           Shift?       @relation(fields: [shiftId], references: [id])
+  nozzleId        String
+  nozzle          Nozzle       @relation(fields: [nozzleId], references: [id])
+  reading         Float
+  meterReading    Float
+  previousReading Float
+  deltaLitres     Float
+  variance        Float?
+  status          AuditStatus?
+  timestamp       DateTime
+  auditTime       DateTime
+  auditedBy       String
+  notes           String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([shiftId])
+  @@index([nozzleId])
+  @@index([timestamp])
+}
+
+enum AuditStatus {
+  NORMAL
+  WARNING
+  CRITICAL
+}
+
+model TestPour {
+  id          String       @id @default(uuid())
+  shiftId     String
+  shift       Shift        @relation(fields: [shiftId], references: [id])
+  nozzleId    String
+  nozzle      Nozzle       @relation(fields: [nozzleId], references: [id])
+  amount      Float // in liters
+  testType    TestPourType
+  timestamp   DateTime
+  performedBy String
+  returned    Boolean      @default(true)
+  notes       String? // Store reason and additional notes
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([shiftId])
+  @@index([nozzleId])
+}
+
+enum TestPourType {
+  L5
+  L50
+  L100
+}
+
+// ============================================
+// Oil Sales
+// ============================================
+
+model OilSale {
+  id           String   @id @default(uuid())
+  stationId    String
+  station      Station  @relation(fields: [stationId], references: [id])
+  productName  String
+  quantity     Float
+  unit         String   @default("liters")
+  price        Float
+  totalAmount  Float
+  customerName String?
+  saleDate     DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([stationId])
+  @@index([saleDate])
+}
+
+// ============================================
+// Tenders
+// ============================================
+
+model Tender {
+  id         String   @id @default(uuid())
+  shiftId    String
+  shift      Shift    @relation(fields: [shiftId], references: [id])
+  amount     Float
+  tenderType String // CASH, CARD, CHEQUE, etc.
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([shiftId])
+}
+
+// ============================================
+// Audit Logging
+// ============================================
+
+model AuditLog {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  userName    String
+  userRole    UserRole
+  action      AuditAction
+  entity      String
+  entityId    String?
+  details     String
+  ipAddress   String?
+  stationId   String?
+  stationName String?
+  timestamp   DateTime    @default(now())
+  createdAt   DateTime    @default(now())
+
+  @@index([userId])
+  @@index([entity])
+  @@index([action])
+  @@index([timestamp])
+  @@index([stationId])
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  VIEW
+}
+
+// ============================================
+// Notifications
+// ============================================
+
+model Notification {
+  id        String               @id @default(uuid())
+  stationId String?
+  station   Station?             @relation(fields: [stationId], references: [id])
+  title     String
+  message   String
+  type      NotificationType
+  priority  NotificationPriority @default(MEDIUM)
+  category  NotificationCategory
+  isRead    Boolean              @default(false)
+  actionUrl String?
+  metadata  Json? // Additional data (e.g., shiftId, tankId, customerId)
+  createdAt DateTime             @default(now())
+  readAt    DateTime?
+
+  @@index([stationId])
+  @@index([isRead])
+  @@index([type])
+  @@index([priority])
+  @@index([category])
+  @@index([createdAt])
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum NotificationCategory {
+  SYSTEM
+  OPERATIONS
+  FINANCIAL
+  MAINTENANCE
+  TANK
+  SHIFT
+  CREDIT
+  POS
+}

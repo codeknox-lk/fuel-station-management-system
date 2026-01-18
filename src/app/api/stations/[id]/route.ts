@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { stations } from '@/data/stations.seed'
+import { prisma } from '@/lib/db'
 import { auditOperations } from '@/lib/auditMiddleware'
 
 export async function PUT(
@@ -10,24 +10,33 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
     
-    const stationIndex = stations.findIndex(s => s.id === id)
-    if (stationIndex === -1) {
+    const station = await prisma.station.findUnique({
+      where: { id }
+    })
+    
+    if (!station) {
       return NextResponse.json({ error: 'Station not found' }, { status: 404 })
     }
 
-    const oldStation = stations[stationIndex]
-    stations[stationIndex] = {
-      ...stations[stationIndex],
-      ...body,
-      updatedAt: new Date().toISOString()
-    }
+    const { name, address, city, isActive } = body
+    
+    const updatedStation = await prisma.station.update({
+      where: { id },
+      data: {
+        ...(name && { name }),
+        ...(address && { address }),
+        ...(city && { city }),
+        ...(isActive !== undefined && { isActive })
+      }
+    })
 
     // Log the station update
     const changes = Object.keys(body).join(', ')
-    await auditOperations.stationUpdated(request, id, stations[stationIndex].name, changes)
+    await auditOperations.stationUpdated(request, id, updatedStation.name, changes)
 
-    return NextResponse.json(stations[stationIndex])
+    return NextResponse.json(updatedStation)
   } catch (error) {
+    console.error('Error updating station:', error)
     return NextResponse.json({ error: 'Failed to update station' }, { status: 500 })
   }
 }
@@ -39,19 +48,35 @@ export async function DELETE(
   try {
     const { id } = await params
     
-    const stationIndex = stations.findIndex(s => s.id === id)
-    if (stationIndex === -1) {
+    const station = await prisma.station.findUnique({
+      where: { id }
+    })
+    
+    if (!station) {
       return NextResponse.json({ error: 'Station not found' }, { status: 404 })
     }
 
-    const station = stations[stationIndex]
+    // Check for dependencies (shifts, tanks, etc.)
+    const hasShifts = await prisma.shift.count({ where: { stationId: id } }) > 0
+    const hasTanks = await prisma.tank.count({ where: { stationId: id } }) > 0
+    const hasUsers = await prisma.user.count({ where: { stationId: id } }) > 0
+    
+    if (hasShifts || hasTanks || hasUsers) {
+      return NextResponse.json({ 
+        error: 'Cannot delete station with existing shifts, tanks, or users. Please remove all dependencies first.' 
+      }, { status: 400 })
+    }
     
     // Log the station deletion
     await auditOperations.stationDeleted(request, id, station.name)
     
-    stations.splice(stationIndex, 1)
-    return NextResponse.json({ success: true })
+    await prisma.station.delete({
+      where: { id }
+    })
+    
+    return NextResponse.json({ success: true, message: 'Station deleted successfully' })
   } catch (error) {
+    console.error('Error deleting station:', error)
     return NextResponse.json({ error: 'Failed to delete station' }, { status: 500 })
   }
 }

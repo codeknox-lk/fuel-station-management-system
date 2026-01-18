@@ -53,7 +53,7 @@ export default function LoginPage() {
     setError('')
 
     try {
-      const response = await fetch('http://localhost:8000/api/auth/login', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -72,11 +72,22 @@ export default function LoginPage() {
         
         router.push('/')
       } else {
-        const errorData = await response.json()
-        setError(errorData.detail || 'Login failed')
+        let errorMessage = 'Login failed'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.detail || errorData.error || errorMessage
+        } catch (parseError) {
+          // If JSON parsing fails, use status text
+          errorMessage = `Login failed (${response.status} ${response.statusText})`
+        }
+        setError(errorMessage)
       }
     } catch (error) {
-      setError('Unable to connect to server. Please check if the backend is running.')
+      console.error('Login request error:', error)
+      const errorMessage = error instanceof Error 
+        ? `Unable to connect to server: ${error.message}`
+        : 'Unable to connect to server. Please check if the backend is running.'
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -141,7 +152,7 @@ export default function LoginPage() {
           )}
         </Button>
 
-        <div className="text-center text-xs text-gray-500">
+        <div className="text-center text-xs text-muted-foreground">
           <div className="mb-2">Test Credentials:</div>
           <div className="space-y-1">
             <div><strong>Owner:</strong> admin / FuelStation2024!Admin</div>

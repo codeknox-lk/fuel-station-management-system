@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getShiftById } from '@/data/shifts.seed'
-import { getCreditSalesByShiftId } from '@/data/credit.seed'
-import { getPosBatchesByShiftId } from '@/data/pos.seed'
-import { getOilSalesByShiftId } from '@/data/oilSales.seed'
-import { calculateShiftSummary } from '@/lib/calc'
+import { prisma } from '@/lib/db'
+import { calculateShiftSummary, classifyVariance } from '@/lib/calc'
 
 export async function GET(
   request: NextRequest,
@@ -11,6 +8,7 @@ export async function GET(
 ) {
   try {
     const { shiftId } = await params
+    console.log('🔍 Tender summary API called for shiftId:', shiftId)
     const { searchParams } = new URL(request.url)
     const cashAmount = parseFloat(searchParams.get('cashAmount') || '0')
     const cardAmount = parseFloat(searchParams.get('cardAmount') || '0')
@@ -28,34 +26,252 @@ export async function GET(
       }
     }
 
-    const shift = getShiftById(shiftId)
-    if (!shift) {
-      return NextResponse.json({ error: 'Shift not found' }, { status: 404 })
+    let shift
+    try {
+      // First fetch shift with basic info including statistics and declaredAmounts
+      shift = await prisma.shift.findUnique({
+        where: { id: shiftId },
+        select: {
+          id: true,
+          stationId: true,
+          startTime: true,
+          endTime: true,
+          status: true,
+          statistics: true,
+          declaredAmounts: true
+        }
+      })
+      
+      if (!shift) {
+        console.error('❌ Shift not found:', shiftId)
+        return NextResponse.json({ error: 'Shift not found' }, { status: 404 })
+      }
+      
+      console.log('✅ Shift found:', shift.id, 'Station:', shift.stationId, 'Status:', shift.status)
+      
+      // If shift is closed and has saved statistics and declared amounts, use them
+      // This ensures consistency when viewing a closed shift again
+      const shiftStatistics = shift.statistics as any
+      const shiftDeclaredAmounts = shift.declaredAmounts as any
+      
+      if (shift.status === 'CLOSED' && shiftStatistics?.totalSales !== undefined && shiftDeclaredAmounts) {
+        console.log('📊 Using saved statistics for closed shift')
+        console.log('💰 Saved data:', {
+          totalSales: shiftStatistics.totalSales,
+          declaredAmounts: shiftDeclaredAmounts
+        })
+        
+        // Calculate variance from saved data
+        const savedTotalSales = shiftStatistics.totalSales || 0
+        const savedTotalDeclared = shiftDeclaredAmounts.total || 
+          ((shiftDeclaredAmounts.cash || 0) + 
+           (shiftDeclaredAmounts.card || 0) + 
+           (shiftDeclaredAmounts.credit || 0) + 
+           (shiftDeclaredAmounts.cheque || 0))
+        const savedVariance = savedTotalSales - savedTotalDeclared
+        
+        // Get sales breakdown from saved statistics if available
+        let salesBreakdown = {
+          totalPumpSales: shiftStatistics.totalLiters || 0, // Use totalLiters as pump sales
+          totalCanSales: 0, // Can sales not stored separately
+          totalLitres: shiftStatistics.totalLiters || 0,
+          oilSales: {
+            totalAmount: 0,
+            salesCount: 0
+          }
+        }
+        
+        // Still get oil sales for breakdown
+        try {
+          const oilSales = await prisma.oilSale.findMany({
+            where: {
+              stationId: shift.stationId,
+              saleDate: {
+                gte: shift.startTime,
+                lte: shift.endTime || new Date()
+              }
+            }
+          })
+          const oilTotal = oilSales.reduce((sum, sale) => sum + (sale.totalAmount || 0), 0)
+          salesBreakdown.oilSales = {
+            totalAmount: oilTotal,
+            salesCount: oilSales.length
+          }
+        } catch (e) {
+          console.error('Error fetching oil sales:', e)
+        }
+        
+        // Calculate variance classification
+        const varianceClassification = classifyVariance(savedTotalSales, savedTotalDeclared)
+        
+        const tenderSummary = {
+          totalSales: savedTotalSales,
+          totalDeclared: savedTotalDeclared,
+          variance: savedVariance,
+          varianceClassification: {
+            ...varianceClassification,
+            variance: savedVariance // Ensure it uses the correct variance
+          },
+          salesBreakdown
+        }
+        
+        console.log('✅ Using saved summary:', {
+          totalSales: tenderSummary.totalSales,
+          totalDeclared: tenderSummary.totalDeclared,
+          variance: tenderSummary.variance
+        })
+        
+        return NextResponse.json(tenderSummary)
+      }
+      
+      console.log('📊 Calculating summary from assignments (open shift or no saved statistics)')
+      
+      // Fetch assignments separately to avoid complex nested includes
+      const shiftAssignmentsFromDb = await prisma.shiftAssignment.findMany({
+        where: { shiftId: shift.id },
+        include: {
+          nozzle: {
+            include: {
+              pump: {
+                select: {
+                  id: true,
+                  pumpNumber: true,
+                  isActive: true
+                }
+              },
+              tank: {
+                select: {
+                  id: true,
+                  fuelType: true,
+                  capacity: true,
+                  currentLevel: true
+                }
+              }
+            }
+          }
+        }
+      })
+      
+      // Add assignments to shift object
+      ;(shift as any).assignments = shiftAssignmentsFromDb
+      
+    } catch (dbError) {
+      console.error('❌ Database error fetching shift:', dbError)
+      if (dbError instanceof Error) {
+        console.error('Database error details:', dbError.message)
+        console.error('Database error stack:', dbError.stack)
+      }
+      return NextResponse.json({ 
+        error: 'Database error',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+      }, { status: 500 })
     }
 
     // Get credit sales for this shift
-    const creditSales = getCreditSalesByShiftId(shiftId)
+    const creditSales = await prisma.creditSale.findMany({
+      where: { shiftId }
+    })
     const creditTotal = creditSales.reduce((sum, sale) => sum + sale.amount, 0)
 
     // Get POS batches for this shift
-    const posBatches = getPosBatchesByShiftId(shiftId)
+    const posBatches = await prisma.posBatch.findMany({
+      where: { shiftId }
+    })
     const posTotal = posBatches.reduce((sum, batch) => sum + batch.totalAmount, 0)
 
-    // Get oil sales for this shift
-    const oilSales = getOilSalesByShiftId(shiftId)
+    // Get oil sales for this shift - Note: OilSale model doesn't have shiftId, so we'll need to filter by date if needed
+    // For now, we'll calculate from shift date range if needed
+    const oilSales = await prisma.oilSale.findMany({
+      where: {
+        stationId: shift.stationId,
+        saleDate: {
+          gte: shift.startTime,
+          lte: shift.endTime || new Date()
+        }
+      }
+    })
     const oilTotal = oilSales.reduce((sum, sale) => sum + sale.totalAmount, 0)
 
-    // Calculate sales from assignments or use mock data
-    let salesData = []
+    // Calculate sales from assignments
+    interface SalesDataItem {
+      nozzleId: string
+      startReading: number
+      endReading: number
+      delta: number
+      pumpSales: number
+      canSales: number
+      price: number
+      amount: number
+      startTime: Date
+      endTime: Date
+    }
+    let salesData: SalesDataItem[] = []
     let totalPumpSales = 0
     let totalCanSales = 0
     
-    if (assignments.length > 0) {
-      salesData = assignments.map((assignment: any) => {
-        const delta = (assignment.endMeterReading || 0) - assignment.startMeterReading
+    interface AssignmentData {
+      endMeterReading?: number | null
+      startMeterReading: number
+      canSales?: number
+      pumpSales?: number
+      nozzleId: string
+      fuelType?: string
+    }
+    
+    // Use provided assignments or get from shift
+    // Ensure assignments have all required fields with proper type conversion
+    const shiftAssignments = assignments.length > 0 
+      ? assignments.map((a: any) => ({
+          nozzleId: String(a.nozzleId || ''),
+          startMeterReading: typeof a.startMeterReading === 'number' ? a.startMeterReading : parseFloat(a.startMeterReading) || 0,
+          endMeterReading: a.endMeterReading !== null && a.endMeterReading !== undefined 
+            ? (typeof a.endMeterReading === 'number' ? a.endMeterReading : parseFloat(a.endMeterReading) || null)
+            : null,
+          canSales: typeof a.canSales === 'number' ? a.canSales : (a.canSales ? parseFloat(a.canSales) : 0),
+          pumpSales: typeof a.pumpSales === 'number' ? a.pumpSales : (a.pumpSales ? parseFloat(a.pumpSales) : undefined),
+          fuelType: a.fuelType || null
+        }))
+      : shift.assignments.map((a) => ({
+          nozzleId: a.nozzleId,
+          startMeterReading: a.startMeterReading,
+          endMeterReading: a.endMeterReading,
+          fuelType: a.nozzle?.tank?.fuelType
+        }))
+    
+    if (shiftAssignments.length > 0) {
+      // Get prices for fuel types
+      const fuelTypes = [...new Set(shiftAssignments.map((a) => a.fuelType).filter(Boolean))] as string[]
+      const prices = await Promise.all(
+        fuelTypes.map(async (fuelType) => {
+          const price = await prisma.price.findFirst({
+            where: {
+              fuelType: fuelType,
+              stationId: shift.stationId,
+              effectiveDate: { lte: shift.endTime || new Date() },
+              isActive: true
+            },
+            orderBy: { effectiveDate: 'desc' }
+          })
+          return { fuelType, price: price?.price || 0 }
+        })
+      )
+      
+      const priceMap = Object.fromEntries(prices.map(p => [p.fuelType, p.price]))
+      
+      salesData = await Promise.all(shiftAssignments.map(async (assignment: AssignmentData) => {
+        // Validate meter readings
+        const endReading = assignment.endMeterReading || 0
+        if (endReading < assignment.startMeterReading) {
+          console.error(`Invalid meter reading: end (${endReading}) < start (${assignment.startMeterReading})`)
+        }
+        
+        const delta = Math.max(0, endReading - assignment.startMeterReading) // Ensure non-negative
         const canSales = assignment.canSales || 0
         const pumpSales = assignment.pumpSales || Math.max(0, delta - canSales)
-        const price = 470 // Mock price - in real app, get from price API
+        const price = assignment.fuelType ? (priceMap[assignment.fuelType] || 470) : 470
+        
+        // Calculate sales amount from pump sales only (can sales are handled separately)
+        const salesAmount = pumpSales * price
         
         totalPumpSales += pumpSales
         totalCanSales += canSales
@@ -68,37 +284,89 @@ export async function GET(
           pumpSales,
           canSales,
           price,
-          amount: delta * price,
+          amount: salesAmount, // Sales amount = pump sales * price (excluding can sales)
           startTime: shift.startTime,
-          endTime: shift.endTime || new Date().toISOString()
+          endTime: shift.endTime || new Date()
         }
-      })
-    } else {
-      // Mock sales data - in real app, this would be calculated from meter readings
-      salesData = [
-        { nozzleId: '1', startReading: 1000, endReading: 1200, delta: 200, pumpSales: 180, canSales: 20, price: 470, amount: 94000, startTime: shift.startTime, endTime: shift.endTime || new Date().toISOString() },
-        { nozzleId: '2', startReading: 2000, endReading: 2150, delta: 150, pumpSales: 140, canSales: 10, price: 500, amount: 75000, startTime: shift.startTime, endTime: shift.endTime || new Date().toISOString() },
-        { nozzleId: '3', startReading: 3000, endReading: 3200, delta: 200, pumpSales: 190, canSales: 10, price: 440, amount: 88000, startTime: shift.startTime, endTime: shift.endTime || new Date().toISOString() }
-      ]
-      totalPumpSales = salesData.reduce((sum, sale) => sum + sale.pumpSales, 0)
-      totalCanSales = salesData.reduce((sum, sale) => sum + sale.canSales, 0)
+      }))
     }
 
     // Calculate shift summary
-    const summary = calculateShiftSummary(
-      salesData,
-      cashAmount,
-      cardAmount + posTotal,
-      creditAmount + creditTotal,
-      chequeAmount
-    )
+    // Convert salesData to the format expected by calculateShiftSummary (dates as strings)
+    // Also validate and sanitize data to prevent NaN or Infinity values
+    console.log('📈 Calculating summary from', salesData.length, 'sales items')
+    
+    let summary
+    try {
+      const salesDataForSummary = salesData.map((sale) => {
+        const amount = isNaN(sale.amount) || !isFinite(sale.amount) ? 0 : sale.amount
+        const price = isNaN(sale.price) || !isFinite(sale.price) ? 470 : sale.price
+        const delta = isNaN(sale.delta) || !isFinite(sale.delta) ? 0 : sale.delta
+        
+        return {
+          nozzleId: String(sale.nozzleId || ''),
+          startReading: isNaN(sale.startReading) || !isFinite(sale.startReading) ? 0 : sale.startReading,
+          endReading: isNaN(sale.endReading) || !isFinite(sale.endReading) ? 0 : sale.endReading,
+          delta,
+          price,
+          amount,
+          startTime: typeof sale.startTime === 'string' ? sale.startTime : (sale.startTime instanceof Date ? sale.startTime.toISOString() : new Date().toISOString()),
+          endTime: typeof sale.endTime === 'string' ? sale.endTime : (sale.endTime instanceof Date ? sale.endTime.toISOString() : new Date().toISOString())
+        }
+      })
+      
+      // Validate all amounts are valid numbers before calling calculateShiftSummary
+      const validCashAmount = isNaN(cashAmount) || !isFinite(cashAmount) ? 0 : cashAmount
+      const validCardAmount = isNaN(cardAmount + posTotal) || !isFinite(cardAmount + posTotal) ? 0 : (cardAmount + posTotal)
+      const validCreditAmount = isNaN(creditAmount + creditTotal) || !isFinite(creditAmount + creditTotal) ? 0 : (creditAmount + creditTotal)
+      const validChequeAmount = isNaN(chequeAmount) || !isFinite(chequeAmount) ? 0 : chequeAmount
+      
+      console.log('💰 Amounts:', { validCashAmount, validCardAmount, validCreditAmount, validChequeAmount })
+      
+      summary = calculateShiftSummary(
+        salesDataForSummary,
+        validCashAmount,
+        validCardAmount,
+        validCreditAmount,
+        validChequeAmount
+      )
+      
+      console.log('✅ Summary calculated:', summary.totalSales, 'total sales')
+    } catch (summaryError) {
+      console.error('❌ Error calculating summary:', summaryError)
+      // Return a safe default summary
+      summary = {
+        totalSales: 0,
+        totalDeclared: 0,
+        variance: 0,
+        varianceClassification: {
+          variance: 0,
+          variancePercentage: 0,
+          isNormal: true,
+          tolerance: 200
+        }
+      }
+    }
 
     // Return the summary structure expected by the frontend
+    // Ensure variance is calculated correctly: Total Sales - Total Declared
+    const calculatedVariance = summary.totalSales - summary.totalDeclared
+    console.log('📊 Variance calculation:', {
+      totalSales: summary.totalSales,
+      totalDeclared: summary.totalDeclared,
+      variance: calculatedVariance,
+      varianceFromSummary: summary.variance,
+      varianceFromClassification: summary.varianceClassification.variance
+    })
+    
     const tenderSummary = {
       totalSales: summary.totalSales,
       totalDeclared: summary.totalDeclared,
-      variance: summary.variance,
-      varianceClassification: summary.varianceClassification,
+      variance: calculatedVariance, // Ensure we use the correct calculation
+      varianceClassification: {
+        ...summary.varianceClassification,
+        variance: calculatedVariance // Ensure varianceClassification also has the correct variance
+      },
       salesBreakdown: {
         totalPumpSales,
         totalCanSales,
@@ -110,9 +378,34 @@ export async function GET(
       }
     }
 
+    console.log('✅ Final tender summary:', {
+      totalSales: tenderSummary.totalSales,
+      totalDeclared: tenderSummary.totalDeclared,
+      variance: tenderSummary.variance
+    })
+
     return NextResponse.json(tenderSummary)
   } catch (error) {
-    console.error('Error fetching shift tenders:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('❌ ERROR in tender summary API:', error)
+    // Log more detailed error information
+    if (error instanceof Error) {
+      console.error('Error message:', error.message)
+      console.error('Error stack:', error.stack)
+      
+      // Check for specific error types
+      if (error.message.includes('prisma')) {
+        console.error('Database error detected')
+      }
+      if (error.message.includes('JSON')) {
+        console.error('JSON parsing error detected')
+      }
+    }
+    
+    // Return detailed error information
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      type: error instanceof Error ? error.constructor.name : typeof error
+    }, { status: 500 })
   }
 }

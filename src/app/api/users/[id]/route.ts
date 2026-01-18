@@ -54,7 +54,7 @@ export async function PUT(
     }
 
     return NextResponse.json(users[userIndex])
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to update user' }, { status: 500 })
   }
 }
@@ -78,7 +78,7 @@ export async function DELETE(
 
     users.splice(userIndex, 1)
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 })
   }
 }

@@ -1,12 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { 
-  getOilSales, 
-  getOilSalesByStationId, 
-  getOilSalesByShiftId,
-  getOilSalesByDateRange,
-  getOilSalesSummary,
-  addOilSale 
-} from '@/data/oilSales.seed'
+import { prisma } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,44 +9,65 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
     const summary = searchParams.get('summary')
-    const limit = searchParams.get('limit')
+    const limit = parseInt(searchParams.get('limit') || '100')
+
+    // Build where clause
+    const where: any = {}
+    if (stationId) {
+      where.stationId = stationId
+    }
+    if (startDate && endDate) {
+      where.saleDate = {
+        gte: new Date(startDate),
+        lte: new Date(endDate)
+      }
+    }
 
     // Get summary
     if (summary === 'true') {
-      return NextResponse.json(getOilSalesSummary(stationId || undefined, startDate || undefined, endDate || undefined))
-    }
+      const sales = await prisma.oilSale.findMany({
+        where,
+        select: {
+          quantity: true,
+          totalAmount: true,
+          productName: true
+        }
+      })
 
-    // Filter by shift
-    if (shiftId) {
-      return NextResponse.json(getOilSalesByShiftId(shiftId))
-    }
-
-    // Filter by date range
-    if (startDate && endDate) {
-      let sales = getOilSalesByDateRange(startDate, endDate)
-      if (stationId) {
-        sales = sales.filter(sale => sale.stationId === stationId)
+      const summaryData = {
+        totalSales: sales.reduce((sum, sale) => sum + sale.totalAmount, 0),
+        totalQuantity: sales.reduce((sum, sale) => sum + sale.quantity, 0),
+        salesCount: sales.length,
+        products: sales.reduce((acc, sale) => {
+          if (!acc[sale.productName]) {
+            acc[sale.productName] = { quantity: 0, totalAmount: 0 }
+          }
+          acc[sale.productName].quantity += sale.quantity
+          acc[sale.productName].totalAmount += sale.totalAmount
+          return acc
+        }, {} as Record<string, { quantity: number; totalAmount: number }>)
       }
-      if (limit) {
-        sales = sales.slice(0, parseInt(limit))
-      }
-      return NextResponse.json(sales)
+
+      return NextResponse.json(summaryData)
     }
 
-    // Filter by station
-    if (stationId) {
-      let sales = getOilSalesByStationId(stationId)
-      if (limit) {
-        sales = sales.slice(0, parseInt(limit))
-      }
-      return NextResponse.json(sales)
-    }
+    // Filter by shift - note: OilSale model doesn't have shiftId, so we skip this for now
+    // This would need to be added to the schema if shift tracking is needed
 
-    // Get all sales
-    let sales = getOilSales()
-    if (limit) {
-      sales = sales.slice(0, parseInt(limit))
-    }
+    const sales = await prisma.oilSale.findMany({
+      where,
+      include: {
+        station: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      },
+      orderBy: { saleDate: 'desc' },
+      take: limit
+    })
+
     return NextResponse.json(sales)
   } catch (error) {
     console.error('Error fetching oil sales:', error)
@@ -65,27 +79,51 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
+    const { stationId, productName, quantity, unit, price, totalAmount, customerName, saleDate } = body
+    
     // Validate required fields
-    if (!body.stationId || !body.oilType || !body.quantity || !body.unitPrice || !body.soldBy) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    if (!stationId || !productName || quantity === undefined || price === undefined) {
+      return NextResponse.json({ 
+        error: 'Station ID, product name, quantity, and price are required' 
+      }, { status: 400 })
     }
 
-    const newSale = addOilSale({
-      stationId: body.stationId,
-      shiftId: body.shiftId,
-      oilType: body.oilType,
-      quantity: parseFloat(body.quantity),
-      unitPrice: parseFloat(body.unitPrice),
-      soldBy: body.soldBy,
-      soldAt: body.soldAt || new Date().toISOString(),
-      paymentMethod: body.paymentMethod || 'CASH',
-      customerName: body.customerName,
-      notes: body.notes
+    const calculatedTotal = totalAmount || (quantity * price)
+    const saleDateObj = saleDate ? new Date(saleDate) : new Date()
+
+    const newSale = await prisma.oilSale.create({
+      data: {
+        stationId,
+        productName,
+        quantity: parseFloat(quantity),
+        unit: unit || 'liters',
+        price: parseFloat(price),
+        totalAmount: calculatedTotal,
+        customerName: customerName || null,
+        saleDate: saleDateObj
+      },
+      include: {
+        station: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
     })
 
     return NextResponse.json(newSale, { status: 201 })
   } catch (error) {
     console.error('Error creating oil sale:', error)
+    
+    // Handle foreign key constraint violations
+    if (error instanceof Error && error.message.includes('Foreign key constraint')) {
+      return NextResponse.json(
+        { error: 'Invalid station ID' },
+        { status: 400 }
+      )
+    }
+    
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

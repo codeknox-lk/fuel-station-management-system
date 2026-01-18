@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { addAuditLogEntry } from '@/data/auditLog.seed'
+import { prisma } from '@/lib/db'
 
 export interface AuditContext {
   userId: string
@@ -23,23 +23,46 @@ export async function auditLog(context: AuditContext, request: NextRequest): Pro
     const forwarded = request.headers.get('x-forwarded-for')
     const ip = forwarded ? forwarded.split(',')[0] : request.ip || 'unknown'
     
-    // In a real app, user info would come from JWT token or session
-    // For now, we'll use mock data or headers
+    // Get user info from context or headers
     const userIdHeader = request.headers.get('x-user-id') || context.userId
     const userNameHeader = request.headers.get('x-user-name') || context.userName
     const userRoleHeader = request.headers.get('x-user-role') || context.userRole
     
-    await addAuditLogEntry({
-      userId: userIdHeader,
-      userName: userNameHeader,
-      userRole: userRoleHeader as 'OWNER' | 'MANAGER' | 'ACCOUNTS',
-      action: context.action,
-      entity: context.entity,
-      entityId: context.entityId,
-      details: context.details,
-      ipAddress: ip,
-      stationId: context.stationId,
-      stationName: context.stationName
+    // Verify user exists in database
+    let validUserId = userIdHeader
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userIdHeader }
+      })
+      
+      if (!user) {
+        // Try to find by username
+        const userByUsername = await prisma.user.findFirst({
+          where: { username: userNameHeader }
+        })
+        if (userByUsername) {
+          validUserId = userByUsername.id
+        }
+      }
+    } catch (userCheckError) {
+      // Continue with original userId - Prisma will handle FK constraint
+    }
+    
+    // Create audit log entry using Prisma
+    await prisma.auditLog.create({
+      data: {
+        userId: validUserId,
+        userName: userNameHeader,
+        userRole: userRoleHeader as 'OWNER' | 'MANAGER' | 'ACCOUNTS',
+        action: context.action,
+        entity: context.entity,
+        entityId: context.entityId || null,
+        details: context.details,
+        ipAddress: ip || null,
+        stationId: context.stationId || null,
+        stationName: context.stationName || null,
+        timestamp: new Date()
+      }
     })
   } catch (error) {
     console.error('Failed to log audit entry:', error)

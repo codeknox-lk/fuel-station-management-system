@@ -36,10 +36,10 @@ export default function TolerancePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState({
-    percentageTolerance: 0.3,
-    flatAmountTolerance: 200,
-    useMaximum: true,
-    description: 'Default tolerance configuration'
+    percentageTolerance: 0, // Not used - flat amount only
+    flatAmountTolerance: 20, // Rs. 20 flat tolerance
+    useMaximum: false, // Not used - flat amount only
+    description: 'Flat Rs. 20 tolerance for any sale amount'
   })
   const [examples, setExamples] = useState<ToleranceExample[]>([])
   const { toast } = useToast()
@@ -117,28 +117,21 @@ export default function TolerancePage() {
     }
   }
 
-  const calculateTolerance = (salesAmount: number) => {
-    const percentageAmount = salesAmount * (formData.percentageTolerance / 100)
-    const flatAmount = formData.flatAmountTolerance
-    
-    return formData.useMaximum 
-      ? Math.max(percentageAmount, flatAmount)
-      : Math.min(percentageAmount, flatAmount)
+  const calculateTolerance = (_salesAmount: number) => {
+    // Always return flat amount - no percentage calculation
+    return formData.flatAmountTolerance
   }
 
   const calculateExamples = () => {
     const salesAmounts = [1000, 5000, 10000, 25000, 50000, 100000]
     
     const newExamples = salesAmounts.map(salesAmount => {
-      const percentageAmount = salesAmount * (formData.percentageTolerance / 100)
       const flatAmount = formData.flatAmountTolerance
-      const finalTolerance = formData.useMaximum 
-        ? Math.max(percentageAmount, flatAmount)
-        : Math.min(percentageAmount, flatAmount)
+      const finalTolerance = flatAmount // Always flat amount
       
       return {
         salesAmount,
-        percentageAmount,
+        percentageAmount: 0, // Not used
         flatAmount,
         finalTolerance,
         classification: 'within' as 'within' | 'exceeded'
@@ -157,9 +150,7 @@ export default function TolerancePage() {
   }
 
   const hasChanges = config && (
-    config.percentageTolerance !== formData.percentageTolerance ||
     config.flatAmountTolerance !== formData.flatAmountTolerance ||
-    config.useMaximum !== formData.useMaximum ||
     config.description !== formData.description
   )
 
@@ -167,30 +158,30 @@ export default function TolerancePage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Tolerance Configuration</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-3xl font-bold text-foreground">Tolerance Configuration</h1>
+          <p className="text-muted-foreground mt-2">
             Configure variance tolerance levels and thresholds for sales reconciliation
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Gauge className="h-6 w-6 text-gray-400" />
-          <span className="text-sm text-gray-500">System-wide settings</span>
+          <Gauge className="h-6 w-6 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">System-wide settings</span>
         </div>
       </div>
 
       {/* Current Configuration Alert */}
       {config && (
-        <Alert className="border-blue-200 bg-blue-50">
-          <Info className="h-4 w-4 text-blue-600" />
+        <Alert className="border-blue-500/20 dark:border-blue-500/30 bg-blue-500/10 dark:bg-blue-500/20">
+          <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           <AlertDescription>
             <div className="flex items-center justify-between">
               <div>
-                <strong className="text-blue-900">Current Tolerance:</strong>
-                <span className="ml-2 text-blue-800">
-                  {formData.useMaximum ? 'Maximum' : 'Minimum'} of {formatPercentage(config.percentageTolerance)} or {formatCurrency(config.flatAmountTolerance)}
+                <strong className="text-blue-700 dark:text-blue-300">Current Tolerance:</strong>
+                <span className="ml-2 text-blue-700 dark:text-blue-300">
+                  Flat {formatCurrency(config.flatAmountTolerance)} for any sale
                 </span>
               </div>
-              <div className="text-xs text-blue-600">
+              <div className="text-xs text-blue-600 dark:text-blue-400">
                 Last updated: {new Date(config.updatedAt).toLocaleString()} by {config.updatedBy}
               </div>
             </div>
@@ -204,56 +195,27 @@ export default function TolerancePage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
               <div>
-                <Label htmlFor="percentageTolerance">Percentage Tolerance (%)</Label>
-                <NumberInput
-                  id="percentageTolerance"
-                  value={formData.percentageTolerance}
-                  onChange={(value) => setFormData({ ...formData, percentageTolerance: value })}
-                  placeholder="0.3"
-                  step={0.1}
-                  min={0}
-                  max={10}
-                  allowDecimal
-                  required
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Percentage of sales amount (e.g., 0.3% of Rs. 10,000 = Rs. 30)
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="flatAmountTolerance">Flat Amount Tolerance (Rs.)</Label>
+                <Label htmlFor="flatAmountTolerance">Flat Amount Tolerance (Rs.) *</Label>
                 <MoneyInput
                   id="flatAmountTolerance"
                   value={formData.flatAmountTolerance}
                   onChange={(value) => setFormData({ ...formData, flatAmountTolerance: value })}
-                  placeholder="200.00"
+                  placeholder="20.00"
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Fixed amount regardless of sales volume
+                <p className="text-xs text-muted-foreground mt-1">
+                  Fixed Rs. 20 tolerance for any sale amount (as per manager requirement)
                 </p>
               </div>
 
-              <div>
-                <Label htmlFor="useMaximum">Calculation Method</Label>
-                <select
-                  id="useMaximum"
-                  value={formData.useMaximum ? 'maximum' : 'minimum'}
-                  onChange={(e) => setFormData({ ...formData, useMaximum: e.target.value === 'maximum' })}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  required
-                >
-                  <option value="maximum">Maximum of percentage or flat amount</option>
-                  <option value="minimum">Minimum of percentage or flat amount</option>
-                </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  {formData.useMaximum 
-                    ? 'Use the higher value between percentage and flat amount (more lenient)'
-                    : 'Use the lower value between percentage and flat amount (more strict)'
-                  }
-                </p>
-              </div>
+              <Alert className="border-blue-500/20 dark:border-blue-500/30 bg-blue-500/10 dark:bg-blue-500/20">
+                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <AlertDescription className="text-blue-700 dark:text-blue-300">
+                  <strong>Note:</strong> The system now uses a flat tolerance amount only. 
+                  Percentage tolerance is no longer used. Any variance within Rs. {formData.flatAmountTolerance.toLocaleString()} 
+                  is considered normal.
+                </AlertDescription>
+              </Alert>
 
               <div>
                 <Label htmlFor="description">Description</Label>
@@ -268,19 +230,17 @@ export default function TolerancePage() {
             </div>
 
             {/* Formula Display */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+            <div className="bg-muted p-4 rounded-lg">
+              <h4 className="font-medium text-foreground mb-2 flex items-center gap-2">
                 <Calculator className="h-4 w-4" />
                 Tolerance Formula
               </h4>
-              <div className="font-mono text-sm text-gray-700 bg-white p-3 rounded border">
-                Tolerance = {formData.useMaximum ? 'max' : 'min'}(
+              <div className="font-mono text-sm text-foreground bg-card p-3 rounded border">
+                Tolerance = Rs. {formData.flatAmountTolerance.toFixed(2)}
                 <br />
-                &nbsp;&nbsp;Sales Amount × {formData.percentageTolerance}%,
-                <br />
-                &nbsp;&nbsp;Rs. {formData.flatAmountTolerance.toFixed(2)}
-                <br />
-                )
+                <span className="text-xs text-muted-foreground mt-2 block">
+                  (Flat amount for any sale - no percentage calculation)
+                </span>
               </div>
             </div>
 
@@ -314,32 +274,18 @@ export default function TolerancePage() {
                   <div className="font-medium">
                     Sales: {formatCurrency(example.salesAmount)}
                   </div>
-                  <Badge className="bg-blue-100 text-blue-800">
+                  <Badge className="bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Within Tolerance
                   </Badge>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-                  <div>
-                    <div className="font-medium text-gray-700">Percentage ({formatPercentage(formData.percentageTolerance)}):</div>
-                    <div>{formatCurrency(example.percentageAmount)}</div>
+                <div className="text-sm text-muted-foreground">
+                  <div className="font-medium text-foreground mb-1">Tolerance Amount:</div>
+                  <div className="text-lg font-bold text-green-600 dark:text-green-400">
+                    {formatCurrency(example.finalTolerance)}
                   </div>
-                  <div>
-                    <div className="font-medium text-gray-700">Flat Amount:</div>
-                    <div>{formatCurrency(example.flatAmount)}</div>
-                  </div>
-                </div>
-                
-                <div className="mt-3 pt-3 border-t">
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium text-gray-700">
-                      Final Tolerance ({formData.useMaximum ? 'Maximum' : 'Minimum'}):
-                    </div>
-                    <div className="font-bold text-green-600">
-                      {formatCurrency(example.finalTolerance)}
-                    </div>
-                  </div>
+                  <p className="text-xs mt-1">Same for all sale amounts</p>
                 </div>
               </div>
             ))}
@@ -355,11 +301,11 @@ export default function TolerancePage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div>
-              <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                <Calculator className="h-4 w-4 text-blue-500" />
+              <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+                <Calculator className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 Calculation Method
               </h4>
-              <ul className="text-sm text-gray-600 space-y-1">
+              <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• Calculate percentage of sales amount</li>
                 <li>• Compare with flat amount threshold</li>
                 <li>• Use maximum or minimum based on setting</li>
@@ -368,11 +314,11 @@ export default function TolerancePage() {
             </div>
             
             <div>
-              <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
+              <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
                 Usage Areas
               </h4>
-              <ul className="text-sm text-gray-600 space-y-1">
+              <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• Shift reconciliation</li>
                 <li>• Tank variance analysis</li>
                 <li>• POS batch reconciliation</li>
@@ -381,11 +327,11 @@ export default function TolerancePage() {
             </div>
             
             <div>
-              <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-orange-500" />
+              <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                 Best Practices
               </h4>
-              <ul className="text-sm text-gray-600 space-y-1">
+              <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• Review tolerance regularly</li>
                 <li>• Consider seasonal variations</li>
                 <li>• Monitor exception rates</li>

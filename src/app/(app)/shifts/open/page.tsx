@@ -20,7 +20,68 @@ import { DateTimePicker } from '@/components/inputs/DateTimePicker'
 import { DataTable } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Clock, Fuel, User, Plus } from 'lucide-react'
+import { Clock, Fuel, User, Plus, Building2 } from 'lucide-react'
+import { getCurrentUserName } from '@/lib/auth'
+import { getNozzleFullName, getNozzleShortName, getNozzleCompactName, getNozzleDisplayWithBadge, formatFuelType, formatNozzleNumber } from '@/lib/nozzleUtils'
+
+// Component for Start Meter Reading cell with last reading display
+const StartMeterCell = ({ 
+  row, 
+  value, 
+  onUpdate 
+}: { 
+  row: Assignment
+  value: number
+  onUpdate: (nozzleId: string, field: keyof Assignment, value: string | number) => void 
+}) => {
+  const [lastReading, setLastReading] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
+  
+  useEffect(() => {
+    // Fetch last end meter reading for this nozzle
+    fetch(`/api/nozzles/${row.nozzleId}/last-reading`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.lastEndMeterReading !== null && data.lastEndMeterReading !== undefined) {
+          setLastReading(data.lastEndMeterReading)
+        }
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [row.nozzleId])
+  
+  const currentValue = value
+  const hasMismatch = lastReading !== null && currentValue > 0 && Math.abs(currentValue - lastReading) > 50
+  
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-2">
+        <Input
+          id={`meter-${row.nozzleId}`}
+          type="number"
+          min="0"
+          value={currentValue}
+          onChange={(e) => {
+            const newValue = parseInt(e.target.value) || 0
+            onUpdate(row.nozzleId, 'startMeterReading', newValue)
+          }}
+          placeholder="0"
+          className={`w-full ${hasMismatch ? 'border-amber-300 bg-amber-50' : ''}`}
+        />
+        {!loading && lastReading !== null && (
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            Last: {lastReading.toLocaleString()}
+          </span>
+        )}
+      </div>
+      {hasMismatch && (
+        <p className="text-xs text-amber-600">
+          ⚠️ Differs from last reading ({lastReading?.toLocaleString()})
+        </p>
+      )}
+    </div>
+  )
+}
 
 interface Station {
   id: string
@@ -72,6 +133,7 @@ export default function OpenShiftPage() {
   const [nozzles, setNozzles] = useState<Nozzle[]>([])
   const [unavailableNozzles, setUnavailableNozzles] = useState<Nozzle[]>([])
   const [pumpers, setPumpers] = useState<Pumper[]>([])
+  const [activeNozzleIds, setActiveNozzleIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -128,68 +190,176 @@ export default function OpenShiftPage() {
           const [nozzlesRes, pumpersRes, activeShiftsRes] = await Promise.all([
             fetch(`/api/tanks?stationId=${selectedStation}&type=nozzles`),
             fetch(`/api/pumpers?stationId=${selectedStation}&active=true`),
-            fetch(`/api/shifts?stationId=${selectedStation}&active=true`)
+            fetch(`/api/shifts?active=true`) // Check ALL active shifts across all stations
           ])
           
           console.log('Nozzles response:', nozzlesRes.status)
           console.log('Pumpers response:', pumpersRes.status)
           console.log('Active shifts response:', activeShiftsRes.status)
           
+          // Handle responses - gracefully handle errors without throwing
+          let nozzlesData: any[] = []
+          let pumpersData: any[] = []
+          let activeShiftsData: any = { shifts: [] }
+          
           if (!nozzlesRes.ok) {
-            throw new Error(`Nozzles API error: ${nozzlesRes.status}`)
+            const errorData = await nozzlesRes.json().catch(() => ({}))
+            console.error('Nozzles API error:', nozzlesRes.status, errorData)
+            // Continue with empty array instead of throwing
+            nozzlesData = []
+          } else {
+            const rawNozzlesData = await nozzlesRes.json()
+            // Transform API response to flatten nested structure
+            nozzlesData = rawNozzlesData.map((nozzle: any) => ({
+              id: nozzle.id,
+              pumpId: nozzle.pumpId,
+              tankId: nozzle.tankId,
+              nozzleNumber: nozzle.nozzleNumber,
+              fuelType: nozzle.tank?.fuelType || nozzle.fuelType || 'Unknown',
+              pumpNumber: nozzle.pump?.pumpNumber || nozzle.pumpNumber || '?'
+            }))
           }
+          
           if (!pumpersRes.ok) {
-            throw new Error(`Pumpers API error: ${pumpersRes.status}`)
+            const errorData = await pumpersRes.json().catch(() => ({}))
+            console.error('Pumpers API error:', pumpersRes.status, errorData)
+            // Continue with empty array instead of throwing
+            pumpersData = []
+          } else {
+            pumpersData = await pumpersRes.json()
           }
+          
           if (!activeShiftsRes.ok) {
-            throw new Error(`Active shifts API error: ${activeShiftsRes.status}`)
+            const errorData = await activeShiftsRes.json().catch(() => ({}))
+            console.error('Active shifts API error:', activeShiftsRes.status, errorData)
+            // Continue with empty array instead of throwing
+            activeShiftsData = { shifts: [] }
+          } else {
+            activeShiftsData = await activeShiftsRes.json()
           }
           
-          const nozzlesData = await nozzlesRes.json()
-          const pumpersData = await pumpersRes.json()
-          const activeShiftsData = await activeShiftsRes.json()
+          // Ensure we have arrays
+          const nozzles = Array.isArray(nozzlesData) ? nozzlesData : []
+          const pumpers = Array.isArray(pumpersData) ? pumpersData : []
+          const activeShifts = activeShiftsData?.shifts || (Array.isArray(activeShiftsData) ? activeShiftsData : [])
           
-          console.log('Nozzles data:', nozzlesData)
-          console.log('Pumpers data:', pumpersData)
-          console.log('Active shifts data:', activeShiftsData)
+          console.log('Nozzles data:', nozzles)
+          console.log('Pumpers data:', pumpers)
+          console.log('Active shifts data:', activeShifts)
           
-          // Get all assigned nozzle IDs from active shifts
+          // Get all assigned nozzle IDs from ACTIVE assignments in active shifts
+          // Check ALL active shifts across ALL stations, not just current station
+          // Only nozzles with ACTIVE assignments should be excluded
+          // CLOSED assignments mean the nozzle is available again
           const assignedNozzleIds = new Set<string>()
-          if (activeShiftsData.shifts && Array.isArray(activeShiftsData.shifts)) {
-            for (const shift of activeShiftsData.shifts) {
-              if (shift.assignments && Array.isArray(shift.assignments)) {
-                for (const assignment of shift.assignments) {
-                  if (assignment.nozzleId) {
-                    assignedNozzleIds.add(assignment.nozzleId)
+          if (Array.isArray(activeShifts)) {
+            console.log('🔍 Checking', activeShifts.length, 'active shift(s)')
+            for (const shift of activeShifts) {
+              console.log('🔍 Shift:', shift.id, 'Status:', shift.status, 'Has assignments:', !!shift.assignments, 'Assignments type:', typeof shift.assignments, 'Is array:', Array.isArray(shift.assignments))
+              
+              // Only check OPEN shifts
+              if (shift.status === 'OPEN') {
+                let assignments = shift.assignments
+                
+                // If assignments are missing or empty, fetch them directly
+                if (!assignments || !Array.isArray(assignments) || assignments.length === 0) {
+                  console.log('⚠️ Assignments missing or empty, fetching directly from API...')
+                  try {
+                    const assignmentsRes = await fetch(`/api/shifts/${shift.id}/assignments`)
+                    if (assignmentsRes.ok) {
+                      const assignmentsData = await assignmentsRes.json()
+                      assignments = Array.isArray(assignmentsData) ? assignmentsData : []
+                      console.log('✅ Fetched', assignments.length, 'assignments directly from API')
+                    }
+                  } catch (err) {
+                    console.error('❌ Error fetching assignments:', err)
+                    assignments = []
                   }
                 }
+                
+                if (assignments && Array.isArray(assignments) && assignments.length > 0) {
+                  console.log('🔍 Shift has', assignments.length, 'assignments')
+                  for (const assignment of assignments) {
+                    console.log('🔍 Assignment:', {
+                      id: assignment.id,
+                      nozzleId: assignment.nozzleId,
+                      status: assignment.status,
+                      pumperName: assignment.pumperName
+                    })
+                    
+                    // Only exclude nozzles with ACTIVE assignments
+                    // If status is not provided, assume ACTIVE (backward compatibility)
+                    const assignmentStatus = assignment.status || 'ACTIVE'
+                    if (assignment.nozzleId && assignmentStatus === 'ACTIVE') {
+                      // Ensure we're using string IDs consistently
+                      const nozzleId = String(assignment.nozzleId)
+                      assignedNozzleIds.add(nozzleId)
+                      console.log(`🔴 Found ACTIVE assignment: nozzleId=${nozzleId}, shift=${shift.id}, status=${assignmentStatus}`)
+                    } else {
+                      console.log(`⚠️ Skipping assignment: nozzleId=${assignment.nozzleId}, status=${assignmentStatus}`)
+                    }
+                  }
+                } else {
+                  console.log('⚠️ Shift has no assignments after fetch attempt')
+                }
+              } else {
+                console.log('⚠️ Shift status is not OPEN:', shift.status)
               }
             }
+          } else {
+            console.log('⚠️ Active shifts is not an array:', activeShifts)
           }
           
-          console.log('Assigned nozzle IDs:', Array.from(assignedNozzleIds))
+          console.log('🔴 Total active nozzle IDs found:', assignedNozzleIds.size, Array.from(assignedNozzleIds))
           
-          // Filter out already assigned nozzles
-          const availableNozzles = nozzlesData.filter((nozzle: Nozzle) => 
-            !assignedNozzleIds.has(nozzle.id)
-          )
+          console.log('Assigned nozzle IDs (ACTIVE only):', Array.from(assignedNozzleIds))
+          console.log('Total nozzles before filtering:', nozzles.length)
+          console.log('All nozzle IDs:', nozzles.map(n => n.id))
           
-          const unavailableNozzles = nozzlesData.filter((nozzle: Nozzle) => 
+          // Filter out already assigned nozzles (only those with ACTIVE assignments)
+          const availableNozzles = nozzles.filter((nozzle: Nozzle) => {
+            // Ensure we're comparing strings
+            const nozzleId = String(nozzle.id)
+            const isActive = assignedNozzleIds.has(nozzleId)
+            if (isActive) {
+              console.log(`❌ FILTERING OUT ACTIVE NOZZLE: ${nozzleId} - ${nozzle.pumpNumber}-${nozzle.nozzleNumber}`)
+            } else {
+              console.log(`✅ KEEPING AVAILABLE NOZZLE: ${nozzleId} - ${nozzle.pumpNumber}-${nozzle.nozzleNumber}`)
+            }
+            return !isActive
+          })
+          
+          const unavailableNozzles = nozzles.filter((nozzle: Nozzle) => 
             assignedNozzleIds.has(nozzle.id)
           )
           
-          console.log('Available nozzles:', availableNozzles)
-          console.log('Unavailable nozzles:', unavailableNozzles)
+          console.log('✅ Available nozzles after filtering:', availableNozzles.length, availableNozzles.map(n => `${n.pumpNumber}-${n.nozzleNumber} (${n.id})`))
+          console.log('❌ Unavailable nozzles:', unavailableNozzles.length, unavailableNozzles.map(n => `${n.pumpNumber}-${n.nozzleNumber} (${n.id})`))
           
+          // CRITICAL: Store ONLY available nozzles for dropdown (filter out active ones)
+          // This is the ONLY place we set nozzles state - it should ONLY contain available nozzles
           setNozzles(availableNozzles)
           setUnavailableNozzles(unavailableNozzles)
-          setPumpers(pumpersData)
+          setPumpers(pumpers)
+          
+          // Store assigned nozzle IDs for display message and validation
+          setActiveNozzleIds(assignedNozzleIds)
+          
+          console.log('✅ State updated - nozzles state now has', availableNozzles.length, 'nozzles')
           
           // Reset assignments when station changes
           setAssignments([])
+          
+          // Clear any previous errors since we handled API errors gracefully
+          setError('')
         } catch (err) {
           console.error('Error loading station data:', err)
-          setError(`Failed to load station data: ${err instanceof Error ? err.message : 'Unknown error'}`)
+          // Only set error if it's a critical error, not API failures (they're handled above)
+          const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+          // Don't show error if APIs failed gracefully - page will work with empty data
+          if (!errorMessage.includes('API error')) {
+            setError(`Failed to load station data: ${errorMessage}`)
+          }
         }
       }
       
@@ -197,9 +367,77 @@ export default function OpenShiftPage() {
     }
   }, [selectedStation])
 
-  const handleAddAssignment = (nozzleId: string) => {
+  const handleAddAssignment = async (nozzleId: string) => {
+    // Check if nozzle is active (in activeNozzleIds)
+    if (activeNozzleIds.has(nozzleId)) {
+      setError('This nozzle is already assigned to an active shift and cannot be used.')
+      return
+    }
+
+    // Check if nozzle is already in unavailable list (active in another shift)
+    const isUnavailable = unavailableNozzles.some(n => n.id === nozzleId)
+    if (isUnavailable) {
+      setError('This nozzle is already assigned to an active shift and cannot be used.')
+      return
+    }
+
+    // Check if nozzle is already in current assignments
+    const alreadyAssigned = assignments.some(a => a.nozzleId === nozzleId)
+    if (alreadyAssigned) {
+      setError('This nozzle is already added to the current assignments.')
+      return
+    }
+
+    // Check if nozzle is in available nozzles list
     const nozzle = nozzles.find(n => n.id === nozzleId)
-    if (!nozzle) return
+    if (!nozzle) {
+      setError('Nozzle not found or not available.')
+      return
+    }
+
+    // Real-time check: Verify nozzle is still available by checking active shifts
+    try {
+      const activeShiftsRes = await fetch('/api/shifts?active=true')
+      if (activeShiftsRes.ok) {
+        const activeShiftsData = await activeShiftsRes.json()
+        const activeShifts = activeShiftsData?.shifts || []
+        
+        // Check if nozzle is assigned to any active shift
+        for (const shift of activeShifts) {
+          if (shift.status === 'OPEN' && shift.assignments && Array.isArray(shift.assignments)) {
+            const isAssigned = shift.assignments.some((a: any) => 
+              a.nozzleId === nozzleId && (a.status === 'ACTIVE' || !a.status)
+            )
+            if (isAssigned) {
+              setError('This nozzle is currently assigned to an active shift. Please refresh the page.')
+              // Refresh the nozzle list
+              const station = stations.find(s => s.id === selectedStation)
+              if (station) {
+                // Trigger a reload by clearing and reloading
+                window.location.reload()
+              }
+              return
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error checking nozzle availability:', err)
+      // Continue anyway, server will validate
+    }
+
+    // Fetch the last end meter reading for this nozzle
+    let lastEndReading = 0
+    try {
+      const res = await fetch(`/api/nozzles/${nozzleId}/last-reading`)
+      if (res.ok) {
+        const data = await res.json()
+        lastEndReading = data.lastEndMeterReading || 0
+      }
+    } catch (err) {
+      console.error('Failed to fetch last meter reading:', err)
+      // Continue with 0 if fetch fails
+    }
 
     const newAssignment: Assignment = {
       nozzleId,
@@ -208,10 +446,11 @@ export default function OpenShiftPage() {
       pumpNumber: nozzle.pumpNumber,
       pumperId: '',
       pumperName: '',
-      startMeterReading: 0
+      startMeterReading: lastEndReading
     }
 
     setAssignments(prev => [...prev, newAssignment])
+    setError('') // Clear any previous errors
   }
 
   const handleUpdateAssignment = (nozzleId: string, field: keyof Assignment, value: string | number) => {
@@ -225,7 +464,10 @@ export default function OpenShiftPage() {
   }
 
   const handleRemoveAssignment = (nozzleId: string) => {
-    setAssignments(prev => prev.filter(a => a.nozzleId !== nozzleId))
+    const assignment = assignments.find(a => a.nozzleId === nozzleId)
+    if (assignment && confirm(`Remove assignment for ${assignment.nozzleNumber}?`)) {
+      setAssignments(prev => prev.filter(a => a.nozzleId !== nozzleId))
+    }
   }
 
   const handleOpenShift = async () => {
@@ -234,10 +476,32 @@ export default function OpenShiftPage() {
       return
     }
 
+    // Validate start time is not in the future
+    const now = new Date()
+    if (startTime > now) {
+      setError('Start time cannot be in the future. Please select a valid start time.')
+      return
+    }
+
+    // Validate start time is not too old (more than 7 days ago)
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    if (startTime < sevenDaysAgo) {
+      setError('Start time cannot be more than 7 days ago. Please select a recent start time.')
+      return
+    }
+
     // Validate that all assignments have pumpers selected
     const incompleteAssignments = assignments.filter(a => !a.pumperId || !a.pumperName)
     if (incompleteAssignments.length > 0) {
       setError('Please select a pumper for all nozzle assignments')
+      return
+    }
+
+    // Validate that all assignments have valid start meter readings
+    const invalidMeterReadings = assignments.filter(a => !a.startMeterReading || a.startMeterReading < 0)
+    if (invalidMeterReadings.length > 0) {
+      setError('Please enter valid start meter readings for all assignments (must be >= 0)')
       return
     }
 
@@ -251,7 +515,7 @@ export default function OpenShiftPage() {
         stationId: selectedStation,
         templateId: selectedTemplate,
         startTime: startTime.toISOString(),
-        openedBy: 'Current User' // In real app, get from auth context
+        openedBy: getCurrentUserName()
       }
       
       console.log('Creating shift with data:', shiftData)
@@ -292,27 +556,58 @@ export default function OpenShiftPage() {
 
       // Create assignments
       for (const assignment of assignments) {
-        const assignRes = await fetch(`/api/shifts/${shift.id}/assign`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            nozzleId: assignment.nozzleId,
-            pumperId: assignment.pumperId,
-            pumperName: assignment.pumperName,
-            startMeterReading: assignment.startMeterReading
+        try {
+          const assignRes = await fetch(`/api/shifts/${shift.id}/assign`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nozzleId: assignment.nozzleId,
+              pumperId: assignment.pumperId,
+              pumperName: assignment.pumperName,
+              startMeterReading: assignment.startMeterReading
+            })
           })
-        })
 
-        // Log pumper assignment
-        if (assignRes.ok && station) {
-          const assignData = await assignRes.json()
-          await auditLogger.logPumperAssigned(
-            assignData.id, 
-            assignment.pumperName, 
-            assignment.nozzleId, 
-            station.id, 
-            station.name
-          )
+          if (!assignRes.ok) {
+            const errorData = await assignRes.json().catch(() => ({}))
+            const errorMessage = errorData.error || `Failed to create assignment: ${assignRes.status}`
+            console.error(`Failed to create assignment for nozzle ${assignment.nozzleId}:`, assignRes.status, errorData)
+            
+            // If nozzle is already assigned, this is a critical error - stop everything
+            if (errorMessage.includes('already assigned')) {
+              const nozzleDisplay = getNozzleShortName({
+                id: assignment.nozzleId,
+                pumpNumber: assignment.pumpNumber,
+                nozzleNumber: assignment.nozzleNumber,
+                fuelType: assignment.fuelType
+              })
+              throw new Error(`${nozzleDisplay} is already assigned to an active shift. Please refresh the page to see updated nozzle availability.`)
+            }
+            
+            throw new Error(errorMessage)
+          }
+
+          // Log pumper assignment
+          if (station) {
+            const assignData = await assignRes.json()
+            // Format nozzle display name
+            const nozzleDisplayName = getNozzleShortName({
+              id: assignment.nozzleId,
+              pumpNumber: assignment.pumpNumber,
+              nozzleNumber: assignment.nozzleNumber,
+              fuelType: assignment.fuelType
+            })
+            await auditLogger.logPumperAssigned(
+              assignData.id, 
+              assignment.pumperName, 
+              nozzleDisplayName, 
+              station.id, 
+              station.name
+            )
+          }
+        } catch (assignError) {
+          console.error('Error creating assignment:', assignError)
+          throw new Error(`Failed to create assignment: ${assignError instanceof Error ? assignError.message : 'Unknown error'}`)
         }
       }
 
@@ -333,20 +628,29 @@ export default function OpenShiftPage() {
   }
 
   const availableNozzles = nozzles.filter(nozzle => 
-    !assignments.some(assignment => assignment.nozzleId === nozzle.id)
+    !assignments.some(assignment => assignment.nozzleId === nozzle.id) &&
+    !activeNozzleIds.has(nozzle.id)
   )
 
   const assignmentColumns = [
     {
       key: 'nozzleNumber' as keyof Assignment,
       title: 'Nozzle',
-      render: (value: unknown, row: Assignment) => (
-        <div className="flex items-center gap-2">
-          <Fuel className="h-4 w-4 text-gray-500" />
-          <span className="font-medium">{row.pumpNumber} {value as string}</span>
-          <Badge variant="outline">{row.fuelType}</Badge>
-        </div>
-      )
+      render: (value: unknown, row: Assignment) => {
+        const display = getNozzleDisplayWithBadge({
+          id: row.nozzleId,
+          pumpNumber: row.pumpNumber,
+          nozzleNumber: row.nozzleNumber,
+          fuelType: row.fuelType
+        })
+        return (
+          <div className="flex items-center gap-2">
+            <Fuel className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium">{display.label}</span>
+            <Badge variant="outline">{display.badge}</Badge>
+          </div>
+        )
+      }
     },
     {
       key: 'pumperName' as keyof Assignment,
@@ -366,7 +670,7 @@ export default function OpenShiftPage() {
               <SelectValue placeholder="Select pumper">
                 {selectedPumper && (
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-gray-500" />
+                    <User className="h-4 w-4 text-muted-foreground" />
                     <span>{selectedPumper.name}</span>
                     <Badge variant="secondary" className="text-xs">
                       {selectedPumper.experience}y exp
@@ -379,10 +683,10 @@ export default function OpenShiftPage() {
               {pumpers.map((pumper) => (
                 <SelectItem key={pumper.id} value={pumper.id}>
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-gray-500" />
+                    <User className="h-4 w-4 text-muted-foreground" />
                     <div className="flex flex-col">
                       <span className="font-medium">{pumper.name}</span>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-muted-foreground">
                         {pumper.employeeId} • {pumper.experience}y exp • ⭐{pumper.rating}
                       </span>
                     </div>
@@ -398,14 +702,7 @@ export default function OpenShiftPage() {
       key: 'startMeterReading' as keyof Assignment,
       title: 'Start Meter',
       render: (value: unknown, row: Assignment) => (
-        <Input
-          id={`meter-${row.nozzleId}`}
-          type="number"
-          value={value as number}
-          onChange={(e) => handleUpdateAssignment(row.nozzleId, 'startMeterReading', parseInt(e.target.value) || 0)}
-          placeholder="0"
-          className="w-full"
-        />
+        <StartMeterCell row={row} value={value as number} onUpdate={handleUpdateAssignment} />
       )
     },
     {
@@ -426,7 +723,7 @@ export default function OpenShiftPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
-        <Clock className="h-6 w-6 text-purple-600" />
+        <Clock className="h-6 w-6 text-purple-600 dark:text-purple-400" />
         <h1 className="text-2xl font-bold">Open Shift</h1>
       </div>
 
@@ -448,8 +745,8 @@ export default function OpenShiftPage() {
       )}
 
       {success && (
-        <Alert className="border-green-200 bg-green-50">
-          <AlertDescription className="text-green-800">
+        <Alert className="border-green-500/20 dark:border-green-500/30 bg-green-500/10 dark:bg-green-500/20">
+          <AlertDescription className="text-green-700 dark:text-green-300">
             {success}
           </AlertDescription>
         </Alert>
@@ -457,10 +754,10 @@ export default function OpenShiftPage() {
 
       <FormCard title="Shift Details" description="Configure the shift parameters">
         {/* Display current station */}
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="mb-4 p-3 bg-blue-500/10 dark:bg-blue-500/20 border border-blue-500/20 dark:border-blue-500/30 rounded-lg">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-            <span className="text-sm font-medium text-blue-900">
+            <div className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full"></div>
+            <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
               Station: {stations.find(s => s.id === selectedStation)?.name || 'No station selected'}
             </span>
           </div>
@@ -495,57 +792,87 @@ export default function OpenShiftPage() {
         </div>
       </FormCard>
 
-      {selectedStation && (
+      {selectedStation ? (
         <FormCard 
           title="Nozzle Assignments" 
           description="Assign pumpers to nozzles and set start meter readings"
           actions={
             <div className="flex items-center gap-2">
-              <Select onValueChange={handleAddAssignment}>
+              <Select 
+                onValueChange={handleAddAssignment}
+                disabled={nozzles.length === 0}
+              >
                 <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Add nozzle" />
+                  <SelectValue placeholder={nozzles.length === 0 ? "No nozzles available" : "Add nozzle"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {nozzles.map((nozzle) => (
-                    <SelectItem key={nozzle.id} value={nozzle.id}>
-                      {nozzle.pumpNumber} {nozzle.nozzleNumber} - {nozzle.fuelType}
-                    </SelectItem>
-                  ))}
+                  {nozzles.length > 0 ? (
+                    nozzles.map((nozzle) => {
+                      // Safety check: if somehow an active nozzle got through, log it and skip it
+                      if (activeNozzleIds.has(nozzle.id)) {
+                        console.error('🚨 ERROR: Active nozzle found in dropdown!', nozzle.id, nozzle.pumpNumber, nozzle.nozzleNumber)
+                        return null
+                      }
+                      
+                      const displayName = getNozzleShortName({
+                        id: nozzle.id,
+                        pumpNumber: nozzle.pumpNumber,
+                        nozzleNumber: nozzle.nozzleNumber,
+                        fuelType: nozzle.fuelType
+                      })
+                      return (
+                        <SelectItem key={nozzle.id} value={nozzle.id}>
+                          {displayName}
+                        </SelectItem>
+                      )
+                    }).filter(Boolean) // Remove any null entries from safety check
+                  ) : (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      No nozzles available
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
-              <Button size="sm" disabled={nozzles.length === 0}>
+              <Button 
+                size="sm" 
+                disabled={nozzles.length === 0}
+                onClick={() => {
+                  if (nozzles.length > 0) {
+                    handleAddAssignment(nozzles[0].id)
+                  }
+                }}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Add
               </Button>
             </div>
           }
         >
-          {/* Show unavailable nozzles info */}
+          {/* Show active nozzles message */}
           {unavailableNozzles.length > 0 && (
-            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <div className="flex items-start gap-2">
-                <div className="w-2 h-2 bg-amber-500 rounded-full mt-2"></div>
-                <div>
-                  <p className="text-sm font-medium text-amber-900 mb-1">
-                    {unavailableNozzles.length} nozzle{unavailableNozzles.length > 1 ? 's' : ''} currently in use:
-                  </p>
-                  <div className="flex flex-wrap gap-1">
-                    {unavailableNozzles.map((nozzle) => (
-                      <Badge key={nozzle.id} variant="outline" className="text-amber-700 border-amber-300">
-                        {nozzle.pumpNumber} {nozzle.nozzleNumber} - {nozzle.fuelType}
-                      </Badge>
-                    ))}
-                  </div>
-                  <p className="text-xs text-amber-700 mt-2">
-                    These nozzles are assigned to active shifts and cannot be used for new assignments.
-                  </p>
-                </div>
-              </div>
+            <div className="mb-4 p-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded text-xs">
+              <span className="font-medium text-amber-900 dark:text-amber-200">Active nozzles:</span>{' '}
+              <span className="text-amber-800 dark:text-amber-300">
+                {unavailableNozzles.map((nozzle, index) => {
+                  const displayName = getNozzleShortName({
+                    id: nozzle.id,
+                    pumpNumber: nozzle.pumpNumber,
+                    nozzleNumber: nozzle.nozzleNumber,
+                    fuelType: nozzle.fuelType
+                  })
+                  return (
+                    <span key={nozzle.id}>
+                      {index > 0 && ', '}
+                      {displayName}
+                    </span>
+                  )
+                })}
+              </span>
             </div>
           )}
           {assignments.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <User className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <div className="text-center py-8 text-muted-foreground">
+              <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               {nozzles.length === 0 ? (
                 <>
                   <p>No nozzles available for assignment</p>
@@ -566,6 +893,17 @@ export default function OpenShiftPage() {
               pagination={false}
             />
           )}
+        </FormCard>
+      ) : (
+        <FormCard 
+          title="Nozzle Assignments" 
+          description="Please select a station to manage assignments"
+        >
+          <div className="text-center py-8 text-muted-foreground">
+            <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <p>No station selected</p>
+            <p className="text-sm">Select a station from the top navigation to continue</p>
+          </div>
         </FormCard>
       )}
 

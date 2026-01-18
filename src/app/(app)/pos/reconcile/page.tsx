@@ -78,7 +78,7 @@ export default function POSReconcilePage() {
   const [error, setError] = useState('')
 
   // Form state
-  const { selectedStation } = useStation()
+  const { selectedStation, setSelectedStation } = useStation()
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
 
   // Load initial data
@@ -221,9 +221,9 @@ export default function POSReconcilePage() {
 
   const getStatusColor = (status: 'MATCHED' | 'VARIANCE' | 'CRITICAL') => {
     switch (status) {
-      case 'MATCHED': return 'text-green-600 bg-green-50 border-green-200'
-      case 'VARIANCE': return 'text-yellow-600 bg-yellow-50 border-yellow-200'
-      case 'CRITICAL': return 'text-red-600 bg-red-50 border-red-200'
+      case 'MATCHED': return 'text-green-600 dark:text-green-400 bg-green-500/10 dark:bg-green-500/20 border-green-500/20 dark:border-green-500/30'
+      case 'VARIANCE': return 'text-yellow-600 dark:text-yellow-400 bg-yellow-500/10 dark:bg-yellow-500/20 border-yellow-500/20 dark:border-yellow-500/30'
+      case 'CRITICAL': return 'text-red-600 dark:text-red-400 bg-red-500/10 dark:bg-red-500/20 border-red-500/20 dark:border-red-500/30'
     }
   }
 
@@ -236,14 +236,14 @@ export default function POSReconcilePage() {
   }
 
   const getVarianceIcon = (variance: number) => {
-    if (variance > 0) return <TrendingUp className="h-4 w-4 text-red-500" />
-    if (variance < 0) return <TrendingDown className="h-4 w-4 text-green-500" />
-    return <CheckCircle className="h-4 w-4 text-green-500" />
+    if (variance > 0) return <TrendingUp className="h-4 w-4 text-red-600 dark:text-red-400" />
+    if (variance < 0) return <TrendingDown className="h-4 w-4 text-green-600 dark:text-green-400" />
+    return <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
   }
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-gray-900">POS Reconciliation</h1>
+      <h1 className="text-3xl font-bold text-foreground">POS Reconciliation</h1>
 
       {error && (
         <Alert variant="destructive">
@@ -308,36 +308,36 @@ export default function POSReconcilePage() {
                 <Calendar className="h-5 w-5" />
                 POS Reconciliation - {reconciliation.stationName}
               </CardTitle>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 Date: {new Date(reconciliation.reconciliationDate).toLocaleDateString()}
               </p>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">
+                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                     Rs. {reconciliation.totalCardTenders.toLocaleString()}
                   </div>
-                  <div className="text-sm text-gray-600">Card Tenders</div>
+                  <div className="text-sm text-muted-foreground">Card Tenders</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">
+                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                     Rs. {reconciliation.totalBatchAmount.toLocaleString()}
                   </div>
-                  <div className="text-sm text-gray-600">Batch Totals</div>
+                  <div className="text-sm text-muted-foreground">Batch Totals</div>
                 </div>
                 <div className="text-center">
-                  <div className={`text-2xl font-bold ${reconciliation.totalVariance >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  <div className={`text-2xl font-bold ${reconciliation.totalVariance >= 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                     {reconciliation.totalVariance >= 0 ? '+' : ''}Rs. {reconciliation.totalVariance.toLocaleString()}
                   </div>
-                  <div className="text-sm text-gray-600">Total Variance</div>
+                  <div className="text-sm text-muted-foreground">Total Variance</div>
                 </div>
                 <div className="text-center">
                   <Badge className={getStatusColor(reconciliation.overallStatus)}>
                     {getStatusIcon(reconciliation.overallStatus)}
                     <span className="ml-1">{reconciliation.overallStatus}</span>
                   </Badge>
-                  <div className="text-sm text-gray-600 mt-1">Overall Status</div>
+                  <div className="text-sm text-muted-foreground mt-1">Overall Status</div>
                 </div>
               </div>
             </CardContent>
@@ -361,61 +361,61 @@ export default function POSReconcilePage() {
                 </CardHeader>
                 <CardContent>
                   {/* Bank Summary */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 bg-muted rounded-lg">
                     <div className="text-center">
-                      <div className="text-lg font-bold text-blue-600">
+                      <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
                         Rs. {bank.bankCardTenders.toLocaleString()}
                       </div>
-                      <div className="text-xs text-gray-600">Card Tenders</div>
+                      <div className="text-xs text-muted-foreground">Card Tenders</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-lg font-bold text-green-600">
+                      <div className="text-lg font-bold text-green-600 dark:text-green-400">
                         Rs. {bank.bankBatchTotal.toLocaleString()}
                       </div>
-                      <div className="text-xs text-gray-600">Batch Total</div>
+                      <div className="text-xs text-muted-foreground">Batch Total</div>
                     </div>
                     <div className="text-center">
-                      <div className={`text-lg font-bold flex items-center justify-center gap-1 ${bank.bankVariance >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      <div className={`text-lg font-bold flex items-center justify-center gap-1 ${bank.bankVariance >= 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                         {getVarianceIcon(bank.bankVariance)}
                         {bank.bankVariance >= 0 ? '+' : ''}Rs. {bank.bankVariance.toLocaleString()}
                       </div>
-                      <div className="text-xs text-gray-600">Variance</div>
+                      <div className="text-xs text-muted-foreground">Variance</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-lg font-bold text-gray-600">
+                      <div className="text-lg font-bold text-muted-foreground">
                         {bank.terminals.length}
                       </div>
-                      <div className="text-xs text-gray-600">Terminals</div>
+                      <div className="text-xs text-muted-foreground">Terminals</div>
                     </div>
                   </div>
 
                   {/* Terminal Details */}
                   <div className="space-y-3">
-                    <h4 className="font-semibold text-gray-700">Terminal Breakdown</h4>
+                    <h4 className="font-semibold text-foreground">Terminal Breakdown</h4>
                     {bank.terminals.map((terminal) => (
                       <div key={terminal.terminalId} className="grid grid-cols-2 md:grid-cols-6 gap-4 p-3 border rounded-lg">
                         <div>
                           <div className="text-sm font-medium">{terminal.terminalId}</div>
-                          <div className="text-xs text-gray-500">{terminal.batchCount} batches</div>
+                          <div className="text-xs text-muted-foreground">{terminal.batchCount} batches</div>
                         </div>
                         <div>
-                          <div className="text-sm font-semibold text-blue-600">
+                          <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
                             Rs. {terminal.cardTenders.toLocaleString()}
                           </div>
-                          <div className="text-xs text-gray-500">Card Tenders</div>
+                          <div className="text-xs text-muted-foreground">Card Tenders</div>
                         </div>
                         <div>
-                          <div className="text-sm font-semibold text-green-600">
+                          <div className="text-sm font-semibold text-green-600 dark:text-green-400">
                             Rs. {terminal.batchTotal.toLocaleString()}
                           </div>
-                          <div className="text-xs text-gray-500">Batch Total</div>
+                          <div className="text-xs text-muted-foreground">Batch Total</div>
                         </div>
                         <div>
-                          <div className={`text-sm font-semibold flex items-center gap-1 ${terminal.variance >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          <div className={`text-sm font-semibold flex items-center gap-1 ${terminal.variance >= 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                             {getVarianceIcon(terminal.variance)}
                             {terminal.variance >= 0 ? '+' : ''}Rs. {terminal.variance.toLocaleString()}
                           </div>
-                          <div className="text-xs text-gray-500">Variance</div>
+                          <div className="text-xs text-muted-foreground">Variance</div>
                         </div>
                         <div>
                           <div className="text-sm font-semibold">
@@ -423,7 +423,7 @@ export default function POSReconcilePage() {
                               ((terminal.variance / terminal.cardTenders) * 100).toFixed(2) + '%'
                             ) : '0%'}
                           </div>
-                          <div className="text-xs text-gray-500">Variance %</div>
+                          <div className="text-xs text-muted-foreground">Variance %</div>
                         </div>
                         <div>
                           <Badge className={getStatusColor(terminal.status)} size="sm">
@@ -446,20 +446,20 @@ export default function POSReconcilePage() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <div className="text-sm text-gray-600">Banks matched</div>
-                  <div className="text-2xl font-bold text-green-600">
+                  <div className="text-sm text-muted-foreground">Banks matched</div>
+                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                     {reconciliation.banks.filter(b => b.status === 'MATCHED').length}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-600">Banks with variance</div>
-                  <div className="text-2xl font-bold text-yellow-600">
+                  <div className="text-sm text-muted-foreground">Banks with variance</div>
+                  <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                     {reconciliation.banks.filter(b => b.status === 'VARIANCE').length}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-600">Critical variances</div>
-                  <div className="text-2xl font-bold text-red-600">
+                  <div className="text-sm text-muted-foreground">Critical variances</div>
+                  <div className="text-2xl font-bold text-red-600 dark:text-red-400">
                     {reconciliation.banks.filter(b => b.status === 'CRITICAL').length}
                   </div>
                 </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { useStation } from '@/contexts/StationContext'
+import { useTheme } from '@/contexts/ThemeContext'
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -21,7 +22,10 @@ import {
   Fuel,
   CreditCard,
   Clock,
-  TrendingDown
+  TrendingDown,
+  Sun,
+  Moon,
+  Monitor
 } from 'lucide-react'
 
 type UserRole = 'OWNER' | 'MANAGER' | 'ACCOUNTS'
@@ -34,82 +38,131 @@ interface Notification {
   id: string
   title: string
   message: string
-  type: 'warning' | 'error' | 'info' | 'success'
-  priority: 'high' | 'medium' | 'low'
+  type: 'WARNING' | 'ERROR' | 'INFO' | 'SUCCESS' | 'warning' | 'error' | 'info' | 'success'
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | 'low' | 'medium' | 'high' | 'critical'
   timestamp: string
+  createdAt: string
   read: boolean
-  actionUrl?: string
+  isRead: boolean
+  actionUrl?: string | null
 }
 
 const roleColors = {
-  OWNER: 'bg-purple-100 text-purple-800',
-  MANAGER: 'bg-blue-100 text-blue-800',
-  ACCOUNTS: 'bg-green-100 text-green-800'
+  OWNER: 'bg-purple-500/20 text-purple-600 dark:bg-purple-600/30 dark:text-purple-300',
+  MANAGER: 'bg-blue-500/20 text-blue-600 dark:bg-blue-600/30 dark:text-blue-300',
+  ACCOUNTS: 'bg-green-500/20 text-green-600 dark:bg-green-600/30 dark:text-green-300'
 }
 
 export function TopBar({ userRole }: TopBarProps) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const { selectedStation, stations, setSelectedStation, getSelectedStation } = useStation()
+  const { theme, setTheme } = useTheme()
   const router = useRouter()
 
-  // Mock notifications - in real app, this would come from API
-  useEffect(() => {
-    const mockNotifications: Notification[] = [
-      {
-        id: '1',
-        title: 'Low Tank Level',
-        message: 'Tank 3 (Diesel) is at 15% capacity - refill needed',
-        type: 'warning',
-        priority: 'high',
-        timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 mins ago
-        read: false,
-        actionUrl: '/tanks'
-      },
-      {
-        id: '2',
-        title: 'POS Reconciliation Pending',
-        message: '3 POS terminals need batch reconciliation',
-        type: 'warning',
-        priority: 'medium',
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-        read: false,
-        actionUrl: '/pos/reconcile'
-      },
-      {
-        id: '3',
-        title: 'Credit Payment Overdue',
-        message: 'ABC Company payment is 5 days overdue (Rs. 25,000)',
-        type: 'error',
-        priority: 'high',
-        timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
-        read: false,
-        actionUrl: '/credit/aging'
-      },
-      {
-        id: '4',
-        title: 'Shift Variance Alert',
-        message: 'Morning shift had Rs. 500 shortage (above tolerance)',
-        type: 'warning',
-        priority: 'medium',
-        timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
-        read: true,
-        actionUrl: '/shifts'
-      },
-      {
-        id: '5',
-        title: 'Price Update Scheduled',
-        message: 'Petrol 92 price increase effective tomorrow 6 AM',
-        type: 'info',
-        priority: 'medium',
-        timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
-        read: false,
-        actionUrl: '/settings/prices'
+  // Load notifications from API
+  const loadNotifications = async () => {
+    try {
+      const params = new URLSearchParams()
+      if (selectedStation && selectedStation !== 'all') {
+        params.append('stationId', selectedStation)
       }
-    ]
-    setNotifications(mockNotifications)
-  }, [])
+      params.append('limit', '5') // Only get top 5 for dropdown
+      params.append('isRead', 'false') // Only unread for the bell icon
+      
+      // Create abort controller for timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+      
+      const response = await fetch(`/api/notifications?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+      }).catch((fetchError) => {
+        // Handle network errors and aborted requests
+        clearTimeout(timeoutId)
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          console.warn('Notifications request timed out')
+        } else {
+          console.warn('Network error loading notifications:', fetchError)
+        }
+        setNotifications([])
+        return null
+      })
 
-  const unreadCount = notifications.filter(n => !n.read).length
+      clearTimeout(timeoutId)
+
+      // If fetch failed, response will be null
+      if (!response) {
+        setNotifications([])
+        return
+      }
+
+      if (!response.ok) {
+        // If API fails, just show empty notifications
+        console.warn(`Notifications API returned ${response.status}: ${response.statusText}`)
+        setNotifications([])
+        return
+      }
+      
+      const data = await response.json().catch((jsonError) => {
+        console.warn('Failed to parse notifications response:', jsonError)
+        setNotifications([])
+        return null
+      })
+
+      if (!data) {
+        setNotifications([])
+        return
+      }
+
+      // Handle migration required case
+      if (data.migrationRequired || data.error) {
+        console.warn('Notifications API error:', data.error || data.details)
+        setNotifications([])
+        return
+      }
+
+      if (data.notifications && Array.isArray(data.notifications)) {
+        // Map API format to TopBar format
+        const mappedNotifications = data.notifications.map((n: any) => ({
+          id: n.id,
+          title: n.title || 'Notification',
+          message: n.message || '',
+          type: (n.type || 'info').toLowerCase() as any, // Convert to lowercase for compatibility
+          priority: (n.priority || 'medium').toLowerCase() as any, // Convert to lowercase for compatibility
+          timestamp: n.createdAt || n.timestamp || new Date().toISOString(),
+          createdAt: n.createdAt || n.timestamp || new Date().toISOString(),
+          read: n.isRead || n.read || false,
+          isRead: n.isRead || n.read || false,
+          actionUrl: n.actionUrl || null
+        }))
+        setNotifications(mappedNotifications)
+      } else {
+        setNotifications([])
+      }
+    } catch (error) {
+      // Handle any other errors
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn('Notifications request timed out')
+      } else {
+        console.error('Failed to load notifications:', error)
+      }
+      setNotifications([])
+    }
+  }
+
+  // Load notifications on mount and when station changes
+  useEffect(() => {
+    loadNotifications()
+    
+    // Auto-refresh every 2 minutes
+    const interval = setInterval(loadNotifications, 2 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [selectedStation])
+
+  const unreadCount = notifications.filter(n => !n.read && !n.isRead).length
 
   const handleLogout = () => {
     localStorage.removeItem('userRole')
@@ -122,44 +175,64 @@ export function TopBar({ userRole }: TopBarProps) {
     return station ? station.name : 'All Stations'
   }
 
-  const handleNotificationClick = (notification: Notification) => {
-    // Mark as read
-    setNotifications(prev => 
-      prev.map(n => n.id === notification.id ? { ...n, read: true } : n)
-    )
+  const handleNotificationClick = async (notification: Notification) => {
+    // Mark as read via API
+    if (!notification.read && !notification.isRead) {
+      try {
+        await fetch(`/api/notifications/${notification.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isRead: true })
+        })
+        // Update local state
+        setNotifications(prev => 
+          prev.map(n => n.id === notification.id ? { ...n, read: true, isRead: true } : n)
+        )
+      } catch (error) {
+        console.error('Failed to mark notification as read:', error)
+      }
+    }
     
     // Navigate to action URL if provided
     if (notification.actionUrl) {
       router.push(notification.actionUrl)
+    } else {
+      // If no action URL, navigate to notifications page
+      router.push('/notifications')
     }
   }
 
   const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'warning': return <AlertTriangle className="h-4 w-4 text-yellow-600" />
-      case 'error': return <AlertTriangle className="h-4 w-4 text-red-600" />
-      case 'info': return <Clock className="h-4 w-4 text-blue-600" />
-      case 'success': return <Clock className="h-4 w-4 text-green-600" />
-      default: return <Bell className="h-4 w-4 text-gray-600" />
+    const normalizedType = type.toUpperCase()
+    switch (normalizedType) {
+      case 'WARNING': return <AlertTriangle className="h-4 w-4 text-yellow-600" />
+      case 'ERROR': return <AlertTriangle className="h-4 w-4 text-red-600" />
+      case 'INFO': return <Clock className="h-4 w-4 text-blue-600" />
+      case 'SUCCESS': return <Clock className="h-4 w-4 text-green-600" />
+      default: return <Bell className="h-4 w-4 text-muted-foreground" />
     }
   }
 
   const getNotificationBadgeColor = (type: string) => {
-    switch (type) {
-      case 'warning': return 'bg-yellow-100 text-yellow-800'
-      case 'error': return 'bg-red-100 text-red-800'
-      case 'info': return 'bg-blue-100 text-blue-800'
-      case 'success': return 'bg-green-100 text-green-800'
-      default: return 'bg-gray-100 text-gray-800'
+    const normalizedType = type.toUpperCase()
+    switch (normalizedType) {
+      case 'WARNING': return 'bg-yellow-500/20 text-yellow-600 dark:bg-yellow-600/30 dark:text-yellow-300'
+      case 'ERROR': return 'bg-red-500/20 text-red-600 dark:bg-red-600/30 dark:text-red-300'
+      case 'INFO': return 'bg-blue-500/20 text-blue-600 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'SUCCESS': return 'bg-green-500/20 text-green-600 dark:bg-green-600/30 dark:text-green-300'
+      default: return 'bg-muted text-foreground'
     }
   }
 
   const formatTimeAgo = (timestamp: string) => {
+    if (!timestamp) return 'Just now'
     const now = new Date()
     const time = new Date(timestamp)
     const diffInMinutes = Math.floor((now.getTime() - time.getTime()) / (1000 * 60))
     
-    if (diffInMinutes < 60) {
+    if (diffInMinutes < 1) {
+      return 'Just now'
+    } else if (diffInMinutes < 60) {
       return `${diffInMinutes}m ago`
     } else if (diffInMinutes < 1440) {
       return `${Math.floor(diffInMinutes / 60)}h ago`
@@ -169,10 +242,10 @@ export function TopBar({ userRole }: TopBarProps) {
   }
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4">
+    <header className="bg-card border-b border-border px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-semibold text-gray-900">
+          <h2 className="text-2xl font-semibold text-foreground">
             Dashboard
           </h2>
           <Badge className={roleColors[userRole]}>
@@ -187,7 +260,7 @@ export function TopBar({ userRole }: TopBarProps) {
               <Button variant="ghost" size="sm" className="relative">
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500/10 dark:bg-red-500/200 text-white text-xs rounded-full flex items-center justify-center">
                     {unreadCount}
                   </span>
                 )}
@@ -196,20 +269,20 @@ export function TopBar({ userRole }: TopBarProps) {
             <DropdownMenuContent align="end" className="w-80">
               <div className="px-3 py-2 border-b">
                 <h3 className="font-semibold text-sm">Notifications</h3>
-                <p className="text-xs text-gray-500">{unreadCount} unread</p>
+                <p className="text-xs text-muted-foreground">{unreadCount} unread</p>
               </div>
               
               {notifications.length === 0 ? (
-                <div className="px-3 py-4 text-center text-sm text-gray-500">
+                <div className="px-3 py-4 text-center text-sm text-muted-foreground">
                   No notifications
                 </div>
               ) : (
                 <div className="max-h-96 overflow-y-auto">
-                  {notifications.slice(0, 5).map((notification) => (
+                  {notifications.map((notification) => (
                     <DropdownMenuItem
                       key={notification.id}
-                      className={`px-3 py-3 cursor-pointer hover:bg-gray-50 ${
-                        !notification.read ? 'bg-blue-50' : ''
+                      className={`px-3 py-3 cursor-pointer hover:bg-muted ${
+                        !notification.read && !notification.isRead ? 'bg-blue-500/10 dark:bg-blue-500/20' : ''
                       }`}
                       onClick={() => handleNotificationClick(notification)}
                     >
@@ -219,21 +292,21 @@ export function TopBar({ userRole }: TopBarProps) {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
-                            <p className="text-sm font-medium text-gray-900 truncate">
+                            <p className="text-sm font-medium text-foreground truncate">
                               {notification.title}
                             </p>
                             <Badge className={`text-xs ${getNotificationBadgeColor(notification.type)}`}>
                               {notification.priority}
                             </Badge>
                           </div>
-                          <p className="text-xs text-gray-600 mb-1">
+                          <p className="text-xs text-muted-foreground mb-1 line-clamp-2">
                             {notification.message}
                           </p>
-                          <p className="text-xs text-gray-400">
-                            {formatTimeAgo(notification.timestamp)}
+                          <p className="text-xs text-muted-foreground">
+                            {formatTimeAgo(notification.timestamp || notification.createdAt)}
                           </p>
                         </div>
-                        {!notification.read && (
+                        {!notification.read && !notification.isRead && (
                           <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2"></div>
                         )}
                       </div>
@@ -268,7 +341,7 @@ export function TopBar({ userRole }: TopBarProps) {
             <DropdownMenuContent align="end">
               <DropdownMenuItem 
                 onClick={() => setSelectedStation('all')}
-                className={selectedStation === 'all' ? 'bg-blue-50' : ''}
+                className={selectedStation === 'all' ? 'bg-blue-500/10 dark:bg-blue-500/20' : ''}
               >
                 All Stations
               </DropdownMenuItem>
@@ -277,11 +350,36 @@ export function TopBar({ userRole }: TopBarProps) {
                 <DropdownMenuItem 
                   key={station.id}
                   onClick={() => setSelectedStation(station.id)}
-                  className={selectedStation === station.id ? 'bg-blue-50' : ''}
+                  className={selectedStation === station.id ? 'bg-blue-500/10 dark:bg-blue-500/20' : ''}
                 >
                   {station.name}
                 </DropdownMenuItem>
               ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Theme Toggle */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="relative">
+                <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                <Moon className="h-4 w-4 absolute rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                <span className="sr-only">Toggle theme</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setTheme('light')} className={theme === 'light' ? 'bg-blue-500/10 dark:bg-blue-500/20' : ''}>
+                <Sun className="mr-2 h-4 w-4" />
+                Light
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme('dark')} className={theme === 'dark' ? 'bg-blue-500/10 dark:bg-blue-500/20' : ''}>
+                <Moon className="mr-2 h-4 w-4" />
+                Dark
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme('system')} className={theme === 'system' ? 'bg-blue-500/10 dark:bg-blue-500/20' : ''}>
+                <Monitor className="mr-2 h-4 w-4" />
+                System
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 

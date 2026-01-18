@@ -2,14 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useStation } from '@/contexts/StationContext'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { 
   Bell, 
   AlertTriangle, 
@@ -17,12 +19,13 @@ import {
   CheckCircle, 
   XCircle,
   Search,
-  Filter,
   MoreVertical,
   Trash2,
   Eye,
   EyeOff,
-  Settings
+  Settings,
+  RefreshCw,
+  Sparkles
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -35,161 +38,128 @@ interface Notification {
   id: string
   title: string
   message: string
-  type: 'warning' | 'error' | 'info' | 'success'
-  priority: 'high' | 'medium' | 'low'
-  timestamp: string
-  read: boolean
-  actionUrl?: string
-  category: 'system' | 'operations' | 'financial' | 'maintenance'
+  type: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR'
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+  category: 'SYSTEM' | 'OPERATIONS' | 'FINANCIAL' | 'MAINTENANCE' | 'TANK' | 'SHIFT' | 'CREDIT' | 'POS'
+  isRead: boolean
+  actionUrl?: string | null
+  metadata?: any
+  createdAt: string
+  readAt?: string | null
+  station?: {
+    id: string
+    name: string
+  } | null
+}
+
+interface NotificationPagination {
+  total: number
+  unread: number
+  limit: number
+  offset: number
 }
 
 export default function NotificationsPage() {
   const router = useRouter()
+  const { selectedStation } = useStation()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [filteredNotifications, setFilteredNotifications] = useState<Notification[]>([])
+  const [pagination, setPagination] = useState<NotificationPagination | null>(null)
   const [loading, setLoading] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState('all')
   const [filterPriority, setFilterPriority] = useState('all')
   const [filterCategory, setFilterCategory] = useState('all')
   const [activeTab, setActiveTab] = useState('all')
 
-  // Mock notifications - in real app, this would come from API
-  useEffect(() => {
-    const mockNotifications: Notification[] = [
-      {
-        id: '1',
-        title: 'Low Tank Level',
-        message: 'Tank 3 (Diesel) is at 15% capacity - refill needed urgently',
-        type: 'warning',
-        priority: 'high',
-        timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-        read: false,
-        actionUrl: '/tanks',
-        category: 'operations'
-      },
-      {
-        id: '2',
-        title: 'POS Reconciliation Pending',
-        message: '3 POS terminals need batch reconciliation for today',
-        type: 'warning',
-        priority: 'medium',
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        read: false,
-        actionUrl: '/pos/reconcile',
-        category: 'financial'
-      },
-      {
-        id: '3',
-        title: 'Credit Payment Overdue',
-        message: 'ABC Company payment is 5 days overdue (Rs. 25,000)',
-        type: 'error',
-        priority: 'high',
-        timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-        read: false,
-        actionUrl: '/credit/aging',
-        category: 'financial'
-      },
-      {
-        id: '4',
-        title: 'Shift Variance Alert',
-        message: 'Morning shift had Rs. 500 shortage (above tolerance)',
-        type: 'warning',
-        priority: 'medium',
-        timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-        read: true,
-        actionUrl: '/shifts',
-        category: 'operations'
-      },
-      {
-        id: '5',
-        title: 'Price Update Scheduled',
-        message: 'Petrol 92 price increase effective tomorrow 6 AM',
-        type: 'info',
-        priority: 'medium',
-        timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-        read: false,
-        actionUrl: '/settings/prices',
-        category: 'system'
-      },
-      {
-        id: '6',
-        title: 'Pump Maintenance Due',
-        message: 'Pump P1N2 is due for scheduled maintenance',
-        type: 'info',
-        priority: 'low',
-        timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        read: true,
-        actionUrl: '/maintenance',
-        category: 'maintenance'
-      },
-      {
-        id: '7',
-        title: 'Daily Report Generated',
-        message: 'Daily sales report for Station 1 has been generated',
-        type: 'success',
-        priority: 'low',
-        timestamp: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(),
-        read: true,
-        actionUrl: '/reports/daily',
-        category: 'system'
-      },
-      {
-        id: '8',
-        title: 'System Backup Completed',
-        message: 'Automated system backup completed successfully',
-        type: 'success',
-        priority: 'low',
-        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        read: true,
-        actionUrl: '/settings',
-        category: 'system'
-      },
-      {
-        id: '9',
-        title: 'New Credit Customer',
-        message: 'XYZ Transport has been approved as a credit customer',
-        type: 'success',
-        priority: 'medium',
-        timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-        read: false,
-        actionUrl: '/credit/customers',
-        category: 'financial'
-      },
-      {
-        id: '10',
-        title: 'Fuel Delivery Scheduled',
-        message: 'Petrol 92 delivery scheduled for tomorrow 10 AM',
-        type: 'info',
-        priority: 'medium',
-        timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-        read: true,
-        actionUrl: '/tanks/deliveries',
-        category: 'operations'
+  // Load notifications from API
+  const loadNotifications = async () => {
+    try {
+      setLoading(true)
+      setError('')
+      
+      const params = new URLSearchParams()
+      if (selectedStation && selectedStation !== 'all') {
+        params.append('stationId', selectedStation)
       }
-    ]
-    // Load real notifications from API
-    const loadNotifications = async () => {
-      try {
-        setLoading(true)
-        const response = await fetch('/api/notifications')
-        if (response.ok) {
-          const data = await response.json()
-          setNotifications(data)
-        } else {
-          // If no API endpoint exists, start with empty array
-          setNotifications([])
-        }
-      } catch (error) {
-        console.error('Failed to load notifications:', error)
+      params.append('limit', '100')
+      
+      const response = await fetch(`/api/notifications?${params.toString()}`)
+      const data = await response.json()
+      
+      // Handle migration required case
+      if (data.migrationRequired) {
+        setError(`Database migration required: ${data.migrationCommand || 'npx prisma migrate dev --name add_notifications'}`)
         setNotifications([])
-      } finally {
-        setLoading(false)
+        setPagination({
+          total: 0,
+          unread: 0,
+          limit: 100,
+          offset: 0
+        })
+        return
       }
+      
+      if (!response.ok && !data.notifications) {
+        const errorMsg = data.details || data.error || 'Failed to load notifications'
+        throw new Error(errorMsg)
+      }
+      
+      setNotifications(data.notifications || [])
+      setPagination(data.pagination || null)
+    } catch (err) {
+      console.error('Failed to load notifications:', err)
+      setError('Failed to load notifications')
+      setNotifications([])
+    } finally {
+      setLoading(false)
     }
+  }
 
+  // Generate notifications based on system events
+  const generateNotifications = async () => {
+    try {
+      setGenerating(true)
+      setError('')
+      setSuccess('')
+      
+      const params = new URLSearchParams()
+      if (selectedStation && selectedStation !== 'all') {
+        params.append('stationId', selectedStation)
+      }
+      
+      const response = await fetch(`/api/notifications/generate?${params.toString()}`, {
+        method: 'POST'
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate notifications')
+      }
+      
+      const data = await response.json()
+      setSuccess(`Generated ${data.generated} new notification${data.generated !== 1 ? 's' : ''}`)
+      
+      // Reload notifications after generation
+      await loadNotifications()
+    } catch (err) {
+      console.error('Failed to generate notifications:', err)
+      setError('Failed to generate notifications')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  // Load notifications on mount and when station changes
+  useEffect(() => {
     loadNotifications()
-  }, [])
+    
+    // Auto-refresh every 5 minutes
+    const interval = setInterval(loadNotifications, 5 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [selectedStation])
 
   // Filter notifications based on search and filters
   useEffect(() => {
@@ -197,9 +167,9 @@ export default function NotificationsPage() {
 
     // Filter by tab (read/unread)
     if (activeTab === 'unread') {
-      filtered = filtered.filter(n => !n.read)
+      filtered = filtered.filter(n => !n.isRead)
     } else if (activeTab === 'read') {
-      filtered = filtered.filter(n => n.read)
+      filtered = filtered.filter(n => n.isRead)
     }
 
     // Filter by search term
@@ -228,11 +198,11 @@ export default function NotificationsPage() {
     setFilteredNotifications(filtered)
   }, [notifications, searchTerm, filterType, filterPriority, filterCategory, activeTab])
 
-  const handleNotificationClick = (notification: Notification) => {
-    // Mark as read
-    setNotifications(prev => 
-      prev.map(n => n.id === notification.id ? { ...n, read: true } : n)
-    )
+  const handleNotificationClick = async (notification: Notification) => {
+    // Mark as read if not already read
+    if (!notification.isRead) {
+      await markAsRead(notification.id)
+    }
     
     // Navigate to action URL if provided
     if (notification.actionUrl) {
@@ -240,52 +210,92 @@ export default function NotificationsPage() {
     }
   }
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(n => n.id === id ? { ...n, read: true } : n)
-    )
+  const markAsRead = async (id: string) => {
+    try {
+      const response = await fetch(`/api/notifications/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isRead: true })
+      })
+      
+      if (response.ok) {
+        setNotifications(prev => 
+          prev.map(n => n.id === id ? { ...n, isRead: true, readAt: new Date().toISOString() } : n)
+        )
+      }
+    } catch (err) {
+      console.error('Failed to mark as read:', err)
+    }
   }
 
-  const markAsUnread = (id: string) => {
-    setNotifications(prev => 
-      prev.map(n => n.id === id ? { ...n, read: false } : n)
-    )
+  const markAsUnread = async (id: string) => {
+    try {
+      const response = await fetch(`/api/notifications/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isRead: false })
+      })
+      
+      if (response.ok) {
+        setNotifications(prev => 
+          prev.map(n => n.id === id ? { ...n, isRead: false, readAt: null } : n)
+        )
+      }
+    } catch (err) {
+      console.error('Failed to mark as unread:', err)
+    }
   }
 
-  const deleteNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id))
+  const deleteNotification = async (id: string) => {
+    try {
+      const response = await fetch(`/api/notifications/${id}`, {
+        method: 'DELETE'
+      })
+      
+      if (response.ok) {
+        setNotifications(prev => prev.filter(n => n.id !== id))
+      }
+    } catch (err) {
+      console.error('Failed to delete notification:', err)
+    }
   }
 
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+  const markAllAsRead = async () => {
+    try {
+      const unreadNotifications = notifications.filter(n => !n.isRead)
+      await Promise.all(unreadNotifications.map(n => markAsRead(n.id)))
+    } catch (err) {
+      console.error('Failed to mark all as read:', err)
+    }
   }
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case 'warning': return <AlertTriangle className="h-5 w-5 text-yellow-600" />
-      case 'error': return <XCircle className="h-5 w-5 text-red-600" />
-      case 'info': return <Clock className="h-5 w-5 text-blue-600" />
-      case 'success': return <CheckCircle className="h-5 w-5 text-green-600" />
-      default: return <Bell className="h-5 w-5 text-gray-600" />
+      case 'WARNING': return <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+      case 'ERROR': return <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+      case 'INFO': return <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+      case 'SUCCESS': return <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+      default: return <Bell className="h-5 w-5 text-muted-foreground" />
     }
   }
 
   const getNotificationBadgeColor = (type: string) => {
     switch (type) {
-      case 'warning': return 'bg-yellow-100 text-yellow-800'
-      case 'error': return 'bg-red-100 text-red-800'
-      case 'info': return 'bg-blue-100 text-blue-800'
-      case 'success': return 'bg-green-100 text-green-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'WARNING': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
+      case 'ERROR': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+      case 'INFO': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'SUCCESS': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      default: return 'bg-muted text-foreground'
     }
   }
 
   const getPriorityBadgeColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800'
-      case 'medium': return 'bg-yellow-100 text-yellow-800'
-      case 'low': return 'bg-green-100 text-green-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'CRITICAL': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+      case 'HIGH': return 'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300'
+      case 'MEDIUM': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
+      case 'LOW': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      default: return 'bg-muted text-foreground'
     }
   }
 
@@ -294,7 +304,9 @@ export default function NotificationsPage() {
     const time = new Date(timestamp)
     const diffInMinutes = Math.floor((now.getTime() - time.getTime()) / (1000 * 60))
     
-    if (diffInMinutes < 60) {
+    if (diffInMinutes < 1) {
+      return 'Just now'
+    } else if (diffInMinutes < 60) {
       return `${diffInMinutes}m ago`
     } else if (diffInMinutes < 1440) {
       return `${Math.floor(diffInMinutes / 60)}h ago`
@@ -303,32 +315,82 @@ export default function NotificationsPage() {
     }
   }
 
-  const unreadCount = notifications.filter(n => !n.read).length
-  const totalCount = notifications.length
+  const unreadCount = pagination?.unread || notifications.filter(n => !n.isRead).length
+  const totalCount = pagination?.total || notifications.length
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Bell className="h-8 w-8 text-purple-600" />
+            <Bell className="h-8 w-8 text-purple-600 dark:text-purple-400" />
             Notifications
           </h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-muted-foreground mt-1">
             {unreadCount} unread of {totalCount} total notifications
+            {selectedStation && selectedStation !== 'all' && ' • Filtered by station'}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={markAllAsRead}>
-            Mark All as Read
+          <Button 
+            variant="outline" 
+            onClick={generateNotifications}
+            disabled={generating}
+          >
+            <Sparkles className={`h-4 w-4 mr-2 ${generating ? 'animate-spin' : ''}`} />
+            {generating ? 'Generating...' : 'Generate Notifications'}
           </Button>
-          <Button variant="outline">
-            <Settings className="h-4 w-4 mr-2" />
-            Settings
+          <Button variant="outline" onClick={loadNotifications} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button variant="outline" onClick={markAllAsRead} disabled={unreadCount === 0}>
+            Mark All as Read
           </Button>
         </div>
       </div>
+
+      {/* Alerts */}
+      {error && (
+        <Alert variant={error.includes('migration') ? "default" : "destructive"} className={error.includes('migration') ? "bg-blue-500/10 border-blue-500/20" : ""}>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            {error}
+            {error.includes('migration') || error.includes('regenerated') ? (
+              <div className="mt-3 p-3 bg-muted rounded-lg">
+                <p className="text-sm font-semibold mb-2">
+                  {error.includes('regenerated') 
+                    ? 'Prisma client needs to be regenerated:' 
+                    : 'Database migration was successful! Next step:'}
+                </p>
+                {error.includes('regenerated') ? (
+                  <>
+                    <p className="text-sm mb-2">Simply restart your Next.js dev server:</p>
+                    <ol className="text-xs space-y-1 list-decimal list-inside">
+                      <li>Stop the dev server (Ctrl+C in terminal)</li>
+                      <li>Start it again: <code className="bg-background px-1 py-0.5 rounded">npm run dev</code></li>
+                    </ol>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      The Prisma client will be automatically regenerated when the server restarts.
+                    </p>
+                  </>
+                ) : (
+                  <code className="block text-xs bg-background p-2 rounded border">
+                    Restart your Next.js dev server
+                  </code>
+                )}
+              </div>
+            ) : null}
+          </AlertDescription>
+        </Alert>
+      )}
+      {success && (
+        <Alert className="bg-green-500/10 border-green-500/20">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-600">{success}</AlertDescription>
+        </Alert>
+      )}
 
       {/* Filters */}
       <FormCard title="Filters">
@@ -336,7 +398,7 @@ export default function NotificationsPage() {
           <div>
             <Label htmlFor="search">Search</Label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 id="search"
                 placeholder="Search notifications..."
@@ -354,10 +416,10 @@ export default function NotificationsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="error">Error</SelectItem>
-                <SelectItem value="warning">Warning</SelectItem>
-                <SelectItem value="info">Info</SelectItem>
-                <SelectItem value="success">Success</SelectItem>
+                <SelectItem value="ERROR">Error</SelectItem>
+                <SelectItem value="WARNING">Warning</SelectItem>
+                <SelectItem value="INFO">Info</SelectItem>
+                <SelectItem value="SUCCESS">Success</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -369,9 +431,10 @@ export default function NotificationsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Priorities</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="CRITICAL">Critical</SelectItem>
+                <SelectItem value="HIGH">High</SelectItem>
+                <SelectItem value="MEDIUM">Medium</SelectItem>
+                <SelectItem value="LOW">Low</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -383,10 +446,14 @@ export default function NotificationsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="system">System</SelectItem>
-                <SelectItem value="operations">Operations</SelectItem>
-                <SelectItem value="financial">Financial</SelectItem>
-                <SelectItem value="maintenance">Maintenance</SelectItem>
+                <SelectItem value="SYSTEM">System</SelectItem>
+                <SelectItem value="OPERATIONS">Operations</SelectItem>
+                <SelectItem value="FINANCIAL">Financial</SelectItem>
+                <SelectItem value="TANK">Tank</SelectItem>
+                <SelectItem value="SHIFT">Shift</SelectItem>
+                <SelectItem value="CREDIT">Credit</SelectItem>
+                <SelectItem value="POS">POS</SelectItem>
+                <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -397,6 +464,9 @@ export default function NotificationsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Notifications</CardTitle>
+          <CardDescription>
+            {loading ? 'Loading...' : `${filteredNotifications.length} notification${filteredNotifications.length !== 1 ? 's' : ''} shown`}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -407,15 +477,19 @@ export default function NotificationsPage() {
             </TabsList>
             
             <TabsContent value={activeTab} className="mt-6">
-              {filteredNotifications.length === 0 ? (
+              {loading ? (
                 <div className="text-center py-12">
-                  <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No notifications found</h3>
-                  <p className="text-gray-500">
+                  <RefreshCw className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-spin" />
+                  <p className="text-muted-foreground">Loading notifications...</p>
+                </div>
+              ) : filteredNotifications.length === 0 ? (
+                <div className="text-center py-12">
+                  <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-foreground mb-2">No notifications found</h3>
+                  <p className="text-muted-foreground">
                     {searchTerm || filterType !== 'all' || filterPriority !== 'all' || filterCategory !== 'all'
                       ? 'Try adjusting your filters'
-                      : 'You\'re all caught up!'
-                    }
+                      : 'You\'re all caught up! Click "Generate Notifications" to check for system events.'}
                   </p>
                 </div>
               ) : (
@@ -423,9 +497,10 @@ export default function NotificationsPage() {
                   {filteredNotifications.map((notification) => (
                     <div
                       key={notification.id}
-                      className={`p-4 border rounded-lg transition-colors hover:bg-gray-50 ${
-                        !notification.read ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'
+                      className={`p-4 border rounded-lg transition-colors hover:bg-muted cursor-pointer ${
+                        !notification.isRead ? 'bg-blue-500/10 dark:bg-blue-500/20 border-blue-500/20 dark:border-blue-500/30' : 'bg-card border-border'
                       }`}
+                      onClick={() => handleNotificationClick(notification)}
                     >
                       <div className="flex items-start gap-4">
                         <div className="flex-shrink-0 mt-1">
@@ -435,14 +510,19 @@ export default function NotificationsPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="text-sm font-semibold text-gray-900">
+                              <h3 className="text-sm font-semibold text-foreground">
                                 {notification.title}
                               </h3>
-                              {!notification.read && (
-                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              {!notification.isRead && (
+                                <div className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full"></div>
+                              )}
+                              {notification.station && (
+                                <Badge variant="outline" className="text-xs">
+                                  {notification.station.name}
+                                </Badge>
                               )}
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                               <Badge className={`text-xs ${getNotificationBadgeColor(notification.type)}`}>
                                 {notification.type}
                               </Badge>
@@ -451,12 +531,12 @@ export default function NotificationsPage() {
                               </Badge>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm">
+                                  <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
                                     <MoreVertical className="h-4 w-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  {notification.read ? (
+                                  {notification.isRead ? (
                                     <DropdownMenuItem onClick={() => markAsUnread(notification.id)}>
                                       <EyeOff className="h-4 w-4 mr-2" />
                                       Mark as Unread
@@ -469,7 +549,7 @@ export default function NotificationsPage() {
                                   )}
                                   <DropdownMenuItem 
                                     onClick={() => deleteNotification(notification.id)}
-                                    className="text-red-600"
+                                    className="text-red-600 dark:text-red-400"
                                   >
                                     <Trash2 className="h-4 w-4 mr-2" />
                                     Delete
@@ -479,13 +559,13 @@ export default function NotificationsPage() {
                             </div>
                           </div>
                           
-                          <p className="text-sm text-gray-700 mb-3">
+                          <p className="text-sm text-foreground mb-3">
                             {notification.message}
                           </p>
                           
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4 text-xs text-gray-500">
-                              <span>{formatTimeAgo(notification.timestamp)}</span>
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                              <span>{formatTimeAgo(notification.createdAt)}</span>
                               <Badge variant="outline" className="text-xs">
                                 {notification.category}
                               </Badge>
@@ -495,7 +575,10 @@ export default function NotificationsPage() {
                               <Button 
                                 size="sm" 
                                 variant="outline"
-                                onClick={() => handleNotificationClick(notification)}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleNotificationClick(notification)
+                                }}
                               >
                                 Take Action
                               </Button>

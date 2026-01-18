@@ -52,8 +52,11 @@ export function DataTable<T = Record<string, unknown>>({
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [currentPage, setCurrentPage] = useState(1)
 
+  // Ensure data is always an array
+  const dataArray = Array.isArray(data) ? data : []
+
   // Filter data based on search term
-  const filteredData = data.filter((row) => {
+  const filteredData = dataArray.filter((row) => {
     if (!searchTerm) return true
     return columns.some((column) => {
       const value = row[column.key]
@@ -99,7 +102,7 @@ export function DataTable<T = Record<string, unknown>>({
       {searchable && (
         <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder={searchPlaceholder}
               value={searchTerm}
@@ -119,7 +122,7 @@ export function DataTable<T = Record<string, unknown>>({
                 <TableHead
                   key={String(column.key)}
                   className={cn(
-                    column.sortable && 'cursor-pointer hover:bg-gray-50',
+                    column.sortable && 'cursor-pointer hover:bg-muted',
                     column.width && `w-[${column.width}]`
                   )}
                   onClick={() => column.sortable && handleSort(column.key)}
@@ -140,7 +143,7 @@ export function DataTable<T = Record<string, unknown>>({
             {paginatedData.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={columns.length} className="text-center py-8">
-                  <div className="text-gray-500">{emptyMessage}</div>
+                  <div className="text-muted-foreground">{emptyMessage}</div>
                 </TableCell>
               </TableRow>
             ) : (
@@ -148,7 +151,7 @@ export function DataTable<T = Record<string, unknown>>({
                 <TableRow
                   key={index}
                   className={cn(
-                    onRowClick && 'cursor-pointer hover:bg-gray-50'
+                    onRowClick && 'cursor-pointer hover:bg-muted'
                   )}
                   onClick={() => onRowClick?.(row)}
                 >
@@ -170,7 +173,7 @@ export function DataTable<T = Record<string, unknown>>({
       {/* Pagination */}
       {pagination && totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-muted-foreground">
             Showing {startIndex + 1} to {Math.min(startIndex + pageSize, sortedData.length)} of {sortedData.length} entries
           </div>
           <div className="flex items-center gap-2">

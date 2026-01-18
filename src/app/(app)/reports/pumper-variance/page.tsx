@@ -113,7 +113,7 @@ export default function PumperVariancePage() {
   const [error, setError] = useState('')
 
   // Form state
-  const { selectedStation } = useStation()
+  const { selectedStation, setSelectedStation } = useStation()
   const [selectedMonth, setSelectedMonth] = useState(String(new Date().getMonth() + 1).padStart(2, '0'))
   const [selectedYear, setSelectedYear] = useState(String(currentYear))
 
@@ -142,58 +142,63 @@ export default function PumperVariancePage() {
     setError('')
 
     try {
-      // In a real app, this would call the API endpoint
-      // For now, we'll generate mock pumper variance data
+      // Call API endpoint to get real pumper variance data
+      const monthStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`
+      const url = `/api/reports/pumper-variance?stationId=${selectedStation}&month=${monthStr}`
       
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Failed to fetch pumper variance report: ${response.status}`)
+      }
+
+      const reportData = await response.json()
       const station = stations.find(s => s.id === selectedStation)
       
-      // Generate mock pumper variance data
-      const pumperNames = [
-        'John Silva', 'Mary Fernando', 'David Perera', 'Sarah Jayawardena',
-        'Michael De Silva', 'Priya Wickramasinghe', 'Ravi Gunasekara', 'Nimal Rajapaksa'
-      ]
-
-      const pumperVariances: PumperVariance[] = pumperNames.map((name, index) => {
-        const totalShifts = 25 + Math.floor(Math.random() * 10)
-        const varianceCount = Math.floor(Math.random() * 8) + 1
-        const shiftsWithVariance = Math.min(varianceCount, totalShifts)
-        const totalVarianceAmount = Math.floor(Math.random() * 5000) + 500
-        const maxSingleVariance = Math.floor(Math.random() * 1500) + 200
-        const varianceRate = (shiftsWithVariance / totalShifts) * 100
-        
-        // Generate sparkline data (last 30 days)
-        const dailyVariances = Array.from({ length: 30 }, (_, day) => ({
-          day: day + 1,
-          variance: Math.floor(Math.random() * 300) - 150 // -150 to +150
+      // Transform API data to match frontend interface
+      const pumperVariances: PumperVariance[] = (reportData.pumperVariances || []).map((pumper: any) => {
+        // Transform daily variances from API (which uses day of month) to match expected format
+        const dailyVariances = (pumper.dailyVariances || []).map((dv: any) => ({
+          day: dv.day || 1,
+          variance: dv.variance || 0
         }))
 
-        // Determine performance rating
-        let performanceRating: 'EXCELLENT' | 'GOOD' | 'NEEDS_IMPROVEMENT' | 'CRITICAL'
-        if (varianceRate <= 5) performanceRating = 'EXCELLENT'
-        else if (varianceRate <= 15) performanceRating = 'GOOD'
-        else if (varianceRate <= 30) performanceRating = 'NEEDS_IMPROVEMENT'
-        else performanceRating = 'CRITICAL'
+        // Calculate additional fields
+        const averageVariancePerShift = pumper.varianceCount > 0 
+          ? pumper.totalVarianceAmount / pumper.varianceCount 
+          : 0
+
+        // Estimate total due amount (70% of total variance - this would need to be calculated from actual advance/loan records)
+        const totalDueAmount = Math.floor(pumper.totalVarianceAmount * 0.7)
+
+        // Get nozzle assignments - would need to fetch from assignments, using placeholder for now
+        const nozzleAssignments: string[] = [] // Would need to fetch from shift assignments
 
         return {
-          pumperId: `pumper-${index + 1}`,
-          pumperName: name,
-          nozzleAssignments: [`Nozzle ${index + 1}`, `Nozzle ${index + 5}`],
-          totalShifts,
-          shiftsWithVariance,
-          varianceCount,
-          totalVarianceAmount,
-          averageVariancePerShift: totalVarianceAmount / totalShifts,
-          maxSingleVariance,
-          varianceRate,
-          performanceRating,
+          pumperId: pumper.pumperId,
+          pumperName: pumper.pumperName,
+          nozzleAssignments,
+          totalShifts: pumper.totalShifts,
+          shiftsWithVariance: pumper.shiftsWithVariance,
+          varianceCount: pumper.varianceCount,
+          totalVarianceAmount: pumper.totalVarianceAmount,
+          averageVariancePerShift,
+          maxSingleVariance: pumper.maxSingleVariance || 0,
+          varianceRate: pumper.varianceRate,
+          performanceRating: pumper.performanceRating,
           dailyVariances,
-          lastVarianceDate: varianceCount > 0 ? `${selectedYear}-${selectedMonth}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')}` : undefined,
-          consecutiveDaysWithoutVariance: Math.floor(Math.random() * 15),
-          totalDueAmount: Math.floor(totalVarianceAmount * 0.7) // Assume 70% is due from pumper
+          lastVarianceDate: undefined, // Would need to calculate from shift data
+          consecutiveDaysWithoutVariance: 0, // Would need to calculate from shift data
+          totalDueAmount
         }
       })
 
-      // Sort by variance rate (worst first)
+      // API already sorts by variance rate, but ensure it's sorted
       pumperVariances.sort((a, b) => b.varianceRate - a.varianceRate)
 
       setPumperVariances(pumperVariances)
@@ -207,11 +212,11 @@ export default function PumperVariancePage() {
 
   const getPerformanceColor = (rating: string) => {
     switch (rating) {
-      case 'EXCELLENT': return 'bg-green-100 text-green-800'
-      case 'GOOD': return 'bg-blue-100 text-blue-800'
-      case 'NEEDS_IMPROVEMENT': return 'bg-yellow-100 text-yellow-800'
-      case 'CRITICAL': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'EXCELLENT': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      case 'GOOD': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'NEEDS_IMPROVEMENT': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
+      case 'CRITICAL': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+      default: return 'bg-muted text-foreground'
     }
   }
 
@@ -226,10 +231,10 @@ export default function PumperVariancePage() {
   }
 
   const getVarianceRateColor = (rate: number) => {
-    if (rate <= 5) return 'text-green-600'
-    if (rate <= 15) return 'text-blue-600'
-    if (rate <= 30) return 'text-yellow-600'
-    return 'text-red-600'
+    if (rate <= 5) return 'text-green-600 dark:text-green-400'
+    if (rate <= 15) return 'text-blue-600 dark:text-blue-400'
+    if (rate <= 30) return 'text-yellow-600 dark:text-yellow-400'
+    return 'text-red-600 dark:text-red-400'
   }
 
   const pumperColumns: Column<PumperVariance>[] = [
@@ -238,10 +243,10 @@ export default function PumperVariancePage() {
       title: 'Pumper',
       render: (value: unknown, row: PumperVariance) => (
         <div className="flex items-center gap-2">
-          <User className="h-4 w-4 text-gray-500" />
+          <User className="h-4 w-4 text-muted-foreground" />
           <div>
             <div className="font-medium">{value as string}</div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-muted-foreground">
               {row.nozzleAssignments.join(', ')}
             </div>
           </div>
@@ -260,10 +265,10 @@ export default function PumperVariancePage() {
       title: 'Variance Count',
       render: (value: unknown, row: PumperVariance) => (
         <div className="text-center">
-          <div className="font-mono font-semibold text-red-600">
+          <div className="font-mono font-semibold text-red-600 dark:text-red-400">
             {value as number}
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-muted-foreground">
             {row.shiftsWithVariance} shifts affected
           </div>
         </div>
@@ -273,7 +278,7 @@ export default function PumperVariancePage() {
       key: 'totalVarianceAmount' as keyof PumperVariance,
       title: 'Total Variance',
       render: (value: unknown) => (
-        <span className="font-mono font-semibold text-red-600">
+        <span className="font-mono font-semibold text-red-600 dark:text-red-400">
           Rs. {(value as number)?.toLocaleString() || 0}
         </span>
       )
@@ -282,7 +287,7 @@ export default function PumperVariancePage() {
       key: 'totalDueAmount' as keyof PumperVariance,
       title: 'Amount Due',
       render: (value: unknown) => (
-        <span className="font-mono font-semibold text-orange-600">
+        <span className="font-mono font-semibold text-orange-600 dark:text-orange-400">
           Rs. {(value as number)?.toLocaleString() || 0}
         </span>
       )
@@ -340,7 +345,7 @@ export default function PumperVariancePage() {
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-gray-900">Pumper Variance Report</h1>
+      <h1 className="text-3xl font-bold text-foreground">Pumper Variance Report</h1>
 
       {error && (
         <Alert variant="destructive">
@@ -438,55 +443,55 @@ export default function PumperVariancePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-blue-600">Total Pumpers</CardTitle>
+                <CardTitle className="text-sm font-medium text-blue-600 dark:text-blue-400">Total Pumpers</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-700">{totalPumpers}</div>
-                <div className="text-xs text-gray-500">Active this month</div>
+                <div className="text-xs text-muted-foreground">Active this month</div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-green-600">Excellent</CardTitle>
+                <CardTitle className="text-sm font-medium text-green-600 dark:text-green-400">Excellent</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-700">{excellentPumpers}</div>
-                <div className="text-xs text-gray-500">≤5% variance rate</div>
+                <div className="text-xs text-muted-foreground">≤5% variance rate</div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-red-600">Critical</CardTitle>
+                <CardTitle className="text-sm font-medium text-red-600 dark:text-red-400">Critical</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-700">{criticalPumpers}</div>
-                <div className="text-xs text-gray-500">≥30% variance rate</div>
+                <div className="text-xs text-muted-foreground">≥30% variance rate</div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-purple-600">Total Variance</CardTitle>
+                <CardTitle className="text-sm font-medium text-purple-600 dark:text-purple-400">Total Variance</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-purple-700">
                   Rs. {totalVarianceAmount.toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500">All pumpers combined</div>
+                <div className="text-xs text-muted-foreground">All pumpers combined</div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-orange-600">Amount Due</CardTitle>
+                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Amount Due</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-700">
                   Rs. {totalDueAmount.toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500">From pumpers</div>
+                <div className="text-xs text-muted-foreground">From pumpers</div>
               </CardContent>
             </Card>
           </div>
@@ -499,35 +504,35 @@ export default function PumperVariancePage() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="text-center">
-                  <div className="text-lg font-semibold text-gray-600">Average Variance Rate</div>
+                  <div className="text-lg font-semibold text-muted-foreground">Average Variance Rate</div>
                   <div className={`text-3xl font-bold ${getVarianceRateColor(averageVarianceRate)}`}>
                     {averageVarianceRate.toFixed(1)}%
                   </div>
-                  <div className="text-sm text-gray-500">Across all pumpers</div>
+                  <div className="text-sm text-muted-foreground">Across all pumpers</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-lg font-semibold text-gray-600">Performance Distribution</div>
+                  <div className="text-lg font-semibold text-muted-foreground">Performance Distribution</div>
                   <div className="flex justify-center gap-2 mt-2">
-                    <Badge className="bg-green-100 text-green-800">
+                    <Badge className="bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300">
                       {excellentPumpers} Excellent
                     </Badge>
-                    <Badge className="bg-blue-100 text-blue-800">
+                    <Badge className="bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300">
                       {pumperVariances.filter(p => p.performanceRating === 'GOOD').length} Good
                     </Badge>
-                    <Badge className="bg-yellow-100 text-yellow-800">
+                    <Badge className="bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300">
                       {pumperVariances.filter(p => p.performanceRating === 'NEEDS_IMPROVEMENT').length} Needs Improvement
                     </Badge>
-                    <Badge className="bg-red-100 text-red-800">
+                    <Badge className="bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300">
                       {criticalPumpers} Critical
                     </Badge>
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="text-lg font-semibold text-gray-600">Recovery Rate</div>
-                  <div className="text-3xl font-bold text-blue-600">
+                  <div className="text-lg font-semibold text-muted-foreground">Recovery Rate</div>
+                  <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
                     {((totalDueAmount / totalVarianceAmount) * 100).toFixed(0)}%
                   </div>
-                  <div className="text-sm text-gray-500">Expected recovery</div>
+                  <div className="text-sm text-muted-foreground">Expected recovery</div>
                 </div>
               </div>
             </CardContent>

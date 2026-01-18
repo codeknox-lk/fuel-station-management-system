@@ -35,7 +35,13 @@ import {
   Edit,
   DollarSign,
   IdCard,
-  UserCheck
+  UserCheck,
+  History,
+  ArrowDownRight,
+  ArrowUpRight,
+  Clock,
+  Filter,
+  Minus
 } from 'lucide-react'
 
 interface CreditCustomer {
@@ -55,6 +61,21 @@ interface CreditCustomer {
   updatedAt: string
 }
 
+interface CreditTransaction {
+  id: string
+  type: 'SALE' | 'PAYMENT'
+  customerId: string
+  customerName: string
+  customerPhone: string
+  amount: number
+  timestamp: string
+  description: string
+  shiftId?: string
+  paymentType?: string
+  chequeNumber?: string
+  bankName?: string
+}
+
 export default function CreditCustomersPage() {
   const [customers, setCustomers] = useState<CreditCustomer[]>([])
   const [loading, setLoading] = useState(true)
@@ -65,6 +86,12 @@ export default function CreditCustomersPage() {
   // Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<CreditCustomer | null>(null)
+
+  // Transaction history state
+  const [transactions, setTransactions] = useState<CreditTransaction[]>([])
+  const [loadingTransactions, setLoadingTransactions] = useState(false)
+  const [filterCustomer, setFilterCustomer] = useState<string>('all')
+  const [filterType, setFilterType] = useState<string>('all')
 
   // Form state
   const [formData, setFormData] = useState({
@@ -83,7 +110,66 @@ export default function CreditCustomersPage() {
     setUserRole(role || '')
     
     fetchCustomers()
+    fetchTransactions()
   }, [])
+
+  const fetchTransactions = async () => {
+    try {
+      setLoadingTransactions(true)
+      
+      // Fetch both sales and payments in parallel
+      const [salesRes, paymentsRes] = await Promise.all([
+        fetch('/api/credit/sales'),
+        fetch('/api/credit/payments')
+      ])
+
+      if (!salesRes.ok || !paymentsRes.ok) {
+        throw new Error('Failed to fetch transactions')
+      }
+
+      const sales = await salesRes.json()
+      const payments = await paymentsRes.json()
+
+      // Transform sales
+      const salesTransactions: CreditTransaction[] = sales.map((sale: any) => ({
+        id: sale.id,
+        type: 'SALE' as const,
+        customerId: sale.customerId,
+        customerName: sale.customer?.name || 'Unknown',
+        customerPhone: sale.customer?.phone || '',
+        amount: sale.amount,
+        timestamp: sale.timestamp,
+        description: `Credit sale - ${sale.liters?.toFixed(2) || 'N/A'}L @ Rs. ${sale.price?.toLocaleString() || 'N/A'}/L`,
+        shiftId: sale.shiftId
+      }))
+
+      // Transform payments
+      const paymentsTransactions: CreditTransaction[] = payments.map((payment: any) => ({
+        id: payment.id,
+        type: 'PAYMENT' as const,
+        customerId: payment.customerId,
+        customerName: payment.customer?.name || 'Unknown',
+        customerPhone: payment.customer?.phone || '',
+        amount: payment.amount,
+        timestamp: payment.paymentDate,
+        description: `Payment received - ${payment.paymentType || 'Cash'}${payment.chequeNumber ? ` (Cheque: ${payment.chequeNumber})` : ''}${payment.bank ? ` - ${payment.bank.name}` : ''}`,
+        paymentType: payment.paymentType,
+        chequeNumber: payment.chequeNumber,
+        bankName: payment.bank?.name
+      }))
+
+      // Combine and sort by timestamp (newest first)
+      const allTransactions = [...salesTransactions, ...paymentsTransactions].sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      )
+
+      setTransactions(allTransactions)
+    } catch (err) {
+      console.error('Failed to fetch transactions:', err)
+    } finally {
+      setLoadingTransactions(false)
+    }
+  }
 
   const fetchCustomers = async () => {
     try {
@@ -91,10 +177,14 @@ export default function CreditCustomersPage() {
       const response = await fetch('/api/credit/customers')
       const data = await response.json()
 
-      // Transform the data to include calculated fields
-      const transformedCustomers = data.map((customer: CreditCustomer) => ({
+      // Transform the data to include calculated fields and map company to nicOrBrn
+      const transformedCustomers = data.map((customer: any) => ({
         ...customer,
-        availableCredit: customer.creditLimit - customer.currentBalance
+        nicOrBrn: customer.company || '', // Map company to nicOrBrn for frontend
+        availableCredit: customer.creditLimit - customer.currentBalance,
+        status: customer.isActive ? 'ACTIVE' : 'INACTIVE' as 'ACTIVE' | 'SUSPENDED' | 'INACTIVE',
+        approvedBy: customer.approvedBy || 'System',
+        approvedAt: customer.approvedAt || customer.createdAt || new Date().toISOString()
       }))
 
       setCustomers(transformedCustomers)
@@ -125,14 +215,21 @@ export default function CreditCustomersPage() {
       
       const method = editingCustomer ? 'PUT' : 'POST'
 
+      // Map nicOrBrn to company for API
+      const requestBody = {
+        name: formData.name,
+        company: formData.nicOrBrn || null, // Map nicOrBrn to company
+        phone: formData.phone,
+        email: formData.email || null,
+        address: formData.address || '',
+        creditLimit: formData.creditLimit,
+        status: formData.status
+      }
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          creditLimit: formData.creditLimit,
-          approvedBy: editingCustomer ? editingCustomer.approvedBy : 'Current User' // In real app, get from auth context
-        })
+        body: JSON.stringify(requestBody)
       })
 
       if (!response.ok) {
@@ -141,17 +238,27 @@ export default function CreditCustomersPage() {
 
       const savedCustomer = await response.json()
       
+      // Transform saved customer to match frontend format (map company to nicOrBrn)
+      const transformedCustomer = {
+        ...savedCustomer,
+        nicOrBrn: savedCustomer.company || '',
+        availableCredit: savedCustomer.creditLimit - savedCustomer.currentBalance,
+        status: savedCustomer.isActive ? 'ACTIVE' : 'INACTIVE' as 'ACTIVE' | 'SUSPENDED' | 'INACTIVE',
+        approvedBy: savedCustomer.approvedBy || 'System',
+        approvedAt: savedCustomer.approvedAt || savedCustomer.createdAt || new Date().toISOString()
+      }
+      
       if (editingCustomer) {
         // Update existing customer in list
         setCustomers(prev => prev.map(c => 
           c.id === editingCustomer.id 
-            ? { ...savedCustomer, availableCredit: savedCustomer.creditLimit - savedCustomer.currentBalance }
+            ? transformedCustomer
             : c
         ))
       } else {
         // Add new customer to list
         setCustomers(prev => [
-          { ...savedCustomer, availableCredit: savedCustomer.creditLimit - savedCustomer.currentBalance },
+          transformedCustomer,
           ...prev
         ])
       }
@@ -171,6 +278,9 @@ export default function CreditCustomersPage() {
       
       setSuccess(`Customer ${editingCustomer ? 'updated' : 'created'} successfully!`)
       
+      // Refresh transactions in case balance changed
+      fetchTransactions()
+      
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000)
 
@@ -184,13 +294,13 @@ export default function CreditCustomersPage() {
   const handleEdit = (customer: CreditCustomer) => {
     setEditingCustomer(customer)
     setFormData({
-      name: customer.name,
-      nicOrBrn: customer.nicOrBrn,
-      phone: customer.phone,
+      name: customer.name || '',
+      nicOrBrn: customer.nicOrBrn || '', // Ensure it's always a string
+      phone: customer.phone || '',
       email: customer.email || '',
       address: customer.address || '',
-      creditLimit: customer.creditLimit,
-      status: customer.status
+      creditLimit: customer.creditLimit || 0,
+      status: customer.status || 'ACTIVE'
     })
     setIsDialogOpen(true)
   }
@@ -211,18 +321,18 @@ export default function CreditCustomersPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'ACTIVE': return 'bg-green-100 text-green-800'
-      case 'SUSPENDED': return 'bg-yellow-100 text-yellow-800'
-      case 'INACTIVE': return 'bg-gray-100 text-gray-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'ACTIVE': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      case 'SUSPENDED': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
+      case 'INACTIVE': return 'bg-muted text-foreground'
+      default: return 'bg-muted text-foreground'
     }
   }
 
   const getBalanceColor = (balance: number, limit: number) => {
     const percentage = (balance / limit) * 100
-    if (percentage >= 90) return 'text-red-600'
-    if (percentage >= 75) return 'text-yellow-600'
-    return 'text-green-600'
+    if (percentage >= 90) return 'text-red-600 dark:text-red-400'
+    if (percentage >= 75) return 'text-yellow-600 dark:text-yellow-400'
+    return 'text-green-600 dark:text-green-400'
   }
 
   const customerColumns: Column<CreditCustomer>[] = [
@@ -231,10 +341,10 @@ export default function CreditCustomersPage() {
       title: 'Customer Name',
       render: (value: unknown, row: CreditCustomer) => (
         <div className="flex items-center gap-2">
-          <UserCheck className="h-4 w-4 text-gray-500" />
+          <UserCheck className="h-4 w-4 text-muted-foreground" />
           <div className="flex flex-col">
             <span className="font-medium">{value as string}</span>
-            <span className="text-xs text-gray-500">{row.email}</span>
+            <span className="text-xs text-muted-foreground">{row.email}</span>
           </div>
         </div>
       )
@@ -244,7 +354,7 @@ export default function CreditCustomersPage() {
       title: 'NIC/BRN',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <IdCard className="h-4 w-4 text-gray-500" />
+          <IdCard className="h-4 w-4 text-muted-foreground" />
           <span className="font-mono text-sm">{value as string}</span>
         </div>
       )
@@ -254,7 +364,7 @@ export default function CreditCustomersPage() {
       title: 'Phone',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <Phone className="h-4 w-4 text-gray-500" />
+          <Phone className="h-4 w-4 text-muted-foreground" />
           <span className="font-mono text-sm">{value as string}</span>
         </div>
       )
@@ -264,7 +374,7 @@ export default function CreditCustomersPage() {
       title: 'Credit Limit',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <CreditCard className="h-4 w-4 text-blue-500" />
+          <CreditCard className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           <span className="font-mono font-semibold text-blue-700">
             Rs. {(value as number)?.toLocaleString() || 0}
           </span>
@@ -276,7 +386,7 @@ export default function CreditCustomersPage() {
       title: 'Current Balance',
       render: (value: unknown, row: CreditCustomer) => (
         <div className="flex items-center gap-2">
-          <DollarSign className="h-4 w-4 text-gray-500" />
+          <DollarSign className="h-4 w-4 text-muted-foreground" />
           <span className={`font-mono font-semibold ${getBalanceColor(value as number, row.creditLimit)}`}>
             Rs. {(value as number)?.toLocaleString() || 0}
           </span>
@@ -289,7 +399,7 @@ export default function CreditCustomersPage() {
       render: (value: unknown) => {
         const numValue = value as number
         return (
-          <span className={`font-mono font-semibold ${numValue > 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <span className={`font-mono font-semibold ${numValue > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
             Rs. {numValue?.toLocaleString() || 0}
           </span>
         )
@@ -304,7 +414,7 @@ export default function CreditCustomersPage() {
         </Badge>
       )
     },
-    ...(userRole === 'OWNER' ? [{
+          ...(userRole === 'OWNER' ? [{
       key: 'actions' as keyof CreditCustomer,
       title: 'Actions',
       render: (_value: unknown, row: CreditCustomer) => (
@@ -312,7 +422,7 @@ export default function CreditCustomersPage() {
           variant="ghost"
           size="sm"
           onClick={() => handleEdit(row)}
-          className="text-blue-600 hover:text-blue-800"
+          className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:text-blue-300"
         >
           <Edit className="h-4 w-4 mr-1" />
           Edit
@@ -321,10 +431,91 @@ export default function CreditCustomersPage() {
     }] : [])
   ]
 
+  // Filter transactions based on selected filters
+  const filteredTransactions = transactions.filter(tx => {
+    if (filterCustomer !== 'all' && tx.customerId !== filterCustomer) return false
+    if (filterType !== 'all' && tx.type !== filterType) return false
+    return true
+  })
+
+  const transactionColumns: Column<CreditTransaction>[] = [
+    {
+      key: 'timestamp' as keyof CreditTransaction,
+      title: 'Date & Time',
+      render: (value: unknown) => (
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm">{new Date(value as string).toLocaleString()}</span>
+        </div>
+      )
+    },
+    {
+      key: 'type' as keyof CreditTransaction,
+      title: 'Type',
+      render: (value: unknown, row: CreditTransaction) => {
+        const isSale = row.type === 'SALE'
+        return (
+          <div className="flex items-center gap-2">
+            {isSale ? (
+              <ArrowUpRight className="h-4 w-4 text-red-600 dark:text-red-400" />
+            ) : (
+              <ArrowDownRight className="h-4 w-4 text-green-600 dark:text-green-400" />
+            )}
+            <Badge className={isSale 
+              ? 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+              : 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+            }>
+              {row.type}
+            </Badge>
+          </div>
+        )
+      }
+    },
+    {
+      key: 'customerName' as keyof CreditTransaction,
+      title: 'Customer',
+      render: (value: unknown, row: CreditTransaction) => (
+        <div className="flex flex-col">
+          <span className="font-medium">{value as string}</span>
+          <span className="text-xs text-muted-foreground">{row.customerPhone}</span>
+        </div>
+      )
+    },
+    {
+      key: 'amount' as keyof CreditTransaction,
+      title: 'Amount',
+      render: (value: unknown, row: CreditTransaction) => {
+        const isSale = row.type === 'SALE'
+        return (
+          <div className={`flex items-center gap-2 font-mono font-semibold ${isSale ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+            {isSale ? (
+              <>
+                <Plus className="h-4 w-4" />
+                <span>Rs. {(value as number).toLocaleString()}</span>
+              </>
+            ) : (
+              <>
+                <Minus className="h-4 w-4" />
+                <span>Rs. {(value as number).toLocaleString()}</span>
+              </>
+            )}
+          </div>
+        )
+      }
+    },
+    {
+      key: 'description' as keyof CreditTransaction,
+      title: 'Description',
+      render: (value: unknown) => (
+        <span className="text-sm text-muted-foreground">{value as string}</span>
+      )
+    }
+  ]
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Credit Customers</h1>
+        <h1 className="text-3xl font-bold text-foreground">Credit Customers</h1>
         {userRole === 'OWNER' && (
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
@@ -467,24 +658,24 @@ export default function CreditCustomersPage() {
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4">
-          <h3 className="text-lg font-semibold text-gray-700">Total Customers</h3>
-          <p className="text-3xl font-bold text-purple-600">{customers.length}</p>
+          <h3 className="text-lg font-semibold text-foreground">Total Customers</h3>
+          <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">{customers.length}</p>
         </Card>
         <Card className="p-4">
-          <h3 className="text-lg font-semibold text-gray-700">Active Customers</h3>
-          <p className="text-3xl font-bold text-green-600">
+          <h3 className="text-lg font-semibold text-foreground">Active Customers</h3>
+          <p className="text-3xl font-bold text-green-600 dark:text-green-400">
             {customers.filter(c => c.status === 'ACTIVE').length}
           </p>
         </Card>
         <Card className="p-4">
-          <h3 className="text-lg font-semibold text-gray-700">Total Credit Limit</h3>
-          <p className="text-3xl font-bold text-blue-600">
+          <h3 className="text-lg font-semibold text-foreground">Total Credit Limit</h3>
+          <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
             Rs. {customers.reduce((sum, c) => sum + c.creditLimit, 0).toLocaleString()}
           </p>
         </Card>
         <Card className="p-4">
-          <h3 className="text-lg font-semibold text-gray-700">Outstanding Balance</h3>
-          <p className="text-3xl font-bold text-red-600">
+          <h3 className="text-lg font-semibold text-foreground">Outstanding Balance</h3>
+          <p className="text-3xl font-bold text-red-600 dark:text-red-400">
             Rs. {customers.reduce((sum, c) => sum + c.currentBalance, 0).toLocaleString()}
           </p>
         </Card>
@@ -497,6 +688,100 @@ export default function CreditCustomersPage() {
           searchPlaceholder="Search customers..."
           emptyMessage="No credit customers found."
         />
+      </FormCard>
+
+      {/* Transaction History Section */}
+      <FormCard title="Transaction History" className="p-6">
+        <div className="space-y-4">
+          {/* Filters */}
+          <div className="flex flex-wrap gap-4 items-end">
+            <div className="flex-1 min-w-[200px]">
+              <Label htmlFor="filterCustomer" className="flex items-center gap-2 mb-2">
+                <Filter className="h-4 w-4" />
+                Filter by Customer
+              </Label>
+              <Select value={filterCustomer} onValueChange={setFilterCustomer}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All customers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Customers</SelectItem>
+                  {customers.map((customer) => (
+                    <SelectItem key={customer.id} value={customer.id}>
+                      {customer.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 min-w-[150px]">
+              <Label htmlFor="filterType" className="flex items-center gap-2 mb-2">
+                <Filter className="h-4 w-4" />
+                Filter by Type
+              </Label>
+              <Select value={filterType} onValueChange={setFilterType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="SALE">Sales Only</SelectItem>
+                  <SelectItem value="PAYMENT">Payments Only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                onClick={fetchTransactions}
+                disabled={loadingTransactions}
+              >
+                <History className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+            </div>
+          </div>
+
+          {/* Summary Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
+            <div>
+              <p className="text-sm text-muted-foreground">Total Transactions</p>
+              <p className="text-2xl font-bold">{filteredTransactions.length}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Total Sales</p>
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                Rs. {filteredTransactions
+                  .filter(tx => tx.type === 'SALE')
+                  .reduce((sum, tx) => sum + tx.amount, 0)
+                  .toLocaleString()}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Total Payments</p>
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                Rs. {filteredTransactions
+                  .filter(tx => tx.type === 'PAYMENT')
+                  .reduce((sum, tx) => sum + tx.amount, 0)
+                  .toLocaleString()}
+              </p>
+            </div>
+          </div>
+
+          {/* Transactions Table */}
+          {loadingTransactions ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 dark:border-purple-400"></div>
+            </div>
+          ) : (
+            <DataTable
+              data={filteredTransactions}
+              columns={transactionColumns}
+              searchPlaceholder="Search transactions..."
+              emptyMessage="No transactions found."
+            />
+          )}
+        </div>
       </FormCard>
     </div>
   )

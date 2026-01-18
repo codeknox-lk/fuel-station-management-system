@@ -172,10 +172,10 @@ npm run dev
 Navigate to [http://localhost:3000](http://localhost:3000)
 
 ### Default Login Credentials
-The system uses mock authentication. Select any role on the login page:
-- **OWNER**: Full system access
-- **MANAGER**: Operational management
-- **ACCOUNTS**: Financial operations
+After running the seed script, use these credentials:
+- **Username:** `admin` / **Password:** `FuelStation2024!Admin` (OWNER role)
+- **Username:** `manager1` / **Password:** `ManagerSecure2024!` (MANAGER role)
+- **Username:** `accounts1` / **Password:** `AccountsSafe2024!` (ACCOUNTS role)
 
 ## 🛠️ Technology Stack
 

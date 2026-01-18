@@ -15,7 +15,7 @@ import {
 import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { 
   Building2, 
   DollarSign, 
@@ -27,11 +27,19 @@ import {
   Download,
   FileText,
   Fuel,
-  Building,
   CreditCard,
   Banknote,
   Calculator,
-  ExternalLink
+  ExternalLink,
+  Users,
+  Receipt,
+  Clock,
+  BarChart3,
+  PieChart,
+  Wallet,
+  ArrowUp,
+  ArrowDown,
+  CheckCircle
 } from 'lucide-react'
 import { exportDailyReportPDF, exportDailyReportExcel } from '@/lib/exportUtils'
 
@@ -41,18 +49,75 @@ interface Station {
   city: string
 }
 
+interface POSTerminalBreakdown {
+  terminalId: string
+  terminalName: string
+  terminalNumber: string
+  bankName?: string
+  totalAmount: number
+  transactionCount: number
+  visaAmount: number
+  mastercardAmount: number
+  amexAmount: number
+  qrAmount: number
+  dialogTouchAmount: number
+  missingSlips: number
+  missingSlipAmount: number
+}
+
+interface CreditCustomerBreakdown {
+  customerId: string
+  customerName: string
+  totalSales: number
+  transactionCount: number
+  averageTransaction: number
+  creditLimit: number
+  currentBalance: number
+  paymentReceived: number
+}
+
+interface ChequeBreakdown {
+  chequeId: string
+  chequeNumber: string
+  amount: number
+  receivedFrom: string
+  bankName: string
+  bankBranch?: string
+  receivedDate: string
+  status: 'PENDING' | 'CLEARED' | 'BOUNCED'
+}
+
 interface DailyReport {
   date: string
   stationId: string
   stationName: string
   
-  // Sales breakdown
+  // Sales breakdown by fuel type
   petrolSales: number
   dieselSales: number
-  totalFuelSales: number
+  superDieselSales: number
   oilSales: number
   canSales: number
+  totalFuelSales: number
   totalSales: number
+  
+  // Tender breakdown
+  cashAmount: number
+  cardAmount: number
+  creditAmount: number
+  chequeAmount: number
+  
+  // POS Terminal breakdown
+  posTerminals: POSTerminalBreakdown[]
+  totalPOSAmount: number
+  
+  // Credit customer breakdown
+  creditCustomers: CreditCustomerBreakdown[]
+  totalCreditSales: number
+  
+  // Cheque breakdown
+  cheques: ChequeBreakdown[]
+  totalChequeAmount: number
   
   // Financial summary
   totalExpenses: number
@@ -63,24 +128,24 @@ interface DailyReport {
   // Variance and exceptions
   totalVariance: number
   variancePercentage: number
-  missingSlips: MissingSlip[]
+  missingSlips: Array<{
+    id: string
+    terminalName: string
+    amount: number
+    time: string
+    lastFourDigits: string
+    reportedBy: string
+    status: 'PENDING' | 'RESOLVED' | 'WRITTEN_OFF'
+  }>
   
   // Additional metrics
+  shiftCount: number
   transactionCount: number
   averageTransaction: number
   cashPercentage: number
   cardPercentage: number
-}
-
-interface MissingSlip {
-  id: string
-  batchId: string
-  terminalName: string
-  amount: number
-  time: string
-  lastFourDigits: string
-  reportedBy: string
-  status: 'PENDING' | 'RESOLVED' | 'WRITTEN_OFF'
+  creditPercentage: number
+  chequePercentage: number
 }
 
 export default function DailyReportsPage() {
@@ -90,7 +155,7 @@ export default function DailyReportsPage() {
   const [error, setError] = useState('')
 
   // Form state
-  const { selectedStation } = useStation()
+  const { selectedStation, setSelectedStation } = useStation()
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
 
   // Load initial data
@@ -118,83 +183,69 @@ export default function DailyReportsPage() {
     setError('')
 
     try {
-      // In a real app, this would call the API endpoint
-      // For now, we'll generate mock daily report data
+      // Call the API to get real daily report data
+      const url = `/api/reports/daily-comprehensive?stationId=${selectedStation}&date=${selectedDate}`
+      console.log('[Frontend] Fetching daily report from:', url)
       
-      const station = stations.find(s => s.id === selectedStation)
-      
-      // Generate mock daily report
-      const petrolSales = Math.floor(Math.random() * 150000) + 80000
-      const dieselSales = Math.floor(Math.random() * 200000) + 120000
-      const oilSales = Math.floor(Math.random() * 15000) + 5000
-      const canSales = Math.floor(Math.random() * 8000) + 2000
-      const totalFuelSales = petrolSales + dieselSales
-      const totalSales = totalFuelSales + oilSales + canSales
-      
-      const totalExpenses = Math.floor(Math.random() * 25000) + 10000
-      const totalDeposits = Math.floor(Math.random() * 80000) + 40000
-      const totalLoans = Math.floor(Math.random() * 20000)
-      const netProfit = totalSales - totalExpenses - totalDeposits + totalLoans
-      
-      const totalVariance = Math.floor(Math.random() * 2000 - 1000)
-      const variancePercentage = (totalVariance / totalSales) * 100
-      
-      const transactionCount = Math.floor(Math.random() * 200) + 150
-      const averageTransaction = totalSales / transactionCount
-      const cashPercentage = Math.floor(Math.random() * 40) + 45
-      const cardPercentage = 100 - cashPercentage
-
-      // Mock missing slips
-      const missingSlips: MissingSlip[] = [
-        {
-          id: '1',
-          batchId: 'BATCH-001',
-          terminalName: 'POS Terminal 1',
-          amount: 2500,
-          time: '14:30',
-          lastFourDigits: '1234',
-          reportedBy: 'Manager',
-          status: 'PENDING'
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        {
-          id: '2',
-          batchId: 'BATCH-003',
-          terminalName: 'POS Terminal 2',
-          amount: 1800,
-          time: '16:45',
-          lastFourDigits: '5678',
-          reportedBy: 'Cashier',
-          status: 'RESOLVED'
+        cache: 'no-store'
+      })
+      
+      console.log('[Frontend] Response status:', response.status, response.statusText)
+      
+      if (!response.ok) {
+        let errorData: any = {}
+        try {
+          const text = await response.text()
+          if (text) {
+            try {
+              errorData = JSON.parse(text)
+            } catch {
+              errorData = { error: `HTTP ${response.status}: ${response.statusText}`, details: text }
+            }
+          } else {
+            errorData = { error: `HTTP ${response.status}: ${response.statusText}`, details: 'Empty response body' }
+          }
+        } catch (jsonError) {
+          console.error('[Frontend] Error parsing error response:', jsonError)
+          errorData = { error: `HTTP ${response.status}: ${response.statusText}`, details: 'Failed to parse error response' }
         }
-      ]
-
-      const report: DailyReport = {
-        date: selectedDate,
-        stationId: selectedStation,
-        stationName: station?.name || 'Unknown Station',
-        petrolSales,
-        dieselSales,
-        totalFuelSales,
-        oilSales,
-        canSales,
-        totalSales,
-        totalExpenses,
-        totalDeposits,
-        totalLoans,
-        netProfit,
-        totalVariance,
-        variancePercentage,
-        missingSlips,
-        transactionCount,
-        averageTransaction,
-        cashPercentage,
-        cardPercentage
+        console.error('[Frontend] API error response:', errorData)
+        const errorMessage = errorData.message || errorData.error || errorData.details || 'Unknown error'
+        throw new Error(`Failed to fetch daily report: ${response.status} ${response.statusText}. ${errorMessage}`)
       }
 
-      setDailyReport(report)
+      const reportData = await response.json()
+      console.log('[Frontend] Daily report data received, fields:', Object.keys(reportData))
+      console.log('[Frontend] Daily report summary:', {
+        stationName: reportData.stationName,
+        date: reportData.date,
+        totalSales: reportData.totalSales,
+        shiftCount: reportData.shiftCount,
+        transactionCount: reportData.transactionCount,
+        petrolSales: reportData.petrolSales,
+        dieselSales: reportData.dieselSales,
+        cashAmount: reportData.cashAmount,
+        cardAmount: reportData.cardAmount,
+        totalExpenses: reportData.totalExpenses
+      })
+      console.log('[Frontend] Full report data:', reportData)
+      
+      // Validate required fields and transform if needed
+      if (!reportData || typeof reportData !== 'object') {
+        throw new Error('Invalid response format from API')
+      }
+      
+      // Use API response directly (it matches the interface)
+      setDailyReport(reportData as DailyReport)
 
     } catch (err) {
-      setError('Failed to generate daily report')
+      console.error('Error fetching daily report:', err)
+      setError('Failed to generate daily report: ' + (err instanceof Error ? err.message : 'Unknown error'))
     } finally {
       setLoading(false)
     }
@@ -208,9 +259,9 @@ export default function DailyReportsPage() {
     
     const station = stations.find(s => s.id === selectedStation)
     const stationName = station?.name || 'Unknown Station'
-    const dateStr = selectedDate.toISOString().split('T')[0]
+    const dateStr = selectedDate
     
-    exportDailyReportPDF(dailyReport, stationName, dateStr)
+    exportDailyReportPDF(dailyReport as any, stationName, dateStr)
   }
 
   const exportToExcel = () => {
@@ -221,69 +272,292 @@ export default function DailyReportsPage() {
     
     const station = stations.find(s => s.id === selectedStation)
     const stationName = station?.name || 'Unknown Station'
-    const dateStr = selectedDate.toISOString().split('T')[0]
+    const dateStr = selectedDate
     
-    exportDailyReportExcel(dailyReport, stationName, dateStr)
+    exportDailyReportExcel(dailyReport as any, stationName, dateStr)
   }
 
   const getVarianceColor = (percentage: number) => {
-    if (Math.abs(percentage) <= 0.5) return 'text-green-600'
-    if (Math.abs(percentage) <= 1.0) return 'text-yellow-600'
-    return 'text-red-600'
+    if (Math.abs(percentage) <= 0.5) return 'text-green-600 dark:text-green-400'
+    if (Math.abs(percentage) <= 1.0) return 'text-yellow-600 dark:text-yellow-400'
+    return 'text-red-600 dark:text-red-400'
   }
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'RESOLVED': return 'bg-green-100 text-green-800'
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800'
-      case 'WRITTEN_OFF': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'RESOLVED': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      case 'PENDING': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
+      case 'WRITTEN_OFF': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+      case 'CLEARED': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      case 'BOUNCED': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+      default: return 'bg-muted text-foreground'
     }
   }
 
-  const missingSlipColumns: Column<MissingSlip>[] = [
+  // POS Terminal columns
+  const posTerminalColumns: Column<POSTerminalBreakdown>[] = [
     {
-      key: 'time' as keyof MissingSlip,
+      key: 'terminalName' as keyof POSTerminalBreakdown,
+      title: 'Terminal',
+      render: (value: unknown, row: POSTerminalBreakdown) => (
+        <div>
+          <div className="font-medium">{value as string}</div>
+          <div className="text-xs text-muted-foreground">
+            {row.terminalNumber} {row.bankName && `• ${row.bankName}`}
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'transactionCount' as keyof POSTerminalBreakdown,
+      title: 'Transactions',
+      render: (value: unknown) => (
+        <Badge variant="outline">{value as number}</Badge>
+      )
+    },
+    {
+      key: 'visaAmount' as keyof POSTerminalBreakdown,
+      title: 'Visa',
+      render: (value: unknown) => (
+        <span className="font-mono text-sm text-blue-600">
+          Rs. {(value as number).toLocaleString()}
+        </span>
+      )
+    },
+    {
+      key: 'mastercardAmount' as keyof POSTerminalBreakdown,
+      title: 'Mastercard',
+      render: (value: unknown) => (
+        <span className="font-mono text-sm text-red-600">
+          Rs. {(value as number).toLocaleString()}
+        </span>
+      )
+    },
+    {
+      key: 'amexAmount' as keyof POSTerminalBreakdown,
+      title: 'Amex',
+      render: (value: unknown) => (
+        <span className="font-mono text-sm text-green-600">
+          Rs. {(value as number).toLocaleString()}
+        </span>
+      )
+    },
+    {
+      key: 'qrAmount' as keyof POSTerminalBreakdown,
+      title: 'QR',
+      render: (value: unknown) => (
+        <span className="font-mono text-sm text-purple-600">
+          Rs. {(value as number).toLocaleString()}
+        </span>
+      )
+    },
+    {
+      key: 'dialogTouchAmount' as keyof POSTerminalBreakdown,
+      title: 'Dialog Touch',
+      render: (value: unknown) => (
+        <span className="font-mono text-sm text-orange-600">
+          Rs. {(value as number).toLocaleString()}
+        </span>
+      )
+    },
+    {
+      key: 'totalAmount' as keyof POSTerminalBreakdown,
+      title: 'Total',
+      render: (value: unknown) => (
+        <span className="font-mono font-bold">
+          Rs. {(value as number).toLocaleString()}
+        </span>
+      )
+    },
+    {
+      key: 'missingSlips' as keyof POSTerminalBreakdown,
+      title: 'Missing Slips',
+      render: (value: unknown, row: POSTerminalBreakdown) => (
+        <div>
+          {row.missingSlips > 0 ? (
+            <Badge variant="destructive">
+              {row.missingSlips} slip{row.missingSlips > 1 ? 's' : ''}
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-green-600">None</Badge>
+          )}
+        </div>
+      )
+    }
+  ]
+
+  // Credit Customer columns
+  const creditCustomerColumns: Column<CreditCustomerBreakdown>[] = [
+    {
+      key: 'customerName' as keyof CreditCustomerBreakdown,
+      title: 'Customer',
+      render: (value: unknown) => (
+        <div className="font-medium">{value as string}</div>
+      )
+    },
+    {
+      key: 'transactionCount' as keyof CreditCustomerBreakdown,
+      title: 'Transactions',
+      render: (value: unknown) => (
+        <Badge variant="outline">{value as number}</Badge>
+      )
+    },
+    {
+      key: 'totalSales' as keyof CreditCustomerBreakdown,
+      title: 'Total Sales',
+      render: (value: unknown) => (
+        <span className="font-mono font-semibold text-green-600">
+          Rs. {(value as number).toLocaleString()}
+        </span>
+      )
+    },
+    {
+      key: 'averageTransaction' as keyof CreditCustomerBreakdown,
+      title: 'Avg Transaction',
+      render: (value: unknown) => (
+        <span className="font-mono text-sm">
+          Rs. {(value as number).toLocaleString()}
+        </span>
+      )
+    },
+    {
+      key: 'creditLimit' as keyof CreditCustomerBreakdown,
+      title: 'Credit Limit',
+      render: (value: unknown) => (
+        <span className="font-mono text-sm text-muted-foreground">
+          Rs. {(value as number).toLocaleString()}
+        </span>
+      )
+    },
+    {
+      key: 'currentBalance' as keyof CreditCustomerBreakdown,
+      title: 'Current Balance',
+      render: (value: unknown, row: CreditCustomerBreakdown) => {
+        const usagePercent = (row.currentBalance / row.creditLimit) * 100
+        return (
+          <div>
+            <span className="font-mono font-semibold">
+              Rs. {(value as number).toLocaleString()}
+            </span>
+            <div className="text-xs text-muted-foreground">
+              {usagePercent.toFixed(1)}% used
+            </div>
+          </div>
+        )
+      }
+    },
+    {
+      key: 'paymentReceived' as keyof CreditCustomerBreakdown,
+      title: 'Payment Received',
+      render: (value: unknown) => (
+        <span className="font-mono font-semibold text-blue-600">
+          Rs. {(value as number).toLocaleString()}
+        </span>
+      )
+    }
+  ]
+
+  // Cheque columns
+  const chequeColumns: Column<ChequeBreakdown>[] = [
+    {
+      key: 'chequeNumber' as keyof ChequeBreakdown,
+      title: 'Cheque Number',
+      render: (value: unknown) => (
+        <span className="font-mono font-medium">{value as string}</span>
+      )
+    },
+    {
+      key: 'receivedFrom' as keyof ChequeBreakdown,
+      title: 'Received From',
+      render: (value: unknown) => (
+        <div className="font-medium">{value as string}</div>
+      )
+    },
+    {
+      key: 'amount' as keyof ChequeBreakdown,
+      title: 'Amount',
+      render: (value: unknown) => (
+        <span className="font-mono font-semibold text-green-600">
+          Rs. {(value as number).toLocaleString()}
+        </span>
+      )
+    },
+    {
+      key: 'bankName' as keyof ChequeBreakdown,
+      title: 'Bank',
+      render: (value: unknown, row: ChequeBreakdown) => (
+        <div>
+          <div className="text-sm">{value as string}</div>
+          {row.bankBranch && (
+            <div className="text-xs text-muted-foreground">{row.bankBranch}</div>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'receivedDate' as keyof ChequeBreakdown,
+      title: 'Date',
+      render: (value: unknown) => (
+        <span className="text-sm">
+          {new Date(value as string).toLocaleDateString()}
+        </span>
+      )
+    },
+    {
+      key: 'status' as keyof ChequeBreakdown,
+      title: 'Status',
+      render: (value: unknown) => (
+        <Badge className={getStatusColor(value as string)}>
+          {value as string}
+        </Badge>
+      )
+    }
+  ]
+
+  // Missing slip columns
+  const missingSlipColumns: Column<DailyReport['missingSlips'][0]>[] = [
+    {
+      key: 'time' as keyof DailyReport['missingSlips'][0],
       title: 'Time',
       render: (value: unknown) => (
         <span className="font-mono text-sm">{value as string}</span>
       )
     },
     {
-      key: 'terminalName' as keyof MissingSlip,
+      key: 'terminalName' as keyof DailyReport['missingSlips'][0],
       title: 'Terminal',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <CreditCard className="h-4 w-4 text-gray-500" />
+          <CreditCard className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm">{value as string}</span>
         </div>
       )
     },
     {
-      key: 'amount' as keyof MissingSlip,
+      key: 'amount' as keyof DailyReport['missingSlips'][0],
       title: 'Amount',
       render: (value: unknown) => (
-        <span className="font-mono font-semibold text-red-600">
+        <span className="font-mono font-semibold text-red-600 dark:text-red-400">
           Rs. {(value as number)?.toLocaleString() || 0}
         </span>
       )
     },
     {
-      key: 'lastFourDigits' as keyof MissingSlip,
+      key: 'lastFourDigits' as keyof DailyReport['missingSlips'][0],
       title: 'Card Digits',
       render: (value: unknown) => (
         <span className="font-mono text-sm">****{value as string}</span>
       )
     },
     {
-      key: 'reportedBy' as keyof MissingSlip,
+      key: 'reportedBy' as keyof DailyReport['missingSlips'][0],
       title: 'Reported By',
       render: (value: unknown) => (
         <span className="text-sm">{value as string}</span>
       )
     },
     {
-      key: 'status' as keyof MissingSlip,
+      key: 'status' as keyof DailyReport['missingSlips'][0],
       title: 'Status',
       render: (value: unknown) => (
         <Badge className={getStatusColor(value as string)}>
@@ -295,7 +569,18 @@ export default function DailyReportsPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-gray-900">Daily Reports</h1>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+            <BarChart3 className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+            Daily Sales Report
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Comprehensive daily sales analysis with detailed breakdowns
+          </p>
+        </div>
+      </div>
 
       {error && (
         <Alert variant="destructive">
@@ -305,10 +590,11 @@ export default function DailyReportsPage() {
         </Alert>
       )}
 
-      <FormCard title="Generate Daily Report">
+      {/* Report Generator */}
+      <FormCard title="Generate Daily Report" description="Select station and date to generate comprehensive daily report">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <Label htmlFor="station">Station</Label>
+            <Label htmlFor="station">Station *</Label>
             <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
               <SelectTrigger id="station">
                 <SelectValue placeholder="Select a station" />
@@ -327,7 +613,7 @@ export default function DailyReportsPage() {
           </div>
 
           <div>
-            <Label htmlFor="date">Date</Label>
+            <Label htmlFor="date">Date *</Label>
             <input
               id="date"
               type="date"
@@ -339,8 +625,10 @@ export default function DailyReportsPage() {
           </div>
 
           <div className="flex items-end">
-            <Button onClick={generateReport} disabled={loading || !selectedStation || !selectedDate}>
-              {loading ? 'Generating...' : (
+            <Button onClick={generateReport} disabled={loading || !selectedStation || !selectedDate} className="w-full">
+              {loading ? (
+                'Generating...'
+              ) : (
                 <>
                   <Calculator className="mr-2 h-4 w-4" />
                   Generate Report
@@ -353,233 +641,497 @@ export default function DailyReportsPage() {
 
       {dailyReport && (
         <div className="space-y-6">
-          {/* Header */}
-          <Card>
+          {/* Report Header */}
+          <Card className="border-2 border-primary">
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Daily Report - {dailyReport.stationName}
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-2xl flex items-center gap-2">
+                    <FileText className="h-6 w-6" />
+                    Daily Sales Report
+                  </CardTitle>
+                  <CardDescription className="mt-2 text-base">
+                    {dailyReport.stationName} • {new Date(dailyReport.date).toLocaleDateString('en-US', { 
+                      weekday: 'long', 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </CardDescription>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  {new Date(dailyReport.date).toLocaleDateString()}
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={exportToPDF}>
+                    <Download className="mr-2 h-4 w-4" />
+                    PDF
+                  </Button>
+                  <Button variant="outline" onClick={exportToExcel}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Excel
+                  </Button>
                 </div>
-              </CardTitle>
+              </div>
             </CardHeader>
           </Card>
 
-          {/* Sales Split Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Key Metrics Summary */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-blue-600 flex items-center gap-2">
-                  <Fuel className="h-4 w-4" />
-                  Petrol Sales
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-700">
-                  Rs. {dailyReport.petrolSales.toLocaleString()}
-                </div>
-                <div className="text-xs text-gray-500">
-                  {((dailyReport.petrolSales / dailyReport.totalSales) * 100).toFixed(1)}% of total
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-green-600 flex items-center gap-2">
-                  <Fuel className="h-4 w-4" />
-                  Diesel Sales
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-700">
-                  Rs. {dailyReport.dieselSales.toLocaleString()}
-                </div>
-                <div className="text-xs text-gray-500">
-                  {((dailyReport.dieselSales / dailyReport.totalSales) * 100).toFixed(1)}% of total
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-purple-600 flex items-center gap-2">
-                  <Building className="h-4 w-4" />
-                  Oil & Can Sales
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-purple-700">
-                  Rs. {(dailyReport.oilSales + dailyReport.canSales).toLocaleString()}
-                </div>
-                <div className="text-xs text-gray-500">
-                  {(((dailyReport.oilSales + dailyReport.canSales) / dailyReport.totalSales) * 100).toFixed(1)}% of total
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" />
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-green-600" />
                   Total Sales
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-700">
+                <div className="text-3xl font-bold text-green-600">
                   Rs. {dailyReport.totalSales.toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-muted-foreground mt-1">
                   {dailyReport.transactionCount} transactions
                 </div>
               </CardContent>
             </Card>
-          </div>
-
-          {/* Financial Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-red-600 flex items-center gap-2">
-                  <TrendingDown className="h-4 w-4" />
-                  Total Expenses
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-blue-600" />
+                  Shifts Closed
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-700">
-                  Rs. {dailyReport.totalExpenses.toLocaleString()}
+                <div className="text-3xl font-bold text-blue-600">
+                  {dailyReport.shiftCount}
                 </div>
-                <div className="text-xs text-gray-500">
-                  {((dailyReport.totalExpenses / dailyReport.totalSales) * 100).toFixed(1)}% of sales
+                <div className="text-xs text-muted-foreground mt-1">
+                  Active shifts
                 </div>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-blue-600 flex items-center gap-2">
-                  <Building className="h-4 w-4" />
-                  Bank Deposits
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-purple-600" />
+                  Avg Transaction
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-700">
-                  Rs. {dailyReport.totalDeposits.toLocaleString()}
+                <div className="text-3xl font-bold text-purple-600">
+                  Rs. {Math.round(dailyReport.averageTransaction).toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500">
-                  {((dailyReport.totalDeposits / dailyReport.totalSales) * 100).toFixed(1)}% of sales
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-orange-600 flex items-center gap-2">
-                  <Banknote className="h-4 w-4" />
-                  Loans
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-700">
-                  Rs. {dailyReport.totalLoans.toLocaleString()}
-                </div>
-                <div className="text-xs text-gray-500">
-                  External & pumper loans
+                <div className="text-xs text-muted-foreground mt-1">
+                  Per transaction
                 </div>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-green-600 flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Wallet className="h-4 w-4 text-orange-600" />
                   Net Profit
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold ${dailyReport.netProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                <div className={`text-3xl font-bold ${dailyReport.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   Rs. {dailyReport.netProfit.toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500">
-                  {((dailyReport.netProfit / dailyReport.totalSales) * 100).toFixed(1)}% margin
+                <div className="text-xs text-muted-foreground mt-1">
+                  After expenses
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Payment Method Breakdown */}
+          {/* Fuel Sales Breakdown */}
           <Card>
             <CardHeader>
-              <CardTitle>Payment Method Breakdown</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Fuel className="h-5 w-5" />
+                Fuel Sales Breakdown
+              </CardTitle>
+              <CardDescription>Sales by fuel type</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="text-center">
-                  <div className="text-lg font-semibold text-gray-600">Cash Payments</div>
-                  <div className="text-2xl font-bold text-green-600">
-                    {dailyReport.cashPercentage}%
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                  <div className="text-sm text-muted-foreground mb-1">Petrol 92</div>
+                  <div className="text-xl font-bold text-blue-600">
+                    Rs. {dailyReport.petrolSales.toLocaleString()}
                   </div>
-                  <div className="text-sm text-gray-500">
-                    Rs. {((dailyReport.totalSales * dailyReport.cashPercentage) / 100).toLocaleString()}
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-semibold text-gray-600">Card Payments</div>
-                  <div className="text-2xl font-bold text-blue-600">
-                    {dailyReport.cardPercentage}%
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    Rs. {((dailyReport.totalSales * dailyReport.cardPercentage) / 100).toLocaleString()}
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {((dailyReport.petrolSales / dailyReport.totalSales) * 100).toFixed(1)}%
                   </div>
                 </div>
-                <div className="text-center">
-                  <div className="text-lg font-semibold text-gray-600">Average Transaction</div>
-                  <div className="text-2xl font-bold text-purple-600">
-                    Rs. {dailyReport.averageTransaction.toLocaleString()}
+                <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+                  <div className="text-sm text-muted-foreground mb-1">Diesel</div>
+                  <div className="text-xl font-bold text-green-600">
+                    Rs. {dailyReport.dieselSales.toLocaleString()}
                   </div>
-                  <div className="text-sm text-gray-500">
-                    {dailyReport.transactionCount} total transactions
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {((dailyReport.dieselSales / dailyReport.totalSales) * 100).toFixed(1)}%
+                  </div>
+                </div>
+                <div className="p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                  <div className="text-sm text-muted-foreground mb-1">Super Diesel</div>
+                  <div className="text-xl font-bold text-emerald-600">
+                    Rs. {dailyReport.superDieselSales.toLocaleString()}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {((dailyReport.superDieselSales / dailyReport.totalSales) * 100).toFixed(1)}%
+                  </div>
+                </div>
+                <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                  <div className="text-sm text-muted-foreground mb-1">Oil & Can</div>
+                  <div className="text-xl font-bold text-purple-600">
+                    Rs. {(dailyReport.oilSales + dailyReport.canSales).toLocaleString()}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {(((dailyReport.oilSales + dailyReport.canSales) / dailyReport.totalSales) * 100).toFixed(1)}%
+                  </div>
+                </div>
+                <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
+                  <div className="text-sm text-muted-foreground mb-1">Total Fuel</div>
+                  <div className="text-xl font-bold text-primary">
+                    Rs. {dailyReport.totalFuelSales.toLocaleString()}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {((dailyReport.totalFuelSales / dailyReport.totalSales) * 100).toFixed(1)}%
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
+          {/* Tender Breakdown */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PieChart className="h-5 w-5" />
+                Tender Breakdown
+              </CardTitle>
+              <CardDescription>Payment methods and amounts</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Banknote className="h-4 w-4 text-green-600" />
+                    <span className="text-sm font-medium">Cash</span>
+                  </div>
+                  <div className="text-2xl font-bold text-green-600">
+                    Rs. {dailyReport.cashAmount.toLocaleString()}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {dailyReport.cashPercentage.toFixed(1)}% of total
+                  </div>
+                </div>
+                <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CreditCard className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-medium">Card (POS)</span>
+                  </div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    Rs. {dailyReport.cardAmount.toLocaleString()}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {dailyReport.cardPercentage.toFixed(1)}% of total
+                  </div>
+                </div>
+                <div className="p-4 bg-orange-500/10 rounded-lg border border-orange-500/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users className="h-4 w-4 text-orange-600" />
+                    <span className="text-sm font-medium">Credit</span>
+                  </div>
+                  <div className="text-2xl font-bold text-orange-600">
+                    Rs. {dailyReport.creditAmount.toLocaleString()}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {dailyReport.creditPercentage.toFixed(1)}% of total
+                  </div>
+                </div>
+                <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Receipt className="h-4 w-4 text-purple-600" />
+                    <span className="text-sm font-medium">Cheque</span>
+                  </div>
+                  <div className="text-2xl font-bold text-purple-600">
+                    Rs. {dailyReport.chequeAmount.toLocaleString()}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {dailyReport.chequePercentage.toFixed(1)}% of total
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* POS Terminal Breakdown */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                POS Terminal Breakdown
+              </CardTitle>
+              <CardDescription>Detailed card payment breakdown by terminal and card type</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DataTable
+                data={dailyReport.posTerminals}
+                columns={posTerminalColumns}
+                searchable={true}
+                searchPlaceholder="Search terminals..."
+                pagination={false}
+              />
+              
+              {/* POS Summary */}
+              <div className="mt-4 pt-4 border-t">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                  <div className="text-center p-3 bg-blue-500/10 rounded-lg">
+                    <div className="text-xs text-muted-foreground mb-1">Total Visa</div>
+                    <div className="font-bold text-blue-600">
+                      Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.visaAmount, 0).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="text-center p-3 bg-red-500/10 rounded-lg">
+                    <div className="text-xs text-muted-foreground mb-1">Total Mastercard</div>
+                    <div className="font-bold text-red-600">
+                      Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.mastercardAmount, 0).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="text-center p-3 bg-green-500/10 rounded-lg">
+                    <div className="text-xs text-muted-foreground mb-1">Total Amex</div>
+                    <div className="font-bold text-green-600">
+                      Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.amexAmount, 0).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="text-center p-3 bg-purple-500/10 rounded-lg">
+                    <div className="text-xs text-muted-foreground mb-1">Total QR</div>
+                    <div className="font-bold text-purple-600">
+                      Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.qrAmount, 0).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="text-center p-3 bg-orange-500/10 rounded-lg">
+                    <div className="text-xs text-muted-foreground mb-1">Total Dialog Touch</div>
+                    <div className="font-bold text-orange-600">
+                      Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.dialogTouchAmount, 0).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="text-center p-3 bg-primary/10 rounded-lg border-2 border-primary">
+                    <div className="text-xs text-muted-foreground mb-1">Total POS</div>
+                    <div className="font-bold text-primary text-lg">
+                      Rs. {dailyReport.totalPOSAmount.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Credit Customer Breakdown */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Credit Customer Breakdown
+              </CardTitle>
+              <CardDescription>Sales and payment details for credit customers</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DataTable
+                data={dailyReport.creditCustomers}
+                columns={creditCustomerColumns}
+                searchable={true}
+                searchPlaceholder="Search customers..."
+                pagination={false}
+              />
+              
+              {/* Credit Summary */}
+              <div className="mt-4 pt-4 border-t">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-3 bg-orange-500/10 rounded-lg">
+                    <div className="text-xs text-muted-foreground mb-1">Total Credit Sales</div>
+                    <div className="font-bold text-orange-600 text-lg">
+                      Rs. {dailyReport.totalCreditSales.toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-blue-500/10 rounded-lg">
+                    <div className="text-xs text-muted-foreground mb-1">Total Payments Received</div>
+                    <div className="font-bold text-blue-600 text-lg">
+                      Rs. {dailyReport.creditCustomers.reduce((sum, c) => sum + c.paymentReceived, 0).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-purple-500/10 rounded-lg">
+                    <div className="text-xs text-muted-foreground mb-1">Active Customers</div>
+                    <div className="font-bold text-purple-600 text-lg">
+                      {dailyReport.creditCustomers.length}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-red-500/10 rounded-lg">
+                    <div className="text-xs text-muted-foreground mb-1">Total Outstanding</div>
+                    <div className="font-bold text-red-600 text-lg">
+                      Rs. {dailyReport.creditCustomers.reduce((sum, c) => sum + c.currentBalance, 0).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Cheque Breakdown */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Receipt className="h-5 w-5" />
+                Cheque Breakdown
+              </CardTitle>
+              <CardDescription>All cheques received during the day</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DataTable
+                data={dailyReport.cheques}
+                columns={chequeColumns}
+                searchable={true}
+                searchPlaceholder="Search cheques..."
+                pagination={false}
+              />
+              
+              {/* Cheque Summary */}
+              <div className="mt-4 pt-4 border-t">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-3 bg-purple-500/10 rounded-lg">
+                    <div className="text-xs text-muted-foreground mb-1">Total Cheques</div>
+                    <div className="font-bold text-purple-600 text-lg">
+                      Rs. {dailyReport.totalChequeAmount.toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-green-500/10 rounded-lg">
+                    <div className="text-xs text-muted-foreground mb-1">Cleared</div>
+                    <div className="font-bold text-green-600 text-lg">
+                      Rs. {dailyReport.cheques.filter(c => c.status === 'CLEARED').reduce((sum, c) => sum + c.amount, 0).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-yellow-500/10 rounded-lg">
+                    <div className="text-xs text-muted-foreground mb-1">Pending</div>
+                    <div className="font-bold text-yellow-600 text-lg">
+                      Rs. {dailyReport.cheques.filter(c => c.status === 'PENDING').reduce((sum, c) => sum + c.amount, 0).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-red-500/10 rounded-lg">
+                    <div className="text-xs text-muted-foreground mb-1">Bounced</div>
+                    <div className="font-bold text-red-600 text-lg">
+                      Rs. {dailyReport.cheques.filter(c => c.status === 'BOUNCED').reduce((sum, c) => sum + c.amount, 0).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Financial Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="border-red-500/20 bg-red-500/5">
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <TrendingDown className="h-4 w-4 text-red-600" />
+                  Expenses
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  Rs. {dailyReport.totalExpenses.toLocaleString()}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {((dailyReport.totalExpenses / dailyReport.totalSales) * 100).toFixed(1)}% of sales
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-blue-500/20 bg-blue-500/5">
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-blue-600" />
+                  Bank Deposits
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">
+                  Rs. {dailyReport.totalDeposits.toLocaleString()}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {((dailyReport.totalDeposits / dailyReport.totalSales) * 100).toFixed(1)}% of sales
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-orange-500/20 bg-orange-500/5">
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Banknote className="h-4 w-4 text-orange-600" />
+                  Loans Given
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">
+                  Rs. {dailyReport.totalLoans.toLocaleString()}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  External & pumper loans
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Variance Analysis */}
           <Card>
             <CardHeader>
-              <CardTitle>Variance Analysis</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" />
+                Variance Analysis
+              </CardTitle>
+              <CardDescription>Difference between calculated and declared amounts</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="text-center">
-                  <div className="text-lg font-semibold text-gray-600">Total Variance</div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="text-center p-4 bg-muted rounded-lg">
+                  <div className="text-sm text-muted-foreground mb-2">Total Variance</div>
                   <div className={`text-3xl font-bold ${getVarianceColor(dailyReport.variancePercentage)}`}>
                     {dailyReport.totalVariance >= 0 ? '+' : ''}Rs. {dailyReport.totalVariance.toLocaleString()}
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-xs text-muted-foreground mt-2">
                     {dailyReport.variancePercentage >= 0 ? '+' : ''}{dailyReport.variancePercentage.toFixed(2)}% of total sales
                   </div>
                 </div>
-                <div className="text-center">
-                  <div className="text-lg font-semibold text-gray-600">Variance Status</div>
-                  <div className="text-2xl font-bold">
+                <div className="text-center p-4 bg-muted rounded-lg">
+                  <div className="text-sm text-muted-foreground mb-2">Variance Status</div>
+                  <div className="mt-2">
                     {Math.abs(dailyReport.variancePercentage) <= 0.5 ? (
-                      <Badge className="bg-green-100 text-green-800 text-lg py-2 px-4">
+                      <Badge className="bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300 text-base py-2 px-4">
+                        <CheckCircle className="h-4 w-4 mr-1" />
                         Within Tolerance
                       </Badge>
                     ) : Math.abs(dailyReport.variancePercentage) <= 1.0 ? (
-                      <Badge className="bg-yellow-100 text-yellow-800 text-lg py-2 px-4">
+                      <Badge className="bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300 text-base py-2 px-4">
+                        <AlertTriangle className="h-4 w-4 mr-1" />
                         Needs Review
                       </Badge>
                     ) : (
-                      <Badge className="bg-red-100 text-red-800 text-lg py-2 px-4">
+                      <Badge className="bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300 text-base py-2 px-4">
+                        <AlertCircle className="h-4 w-4 mr-1" />
                         Requires Action
                       </Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="text-center p-4 bg-muted rounded-lg">
+                  <div className="text-sm text-muted-foreground mb-2">Impact</div>
+                  <div className="flex items-center justify-center gap-2 mt-2">
+                    {dailyReport.totalVariance >= 0 ? (
+                      <>
+                        <ArrowUp className="h-5 w-5 text-green-600" />
+                        <span className="text-green-600 font-semibold">Surplus</span>
+                      </>
+                    ) : (
+                      <>
+                        <ArrowDown className="h-5 w-5 text-red-600" />
+                        <span className="text-red-600 font-semibold">Shortage</span>
+                      </>
                     )}
                   </div>
                 </div>
@@ -591,63 +1143,47 @@ export default function DailyReportsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                 Missing Slip Exceptions
               </CardTitle>
+              <CardDescription>POS slips reported as missing</CardDescription>
             </CardHeader>
             <CardContent>
               {dailyReport.missingSlips.length > 0 ? (
-                <DataTable
-                  data={dailyReport.missingSlips}
-                  columns={missingSlipColumns}
-                  searchPlaceholder="Search missing slips..."
-                  pagination={false}
-                  emptyMessage="No missing slips reported."
-                />
+                <>
+                  <DataTable
+                    data={dailyReport.missingSlips}
+                    columns={missingSlipColumns}
+                    searchPlaceholder="Search missing slips..."
+                    pagination={false}
+                    emptyMessage="No missing slips reported."
+                  />
+                  <div className="mt-4 pt-4 border-t">
+                    <div className="flex items-center justify-between p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+                      <span className="font-medium">Total Missing Slip Amount:</span>
+                      <span className="font-mono font-bold text-yellow-600 text-lg">
+                        Rs. {dailyReport.missingSlips.reduce((sum, s) => sum + s.amount, 0).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </>
               ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-600" />
                   <p>No missing slips reported for this date.</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Export Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Export Report</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-4">
-                <Button onClick={exportToPDF} variant="outline">
-                  <Download className="mr-2 h-4 w-4" />
-                  Export to PDF
-                </Button>
-                <Button onClick={exportToExcel} variant="outline">
-                  <Download className="mr-2 h-4 w-4" />
-                  Export to Excel
-                </Button>
-                <Button variant="outline">
-                  <ExternalLink className="mr-2 h-4 w-4" />
-                  Email Report
-                </Button>
-                <Button variant="outline">
-                  <FileText className="mr-2 h-4 w-4" />
-                  Print Report
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Summary Alert */}
+          {/* High Variance Alert */}
           {Math.abs(dailyReport.variancePercentage) > 1.0 && (
-            <Alert>
+            <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>High Variance Detected</AlertTitle>
               <AlertDescription>
-                Daily variance of {dailyReport.variancePercentage.toFixed(2)}% exceeds acceptable limits. 
-                Please review transactions and investigate discrepancies.
+                Daily variance of {dailyReport.variancePercentage.toFixed(2)}% exceeds acceptable limits (±1.0%). 
+                Please review transactions and investigate discrepancies immediately.
               </AlertDescription>
             </Alert>
           )}

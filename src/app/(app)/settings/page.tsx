@@ -14,7 +14,9 @@ import {
   ChevronRight,
   Database,
   Gauge,
-  Shield
+  Shield,
+  Fuel,
+  Briefcase
 } from 'lucide-react'
 
 interface SettingCard {
@@ -42,7 +44,7 @@ export default function SettingsPage() {
         'Location and contact details',
         'Operating hours configuration'
       ],
-      color: 'text-blue-600'
+      color: 'text-blue-600 dark:text-blue-400'
     },
     {
       title: 'Pumpers',
@@ -58,6 +60,19 @@ export default function SettingsPage() {
       color: 'text-indigo-600'
     },
     {
+      title: 'Office Staff',
+      description: 'Manage office employees (managers, supervisors, office staff)',
+      icon: <Briefcase className="h-8 w-8" />,
+      href: '/settings/office-staff',
+      features: [
+        'Add/Edit/Delete office staff',
+        'Employee details and contact',
+        'Role management (Manager, Supervisor, etc.)',
+        'Base salary configuration'
+      ],
+      color: 'text-teal-600 dark:text-teal-400'
+    },
+    {
       title: 'Banks',
       description: 'Configure bank accounts and payment processing settings',
       icon: <CreditCard className="h-8 w-8" />,
@@ -68,7 +83,7 @@ export default function SettingsPage() {
         'Payment processing setup',
         'Integration configurations'
       ],
-      color: 'text-green-600'
+      color: 'text-green-600 dark:text-green-400'
     },
     {
       title: 'Shift Templates',
@@ -81,7 +96,7 @@ export default function SettingsPage() {
         'Break configurations',
         'Template assignments'
       ],
-      color: 'text-purple-600'
+      color: 'text-purple-600 dark:text-purple-400'
     },
     {
       title: 'Fuel Prices',
@@ -94,7 +109,7 @@ export default function SettingsPage() {
         'Future price scheduling',
         'Price change notifications'
       ],
-      color: 'text-orange-600'
+      color: 'text-orange-600 dark:text-orange-400'
     },
     {
       title: 'POS Terminals',
@@ -120,7 +135,7 @@ export default function SettingsPage() {
         'Access control',
         'Profile management'
       ],
-      color: 'text-red-600',
+      color: 'text-red-600 dark:text-red-400',
       restricted: true
     },
     {
@@ -136,33 +151,46 @@ export default function SettingsPage() {
       ],
       color: 'text-indigo-600',
       restricted: true
+    },
+    {
+      title: 'Tanks & Infrastructure',
+      description: 'Manage fuel tanks, pumps, and nozzle infrastructure',
+      icon: <Fuel className="h-8 w-8" />,
+      href: '/settings/tanks',
+      features: [
+        'Add/Edit/Delete tanks',
+        'Create pumps and nozzles',
+        'Infrastructure setup',
+        'Tank capacity management'
+      ],
+      color: 'text-orange-600 dark:text-orange-400'
     }
   ]
 
   const quickStats = [
     {
       title: 'Settings Categories',
-      value: '8',
+      value: '10',
       description: 'Configuration modules',
-      icon: <SettingsIcon className="h-5 w-5 text-blue-500" />
+      icon: <SettingsIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
     },
     {
       title: 'Data Sources',
       value: '5+',
       description: 'Integrated systems',
-      icon: <Database className="h-5 w-5 text-green-500" />
+      icon: <Database className="h-5 w-5 text-green-600 dark:text-green-400" />
     },
     {
       title: 'User Roles',
       value: '3',
       description: 'OWNER, MANAGER, ACCOUNTS',
-      icon: <Users className="h-5 w-5 text-purple-500" />
+      icon: <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
     },
     {
       title: 'Access Control',
       value: 'RBAC',
       description: 'Role-based permissions',
-      icon: <Gauge className="h-5 w-5 text-orange-500" />
+      icon: <Gauge className="h-5 w-5 text-orange-600 dark:text-orange-400" />
     }
   ]
 
@@ -170,14 +198,14 @@ export default function SettingsPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">System Settings</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-3xl font-bold text-foreground">System Settings</h1>
+          <p className="text-muted-foreground mt-2">
             Configure system parameters, manage master data, and control access permissions
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <SettingsIcon className="h-6 w-6 text-gray-400" />
-          <span className="text-sm text-gray-500">Configuration Management</span>
+          <SettingsIcon className="h-6 w-6 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Configuration Management</span>
         </div>
       </div>
 
@@ -188,9 +216,9 @@ export default function SettingsPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
-                  <div className="text-sm font-medium text-gray-700">{stat.title}</div>
-                  <div className="text-xs text-gray-500">{stat.description}</div>
+                  <div className="text-2xl font-bold text-foreground">{stat.value}</div>
+                  <div className="text-sm font-medium text-foreground">{stat.title}</div>
+                  <div className="text-xs text-muted-foreground">{stat.description}</div>
                 </div>
                 <div className="flex-shrink-0">
                   {stat.icon}
@@ -206,7 +234,7 @@ export default function SettingsPage() {
         {settings.map((setting, index) => (
           <Card 
             key={index} 
-            className={`hover:shadow-lg transition-shadow cursor-pointer ${setting.restricted ? 'border-orange-200 bg-orange-50/30' : ''}`}
+            className={`hover:shadow-lg transition-shadow cursor-pointer ${setting.restricted ? 'border-orange-500/20 dark:border-orange-500/30 bg-orange-500/10 dark:bg-orange-500/20/30' : ''}`}
             onClick={() => router.push(setting.href)}
           >
             <CardHeader>
@@ -216,27 +244,27 @@ export default function SettingsPage() {
                     {setting.icon}
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                    <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
                       {setting.title}
                       {setting.restricted && (
-                        <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                        <span className="text-xs bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300 px-2 py-1 rounded-full">
                           OWNER ONLY
                         </span>
                       )}
                     </h3>
-                    <p className="text-sm text-gray-600 font-normal">{setting.description}</p>
+                    <p className="text-sm text-muted-foreground font-normal">{setting.description}</p>
                   </div>
                 </div>
-                <ChevronRight className="h-5 w-5 text-gray-400" />
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <div className="text-sm font-medium text-gray-700 mb-2">Features:</div>
+                <div className="text-sm font-medium text-foreground mb-2">Features:</div>
                 <ul className="space-y-1">
                   {setting.features.map((feature, featureIndex) => (
-                    <li key={featureIndex} className="flex items-center gap-2 text-sm text-gray-600">
-                      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full flex-shrink-0"></div>
+                    <li key={featureIndex} className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full flex-shrink-0"></div>
                       {feature}
                     </li>
                   ))}
@@ -266,11 +294,11 @@ export default function SettingsPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                <Database className="h-4 w-4 text-blue-500" />
+              <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+                <Database className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 Data Management
               </h4>
-              <ul className="text-sm text-gray-600 space-y-1">
+              <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• Master data configuration</li>
                 <li>• Reference data management</li>
                 <li>• Data validation rules</li>
@@ -279,11 +307,11 @@ export default function SettingsPage() {
             </div>
             
             <div>
-              <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                <Users className="h-4 w-4 text-green-500" />
+              <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+                <Users className="h-4 w-4 text-green-600 dark:text-green-400" />
                 Access Control
               </h4>
-              <ul className="text-sm text-gray-600 space-y-1">
+              <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• Role-based permissions</li>
                 <li>• Feature-level access</li>
                 <li>• Audit trail logging</li>
@@ -292,11 +320,11 @@ export default function SettingsPage() {
             </div>
             
             <div>
-              <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                <SettingsIcon className="h-4 w-4 text-orange-500" />
+              <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+                <SettingsIcon className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                 Configuration
               </h4>
-              <ul className="text-sm text-gray-600 space-y-1">
+              <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• System parameters</li>
                 <li>• Business rules</li>
                 <li>• Integration settings</li>
@@ -321,6 +349,10 @@ export default function SettingsPage() {
             <Button variant="outline" onClick={() => router.push('/settings/pumpers')}>
               <Users className="mr-2 h-4 w-4" />
               Manage Pumpers
+            </Button>
+            <Button variant="outline" onClick={() => router.push('/settings/office-staff')}>
+              <Briefcase className="mr-2 h-4 w-4" />
+              Manage Office Staff
             </Button>
             <Button variant="outline" onClick={() => router.push('/settings/prices')}>
               <DollarSign className="mr-2 h-4 w-4" />

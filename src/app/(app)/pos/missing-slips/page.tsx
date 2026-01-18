@@ -123,7 +123,7 @@ export default function MissingSlipsPage() {
           amount: amountValue,
           transactionTime: transactionTime.toISOString(),
           lastFourDigits,
-          reportedBy: 'Current User' // In real app, get from auth context
+          reportedBy: typeof window !== 'undefined' ? localStorage.getItem('username') || 'System User' : 'System User'
         })
       })
 
@@ -156,11 +156,11 @@ export default function MissingSlipsPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'RESOLVED': return 'bg-green-100 text-green-800'
-      case 'REPORTED': return 'bg-yellow-100 text-yellow-800'
-      case 'INVESTIGATING': return 'bg-blue-100 text-blue-800'
-      case 'DISPUTED': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'RESOLVED': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      case 'REPORTED': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
+      case 'INVESTIGATING': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'DISPUTED': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+      default: return 'bg-muted text-foreground'
     }
   }
 
@@ -180,7 +180,7 @@ export default function MissingSlipsPage() {
       title: 'Reported',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-gray-500" />
+          <Clock className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm">
             {new Date(value as string).toLocaleString()}
           </span>
@@ -194,11 +194,11 @@ export default function MissingSlipsPage() {
         const batch = batches.find(b => b.id === row.batchId)
         return (
           <div className="flex items-center gap-2">
-            <CreditCard className="h-4 w-4 text-gray-500" />
+            <CreditCard className="h-4 w-4 text-muted-foreground" />
             <div className="flex flex-col">
               <span className="font-medium">{batch?.batchNumber || (value as string)}</span>
               {batch && (
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-muted-foreground">
                   {new Date(batch.batchDate).toLocaleDateString()}
                 </span>
               )}
@@ -214,11 +214,11 @@ export default function MissingSlipsPage() {
         const batch = batches.find(b => b.id === row.batchId)
         return (
           <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-gray-500" />
+            <Building2 className="h-4 w-4 text-muted-foreground" />
             <div className="flex flex-col">
               <span className="font-medium">{value as string || 'Unknown'}</span>
               {batch?.bankName && (
-                <span className="text-xs text-gray-500">{batch.bankName}</span>
+                <span className="text-xs text-muted-foreground">{batch.bankName}</span>
               )}
             </div>
           </div>
@@ -230,7 +230,7 @@ export default function MissingSlipsPage() {
       title: 'Amount',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <DollarSign className="h-4 w-4 text-red-500" />
+          <DollarSign className="h-4 w-4 text-red-600 dark:text-red-400" />
           <span className="font-mono font-semibold text-red-700">
             Rs. {(value as number)?.toLocaleString() || '0'}
           </span>
@@ -242,7 +242,7 @@ export default function MissingSlipsPage() {
       title: 'Transaction Time',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-gray-500" />
+          <Calendar className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm">
             {new Date(value as string).toLocaleString()}
           </span>
@@ -253,7 +253,7 @@ export default function MissingSlipsPage() {
       key: 'lastFourDigits' as keyof MissingSlip,
       title: 'Last 4 Digits',
       render: (value: unknown) => (
-        <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+        <span className="font-mono text-sm bg-muted px-2 py-1 rounded">
           ****{value as string}
         </span>
       )
@@ -274,14 +274,14 @@ export default function MissingSlipsPage() {
       key: 'reportedBy' as keyof MissingSlip,
       title: 'Reported By',
       render: (value: unknown) => (
-        <span className="text-sm text-gray-600">{value as string}</span>
+        <span className="text-sm text-muted-foreground">{value as string}</span>
       )
     }
   ]
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-gray-900">Missing POS Slips</h1>
+      <h1 className="text-3xl font-bold text-foreground">Missing POS Slips</h1>
 
       {error && (
         <Alert variant="destructive">
@@ -315,7 +315,7 @@ export default function MissingSlipsPage() {
                       <CreditCard className="h-4 w-4" />
                       <div className="flex flex-col">
                         <span className="font-medium">{batch.batchNumber}</span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-muted-foreground">
                           {new Date(batch.batchDate).toLocaleDateString()} - 
                           Rs. {batch.totalAmount.toLocaleString()}
                         </span>
@@ -325,7 +325,7 @@ export default function MissingSlipsPage() {
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Select the batch where the slip is missing
             </p>
           </div>
@@ -369,7 +369,7 @@ export default function MissingSlipsPage() {
                 disabled={loading}
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Enter the last 4 digits of the card number
               </p>
             </div>

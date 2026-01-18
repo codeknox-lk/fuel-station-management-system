@@ -169,7 +169,7 @@ export default function DepositsPage() {
           slipNumber: slipNumber || undefined,
           notes: notes || undefined,
           slipPhotoUrl: slipPhoto ? `uploads/deposit-slips/${slipPhoto.name}` : undefined,
-          recordedBy: 'Current User' // In real app, get from auth context
+          recordedBy: typeof window !== 'undefined' ? localStorage.getItem('username') || 'System User' : 'System User'
         })
       })
 
@@ -206,10 +206,10 @@ export default function DepositsPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'CONFIRMED': return 'bg-green-100 text-green-800'
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800'
-      case 'REJECTED': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'CONFIRMED': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      case 'PENDING': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
+      case 'REJECTED': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+      default: return 'bg-muted text-foreground'
     }
   }
 
@@ -221,7 +221,7 @@ export default function DepositsPage() {
       title: 'Date',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-gray-500" />
+          <Calendar className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm">
             {new Date(value as string).toLocaleDateString()}
           </span>
@@ -235,7 +235,7 @@ export default function DepositsPage() {
         const station = stations.find(s => s.id === row.stationId)
         return (
           <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-gray-500" />
+            <Building2 className="h-4 w-4 text-muted-foreground" />
             <span className="font-medium">{station?.name || (value as string)}</span>
           </div>
         )
@@ -248,10 +248,10 @@ export default function DepositsPage() {
         const account = mockBankAccounts.find(acc => acc.id === row.bankAccountId)
         return (
           <div className="flex items-center gap-2">
-            <Building className="h-4 w-4 text-gray-500" />
+            <Building className="h-4 w-4 text-muted-foreground" />
             <div className="flex flex-col">
               <span className="font-medium">{account?.bankName || (value as string)}</span>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-muted-foreground">
                 {account?.accountNumber ? `****${account.accountNumber.slice(-4)}` : ''}
               </span>
             </div>
@@ -264,7 +264,7 @@ export default function DepositsPage() {
       title: 'Amount',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <DollarSign className="h-4 w-4 text-green-500" />
+          <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
           <span className="font-mono font-semibold text-green-700">
             Rs. {(value as number)?.toLocaleString() || 0}
           </span>
@@ -276,7 +276,7 @@ export default function DepositsPage() {
       title: 'Deposited By',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <User className="h-4 w-4 text-gray-500" />
+          <User className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm">{value as string}</span>
         </div>
       )
@@ -287,11 +287,11 @@ export default function DepositsPage() {
       render: (value: unknown) => (
         value ? (
           <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-gray-500" />
+            <FileText className="h-4 w-4 text-muted-foreground" />
             <span className="font-mono text-sm">{value as string}</span>
           </div>
         ) : (
-          <span className="text-gray-400">-</span>
+          <span className="text-muted-foreground">-</span>
         )
       )
     },
@@ -300,7 +300,7 @@ export default function DepositsPage() {
       title: 'Slip Photo',
       render: (value: unknown) => (
         <div className="flex items-center gap-1">
-          <Camera className="h-4 w-4 text-gray-500" />
+          <Camera className="h-4 w-4 text-muted-foreground" />
           <Badge variant={value ? 'default' : 'secondary'}>
             {value ? 'Yes' : 'No'}
           </Badge>
@@ -320,7 +320,7 @@ export default function DepositsPage() {
       key: 'notes' as keyof Deposit,
       title: 'Notes',
       render: (value: unknown) => (
-        <span className="text-sm text-gray-600 max-w-xs truncate">
+        <span className="text-sm text-muted-foreground max-w-xs truncate">
           {value as string || '-'}
         </span>
       )
@@ -329,7 +329,7 @@ export default function DepositsPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-gray-900">Bank Deposits</h1>
+      <h1 className="text-3xl font-bold text-foreground">Bank Deposits</h1>
 
       {error && (
         <Alert variant="destructive">
@@ -383,7 +383,7 @@ export default function DepositsPage() {
                         <Building className="h-4 w-4" />
                         <div className="flex flex-col">
                           <span className="font-medium">{account.bankName}</span>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-muted-foreground">
                             {account.accountName} - ****{account.accountNumber.slice(-4)}
                           </span>
                         </div>
@@ -393,7 +393,7 @@ export default function DepositsPage() {
                 </SelectContent>
               </Select>
               {selectedBankAccountData && (
-                <div className="mt-2 p-2 bg-blue-50 rounded-md">
+                <div className="mt-2 p-2 bg-blue-500/10 dark:bg-blue-500/20 rounded-md">
                   <div className="text-xs text-blue-700">
                     <div>Account: {selectedBankAccountData.accountName}</div>
                     <div>Branch: {selectedBankAccountData.branch}</div>
@@ -474,7 +474,7 @@ export default function DepositsPage() {
               accept="image/*"
               placeholder="Upload photo of deposit slip (recommended)"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Upload a clear photo of the bank deposit slip for verification
             </p>
           </div>

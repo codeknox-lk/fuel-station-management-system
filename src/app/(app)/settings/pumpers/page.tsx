@@ -6,7 +6,7 @@ import { DataTable } from '@/components/ui/DataTable'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Users, Plus, Edit, Trash2, Phone, Star, Building2, Clock, Award } from 'lucide-react'
@@ -40,6 +40,7 @@ export default function PumpersPage() {
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingPumper, setEditingPumper] = useState<Pumper | null>(null)
+  const [deletingPumperId, setDeletingPumperId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     employeeId: '',
@@ -50,7 +51,9 @@ export default function PumpersPage() {
     hireDate: new Date().toISOString().split('T')[0],
     experience: 0,
     rating: 5,
-    specializations: [] as string[]
+    specializations: [] as string[],
+    baseSalary: 0,
+    holidayAllowance: 4500
   })
   const { toast } = useToast()
 
@@ -68,9 +71,15 @@ export default function PumpersPage() {
       const stationsResponse = await fetch('/api/stations')
       const stationsData = await stationsResponse.json()
       
-      const pumpersWithStations = data.map((pumper: Pumper) => ({
+      const pumpersWithStations = data.map((pumper: any) => ({
         ...pumper,
-        stationName: stationsData.find((s: Station) => s.id === pumper.stationId)?.name || 'Unknown Station'
+        stationName: stationsData.find((s: Station) => s.id === pumper.stationId)?.name || 'Unknown Station',
+        // Map phone to phoneNumber for frontend compatibility
+        phoneNumber: pumper.phone || pumper.phoneNumber || '',
+        // Ensure specializations is always an array (handle null, undefined, or string)
+        specializations: Array.isArray(pumper.specializations) 
+          ? pumper.specializations 
+          : (pumper.specializations ? [pumper.specializations] : [])
       }))
       
       setPumpers(pumpersWithStations)
@@ -95,51 +104,86 @@ export default function PumpersPage() {
     }
   }
 
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Prevent double submission
+    if (isSubmitting) {
+      return
+    }
+    
+    setIsSubmitting(true)
     
     try {
       const url = editingPumper ? `/api/pumpers/${editingPumper.id}` : '/api/pumpers'
       const method = editingPumper ? 'PUT' : 'POST'
       
+      // Remove employeeId from formData when creating (always auto-generated)
+      const submitData = editingPumper 
+        ? formData // Keep employeeId when editing (display only)
+        : { ...formData, employeeId: undefined } // Remove employeeId when creating
+      
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(submitData)
       })
 
-      if (!response.ok) throw new Error('Failed to save pumper')
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        const errorMessage = errorData.details || errorData.error || `Failed to ${editingPumper ? 'update' : 'create'} pumper`
+        throw new Error(errorMessage)
+      }
+
+      const result = await response.json()
+      
+      // Verify ID matches when editing
+      if (editingPumper && result.id !== editingPumper.id) {
+        throw new Error('Update failed: Returned pumper ID does not match')
+      }
 
       toast({
         title: "Success",
         description: `Pumper ${editingPumper ? 'updated' : 'created'} successfully`
       })
 
+      // Close dialog and reset
       setDialogOpen(false)
+      setEditingPumper(null)
       resetForm()
+      
+      // Refresh list
       fetchPumpers()
     } catch (error) {
+      console.error('❌ Error submitting pumper:', error)
       toast({
         title: "Error",
-        description: `Failed to ${editingPumper ? 'update' : 'create'} pumper`,
+        description: error instanceof Error ? error.message : 'Failed to save pumper',
         variant: "destructive"
       })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   const handleEdit = (pumper: Pumper) => {
     setEditingPumper(pumper)
     setFormData({
-      name: pumper.name,
-      employeeId: pumper.employeeId,
-      stationId: pumper.stationId,
-      status: pumper.status,
-      shift: pumper.shift,
-      phoneNumber: pumper.phoneNumber,
-      hireDate: pumper.hireDate,
-      experience: pumper.experience,
-      rating: pumper.rating,
-      specializations: pumper.specializations
+      name: pumper.name || '',
+      employeeId: pumper.employeeId || '',
+      stationId: pumper.stationId || '',
+      status: pumper.status || 'ACTIVE',
+      shift: pumper.shift || 'MORNING',
+      // Use phoneNumber if available, otherwise fallback to phone property
+      phoneNumber: pumper.phoneNumber || (pumper as any).phone || '',
+      hireDate: pumper.hireDate ? (new Date(pumper.hireDate).toISOString().split('T')[0]) : new Date().toISOString().split('T')[0],
+      experience: typeof pumper.experience === 'number' ? pumper.experience : (pumper.experience ? parseFloat(String(pumper.experience)) : 0),
+      rating: typeof pumper.rating === 'number' ? pumper.rating : (pumper.rating ? parseFloat(String(pumper.rating)) : 5),
+      specializations: Array.isArray(pumper.specializations) ? pumper.specializations : [],
+      baseSalary: typeof (pumper as any).baseSalary === 'number' ? (pumper as any).baseSalary : 0,
+      holidayAllowance: typeof (pumper as any).holidayAllowance === 'number' ? (pumper as any).holidayAllowance : 4500
     })
     setDialogOpen(true)
   }
@@ -147,25 +191,104 @@ export default function PumpersPage() {
   const handleDelete = async (pumper: Pumper) => {
     if (!confirm(`Are you sure you want to delete pumper "${pumper.name}"?`)) return
 
+    // Prevent double deletion
+    if (deletingPumperId === pumper.id) {
+      console.log('⚠️  Already deleting this pumper, ignoring duplicate request')
+      return
+    }
+
+    setDeletingPumperId(pumper.id)
+
     try {
+      console.log('🔄 Deleting pumper:', { id: pumper.id, name: pumper.name })
+      
       const response = await fetch(`/api/pumpers/${pumper.id}`, {
         method: 'DELETE'
       })
 
-      if (!response.ok) throw new Error('Failed to delete pumper')
+      if (!response.ok) {
+        let errorData: any = {}
+        try {
+          const text = await response.text()
+          console.log('📥 Raw error response text:', text)
+          
+          if (text && text.trim()) {
+            try {
+              errorData = JSON.parse(text)
+              console.log('✅ Parsed error data:', errorData)
+            } catch (jsonError) {
+              console.error('❌ Failed to parse JSON:', jsonError)
+              // If not JSON, treat as plain text error
+              errorData = {
+                error: text || `HTTP ${response.status} ${response.statusText}`,
+                details: text || `Server returned status ${response.status}`
+              }
+            }
+          } else {
+            // Empty response body
+            errorData = {
+              error: `HTTP ${response.status} ${response.statusText}`,
+              details: `Server returned status ${response.status} with no error details`
+            }
+            console.warn('⚠️  Empty response body from server')
+          }
+        } catch (parseError) {
+          console.error('❌ Failed to parse error response:', parseError)
+          errorData = { 
+            error: `HTTP ${response.status} ${response.statusText}`,
+            details: 'Failed to parse error response from server'
+          }
+        }
+        
+        console.error('❌ Delete error:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData: errorData,
+          headers: Object.fromEntries(response.headers.entries())
+        })
+        
+        const errorMessage = errorData.details || errorData.error || `Failed to delete pumper (${response.status})`
+        
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive"
+        })
+        setDeletingPumperId(null)
+        return
+      }
+
+      const result = await response.json()
+      console.log('✅ Delete success:', result)
+
+      // Optimistically remove from UI immediately
+      setPumpers(prevPumpers => prevPumpers.filter(p => p.id !== pumper.id))
 
       toast({
         title: "Success",
-        description: "Pumper deleted successfully"
+        description: result.message || "Pumper deleted successfully"
       })
 
-      fetchPumpers()
+      // Refresh the list to ensure we have latest data
+      setTimeout(() => {
+        fetchPumpers()
+        setDeletingPumperId(null)
+      }, 300)
     } catch (error) {
+      console.error('❌ Error deleting pumper:', error)
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Failed to delete pumper'
+      
+      // Restore the pumper in UI if deletion failed
+      fetchPumpers()
+      
       toast({
         title: "Error",
-        description: "Failed to delete pumper",
+        description: errorMessage,
         variant: "destructive"
       })
+      setDeletingPumperId(null)
     }
   }
 
@@ -182,26 +305,28 @@ export default function PumpersPage() {
       hireDate: new Date().toISOString().split('T')[0],
       experience: 0,
       rating: 5,
-      specializations: []
+      specializations: [],
+      baseSalary: 0,
+      holidayAllowance: 4500
     })
   }
 
   const getStatusColor = (status: Pumper['status']) => {
     switch (status) {
-      case 'ACTIVE': return 'bg-green-100 text-green-800'
-      case 'INACTIVE': return 'bg-gray-100 text-gray-800'
-      case 'ON_LEAVE': return 'bg-yellow-100 text-yellow-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'ACTIVE': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      case 'INACTIVE': return 'bg-muted text-foreground'
+      case 'ON_LEAVE': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
+      default: return 'bg-muted text-foreground'
     }
   }
 
   const getShiftColor = (shift: Pumper['shift']) => {
     switch (shift) {
-      case 'MORNING': return 'bg-blue-100 text-blue-800'
-      case 'EVENING': return 'bg-orange-100 text-orange-800'
-      case 'NIGHT': return 'bg-purple-100 text-purple-800'
-      case 'ANY': return 'bg-gray-100 text-gray-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'MORNING': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'EVENING': return 'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300'
+      case 'NIGHT': return 'bg-purple-500/20 text-purple-400 dark:bg-purple-600/30 dark:text-purple-300'
+      case 'ANY': return 'bg-muted text-foreground'
+      default: return 'bg-muted text-foreground'
     }
   }
 
@@ -209,7 +334,7 @@ export default function PumpersPage() {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
         key={i}
-        className={`h-3 w-3 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+        className={`h-3 w-3 ${i < rating ? 'text-yellow-400 fill-current' : 'text-muted-foreground'}`}
       />
     ))
   }
@@ -242,9 +367,9 @@ export default function PumpersPage() {
       render: (value: unknown, row: Pumper) => (
         <div>
           <div className="font-medium">{value as string}</div>
-          <div className="text-sm text-gray-500 flex items-center gap-1">
+          <div className="text-sm text-muted-foreground flex items-center gap-1">
             <Phone className="h-3 w-3" />
-            {row.phoneNumber}
+            {row.phoneNumber || (row as any).phone || 'N/A'}
           </div>
         </div>
       )
@@ -254,7 +379,7 @@ export default function PumpersPage() {
       title: 'Station',
       render: (value: unknown) => (
         <div className="flex items-center gap-1 text-sm">
-          <Building2 className="h-3 w-3 text-gray-400" />
+          <Building2 className="h-3 w-3 text-muted-foreground" />
           {value as string}
         </div>
       )
@@ -284,29 +409,38 @@ export default function PumpersPage() {
       render: (value: unknown) => (
         <div className="flex items-center gap-1">
           {renderStars(value as number)}
-          <span className="text-sm text-gray-600 ml-1">{value as number}</span>
+          <span className="text-sm text-muted-foreground ml-1">{value as number}</span>
         </div>
       )
     },
     {
       key: 'specializations' as keyof Pumper,
       title: 'Specializations',
-      render: (value: unknown) => (
-        <div className="flex flex-wrap gap-1">
-          {(value as string[]).map((spec, index) => (
-            <Badge key={index} variant="secondary" className="text-xs">
-              {spec}
-            </Badge>
-          ))}
-        </div>
-      )
+      render: (value: unknown) => {
+        // Ensure value is an array before mapping
+        const specializations = Array.isArray(value) ? value : (value ? [value] : [])
+        
+        if (specializations.length === 0) {
+          return <span className="text-muted-foreground text-sm">None</span>
+        }
+        
+        return (
+          <div className="flex flex-wrap gap-1">
+            {specializations.map((spec, index) => (
+              <Badge key={index} variant="secondary" className="text-xs">
+                {spec}
+              </Badge>
+            ))}
+          </div>
+        )
+      }
     },
     {
       key: 'status' as keyof Pumper,
       title: 'Status',
       render: (value: unknown) => {
         const status = value as string
-        if (!status) return <Badge className="bg-gray-100 text-gray-800">Unknown</Badge>
+        if (!status) return <Badge className="bg-muted text-foreground">Unknown</Badge>
         return (
           <Badge className={getStatusColor(status as Pumper['status'])}>
             {status}
@@ -330,9 +464,14 @@ export default function PumpersPage() {
             variant="ghost"
             size="sm"
             onClick={() => handleDelete(row)}
-            className="text-red-600 hover:text-red-700"
+            disabled={deletingPumperId === row.id}
+            className="text-red-600 dark:text-red-400 hover:text-red-700 disabled:opacity-50"
           >
-            <Trash2 className="h-4 w-4" />
+            {deletingPumperId === row.id ? (
+              <span className="text-xs">Deleting...</span>
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
           </Button>
         </div>
       )
@@ -344,19 +483,19 @@ export default function PumpersPage() {
       title: 'Total Pumpers',
       value: pumpers.length.toString(),
       description: 'Registered pumpers',
-      icon: <Users className="h-5 w-5 text-blue-500" />
+      icon: <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
     },
     {
       title: 'Active',
       value: pumpers.filter(p => p.status === 'ACTIVE').length.toString(),
       description: 'Currently active',
-      icon: <div className="h-5 w-5 bg-green-500 rounded-full" />
+      icon: <div className="h-5 w-5 bg-green-500/10 dark:bg-green-500/200 rounded-full" />
     },
     {
       title: 'On Leave',
       value: pumpers.filter(p => p.status === 'ON_LEAVE').length.toString(),
       description: 'Currently on leave',
-      icon: <div className="h-5 w-5 bg-yellow-500 rounded-full" />
+      icon: <div className="h-5 w-5 bg-yellow-500/10 dark:bg-yellow-500/200 rounded-full" />
     },
     {
       title: 'Avg Rating',
@@ -364,7 +503,7 @@ export default function PumpersPage() {
         ? (pumpers.reduce((acc, p) => acc + p.rating, 0) / pumpers.length).toFixed(1)
         : '0.0',
       description: 'Average performance',
-      icon: <Star className="h-5 w-5 text-yellow-500" />
+      icon: <Star className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
     }
   ]
 
@@ -374,8 +513,8 @@ export default function PumpersPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Pumper Management</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-3xl font-bold text-foreground">Pumper Management</h1>
+          <p className="text-muted-foreground mt-2">
             Manage pumper employees, their shifts, and specializations
           </p>
         </div>
@@ -391,6 +530,9 @@ export default function PumpersPage() {
               <DialogTitle>
                 {editingPumper ? 'Edit Pumper' : 'Add New Pumper'}
               </DialogTitle>
+              <DialogDescription>
+                {editingPumper ? 'Update pumper information and details' : 'Add a new pumper to the system'}
+              </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -398,20 +540,23 @@ export default function PumpersPage() {
                   <Label htmlFor="name">Full Name</Label>
                   <Input
                     id="name"
-                    value={formData.name}
+                    value={formData.name || ''}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="e.g., John Silva"
                     required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="employeeId">Employee ID</Label>
+                  <Label htmlFor="employeeId">
+                    Employee ID
+                    <span className="text-xs text-muted-foreground ml-2">(Auto-generated)</span>
+                  </Label>
                   <Input
                     id="employeeId"
-                    value={formData.employeeId}
-                    onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                    placeholder="e.g., EMP001"
-                    required
+                    value={editingPumper ? (formData.employeeId || '') : 'Auto-generated on save'}
+                    disabled
+                    className="bg-muted cursor-not-allowed"
+                    placeholder={editingPumper ? "Employee ID (read-only)" : "Will be auto-generated (e.g., EMP001)"}
                   />
                 </div>
               </div>
@@ -438,7 +583,7 @@ export default function PumpersPage() {
                   <Label htmlFor="phoneNumber">Phone Number</Label>
                   <Input
                     id="phoneNumber"
-                    value={formData.phoneNumber}
+                    value={formData.phoneNumber || ''}
                     onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
                     placeholder="+94771234567"
                     required
@@ -481,7 +626,7 @@ export default function PumpersPage() {
                   <Input
                     id="hireDate"
                     type="date"
-                    value={formData.hireDate}
+                    value={formData.hireDate || new Date().toISOString().split('T')[0]}
                     onChange={(e) => setFormData({ ...formData, hireDate: e.target.value })}
                     required
                   />
@@ -496,7 +641,7 @@ export default function PumpersPage() {
                     type="number"
                     min="0"
                     max="50"
-                    value={formData.experience}
+                    value={formData.experience || 0}
                     onChange={(e) => setFormData({ ...formData, experience: parseInt(e.target.value) || 0 })}
                     required
                   />
@@ -509,10 +654,43 @@ export default function PumpersPage() {
                     min="1"
                     max="5"
                     step="0.1"
-                    value={formData.rating}
+                    value={formData.rating || 5}
                     onChange={(e) => setFormData({ ...formData, rating: parseFloat(e.target.value) || 5 })}
                     required
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="baseSalary">Base Monthly Salary (LKR)</Label>
+                <Input
+                  id="baseSalary"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.baseSalary || 0}
+                  onChange={(e) => setFormData({ ...formData, baseSalary: parseFloat(e.target.value) || 0 })}
+                    placeholder="27000"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Base monthly salary (default: 27000)
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="holidayAllowance">Holiday Allowance (LKR)</Label>
+                  <Input
+                    id="holidayAllowance"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.holidayAllowance || 4500}
+                    onChange={(e) => setFormData({ ...formData, holidayAllowance: parseFloat(e.target.value) || 4500 })}
+                    placeholder="4500"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                    Monthly holiday allowance (default: 4500). Deduct 900rs per rest day taken (up to 5 rest days)
+                </p>
                 </div>
               </div>
 
@@ -526,7 +704,7 @@ export default function PumpersPage() {
                         id={spec}
                         checked={formData.specializations.includes(spec)}
                         onChange={(e) => handleSpecializationChange(spec, e.target.checked)}
-                        className="rounded border-gray-300"
+                        className="rounded border-border"
                       />
                       <Label htmlFor={spec} className="text-sm font-normal">
                         {spec.replace('_', ' ')}
@@ -537,11 +715,11 @@ export default function PumpersPage() {
               </div>
 
               <div className="flex justify-end gap-3 pt-4">
-                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={isSubmitting}>
                   Cancel
                 </Button>
-                <Button type="submit">
-                  {editingPumper ? 'Update Pumper' : 'Create Pumper'}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? 'Saving...' : (editingPumper ? 'Update Pumper' : 'Create Pumper')}
                 </Button>
               </div>
             </form>
@@ -556,9 +734,9 @@ export default function PumpersPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
-                  <div className="text-sm font-medium text-gray-700">{stat.title}</div>
-                  <div className="text-xs text-gray-500">{stat.description}</div>
+                  <div className="text-2xl font-bold text-foreground">{stat.value}</div>
+                  <div className="text-sm font-medium text-foreground">{stat.title}</div>
+                  <div className="text-xs text-muted-foreground">{stat.description}</div>
                 </div>
                 <div className="flex-shrink-0">
                   {stat.icon}

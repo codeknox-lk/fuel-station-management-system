@@ -56,7 +56,7 @@ export default function AuditLogPage() {
   const [startDate, setStartDate] = useState<Date>(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)) // 7 days ago
   const [endDate, setEndDate] = useState<Date>(new Date())
   const [selectedUser, setSelectedUser] = useState<string>('all')
-  const { selectedStation } = useStation()
+  const { selectedStation, setSelectedStation } = useStation()
   const [selectedEntity, setSelectedEntity] = useState<string>('all')
   const [selectedAction, setSelectedAction] = useState<string>('all')
 
@@ -64,6 +64,7 @@ export default function AuditLogPage() {
   useEffect(() => {
     loadAuditLog()
     loadStats()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const loadAuditLog = async () => {
@@ -129,30 +130,30 @@ export default function AuditLogPage() {
 
   const getActionIcon = (action: string) => {
     switch (action) {
-      case 'CREATE': return <CheckCircle className="h-4 w-4 text-green-600" />
-      case 'UPDATE': return <RefreshCw className="h-4 w-4 text-blue-600" />
-      case 'DELETE': return <XCircle className="h-4 w-4 text-red-600" />
-      case 'VIEW': return <Eye className="h-4 w-4 text-gray-600" />
-      default: return <Activity className="h-4 w-4 text-purple-600" />
+      case 'CREATE': return <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+      case 'UPDATE': return <RefreshCw className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+      case 'DELETE': return <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+      case 'VIEW': return <Eye className="h-4 w-4 text-muted-foreground" />
+      default: return <Activity className="h-4 w-4 text-purple-600 dark:text-purple-400" />
     }
   }
 
   const getActionColor = (action: string) => {
     switch (action) {
-      case 'CREATE': return 'bg-green-100 text-green-800'
-      case 'UPDATE': return 'bg-blue-100 text-blue-800'
-      case 'DELETE': return 'bg-red-100 text-red-800'
-      case 'VIEW': return 'bg-gray-100 text-gray-800'
-      default: return 'bg-purple-100 text-purple-800'
+      case 'CREATE': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      case 'UPDATE': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'DELETE': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+      case 'VIEW': return 'bg-muted text-foreground'
+      default: return 'bg-purple-500/20 text-purple-400 dark:bg-purple-600/30 dark:text-purple-300'
     }
   }
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'OWNER': return 'bg-red-100 text-red-800'
-      case 'MANAGER': return 'bg-blue-100 text-blue-800'
-      case 'ACCOUNTS': return 'bg-green-100 text-green-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'OWNER': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+      case 'MANAGER': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'ACCOUNTS': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      default: return 'bg-muted text-foreground'
     }
   }
 
@@ -165,7 +166,7 @@ export default function AuditLogPage() {
         return (
           <div className="text-sm">
             <div className="font-medium">{date.toLocaleDateString()}</div>
-            <div className="text-gray-500">{date.toLocaleTimeString()}</div>
+            <div className="text-muted-foreground">{date.toLocaleTimeString()}</div>
           </div>
         )
       }
@@ -207,7 +208,7 @@ export default function AuditLogPage() {
       key: 'details',
       title: 'Details',
       render: (value: unknown) => (
-        <div className="max-w-md text-sm text-gray-700">
+        <div className="max-w-md text-sm text-foreground">
           {value as string}
         </div>
       )
@@ -216,16 +217,16 @@ export default function AuditLogPage() {
       key: 'stationName',
       title: 'Station',
       render: (value: unknown) => value ? (
-        <div className="text-sm text-gray-600">{value as string}</div>
+        <div className="text-sm text-muted-foreground">{value as string}</div>
       ) : (
-        <div className="text-sm text-gray-400">System-wide</div>
+        <div className="text-sm text-muted-foreground">System-wide</div>
       )
     },
     {
       key: 'ipAddress',
       title: 'IP Address',
       render: (value: unknown) => (
-        <div className="text-xs text-gray-500 font-mono">
+        <div className="text-xs text-muted-foreground font-mono">
           {value as string || 'N/A'}
         </div>
       )
@@ -237,8 +238,8 @@ export default function AuditLogPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">System Audit Log</h1>
-          <p className="text-gray-600 mt-1">Track all system activities and user actions</p>
+          <h1 className="text-3xl font-bold text-foreground">System Audit Log</h1>
+          <p className="text-muted-foreground mt-1">Track all system activities and user actions</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={loadAuditLog} disabled={loading}>
@@ -258,12 +259,12 @@ export default function AuditLogPage() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Activity className="h-5 w-5 text-blue-600" />
+                <div className="p-2 bg-blue-500/20 dark:bg-blue-600/30 rounded-lg">
+                  <Activity className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-gray-900">{stats.todayCount}</div>
-                  <div className="text-sm text-gray-600">Today&apos;s Activities</div>
+                  <div className="text-2xl font-bold text-foreground">{stats.todayCount}</div>
+                  <div className="text-sm text-muted-foreground">Today&apos;s Activities</div>
                 </div>
               </div>
             </CardContent>
@@ -272,12 +273,12 @@ export default function AuditLogPage() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Clock className="h-5 w-5 text-green-600" />
+                <div className="p-2 bg-green-500/20 dark:bg-green-600/30 rounded-lg">
+                  <Clock className="h-5 w-5 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-gray-900">{stats.yesterdayCount}</div>
-                  <div className="text-sm text-gray-600">Yesterday&apos;s Activities</div>
+                  <div className="text-2xl font-bold text-foreground">{stats.yesterdayCount}</div>
+                  <div className="text-sm text-muted-foreground">Yesterday&apos;s Activities</div>
                 </div>
               </div>
             </CardContent>
@@ -286,12 +287,12 @@ export default function AuditLogPage() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Shield className="h-5 w-5 text-purple-600" />
+                <div className="p-2 bg-purple-500/20 dark:bg-purple-600/30 rounded-lg">
+                  <Shield className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-gray-900">{stats.totalEntries}</div>
-                  <div className="text-sm text-gray-600">Total Entries</div>
+                  <div className="text-2xl font-bold text-foreground">{stats.totalEntries}</div>
+                  <div className="text-sm text-muted-foreground">Total Entries</div>
                 </div>
               </div>
             </CardContent>
@@ -300,12 +301,12 @@ export default function AuditLogPage() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <Users className="h-5 w-5 text-orange-600" />
+                <div className="p-2 bg-orange-500/20 dark:bg-orange-600/30 rounded-lg">
+                  <Users className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-gray-900">{stats.uniqueUsers}</div>
-                  <div className="text-sm text-gray-600">Active Users</div>
+                  <div className="text-2xl font-bold text-foreground">{stats.uniqueUsers}</div>
+                  <div className="text-sm text-muted-foreground">Active Users</div>
                 </div>
               </div>
             </CardContent>
@@ -410,10 +411,10 @@ export default function AuditLogPage() {
 
       {/* Error Alert */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="bg-red-500/10 dark:bg-red-500/20 border border-red-500/20 dark:border-red-500/30 rounded-lg p-4">
           <div className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-red-600" />
-            <span className="text-red-800">{error}</span>
+            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+            <span className="text-red-700 dark:text-red-300">{error}</span>
           </div>
         </div>
       )}

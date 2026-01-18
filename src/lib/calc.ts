@@ -1,13 +1,10 @@
-import { Price } from '@/data/prices.seed'
+import { Price } from '@/lib/types'
 
 // Tolerance configuration
 export const TOLERANCE_CONFIG = {
-  percentage: 0.3, // 0.3%
-  flatAmount: 200, // Rs. 200
-  getTolerance: (salesAmount: number) => Math.max(
-    (salesAmount * TOLERANCE_CONFIG.percentage) / 100,
-    TOLERANCE_CONFIG.flatAmount
-  )
+  percentage: 0, // Not used anymore - using flat amount only
+  flatAmount: 20, // Rs. 20 flat tolerance for any sale
+  getTolerance: (_salesAmount: number) => TOLERANCE_CONFIG.flatAmount // Always return flat Rs. 20
 }
 
 export interface MeterReading {
@@ -183,11 +180,12 @@ export function tankBookStock(
 
 /**
  * Classify variance as normal or suspicious
+ * Uses flat Rs. 20 tolerance for any sale amount
  */
 export function classifyVariance(
   totalSales: number,
   declaredAmount: number,
-  tolerancePercentage: number = TOLERANCE_CONFIG.percentage,
+  _tolerancePercentage: number = 0, // Not used - kept for backward compatibility
   toleranceFlat: number = TOLERANCE_CONFIG.flatAmount
 ): {
   variance: number
@@ -197,10 +195,8 @@ export function classifyVariance(
 } {
   const variance = totalSales - declaredAmount
   const variancePercentage = totalSales > 0 ? (Math.abs(variance) / totalSales) * 100 : 0
-  const tolerance = Math.max(
-    (totalSales * tolerancePercentage) / 100,
-    toleranceFlat
-  )
+  // Use flat Rs. 20 tolerance for any sale
+  const tolerance = toleranceFlat
   
   return {
     variance,
@@ -264,14 +260,31 @@ export function calculateShiftSummary(
   variance: number
   varianceClassification: ReturnType<typeof classifyVariance>
 } {
-  const totalSales = sales.reduce((sum, sale) => sum + sale.amount, 0)
-  const totalDeclared = cashAmount + cardAmount + creditAmount + chequeAmount
-  const varianceClassification = classifyVariance(totalSales, totalDeclared)
+  // Validate and sanitize input values
+  const validSales = Array.isArray(sales) ? sales : []
+  const validCashAmount = isNaN(cashAmount) || !isFinite(cashAmount) ? 0 : cashAmount
+  const validCardAmount = isNaN(cardAmount) || !isFinite(cardAmount) ? 0 : cardAmount
+  const validCreditAmount = isNaN(creditAmount) || !isFinite(creditAmount) ? 0 : creditAmount
+  const validChequeAmount = isNaN(chequeAmount) || !isFinite(chequeAmount) ? 0 : chequeAmount
+  
+  // Calculate total sales, ensuring all amounts are valid numbers
+  const totalSales = validSales.reduce((sum, sale) => {
+    const amount = isNaN(sale.amount) || !isFinite(sale.amount) ? 0 : sale.amount
+    return sum + amount
+  }, 0)
+  
+  const totalDeclared = validCashAmount + validCardAmount + validCreditAmount + validChequeAmount
+  
+  // Validate totalSales and totalDeclared before calling classifyVariance
+  const safeTotalSales = isNaN(totalSales) || !isFinite(totalSales) ? 0 : totalSales
+  const safeTotalDeclared = isNaN(totalDeclared) || !isFinite(totalDeclared) ? 0 : totalDeclared
+  
+  const varianceClassification = classifyVariance(safeTotalSales, safeTotalDeclared)
   
   return {
-    totalSales,
-    totalDeclared,
-    variance: totalSales - totalDeclared,
+    totalSales: safeTotalSales,
+    totalDeclared: safeTotalDeclared,
+    variance: safeTotalSales - safeTotalDeclared,
     varianceClassification
   }
 }

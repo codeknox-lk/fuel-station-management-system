@@ -151,17 +151,17 @@ export default function ShiftTemplatesPage() {
 
   const getStatusColor = (status: ShiftTemplate['status']) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800'
-      case 'inactive': return 'bg-gray-100 text-gray-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'active': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      case 'inactive': return 'bg-muted text-foreground'
+      default: return 'bg-muted text-foreground'
     }
   }
 
   const getShiftIcon = (startTime: string) => {
     const hour = parseInt(startTime.split(':')[0])
-    if (hour >= 6 && hour < 14) return <Sun className="h-4 w-4 text-yellow-500" />
-    if (hour >= 14 && hour < 22) return <Coffee className="h-4 w-4 text-orange-500" />
-    return <Moon className="h-4 w-4 text-blue-500" />
+    if (hour >= 6 && hour < 14) return <Sun className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+    if (hour >= 14 && hour < 22) return <Coffee className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+    return <Moon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
   }
 
   const calculateDuration = (start: string, end: string) => {
@@ -205,7 +205,7 @@ export default function ShiftTemplatesPage() {
       render: (value: unknown, row: ShiftTemplate) => (
         <div className="text-sm">
           <div className="font-mono">{value as string} - {row.endTime}</div>
-          <div className="text-gray-500">
+          <div className="text-muted-foreground">
             {calculateDuration(value as string, row.endTime)}
           </div>
         </div>
@@ -217,10 +217,10 @@ export default function ShiftTemplatesPage() {
       render: (value: unknown, row: ShiftTemplate) => (
         <div className="text-sm">
           <div className="flex items-center gap-1">
-            <Coffee className="h-3 w-3 text-gray-400" />
+            <Coffee className="h-3 w-3 text-muted-foreground" />
             {value as number} minutes
           </div>
-          <div className="text-gray-500 font-mono text-xs">
+          <div className="text-muted-foreground font-mono text-xs">
             @ {row.breakStartTime}
           </div>
         </div>
@@ -230,7 +230,7 @@ export default function ShiftTemplatesPage() {
       key: 'description' as keyof ShiftTemplate,
       title: 'Description',
       render: (value: unknown) => (
-        <span className="text-sm text-gray-600">
+        <span className="text-sm text-muted-foreground">
           {(value as string) || 'No description'}
         </span>
       )
@@ -240,7 +240,7 @@ export default function ShiftTemplatesPage() {
       title: 'Status',
       render: (value: unknown) => {
         const status = value as string
-        if (!status) return <Badge className="bg-gray-100 text-gray-800">Unknown</Badge>
+        if (!status) return <Badge className="bg-muted text-foreground">Unknown</Badge>
         return (
           <Badge className={getStatusColor(status as ShiftTemplate['status'])}>
             {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -264,7 +264,7 @@ export default function ShiftTemplatesPage() {
             variant="ghost"
             size="sm"
             onClick={() => handleDelete(row)}
-            className="text-red-600 hover:text-red-700"
+            className="text-red-600 dark:text-red-400 hover:text-red-700"
             disabled={row.isDefault}
           >
             <Trash2 className="h-4 w-4" />
@@ -279,19 +279,19 @@ export default function ShiftTemplatesPage() {
       title: 'Total Templates',
       value: templates.length.toString(),
       description: 'Shift templates',
-      icon: <Clock className="h-5 w-5 text-blue-500" />
+      icon: <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
     },
     {
       title: 'Active',
       value: templates.filter(t => t.status === 'active').length.toString(),
       description: 'Currently active',
-      icon: <div className="h-5 w-5 bg-green-500 rounded-full" />
+      icon: <div className="h-5 w-5 bg-green-500/10 dark:bg-green-500/200 rounded-full" />
     },
     {
       title: 'Default',
       value: templates.filter(t => t.isDefault).length.toString(),
       description: 'Default template',
-      icon: <Sun className="h-5 w-5 text-yellow-500" />
+      icon: <Sun className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
     },
     {
       title: 'Avg Duration',
@@ -305,7 +305,7 @@ export default function ShiftTemplatesPage() {
           }, 0) / templates.length / 60)}h`
         : '0h',
       description: 'Average shift length',
-      icon: <Coffee className="h-5 w-5 text-purple-500" />
+      icon: <Coffee className="h-5 w-5 text-purple-600 dark:text-purple-400" />
     }
   ]
 
@@ -313,8 +313,8 @@ export default function ShiftTemplatesPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Shift Templates</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-3xl font-bold text-foreground">Shift Templates</h1>
+          <p className="text-muted-foreground mt-2">
             Manage shift patterns and working hour templates
           </p>
         </div>
@@ -408,7 +408,7 @@ export default function ShiftTemplatesPage() {
                     id="isDefault"
                     checked={formData.isDefault}
                     onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
-                    className="rounded border-gray-300"
+                    className="rounded border-border"
                   />
                   <Label htmlFor="isDefault">Set as default template</Label>
                 </div>
@@ -447,9 +447,9 @@ export default function ShiftTemplatesPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
-                  <div className="text-sm font-medium text-gray-700">{stat.title}</div>
-                  <div className="text-xs text-gray-500">{stat.description}</div>
+                  <div className="text-2xl font-bold text-foreground">{stat.value}</div>
+                  <div className="text-sm font-medium text-foreground">{stat.title}</div>
+                  <div className="text-xs text-muted-foreground">{stat.description}</div>
                 </div>
                 <div className="flex-shrink-0">
                   {stat.icon}
