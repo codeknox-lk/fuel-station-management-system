@@ -72,6 +72,7 @@ model Station {
   safe           Safe?
   notifications  Notification[]
   salaryPayments SalaryPayment[]
+  bankTransactions BankTransaction[]
 
   @@index([isActive])
 }
@@ -629,10 +630,43 @@ model Bank {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  deposits       Deposit[]
-  cheques        Cheque[]
-  creditPayments CreditPayment[]
-  posTerminals   PosTerminal[]
+  deposits         Deposit[]
+  cheques          Cheque[]
+  posTerminals     PosTerminal[]
+  creditPayments   CreditPayment[]
+  bankTransactions BankTransaction[] // Manual adjustments/expenses
+}
+
+model BankTransaction {
+  id            String                @id @default(uuid())
+  bankId        String
+  bank          Bank                  @relation(fields: [bankId], references: [id])
+  stationId     String?
+  station       Station?              @relation(fields: [stationId], references: [id])
+  type          BankTransactionType
+  amount        Float
+  description   String
+  referenceNumber String?
+  transactionDate DateTime
+  createdBy     String
+  notes         String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@index([bankId])
+  @@index([stationId])
+  @@index([transactionDate])
+  @@index([type])
+}
+
+enum BankTransactionType {
+  DEPOSIT       // Money added to bank
+  WITHDRAWAL    // Money withdrawn/expense
+  TRANSFER_IN   // Transfer from another account
+  TRANSFER_OUT  // Transfer to another account
+  FEE           // Bank fees/charges
+  INTEREST      // Interest earned
+  ADJUSTMENT    // Manual adjustment/correction
 }
 
 model Pumper {

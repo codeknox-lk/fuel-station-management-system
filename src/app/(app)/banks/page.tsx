@@ -25,7 +25,10 @@ import {
   Filter,
   RefreshCw,
   Eye,
-  Calendar
+  Calendar,
+  Plus,
+  Minus,
+  Wallet
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { DataTable } from '@/components/ui/DataTable'
@@ -43,6 +46,8 @@ interface BankAccount {
   pendingCheques: number
   bouncedCheques: number
   totalCreditPayments: number
+  manualDeposits: number
+  manualWithdrawals: number
   transactionCount: number
   recentTransactions: Transaction[]
   posTerminals: Array<{ id: string; name: string }>
@@ -52,7 +57,7 @@ interface BankAccount {
 
 interface Transaction {
   id: string
-  type: 'DEPOSIT' | 'CHEQUE' | 'CREDIT_PAYMENT'
+  type: 'DEPOSIT' | 'CHEQUE' | 'CREDIT_PAYMENT' | 'MANUAL'
   amount: number
   date: string
   status?: string
@@ -85,6 +90,18 @@ export default function BankAccountsPage() {
   const [loading, setLoading] = useState(true)
   const [loadingTransactions, setLoadingTransactions] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [manualTransactionDialogOpen, setManualTransactionDialogOpen] = useState(false)
+  const [selectedBankForTransaction, setSelectedBankForTransaction] = useState<BankAccount | null>(null)
+  
+  // Manual transaction form
+  const [manualTransactionForm, setManualTransactionForm] = useState({
+    type: 'DEPOSIT',
+    amount: '',
+    description: '',
+    referenceNumber: '',
+    transactionDate: new Date().toISOString().split('T')[0],
+    notes: ''
+  })
   
   // Filters
   const [transactionType, setTransactionType] = useState('all')
@@ -169,11 +186,74 @@ export default function BankAccountsPage() {
     }
   }
 
+  const handleOpenManualTransaction = (bank: BankAccount, transactionType: 'add' | 'remove') => {
+    setSelectedBankForTransaction(bank)
+    setManualTransactionForm({
+      type: transactionType === 'add' ? 'DEPOSIT' : 'WITHDRAWAL',
+      amount: '',
+      description: '',
+      referenceNumber: '',
+      transactionDate: new Date().toISOString().split('T')[0],
+      notes: ''
+    })
+    setManualTransactionDialogOpen(true)
+  }
+
+  const handleSubmitManualTransaction = async () => {
+    if (!selectedBankForTransaction) return
+
+    try {
+      const response = await fetch('/api/banks/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bankId: selectedBankForTransaction.id,
+          stationId: selectedStation || null,
+          ...manualTransactionForm,
+          createdBy: 'User' // Replace with actual user when auth is implemented
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to create transaction')
+
+      toast({
+        title: "Success",
+        description: "Manual transaction added successfully"
+      })
+
+      // Refresh data
+      fetchBankAccounts()
+      setManualTransactionDialogOpen(false)
+      setManualTransactionForm({
+        type: 'DEPOSIT',
+        amount: '',
+        description: '',
+        referenceNumber: '',
+        transactionDate: new Date().toISOString().split('T')[0],
+        notes: ''
+      })
+    } catch (error) {
+      console.error('Error creating manual transaction:', error)
+      toast({
+        title: "Error",
+        description: "Failed to create manual transaction",
+        variant: "destructive"
+      })
+    }
+  }
+
   const getTransactionTypeColor = (type: string) => {
     switch (type) {
       case 'DEPOSIT': return 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
       case 'CHEQUE': return 'bg-purple-500/10 text-purple-600 dark:text-purple-400'
       case 'CREDIT_PAYMENT': return 'bg-green-500/10 text-green-600 dark:text-green-400'
+      case 'MANUAL': return 'bg-orange-500/10 text-orange-600 dark:text-orange-400'
+      case 'WITHDRAWAL': return 'bg-red-500/10 text-red-600 dark:text-red-400'
+      case 'TRANSFER_IN': return 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
+      case 'TRANSFER_OUT': return 'bg-pink-500/10 text-pink-600 dark:text-pink-400'
+      case 'FEE': return 'bg-gray-500/10 text-gray-600 dark:text-gray-400'
+      case 'INTEREST': return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+      case 'ADJUSTMENT': return 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
       default: return 'bg-gray-500/10 text-gray-600 dark:text-gray-400'
     }
   }
@@ -416,14 +496,32 @@ export default function BankAccountsPage() {
               )}
 
               {/* View Details Button */}
-              <Button 
-                onClick={() => handleViewDetails(bank)} 
-                className="w-full"
-                variant="outline"
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                View All Transactions ({bank.transactionCount})
-              </Button>
+              <div className="grid grid-cols-3 gap-2">
+                <Button 
+                  onClick={() => handleOpenManualTransaction(bank, 'add')}
+                  variant="outline"
+                  className="text-green-600 border-green-600 hover:bg-green-500/10"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add
+                </Button>
+                <Button 
+                  onClick={() => handleOpenManualTransaction(bank, 'remove')}
+                  variant="outline"
+                  className="text-red-600 border-red-600 hover:bg-red-500/10"
+                >
+                  <Minus className="h-4 w-4 mr-1" />
+                  Remove
+                </Button>
+                <Button 
+                  onClick={() => handleViewDetails(bank)} 
+                  variant="outline"
+                  className="col-span-3"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Transactions ({bank.transactionCount})
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -437,6 +535,116 @@ export default function BankAccountsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Manual Transaction Dialog */}
+      <Dialog open={manualTransactionDialogOpen} onOpenChange={setManualTransactionDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wallet className="h-6 w-6 text-orange-600" />
+              {manualTransactionForm.type === 'DEPOSIT' ? 'Add Money' : 'Remove Money'} - {selectedBankForTransaction?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Manually add or remove money from bank account
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="transactionType">Transaction Type *</Label>
+                <Select
+                  value={manualTransactionForm.type}
+                  onValueChange={(value) => setManualTransactionForm({ ...manualTransactionForm, type: value })}
+                >
+                  <SelectTrigger id="transactionType">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DEPOSIT">Deposit (Add Money)</SelectItem>
+                    <SelectItem value="WITHDRAWAL">Withdrawal (Remove Money)</SelectItem>
+                    <SelectItem value="TRANSFER_IN">Transfer In</SelectItem>
+                    <SelectItem value="TRANSFER_OUT">Transfer Out</SelectItem>
+                    <SelectItem value="FEE">Bank Fee</SelectItem>
+                    <SelectItem value="INTEREST">Interest Earned</SelectItem>
+                    <SelectItem value="ADJUSTMENT">Adjustment</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="amount">Amount (Rs.) *</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  step="0.01"
+                  value={manualTransactionForm.amount}
+                  onChange={(e) => setManualTransactionForm({ ...manualTransactionForm, amount: e.target.value })}
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="description">Description *</Label>
+              <Input
+                id="description"
+                value={manualTransactionForm.description}
+                onChange={(e) => setManualTransactionForm({ ...manualTransactionForm, description: e.target.value })}
+                placeholder="e.g., Cash deposit, Expense payment, etc."
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="referenceNumber">Reference Number</Label>
+                <Input
+                  id="referenceNumber"
+                  value={manualTransactionForm.referenceNumber}
+                  onChange={(e) => setManualTransactionForm({ ...manualTransactionForm, referenceNumber: e.target.value })}
+                  placeholder="Optional"
+                />
+              </div>
+              <div>
+                <Label htmlFor="transactionDate">Transaction Date *</Label>
+                <Input
+                  id="transactionDate"
+                  type="date"
+                  value={manualTransactionForm.transactionDate}
+                  onChange={(e) => setManualTransactionForm({ ...manualTransactionForm, transactionDate: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="notes">Notes</Label>
+              <Input
+                id="notes"
+                value={manualTransactionForm.notes}
+                onChange={(e) => setManualTransactionForm({ ...manualTransactionForm, notes: e.target.value })}
+                placeholder="Optional notes"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setManualTransactionDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmitManualTransaction}
+                disabled={!manualTransactionForm.amount || !manualTransactionForm.description}
+              >
+                {manualTransactionForm.type === 'DEPOSIT' || manualTransactionForm.type === 'TRANSFER_IN' || manualTransactionForm.type === 'INTEREST' ? 'Add Money' : 'Remove Money'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Transaction Details Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

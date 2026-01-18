@@ -43,10 +43,26 @@ export async function GET(request: NextRequest) {
       })
     )
 
+    // Fetch manual bank transactions for each bank
+    const bankTransactionsByBank = await Promise.all(
+      banks.map(async (bank) => {
+        const bankTransactions = await prisma.bankTransaction.findMany({
+          where: {
+            bankId: bank.id
+          },
+          orderBy: { transactionDate: 'desc' }
+        })
+        return { bankId: bank.id, bankTransactions }
+      })
+    )
+
     // Calculate balances and summaries for each bank
     const bankAccounts = banks.map(bank => {
       // Get credit payments for this bank
       const bankCreditPayments = creditPaymentsByBank.find(cp => cp.bankId === bank.id)?.creditPayments || []
+      
+      // Get manual bank transactions for this bank
+      const bankManualTransactions = bankTransactionsByBank.find(bt => bt.bankId === bank.id)?.bankTransactions || []
       
       // Total deposits
       const totalDeposits = bank.deposits.reduce((sum, deposit) => sum + deposit.amount, 0)
@@ -72,16 +88,25 @@ export async function GET(request: NextRequest) {
       // Credit payments received
       const totalCreditPayments = bankCreditPayments.reduce((sum, payment) => sum + payment.amount, 0)
 
-      // Current balance (deposits + cleared cheques + credit payments)
-      const currentBalance = totalDeposits + clearedCheques + totalCreditPayments
+      // Manual transactions (deposits add, withdrawals subtract)
+      const manualDeposits = bankManualTransactions
+        .filter(t => ['DEPOSIT', 'TRANSFER_IN', 'INTEREST', 'ADJUSTMENT'].includes(t.type) && t.amount > 0)
+        .reduce((sum, t) => sum + t.amount, 0)
+      
+      const manualWithdrawals = bankManualTransactions
+        .filter(t => ['WITHDRAWAL', 'TRANSFER_OUT', 'FEE'].includes(t.type))
+        .reduce((sum, t) => sum + t.amount, 0)
+
+      // Current balance (deposits + cleared cheques + credit payments + manual deposits - manual withdrawals)
+      const currentBalance = totalDeposits + clearedCheques + totalCreditPayments + manualDeposits - manualWithdrawals
 
       // Transaction count
-      const transactionCount = bank.deposits.length + bank.cheques.length + bankCreditPayments.length
+      const transactionCount = bank.deposits.length + bank.cheques.length + bankCreditPayments.length + bankManualTransactions.length
 
       // Recent transactions (last 10)
       const allTransactions: Array<{
         id: string
-        type: 'DEPOSIT' | 'CHEQUE' | 'CREDIT_PAYMENT'
+        type: 'DEPOSIT' | 'CHEQUE' | 'CREDIT_PAYMENT' | 'MANUAL'
         amount: number
         date: Date
         status?: string
@@ -108,6 +133,14 @@ export async function GET(request: NextRequest) {
           amount: cp.amount,
           date: cp.paymentDate,
           description: `Credit payment${cp.chequeNumber ? ` - Cheque: ${cp.chequeNumber}` : ''}`
+        })),
+        ...bankManualTransactions.map(mt => ({
+          id: mt.id,
+          type: 'MANUAL' as const,
+          amount: mt.amount,
+          date: mt.transactionDate,
+          status: mt.type,
+          description: mt.description
         }))
       ]
 
@@ -129,6 +162,8 @@ export async function GET(request: NextRequest) {
         pendingCheques,
         bouncedCheques,
         totalCreditPayments,
+        manualDeposits,
+        manualWithdrawals,
         transactionCount,
         recentTransactions,
         posTerminals: bank.posTerminals,
