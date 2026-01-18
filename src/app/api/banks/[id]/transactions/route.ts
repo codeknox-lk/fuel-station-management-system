@@ -54,11 +54,9 @@ export async function GET(
       ? await prisma.creditPayment.findMany({
           where: {
             bankId,
-            ...(stationId && { stationId }),
             ...(dateFilter && { paymentDate: dateFilter })
           },
           include: {
-            station: { select: { name: true } },
             customer: { select: { name: true } }
           },
           orderBy: { paymentDate: 'desc' }
@@ -98,12 +96,11 @@ export async function GET(
         type: 'CREDIT_PAYMENT' as const,
         amount: cp.amount,
         date: cp.paymentDate,
-        station: cp.station.name,
+        station: 'N/A', // CreditPayment doesn't have stationId
         description: `Credit payment from ${cp.customer.name}`,
         customer: cp.customer.name,
         chequeNumber: cp.chequeNumber,
-        referenceNumber: cp.referenceNumber,
-        notes: cp.notes,
+        notes: cp.notes || undefined,
         createdAt: cp.createdAt
       }))
     ]

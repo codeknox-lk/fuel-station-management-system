@@ -24,20 +24,30 @@ export async function GET(request: NextRequest) {
               orderBy: { receivedDate: 'desc' }
             }
           : { orderBy: { receivedDate: 'desc' } },
-        creditPayments: stationId
-          ? {
-              where: { stationId },
-              orderBy: { paymentDate: 'desc' }
-            }
-          : { orderBy: { paymentDate: 'desc' } },
         posTerminals: {
           where: { isActive: true }
         }
       }
     })
 
+    // Fetch credit payments separately for each bank
+    const creditPaymentsByBank = await Promise.all(
+      banks.map(async (bank) => {
+        const creditPayments = await prisma.creditPayment.findMany({
+          where: {
+            bankId: bank.id
+          },
+          orderBy: { paymentDate: 'desc' }
+        })
+        return { bankId: bank.id, creditPayments }
+      })
+    )
+
     // Calculate balances and summaries for each bank
     const bankAccounts = banks.map(bank => {
+      // Get credit payments for this bank
+      const bankCreditPayments = creditPaymentsByBank.find(cp => cp.bankId === bank.id)?.creditPayments || []
+      
       // Total deposits
       const totalDeposits = bank.deposits.reduce((sum, deposit) => sum + deposit.amount, 0)
       
@@ -60,13 +70,13 @@ export async function GET(request: NextRequest) {
         .reduce((sum, cheque) => sum + cheque.amount, 0)
       
       // Credit payments received
-      const totalCreditPayments = bank.creditPayments.reduce((sum, payment) => sum + payment.amount, 0)
+      const totalCreditPayments = bankCreditPayments.reduce((sum, payment) => sum + payment.amount, 0)
 
       // Current balance (deposits + cleared cheques + credit payments)
       const currentBalance = totalDeposits + clearedCheques + totalCreditPayments
 
       // Transaction count
-      const transactionCount = bank.deposits.length + bank.cheques.length + bank.creditPayments.length
+      const transactionCount = bank.deposits.length + bank.cheques.length + bankCreditPayments.length
 
       // Recent transactions (last 10)
       const allTransactions: Array<{
@@ -92,7 +102,7 @@ export async function GET(request: NextRequest) {
           status: c.status,
           description: `Cheque ${c.chequeNumber} from ${c.receivedFrom}`
         })),
-        ...bank.creditPayments.map(cp => ({
+        ...bankCreditPayments.map(cp => ({
           id: cp.id,
           type: 'CREDIT_PAYMENT' as const,
           amount: cp.amount,
