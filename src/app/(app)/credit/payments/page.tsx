@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useStation } from '@/contexts/StationContext'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,6 +19,13 @@ import { MoneyInput } from '@/components/inputs/MoneyInput'
 import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { 
   Users, 
   DollarSign, 
@@ -29,7 +37,8 @@ import {
   AlertCircle, 
   CheckCircle, 
   Plus,
-  Clock
+  Clock,
+  Eye
 } from 'lucide-react'
 
 interface CreditCustomer {
@@ -46,14 +55,26 @@ interface CreditPayment {
   id: string
   customerId: string
   customerName?: string
+  customer?: {
+    name: string
+    phone: string
+    nicOrBrn?: string
+  }
   amount: number
   paymentDate: string
-  paymentMethod: 'CASH' | 'CARD' | 'CHEQUE' | 'BANK_TRANSFER'
+  paymentMethod: 'CASH' | 'CHEQUE' | 'BANK_TRANSFER'
+  paymentType?: string
   referenceNumber?: string
   chequeNumber?: string
   bankName?: string
+  bank?: {
+    id: string
+    name: string
+    accountNumber?: string
+  }
   notes?: string
   recordedBy: string
+  receivedBy?: string
   status: 'PENDING' | 'CLEARED' | 'BOUNCED'
   clearedAt?: string
   createdAt: string
@@ -61,46 +82,60 @@ interface CreditPayment {
 
 const paymentMethods = [
   { value: 'CASH', label: 'Cash', icon: Banknote, requiresRef: false },
-  { value: 'CARD', label: 'Card Payment', icon: CreditCard, requiresRef: true },
   { value: 'CHEQUE', label: 'Cheque', icon: FileText, requiresRef: true },
   { value: 'BANK_TRANSFER', label: 'Bank Transfer', icon: Building, requiresRef: true }
 ]
 
+interface Bank {
+  id: string
+  name: string
+  accountNumber: string
+}
+
 export default function CreditPaymentsPage() {
   const router = useRouter()
+  const { selectedStation } = useStation()
   const [customers, setCustomers] = useState<CreditCustomer[]>([])
+  const [banks, setBanks] = useState<Bank[]>([])
   const [recentPayments, setRecentPayments] = useState<CreditPayment[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // Payment details modal
+  const [selectedPayment, setSelectedPayment] = useState<CreditPayment | null>(null)
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+
   // Form state
   const [selectedCustomer, setSelectedCustomer] = useState('')
   const [amount, setAmount] = useState(0)
   const [paymentDate, setPaymentDate] = useState<Date>(new Date())
-  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'CHEQUE' | 'BANK_TRANSFER'>('CASH')
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CHEQUE' | 'BANK_TRANSFER'>('CASH')
   const [referenceNumber, setReferenceNumber] = useState('')
   const [chequeNumber, setChequeNumber] = useState('')
-  const [bankName, setBankName] = useState('')
+  const [selectedBank, setSelectedBank] = useState('')
   const [notes, setNotes] = useState('')
 
   // Load initial data
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [customersRes, paymentsRes] = await Promise.all([
+        const [customersRes, paymentsRes, banksRes] = await Promise.all([
           fetch('/api/credit/customers?status=ACTIVE'),
-          fetch('/api/credit/payments?limit=10')
+          fetch('/api/credit/payments?limit=10'),
+          fetch('/api/banks')
         ])
 
         const customersData = await customersRes.json()
         const paymentsData = await paymentsRes.json()
+        const banksData = await banksRes.json()
 
         setCustomers(customersData.map((customer: { id: string; name: string; creditLimit: number; currentBalance: number }) => ({
           ...customer,
           availableCredit: customer.creditLimit - customer.currentBalance
         })))
         setRecentPayments(paymentsData)
+        setBanks(Array.isArray(banksData) ? banksData : [])
       } catch (err) {
         setError('Failed to load initial data')
       }
@@ -112,8 +147,8 @@ export default function CreditPaymentsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!selectedCustomer || amount <= 0) {
-      setError('Please fill in all required fields')
+    if (!selectedCustomer) {
+      setError('Please select a customer')
       return
     }
 
@@ -129,16 +164,15 @@ export default function CreditPaymentsPage() {
       return
     }
 
-    // Validate reference number for non-cash payments
-    const selectedMethod = paymentMethods.find(m => m.value === paymentMethod)
-    if (selectedMethod?.requiresRef && !referenceNumber) {
-      setError(`Reference number is required for ${selectedMethod.label}`)
-      return
-    }
-
     // Validate cheque number for cheque payments
     if (paymentMethod === 'CHEQUE' && !chequeNumber) {
       setError('Cheque number is required for cheque payments')
+      return
+    }
+
+    // Validate reference number for bank transfer
+    if (paymentMethod === 'BANK_TRANSFER' && !referenceNumber) {
+      setError('Reference number is required for bank transfers')
       return
     }
 
@@ -154,17 +188,21 @@ export default function CreditPaymentsPage() {
           customerId: selectedCustomer,
           amount: amount,
           paymentDate: paymentDate.toISOString(),
-          paymentMethod,
-          referenceNumber: referenceNumber || undefined,
-          chequeNumber: chequeNumber || undefined,
-          bankName: bankName || undefined,
-          notes: notes || undefined,
-          recordedBy: typeof window !== 'undefined' ? localStorage.getItem('username') || 'System User' : 'System User'
+          paymentType: paymentMethod,
+          chequeNumber: chequeNumber || null,
+          bankId: selectedBank || null,
+          receivedBy: typeof window !== 'undefined' ? localStorage.getItem('username') || 'Manager' : 'Manager',
+          stationId: selectedStation !== 'all' ? selectedStation : null
         })
       })
 
       if (!response.ok) {
-        throw new Error('Failed to record payment')
+        const errorData = await response.json()
+        const errorMsg = errorData.details 
+          ? `${errorData.error}: ${errorData.details}` 
+          : (errorData.error || 'Failed to record payment')
+        console.error('Payment API Error:', errorData)
+        throw new Error(errorMsg)
       }
 
       const newPayment = await response.json()
@@ -190,7 +228,7 @@ export default function CreditPaymentsPage() {
       setPaymentMethod('CASH')
       setReferenceNumber('')
       setChequeNumber('')
-      setBankName('')
+      setSelectedBank('')
       setNotes('')
       
       setSuccess('Payment recorded successfully!')
@@ -199,7 +237,8 @@ export default function CreditPaymentsPage() {
       setTimeout(() => setSuccess(''), 3000)
 
     } catch (err) {
-      setError('Failed to record payment')
+      setError(err instanceof Error ? err.message : 'Failed to record payment')
+      console.error('Payment error:', err)
     } finally {
       setLoading(false)
     }
@@ -281,34 +320,57 @@ export default function CreditPaymentsPage() {
         <div className="flex flex-col">
           {value ? (
             <span className="font-mono text-sm">{value as string}</span>
-          ) : null}
-          {row.chequeNumber ? (
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          )}
+          {row.chequeNumber && (
             <span className="text-xs text-muted-foreground">
               Cheque: {row.chequeNumber}
             </span>
-          ) : null}
-          {row.bankName ? (
+          )}
+          {(row.bank?.name || row.bankName) && (
             <span className="text-xs text-muted-foreground">
-              {row.bankName}
+              {row.bank?.name || row.bankName}
             </span>
-          ) : null}
+          )}
         </div>
       )
     },
     {
       key: 'status' as keyof CreditPayment,
       title: 'Status',
-      render: (value: unknown) => (
-        <Badge className={getStatusColor(value as string)}>
-          {value as string}
-        </Badge>
-      )
+      render: (value: unknown) => {
+        const status = (value as string) || 'CLEARED'
+        return (
+          <Badge className={getStatusColor(status)}>
+            {status}
+          </Badge>
+        )
+      }
     },
     {
       key: 'recordedBy' as keyof CreditPayment,
       title: 'Recorded By',
-      render: (value: unknown) => (
-        <span className="text-sm text-muted-foreground">{value as string}</span>
+      render: (value: unknown, row: CreditPayment) => (
+        <span className="text-sm text-muted-foreground">{row.receivedBy || (value as string)}</span>
+      )
+    },
+    {
+      key: 'id' as keyof CreditPayment,
+      title: 'Actions',
+      render: (_value: unknown, row: CreditPayment) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setSelectedPayment(row)
+            setIsDetailsOpen(true)
+          }}
+          className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+        >
+          <Eye className="h-4 w-4 mr-1" />
+          View
+        </Button>
       )
     }
   ]
@@ -395,7 +457,7 @@ export default function CreditPaymentsPage() {
               <Label htmlFor="paymentMethod">Payment Method *</Label>
               <Select 
                 value={paymentMethod} 
-                onValueChange={(value: 'CASH' | 'CARD' | 'CHEQUE' | 'BANK_TRANSFER') => setPaymentMethod(value)}
+                onValueChange={(value: 'CASH' | 'CHEQUE' | 'BANK_TRANSFER') => setPaymentMethod(value)}
                 disabled={loading}
               >
                 <SelectTrigger id="paymentMethod">
@@ -424,7 +486,6 @@ export default function CreditPaymentsPage() {
               <div>
                 <Label htmlFor="referenceNumber">
                   Reference Number *
-                  {paymentMethod === 'CARD' && ' (Transaction ID)'}
                   {paymentMethod === 'BANK_TRANSFER' && ' (Transfer ID)'}
                 </Label>
                 <Input
@@ -432,7 +493,6 @@ export default function CreditPaymentsPage() {
                   value={referenceNumber}
                   onChange={(e) => setReferenceNumber(e.target.value)}
                   placeholder={
-                    paymentMethod === 'CARD' ? 'TXN123456789' :
                     paymentMethod === 'BANK_TRANSFER' ? 'TRF123456789' :
                     'REF123456789'
                   }
@@ -443,14 +503,25 @@ export default function CreditPaymentsPage() {
 
               {paymentMethod === 'BANK_TRANSFER' && (
                 <div>
-                  <Label htmlFor="bankName">Bank Name</Label>
-                  <Input
-                    id="bankName"
-                    value={bankName}
-                    onChange={(e) => setBankName(e.target.value)}
-                    placeholder="Bank of Ceylon"
-                    disabled={loading}
-                  />
+                  <Label htmlFor="bank">Bank Account</Label>
+                  <Select value={selectedBank} onValueChange={setSelectedBank} disabled={loading}>
+                    <SelectTrigger id="bank">
+                      <SelectValue placeholder="Select bank account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {banks.map((bank) => (
+                        <SelectItem key={bank.id} value={bank.id}>
+                          <div className="flex items-center gap-2">
+                            <Building className="h-4 w-4" />
+                            <div className="flex flex-col">
+                              <span className="font-medium">{bank.name}</span>
+                              <span className="text-xs text-muted-foreground">{bank.accountNumber}</span>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
             </div>
@@ -470,14 +541,25 @@ export default function CreditPaymentsPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="bankName">Bank Name</Label>
-                <Input
-                  id="bankName"
-                  value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
-                  placeholder="Bank of Ceylon"
-                  disabled={loading}
-                />
+                <Label htmlFor="bank">Bank Account</Label>
+                <Select value={selectedBank} onValueChange={setSelectedBank} disabled={loading}>
+                  <SelectTrigger id="bank">
+                    <SelectValue placeholder="Select bank account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {banks.map((bank) => (
+                      <SelectItem key={bank.id} value={bank.id}>
+                        <div className="flex items-center gap-2">
+                          <Building className="h-4 w-4" />
+                          <div className="flex flex-col">
+                            <span className="font-medium">{bank.name}</span>
+                            <span className="text-xs text-muted-foreground">{bank.accountNumber}</span>
+                          </div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           )}
@@ -518,6 +600,128 @@ export default function CreditPaymentsPage() {
           emptyMessage="No payments recorded yet."
         />
       </FormCard>
+
+      {/* Payment Details Modal */}
+      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Payment Details</DialogTitle>
+            <DialogDescription>
+              Complete information about this payment transaction
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedPayment && (
+            <div className="space-y-4">
+              {/* Customer Info */}
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <h3 className="text-sm font-semibold text-muted-foreground mb-2">Customer Information</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Customer Name</p>
+                    <p className="font-medium">{selectedPayment.customer?.name || selectedPayment.customerName || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Phone</p>
+                    <p className="font-mono text-sm">{selectedPayment.customer?.phone || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Info */}
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <h3 className="text-sm font-semibold text-muted-foreground mb-2">Payment Information</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Amount</p>
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                      Rs. {selectedPayment.amount.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Payment Date</p>
+                    <p className="font-medium">{new Date(selectedPayment.paymentDate).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Payment Method</p>
+                    <Badge variant="outline" className="mt-1">
+                      {selectedPayment.paymentType || selectedPayment.paymentMethod}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Status</p>
+                    <Badge className={`mt-1 ${getStatusColor(selectedPayment.status)}`}>
+                      {selectedPayment.status}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Transaction Details */}
+              {(selectedPayment.chequeNumber || selectedPayment.referenceNumber || selectedPayment.bank) && (
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <h3 className="text-sm font-semibold text-muted-foreground mb-2">Transaction Details</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {selectedPayment.chequeNumber && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Cheque Number</p>
+                        <p className="font-mono text-sm">{selectedPayment.chequeNumber}</p>
+                      </div>
+                    )}
+                    {selectedPayment.referenceNumber && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Reference Number</p>
+                        <p className="font-mono text-sm">{selectedPayment.referenceNumber}</p>
+                      </div>
+                    )}
+                    {selectedPayment.bank && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-muted-foreground">Bank Account</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Building className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="font-medium">{selectedPayment.bank.name}</p>
+                            {selectedPayment.bank.accountNumber && (
+                              <p className="text-xs text-muted-foreground font-mono">
+                                {selectedPayment.bank.accountNumber}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* System Info */}
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <h3 className="text-sm font-semibold text-muted-foreground mb-2">System Information</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Received By</p>
+                    <p className="font-medium">{selectedPayment.receivedBy || selectedPayment.recordedBy}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Payment ID</p>
+                    <p className="font-mono text-xs text-muted-foreground">{selectedPayment.id}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Created At</p>
+                    <p className="text-sm">{new Date(selectedPayment.createdAt).toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

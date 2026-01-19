@@ -570,7 +570,9 @@ export default function SafePage() {
           amount: depositAmount || 0,
           description: `Bank deposit to ${bankName}${bankAccount}${depositNotes ? `: ${depositNotes}` : ''}`,
           performedBy: depositPerformedBy,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          bankId: depositBankId, // Pass bank ID for bank transaction tracking
+          bankDepositNotes: depositNotes
         })
       })
 

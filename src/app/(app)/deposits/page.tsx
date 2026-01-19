@@ -42,10 +42,9 @@ interface Station {
 
 interface BankAccount {
   id: string
-  bankName: string
-  accountNumber: string
-  accountName: string
-  branch: string
+  name: string
+  accountNumber: string | null
+  branch: string | null
 }
 
 interface Deposit {
@@ -66,41 +65,12 @@ interface Deposit {
   createdAt: string
 }
 
-// Mock bank accounts data
-const mockBankAccounts: BankAccount[] = [
-  {
-    id: 'acc-1',
-    bankName: 'Bank of Ceylon',
-    accountNumber: '1234567890',
-    accountName: 'Petrol Shed Operations',
-    branch: 'Colombo Main'
-  },
-  {
-    id: 'acc-2',
-    bankName: 'Commercial Bank',
-    accountNumber: '9876543210',
-    accountName: 'Daily Collections',
-    branch: 'Kandy Branch'
-  },
-  {
-    id: 'acc-3',
-    bankName: 'Peoples Bank',
-    accountNumber: '5555666677',
-    accountName: 'Business Account',
-    branch: 'Galle Branch'
-  },
-  {
-    id: 'acc-4',
-    bankName: 'Sampath Bank',
-    accountNumber: '1111222233',
-    accountName: 'Operational Fund',
-    branch: 'Negombo Branch'
-  }
-]
+// Mock bank accounts data - REMOVED, now using real banks from API
 
 export default function DepositsPage() {
   const router = useRouter()
   const [stations, setStations] = useState<Station[]>([])
+  const [banks, setBanks] = useState<BankAccount[]>([])
   const [recentDeposits, setRecentDeposits] = useState<Deposit[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -109,7 +79,7 @@ export default function DepositsPage() {
   // Form state
   const { selectedStation } = useStation()
   const [selectedBankAccount, setSelectedBankAccount] = useState('')
-  const [amount, setAmount] = useState(0)
+  const [amount, setAmount] = useState<number | undefined>(undefined)
   const [depositDate, setDepositDate] = useState<Date>(new Date())
   const [depositedBy, setDepositedBy] = useState('')
   const [slipNumber, setSlipNumber] = useState('')
@@ -120,16 +90,19 @@ export default function DepositsPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [stationsRes, depositsRes] = await Promise.all([
+        const [stationsRes, depositsRes, banksRes] = await Promise.all([
           fetch('/api/stations?active=true'),
-          fetch('/api/deposits?limit=10')
+          fetch('/api/deposits?limit=10'),
+          fetch('/api/banks?active=true')
         ])
 
         const stationsData = await stationsRes.json()
         const depositsData = await depositsRes.json()
+        const banksData = await banksRes.json()
 
         setStations(stationsData)
         setRecentDeposits(depositsData)
+        setBanks(Array.isArray(banksData) ? banksData : [])
       } catch (err) {
         setError('Failed to load initial data')
       }
@@ -141,14 +114,8 @@ export default function DepositsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!selectedStation || !selectedBankAccount || amount <= 0 || !depositedBy) {
+    if (!selectedStation || !selectedBankAccount || !amount || amount <= 0 || !depositedBy) {
       setError('Please fill in all required fields')
-      return
-    }
-
-    const amountValue = amount
-    if (amountValue <= 0) {
-      setError('Amount must be greater than 0')
       return
     }
 
@@ -157,48 +124,50 @@ export default function DepositsPage() {
     setSuccess('')
 
     try {
+      const selectedBank = banks.find(b => b.id === selectedBankAccount)
+      
       const response = await fetch('/api/deposits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           stationId: selectedStation,
-          bankAccountId: selectedBankAccount,
-          amount: amountValue,
+          bankId: selectedBankAccount,
+          accountId: selectedBank?.accountNumber || selectedBankAccount,
+          amount: amount,
           depositDate: depositDate.toISOString(),
           depositedBy,
-          slipNumber: slipNumber || undefined,
-          notes: notes || undefined,
-          slipPhotoUrl: slipPhoto ? `uploads/deposit-slips/${slipPhoto.name}` : undefined,
-          recordedBy: typeof window !== 'undefined' ? localStorage.getItem('username') || 'System User' : 'System User'
+          depositSlip: slipNumber || undefined
         })
       })
 
       if (!response.ok) {
-        throw new Error('Failed to record deposit')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to record deposit')
       }
 
       const newDeposit = await response.json()
       
-      // Add to recent deposits list
-      setRecentDeposits(prev => [newDeposit, ...prev.slice(0, 9)])
+      // Reload deposits
+      const depositsRes = await fetch('/api/deposits?limit=10')
+      const depositsData = await depositsRes.json()
+      setRecentDeposits(depositsData)
       
       // Reset form
-      setSelectedStation('')
       setSelectedBankAccount('')
-      setAmount(0)
+      setAmount(undefined)
       setDepositDate(new Date())
       setDepositedBy('')
       setSlipNumber('')
       setNotes('')
       setSlipPhoto(null)
       
-      setSuccess('Deposit recorded successfully!')
+      setSuccess('Deposit recorded successfully! Money has been deducted from safe and added to bank account.')
       
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(''), 3000)
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccess(''), 5000)
 
     } catch (err) {
-      setError('Failed to record deposit')
+      setError(err instanceof Error ? err.message : 'Failed to record deposit')
     } finally {
       setLoading(false)
     }
@@ -213,7 +182,7 @@ export default function DepositsPage() {
     }
   }
 
-  const selectedBankAccountData = mockBankAccounts.find(acc => acc.id === selectedBankAccount)
+  const selectedBankData = banks.find(b => b.id === selectedBankAccount)
 
   const depositColumns: Column<Deposit>[] = [
     {
@@ -377,30 +346,27 @@ export default function DepositsPage() {
                   <SelectValue placeholder="Select bank account" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockBankAccounts.map((account) => (
-                    <SelectItem key={account.id} value={account.id}>
-                      <div className="flex items-center gap-2">
-                        <Building className="h-4 w-4" />
-                        <div className="flex flex-col">
-                          <span className="font-medium">{account.bankName}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {account.accountName} - ****{account.accountNumber.slice(-4)}
-                          </span>
+                  {banks.length === 0 ? (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">No bank accounts available</div>
+                  ) : (
+                    banks.map((bank) => (
+                      <SelectItem key={bank.id} value={bank.id}>
+                        <div className="flex items-center gap-2">
+                          <Building className="h-4 w-4" />
+                          <div className="flex flex-col">
+                            <span className="font-medium">{bank.name}</span>
+                            {bank.branch && (
+                              <span className="text-xs text-muted-foreground">
+                                {bank.branch}{bank.accountNumber && ` - ${bank.accountNumber}`}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </SelectItem>
-                  ))}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
-              {selectedBankAccountData && (
-                <div className="mt-2 p-2 bg-blue-500/10 dark:bg-blue-500/20 rounded-md">
-                  <div className="text-xs text-blue-700">
-                    <div>Account: {selectedBankAccountData.accountName}</div>
-                    <div>Branch: {selectedBankAccountData.branch}</div>
-                    <div>Number: {selectedBankAccountData.accountNumber}</div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 

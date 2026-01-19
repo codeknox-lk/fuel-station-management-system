@@ -188,8 +188,10 @@ model Tank {
 enum FuelType {
   PETROL_92
   PETROL_95
+  PETROL_EURO_3
   DIESEL
   SUPER_DIESEL
+  EXTRA_MILE
   OIL
 }
 
@@ -247,24 +249,44 @@ model TankDip {
 }
 
 model Delivery {
-  id              String   @id @default(uuid())
-  stationId       String
-  station         Station  @relation(fields: [stationId], references: [id])
-  tankId          String
-  tank            Tank     @relation(fields: [tankId], references: [id])
-  quantity        Float // in liters - measured quantity
-  invoiceQuantity Float? // in liters - invoice quantity
-  supplier        String
-  deliveryDate    DateTime
-  receivedBy      String
-  invoiceNumber   String?
-  notes           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                 String            @id @default(uuid())
+  stationId          String
+  station            Station           @relation(fields: [stationId], references: [id])
+  tankId             String
+  tank               Tank              @relation(fields: [tankId], references: [id])
+  quantity           Float             // in liters - final measured/calculated quantity
+  invoiceQuantity    Float?            // in liters - invoice quantity from supplier
+  supplier           String
+  deliveryDate       DateTime
+  receivedBy         String
+  invoiceNumber      String?
+  notes              String?
+  
+  // Dip verification fields
+  beforeDipReading   Float?            // Tank level before delivery
+  afterDipReading    Float?            // Tank level after delivery
+  beforeDipTime      DateTime?
+  afterDipTime       DateTime?
+  fuelSoldDuring     Float?            // Fuel sold during delivery (from active shifts)
+  beforeMeterReadings Json?            // Pump meter readings at before dip time
+  actualReceived     Float?            // Calculated: after - before + soldDuring
+  verificationStatus DeliveryStatus    @default(PENDING_VERIFICATION)
+  verifiedBy         String?
+  verifiedAt         DateTime?
+  
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
   @@index([stationId])
   @@index([tankId])
   @@index([deliveryDate])
+  @@index([verificationStatus])
+}
+
+enum DeliveryStatus {
+  PENDING_VERIFICATION
+  VERIFIED
+  DISCREPANCY
 }
 
 // ============================================
@@ -430,18 +452,20 @@ model CreditSale {
 }
 
 model CreditPayment {
-  id           String         @id @default(uuid())
-  customerId   String
-  customer     CreditCustomer @relation(fields: [customerId], references: [id])
-  amount       Float
-  paymentType  PaymentType
-  chequeNumber String?
-  bankId       String?
-  bank         Bank?          @relation(fields: [bankId], references: [id])
-  paymentDate  DateTime
-  receivedBy   String
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id              String              @id @default(uuid())
+  customerId      String
+  customer        CreditCustomer      @relation(fields: [customerId], references: [id])
+  amount          Float
+  paymentType     PaymentType
+  referenceNumber String?
+  chequeNumber    String?
+  bankId          String?
+  bank            Bank?               @relation(fields: [bankId], references: [id])
+  paymentDate     DateTime
+  receivedBy      String
+  status          CreditPaymentStatus @default(CLEARED)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 
   @@index([customerId])
   @@index([paymentDate])
@@ -451,6 +475,12 @@ enum PaymentType {
   CASH
   CHEQUE
   BANK_TRANSFER
+}
+
+enum CreditPaymentStatus {
+  PENDING
+  CLEARED
+  BOUNCED
 }
 
 // ============================================

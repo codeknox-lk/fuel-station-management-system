@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
     const id = searchParams.get('id')
+    const status = searchParams.get('status')
 
     if (id) {
       const delivery = await prisma.delivery.findUnique({
@@ -16,6 +17,7 @@ export async function GET(request: NextRequest) {
           tank: {
             select: {
               id: true,
+              tankNumber: true,
               fuelType: true,
               capacity: true,
               currentLevel: true
@@ -40,6 +42,9 @@ export async function GET(request: NextRequest) {
     if (tankId) {
       where.tankId = tankId
     }
+    if (status) {
+      where.verificationStatus = status
+    }
     if (startDate && endDate) {
       where.deliveryDate = {
         gte: new Date(startDate),
@@ -53,6 +58,7 @@ export async function GET(request: NextRequest) {
         tank: {
           select: {
             id: true,
+            tankNumber: true,
             fuelType: true,
             capacity: true,
             currentLevel: true
@@ -68,11 +74,14 @@ export async function GET(request: NextRequest) {
       orderBy: { deliveryDate: 'desc' }
     })
 
-    // Calculate variance (measured - invoice)
+    // Calculate variances
     const deliveriesWithVariance = deliveries.map(d => ({
       ...d,
-      variance: d.invoiceQuantity && d.quantity 
+      invoiceVariance: d.invoiceQuantity && d.quantity 
         ? d.quantity - d.invoiceQuantity 
+        : null,
+      dipVariance: d.actualReceived && d.invoiceQuantity
+        ? d.actualReceived - d.invoiceQuantity
         : null
     }))
 
@@ -88,35 +97,44 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('[API] 📦 Delivery request body:', JSON.stringify(body, null, 2))
     
-    // Support both 'quantity' and 'measuredQuantity' fields from frontend
-    const { stationId, tankId, quantity, measuredQuantity, invoiceQuantity, supplier, deliveryDate, receivedBy, invoiceNumber, notes, deliveryTime } = body
-    
-    // Use measuredQuantity if provided, otherwise quantity
-    const actualQuantity = measuredQuantity || quantity
+    const { 
+      stationId, 
+      tankId, 
+      invoiceQuantity, 
+      supplier, 
+      deliveryDate, 
+      receivedBy, 
+      invoiceNumber, 
+      notes,
+      beforeDipReading,
+      beforeDipTime,
+      fuelSoldDuring,
+      beforeMeterReadings
+    } = body
     
     console.log('[API] 🔍 Validation check:', {
       stationId: !!stationId,
       tankId: !!tankId,
-      actualQuantity: !!actualQuantity,
+      invoiceQuantity: !!invoiceQuantity,
       supplier: !!supplier,
-      receivedBy: !!receivedBy
+      receivedBy: !!receivedBy,
+      beforeDipReading: !!beforeDipReading
     })
     
-    if (!stationId || !tankId || !actualQuantity || !supplier || !receivedBy) {
+    if (!stationId || !tankId || !invoiceQuantity || !supplier || !receivedBy) {
       console.log('[API] ❌ Validation failed - missing required fields')
       return NextResponse.json(
-        { error: 'Station ID, tank ID, quantity, supplier, and received by are required' },
+        { error: 'Station ID, tank ID, invoice quantity, supplier, and received by are required' },
         { status: 400 }
       )
     }
 
-    // Use deliveryDate or deliveryTime, default to now if neither provided
-    const deliveryDateObj = deliveryDate ? new Date(deliveryDate) : (deliveryTime ? new Date(deliveryTime) : new Date())
+    const deliveryDateObj = deliveryDate ? new Date(deliveryDate) : new Date()
 
-    // Check tank capacity before adding delivery
+    // Check tank exists
     const tank = await prisma.tank.findUnique({
       where: { id: tankId },
-      select: { capacity: true, currentLevel: true }
+      select: { capacity: true, currentLevel: true, tankNumber: true }
     })
 
     if (!tank) {
@@ -127,80 +145,74 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate: Ensure quantity is positive
-    if (parseFloat(actualQuantity) <= 0) {
+    if (parseFloat(invoiceQuantity) <= 0) {
       return NextResponse.json(
-        { error: 'Delivery quantity must be greater than zero' },
+        { error: 'Invoice quantity must be greater than zero' },
         { status: 400 }
       )
     }
 
-    // Validate: Check if tank level would exceed capacity
-    const newLevel = tank.currentLevel + parseFloat(actualQuantity)
-    if (newLevel > tank.capacity) {
+    // Validate: Check if tank level would exceed capacity (based on invoice)
+    const estimatedNewLevel = tank.currentLevel + parseFloat(invoiceQuantity)
+    if (estimatedNewLevel > tank.capacity * 1.05) { // Allow 5% tolerance
       const availableSpace = tank.capacity - tank.currentLevel
       return NextResponse.json(
         { 
-          error: 'Delivery exceeds tank capacity',
-          details: `Tank capacity: ${tank.capacity.toLocaleString()}L, Current: ${tank.currentLevel.toLocaleString()}L, Attempted: ${parseFloat(actualQuantity).toLocaleString()}L. Maximum delivery allowed: ${availableSpace.toFixed(1)}L`
+          error: 'Delivery may exceed tank capacity',
+          details: `Tank capacity: ${tank.capacity.toLocaleString()}L, Current: ${tank.currentLevel.toLocaleString()}L, Invoice: ${parseFloat(invoiceQuantity).toLocaleString()}L. Available space: ${availableSpace.toFixed(1)}L`
         },
         { status: 400 }
       )
     }
 
-    // Validate: Warn if current tank level is negative (data inconsistency)
-    if (tank.currentLevel < 0) {
-      console.warn(`⚠️ Tank ${tankId} has negative current level: ${tank.currentLevel}L. This indicates a data inconsistency.`)
-    }
-
-    // Create delivery and update tank level in a transaction
-    const result = await prisma.$transaction(async (tx) => {
-      // Create the delivery record
-      const newDelivery = await tx.delivery.create({
-        data: {
-          stationId,
-          tankId,
-          quantity: parseFloat(actualQuantity),
-          invoiceQuantity: invoiceQuantity ? parseFloat(invoiceQuantity) : null,
-          supplier,
-          deliveryDate: deliveryDateObj,
-          receivedBy,
-          invoiceNumber: invoiceNumber || null,
-          notes: notes || null
+    // Create delivery record with PENDING_VERIFICATION status
+    // Don't update tank level yet - wait for after dip verification
+    const newDelivery = await prisma.delivery.create({
+      data: {
+        stationId,
+        tankId,
+        quantity: parseFloat(invoiceQuantity), // Temporary, will be updated after verification
+        invoiceQuantity: parseFloat(invoiceQuantity),
+        supplier,
+        deliveryDate: deliveryDateObj,
+        receivedBy,
+        invoiceNumber: invoiceNumber || null,
+        notes: notes || null,
+        beforeDipReading: beforeDipReading ? parseFloat(beforeDipReading) : null,
+        beforeDipTime: beforeDipTime ? new Date(beforeDipTime) : null,
+        fuelSoldDuring: fuelSoldDuring ? parseFloat(fuelSoldDuring) : null,
+        beforeMeterReadings: beforeMeterReadings || null,
+        verificationStatus: 'PENDING_VERIFICATION'
+      },
+      include: {
+        tank: {
+          select: {
+            id: true,
+            tankNumber: true,
+            fuelType: true,
+            capacity: true,
+            currentLevel: true
+          }
         },
-        include: {
-          tank: {
-            select: {
-              id: true,
-              fuelType: true,
-              capacity: true,
-              currentLevel: true
-            }
-          },
-          station: {
-            select: {
-              id: true,
-              name: true
-            }
+        station: {
+          select: {
+            id: true,
+            name: true
           }
         }
-      })
-
-      // Update tank level by incrementing with delivery quantity
-      await tx.tank.update({
-        where: { id: tankId },
-        data: { 
-          currentLevel: { increment: parseFloat(actualQuantity) } 
-        }
-      })
-
-      return newDelivery
+      }
     })
 
-    return NextResponse.json(result, { status: 201 })
+    console.log('[API] ✅ Delivery created (pending verification):', newDelivery.id)
+    return NextResponse.json(newDelivery, { status: 201 })
   } catch (error) {
-    console.error('Error creating delivery:', error)
+    console.error('[API] ❌ Error creating delivery:', error)
+    console.error('[API] Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      error
+    })
     
-    // Handle foreign key constraint violations
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
       return NextResponse.json(
         { error: 'Invalid station or tank ID' },
@@ -208,7 +220,9 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
-

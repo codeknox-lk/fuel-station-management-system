@@ -63,6 +63,19 @@ export async function GET(
         })
       : []
 
+    // Fetch manual bank transactions (deposits made from safe, manual adjustments, etc.)
+    const bankTransactions = await prisma.bankTransaction.findMany({
+      where: {
+        bankId,
+        ...(stationId && { stationId }),
+        ...(dateFilter && { transactionDate: dateFilter })
+      },
+      include: {
+        station: { select: { name: true } }
+      },
+      orderBy: { transactionDate: 'desc' }
+    })
+
     // Combine and format all transactions
     const allTransactions = [
       ...deposits.map(d => ({
@@ -102,6 +115,19 @@ export async function GET(
         chequeNumber: cp.chequeNumber,
         notes: cp.notes || undefined,
         createdAt: cp.createdAt
+      })),
+      ...bankTransactions.map(bt => ({
+        id: bt.id,
+        type: 'MANUAL' as const,
+        amount: bt.amount,
+        date: bt.transactionDate,
+        station: bt.station?.name || 'N/A',
+        status: bt.type, // BankTransactionType (DEPOSIT, WITHDRAWAL, etc.)
+        description: bt.description,
+        referenceNumber: bt.referenceNumber,
+        notes: bt.notes,
+        createdBy: bt.createdBy,
+        createdAt: bt.createdAt
       }))
     ]
 
@@ -118,6 +144,8 @@ export async function GET(
       pendingCheques: cheques.filter(c => c.status === 'PENDING').reduce((sum, c) => sum + c.amount, 0),
       bouncedCheques: cheques.filter(c => c.status === 'BOUNCED').reduce((sum, c) => sum + c.amount, 0),
       totalCreditPayments: creditPayments.reduce((sum, cp) => sum + cp.amount, 0),
+      manualDeposits: bankTransactions.filter(bt => ['DEPOSIT', 'TRANSFER_IN', 'INTEREST', 'ADJUSTMENT'].includes(bt.type)).reduce((sum, bt) => sum + bt.amount, 0),
+      manualWithdrawals: bankTransactions.filter(bt => ['WITHDRAWAL', 'TRANSFER_OUT', 'FEE'].includes(bt.type)).reduce((sum, bt) => sum + bt.amount, 0),
       transactionCount: transactions.length
     }
 

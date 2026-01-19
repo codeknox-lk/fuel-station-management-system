@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
         tank: {
           select: {
             id: true,
+            tankNumber: true,
             fuelType: true,
             capacity: true,
             currentLevel: true
@@ -69,9 +70,7 @@ export async function GET(request: NextRequest) {
       orderBy: { dipDate: 'desc' }
     })
 
-    // Calculate variance for each dip
-    // Note: Proper variance (Book Stock - Physical Dip) requires historical book stock tracking
-    // For now, we calculate: change from previous dip and estimated variance using current tank level
+    // Calculate variance for each dip and flatten tank data
     const dipsWithVariance = dips.map((dip, index) => {
       // Change from previous dip (useful for trend analysis)
       const changeFromPrevious =
@@ -84,9 +83,6 @@ export async function GET(request: NextRequest) {
           : null
       
       // Estimated variance using current tank level as proxy for book stock
-      // WARNING: This is not accurate for historical dips, as currentLevel reflects current state, not historical
-      // For accurate variance, we would need to calculate book stock at the time of the dip:
-      // bookStock = openingStock + deliveries - sales + testReturns (at dip time)
       const estimatedBookStock = dip.tank?.currentLevel || null
       const variance = estimatedBookStock !== null
         ? estimatedBookStock - dip.reading
@@ -97,9 +93,12 @@ export async function GET(request: NextRequest) {
       
       return {
         ...dip,
-        changeFromPrevious, // Renamed for clarity - this is not variance
+        tankNumber: dip.tank?.tankNumber || null,
+        fuelType: dip.tank?.fuelType || null,
+        dipLitres: dip.reading,
+        changeFromPrevious,
         changePercentage,
-        variance, // Estimated variance (only accurate for most recent dip)
+        variance,
         variancePercentage,
         estimatedBookStock
       }

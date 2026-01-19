@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
       await tx.safeTransaction.create({
         data: {
           safeId: safe.id,
-          type: 'DEPOSIT',
+          type: 'BANK_DEPOSIT',
           amount: parseFloat(amount),
           balanceBefore,
           balanceAfter,
@@ -180,6 +180,21 @@ export async function POST(request: NextRequest) {
       await tx.safe.update({
         where: { id: safe.id },
         data: { currentBalance: balanceAfter }
+      })
+
+      // Create bank transaction record for tracking in bank accounts page
+      await tx.bankTransaction.create({
+        data: {
+          bankId,
+          stationId,
+          type: 'DEPOSIT',
+          amount: parseFloat(amount),
+          description: `Cash deposit from safe - Deposited by ${depositedBy}${depositSlip ? ` - Slip: ${depositSlip}` : ''}`,
+          referenceNumber: depositSlip || null,
+          transactionDate: depositTimestamp,
+          createdBy: depositedBy,
+          notes: `Bank deposit recorded via deposits page`
+        }
       })
 
       return deposit

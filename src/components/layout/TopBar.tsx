@@ -172,7 +172,7 @@ export function TopBar({ userRole }: TopBarProps) {
   const getSelectedStationName = () => {
     if (selectedStation === 'all') return 'All Stations'
     const station = getSelectedStation()
-    return station ? station.name : 'All Stations'
+    return station ? `${station.name} / ${station.city}` : 'All Stations'
   }
 
   const handleNotificationClick = async (notification: Notification) => {
@@ -352,7 +352,7 @@ export function TopBar({ userRole }: TopBarProps) {
                   onClick={() => setSelectedStation(station.id)}
                   className={selectedStation === station.id ? 'bg-blue-500/10 dark:bg-blue-500/20' : ''}
                 >
-                  {station.name}
+                  {station.name} / {station.city}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>

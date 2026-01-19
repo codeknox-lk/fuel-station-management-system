@@ -12,6 +12,8 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
     const openedBy = searchParams.get('openedBy')
+    const activeAt = searchParams.get('activeAt') // Find shifts active at specific time
+    const includeAssignments = searchParams.get('includeAssignments') === 'true'
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '50')
 
@@ -70,18 +72,39 @@ export async function GET(request: NextRequest) {
     if (status) {
       where.status = status
     }
+    
+    // Find shifts that were active at a specific time
+    // A shift is active at time T if:
+    // - It started before or at T
+    // - AND it's either still OPEN or was closed after T
+    if (activeAt) {
+      const targetTime = new Date(activeAt)
+      where.startTime = {
+        lte: targetTime
+      }
+      where.OR = [
+        { status: 'OPEN' },
+        { 
+          AND: [
+            { status: 'CLOSED' },
+            { endTime: { gte: targetTime } }
+          ]
+        }
+      ]
+    }
+    
     if (openedBy) {
       where.openedBy = {
         contains: openedBy,
         mode: 'insensitive'
       }
     }
-    if (startDate) {
+    if (startDate && !activeAt) {
       where.startTime = {
         gte: new Date(startDate)
       }
     }
-    if (endDate) {
+    if (endDate && !activeAt) {
       where.startTime = {
         ...where.startTime,
         lte: new Date(endDate)
@@ -107,11 +130,29 @@ export async function GET(request: NextRequest) {
             name: true
           }
         },
-        _count: {
-          select: {
-            assignments: true
+        ...(includeAssignments ? {
+          assignments: {
+            include: {
+              nozzle: {
+                include: {
+                  tank: {
+                    select: {
+                      id: true,
+                      tankNumber: true,
+                      fuelType: true
+                    }
+                  }
+                }
+              }
+            }
           }
-        }
+        } : {
+          _count: {
+            select: {
+              assignments: true
+            }
+          }
+        })
       },
       orderBy: { startTime: 'desc' },
       skip: (page - 1) * limit,

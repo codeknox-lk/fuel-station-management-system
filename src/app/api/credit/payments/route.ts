@@ -65,8 +65,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    console.log('Credit payment request body:', body)
     
-    const { customerId, amount, paymentType, chequeNumber, bankId, paymentDate, receivedBy } = body
+    const { customerId, amount, paymentType, referenceNumber, chequeNumber, bankId, paymentDate, receivedBy, stationId } = body
     
     if (!customerId || !amount || !paymentType || !receivedBy) {
       return NextResponse.json(
@@ -75,33 +76,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get customer to find station
+    // Get customer
     const customer = await prisma.creditCustomer.findUnique({
-      where: { id: customerId },
-      include: {
-        creditSales: {
-          take: 1,
-          orderBy: { timestamp: 'desc' },
-          include: {
-            shift: {
-              select: {
-                stationId: true
-              }
-            }
-          }
-        }
-      }
+      where: { id: customerId }
     })
 
     if (!customer) {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
-    }
-
-    // Get station ID from customer's most recent credit sale
-    // Since credit customers are associated with a station through their sales
-    let stationId: string | null = null
-    if (customer.creditSales && customer.creditSales.length > 0 && customer.creditSales[0].shift) {
-      stationId = customer.creditSales[0].shift.stationId
     }
 
     // Create payment, update customer balance, and create safe transaction in a single transaction
@@ -112,14 +93,16 @@ export async function POST(request: NextRequest) {
           customerId,
           amount: parseFloat(amount),
           paymentType,
+          referenceNumber: referenceNumber || null,
           chequeNumber: chequeNumber || null,
           bankId: bankId || null,
           paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
-          receivedBy
+          receivedBy,
+          status: 'CLEARED'
         },
         include: {
           customer: true,
-          bank: bankId ? true : false
+          bank: true
         }
       })
 
@@ -133,14 +116,15 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      // Create safe transaction if station ID is available
-      // Note: If customer has no previous sales, station ID won't be available
-      // In that case, safe transaction will be skipped (can be added manually later)
-      if (stationId) {
+      // Create safe transaction for CASH payments only
+      if (stationId && paymentType === 'CASH') {
+        console.log('Creating safe transaction for CASH payment, stationId:', stationId)
+        
         // Get or create safe
         let safe = await tx.safe.findUnique({
           where: { stationId }
         })
+        console.log('Safe found/created:', safe ? 'Yes' : 'No')
 
         if (!safe) {
           safe = await tx.safe.create({
@@ -165,9 +149,9 @@ export async function POST(request: NextRequest) {
         // Calculate balance before transaction chronologically
         // OPENING_BALANCE transactions set the balance, they don't add/subtract
         let balanceBefore = safe.openingBalance
-        for (const tx of allTransactions) {
-          if (tx.type === 'OPENING_BALANCE') {
-            balanceBefore = tx.amount
+        for (const transaction of allTransactions) {
+          if (transaction.type === 'OPENING_BALANCE') {
+            balanceBefore = transaction.amount
           } else {
             const txIsIncome = [
               'CASH_FUEL_SALES',
@@ -175,12 +159,22 @@ export async function POST(request: NextRequest) {
               'CREDIT_PAYMENT',
               'CHEQUE_RECEIVED',
               'LOAN_REPAID'
-            ].includes(tx.type)
-            balanceBefore += txIsIncome ? tx.amount : -tx.amount
+            ].includes(transaction.type)
+            balanceBefore += txIsIncome ? transaction.amount : -transaction.amount
           }
         }
 
         const balanceAfter = balanceBefore + parseFloat(amount)
+
+        // Get bank name if bankId is provided
+        let bankName = ''
+        if (bankId) {
+          const bank = await tx.bank.findUnique({
+            where: { id: bankId },
+            select: { name: true }
+          })
+          bankName = bank ? ` - ${bank.name}` : ''
+        }
 
         // Create safe transaction
         await tx.safeTransaction.create({
@@ -190,7 +184,7 @@ export async function POST(request: NextRequest) {
             amount: parseFloat(amount),
             balanceBefore,
             balanceAfter,
-            description: `Credit payment from ${customer.name} - ${paymentType}${chequeNumber ? ` (Cheque: ${chequeNumber})` : ''}${payment.bank ? ` - ${payment.bank.name}` : ''}`,
+            description: `Credit payment from ${customer.name} - ${paymentType}${chequeNumber ? ` (Cheque: ${chequeNumber})` : ''}${bankName}`,
             performedBy: receivedBy,
             timestamp: paymentDate ? new Date(paymentDate) : new Date(),
             // Note: We don't have a direct foreign key, but we can store payment ID in description for traceability
@@ -219,7 +213,14 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    // Return detailed error for debugging
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error'
+    console.error('Detailed error:', errorMessage)
+    
+    return NextResponse.json({ 
+      error: 'Internal server error', 
+      details: errorMessage 
+    }, { status: 500 })
   }
 }
 

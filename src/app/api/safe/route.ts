@@ -106,7 +106,9 @@ export async function POST(request: NextRequest) {
       loanId,
       depositId,
       performedBy,
-      timestamp
+      timestamp,
+      bankId,
+      bankDepositNotes
     } = body
 
     if (!stationId || !type || amount === undefined || !description || !performedBy) {
@@ -167,7 +169,67 @@ export async function POST(request: NextRequest) {
 
     const balanceAfter = balanceBefore + (isIncome ? parseFloat(amount) : -parseFloat(amount))
 
-    // Create transaction
+    // Use transaction for bank deposits to ensure atomicity
+    if (type === 'BANK_DEPOSIT' && bankId) {
+      const result = await prisma.$transaction(async (tx) => {
+        // Create safe transaction
+        const transaction = await tx.safeTransaction.create({
+          data: {
+            safeId: safe.id,
+            type,
+            amount: parseFloat(amount),
+            balanceBefore,
+            balanceAfter,
+            shiftId: shiftId || null,
+            batchId: batchId || null,
+            creditSaleId: creditSaleId || null,
+            chequeId: chequeId || null,
+            expenseId: expenseId || null,
+            loanId: loanId || null,
+            depositId: depositId || null,
+            description,
+            performedBy,
+            timestamp: transactionTimestamp
+          },
+          include: {
+            safe: {
+              select: {
+                id: true,
+                stationId: true,
+                currentBalance: true
+              }
+            }
+          }
+        })
+
+        // Update safe current balance
+        await tx.safe.update({
+          where: { id: safe.id },
+          data: { currentBalance: balanceAfter }
+        })
+
+        // Create bank transaction record
+        await tx.bankTransaction.create({
+          data: {
+            bankId,
+            stationId,
+            type: 'DEPOSIT',
+            amount: parseFloat(amount),
+            description: `Cash deposit from safe${bankDepositNotes ? `: ${bankDepositNotes}` : ''}`,
+            referenceNumber: null,
+            transactionDate: transactionTimestamp,
+            createdBy: performedBy,
+            notes: `Bank deposit recorded via safe management by ${performedBy}`
+          }
+        })
+
+        return transaction
+      })
+
+      return NextResponse.json(result, { status: 201 })
+    }
+
+    // Regular transaction (non-bank deposit)
     const transaction = await prisma.safeTransaction.create({
       data: {
         safeId: safe.id,

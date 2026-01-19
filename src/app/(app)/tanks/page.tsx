@@ -57,7 +57,7 @@ interface Tank {
 
 export default function TanksPage() {
   const router = useRouter()
-  const { stations } = useStation()
+  const { stations, selectedStation, getSelectedStation } = useStation()
   const [tanks, setTanks] = useState<Tank[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -78,13 +78,32 @@ export default function TanksPage() {
 
   useEffect(() => {
     fetchTanks()
-  }, [])
+  }, [selectedStation])
 
   const fetchTanks = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/tanks?type=tanks')
+      
+      // Build API URL based on station selection
+      const currentStation = getSelectedStation()
+      const apiUrl = currentStation 
+        ? `/api/tanks?type=tanks&stationId=${currentStation.id}`
+        : '/api/tanks?type=tanks'
+      
+      const response = await fetch(apiUrl)
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch tanks')
+      }
+      
       const data = await response.json()
+
+      // Check if data is an array
+      if (!Array.isArray(data)) {
+        console.error('Expected array but got:', data)
+        setTanks([])
+        return
+      }
 
       // Transform the data to include calculated fields
       const transformedTanks = data.map((tank: { id: string; stationId: string; tankNumber?: string; capacity: number; fuelType: string; currentLevel: number; station?: { name: string } }) => ({
@@ -119,6 +138,7 @@ export default function TanksPage() {
     } catch (err) {
       console.error('Failed to fetch tanks:', err)
       setError('Failed to load tanks data.')
+      setTanks([])
     } finally {
       setLoading(false)
     }
