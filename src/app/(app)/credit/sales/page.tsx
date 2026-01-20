@@ -49,6 +49,13 @@ interface CreditCustomer {
   status: 'ACTIVE' | 'SUSPENDED' | 'INACTIVE'
 }
 
+interface Fuel {
+  id: string
+  code: string
+  name: string
+  icon?: string | null
+}
+
 interface CreditSale {
   id: string
   customerId: string
@@ -59,7 +66,8 @@ interface CreditSale {
   saleDate: string
   slipNumber: string
   signedSlipUrl?: string
-  fuelType?: string
+  fuelId?: string
+  fuel?: Fuel
   litres?: number
   recordedBy: string
   status: 'PENDING' | 'APPROVED' | 'REJECTED'
@@ -83,27 +91,29 @@ export default function CreditSalesPage() {
   const [amount, setAmount] = useState(0)
   const [saleDate, setSaleDate] = useState<Date>(new Date())
   const [slipNumber, setSlipNumber] = useState('')
-  const [fuelType, setFuelType] = useState('')
+  const [fuelId, setFuelId] = useState('')
   const [litres, setLitres] = useState('')
   const [signedSlipFile, setSignedSlipFile] = useState<File | null>(null)
-
-  const fuelTypes = ['Petrol 95', 'Petrol 92', 'Diesel', 'Super Diesel']
+  const [fuels, setFuels] = useState<Fuel[]>([])
 
   // Load initial data
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [stationsRes, customersRes, salesRes] = await Promise.all([
+        const [stationsRes, customersRes, salesRes, fuelsRes] = await Promise.all([
           fetch('/api/stations?active=true'),
           fetch('/api/credit/customers?status=ACTIVE'),
-          fetch('/api/credit/sales?limit=10')
+          fetch('/api/credit/sales?limit=10'),
+          fetch('/api/fuels')
         ])
 
         const stationsData = await stationsRes.json()
         const customersData = await customersRes.json()
         const salesData = await salesRes.json()
+        const fuelsData = await fuelsRes.json()
 
         setStations(stationsData)
+        setFuels(fuelsData.filter((f: Fuel) => f.isActive))
         setCustomers(customersData.map((customer: { id: string; name: string; creditLimit: number; currentBalance: number }) => ({
           ...customer,
           availableCredit: customer.creditLimit - customer.currentBalance
@@ -151,7 +161,7 @@ export default function CreditSalesPage() {
           amount: amount,
           saleDate: saleDate.toISOString(),
           slipNumber,
-          fuelType: fuelType || undefined,
+          fuelId: fuelId || undefined,
           litres: litres ? parseFloat(litres) : undefined,
           signedSlipUrl: signedSlipFile ? `uploads/credit-slips/${signedSlipFile.name}` : undefined,
           recordedBy: typeof window !== 'undefined' ? localStorage.getItem('username') || 'System User' : 'System User'
@@ -259,12 +269,12 @@ export default function CreditSalesPage() {
       )
     },
     {
-      key: 'fuelType' as keyof CreditSale,
+      key: 'fuel' as keyof CreditSale,
       title: 'Fuel Type',
       render: (value: unknown, row: CreditSale) => (
-        value ? (
+        row.fuel ? (
           <div className="flex flex-col">
-            <Badge variant="outline">{value as string}</Badge>
+            <Badge variant="outline">{row.fuel.icon} {row.fuel.name}</Badge>
             {row.litres && (
               <span className="text-xs text-muted-foreground mt-1">
                 {row.litres}L
@@ -429,15 +439,15 @@ export default function CreditSalesPage() {
             </div>
 
             <div>
-              <Label htmlFor="fuelType">Fuel Type</Label>
-              <Select value={fuelType} onValueChange={setFuelType} disabled={loading}>
-                <SelectTrigger id="fuelType">
+              <Label htmlFor="fuelId">Fuel Type</Label>
+              <Select value={fuelId} onValueChange={setFuelId} disabled={loading}>
+                <SelectTrigger id="fuelId">
                   <SelectValue placeholder="Select fuel type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {fuelTypes.map((fuel) => (
-                    <SelectItem key={fuel} value={fuel}>
-                      {fuel}
+                  {fuels.map((fuel) => (
+                    <SelectItem key={fuel.id} value={fuel.id}>
+                      {fuel.icon} {fuel.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

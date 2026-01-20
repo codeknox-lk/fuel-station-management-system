@@ -99,15 +99,15 @@ export default function SettingsPage() {
       color: 'text-purple-600 dark:text-purple-400'
     },
     {
-      title: 'Fuel Prices',
-      description: 'Manage fuel pricing with history tracking and future pricing',
-      icon: <DollarSign className="h-8 w-8" />,
+      title: 'Fuels',
+      description: 'Manage fuel types, pricing, inventory, and price history',
+      icon: <Fuel className="h-8 w-8" />,
       href: '/settings/prices',
       features: [
+        'Add new fuel types to system',
         'Current price management',
         'Price history tracking',
-        'Future price scheduling',
-        'Price change notifications'
+        'Inventory monitoring by fuel type'
       ],
       color: 'text-orange-600 dark:text-orange-400'
     },
@@ -167,33 +167,6 @@ export default function SettingsPage() {
     }
   ]
 
-  const quickStats = [
-    {
-      title: 'Settings Categories',
-      value: '10',
-      description: 'Configuration modules',
-      icon: <SettingsIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-    },
-    {
-      title: 'Data Sources',
-      value: '5+',
-      description: 'Integrated systems',
-      icon: <Database className="h-5 w-5 text-green-600 dark:text-green-400" />
-    },
-    {
-      title: 'User Roles',
-      value: '3',
-      description: 'OWNER, MANAGER, ACCOUNTS',
-      icon: <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-    },
-    {
-      title: 'Access Control',
-      value: 'RBAC',
-      description: 'Role-based permissions',
-      icon: <Gauge className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-    }
-  ]
-
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -207,26 +180,6 @@ export default function SettingsPage() {
           <SettingsIcon className="h-6 w-6 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">Configuration Management</span>
         </div>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {quickStats.map((stat, index) => (
-          <Card key={index}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-2xl font-bold text-foreground">{stat.value}</div>
-                  <div className="text-sm font-medium text-foreground">{stat.title}</div>
-                  <div className="text-xs text-muted-foreground">{stat.description}</div>
-                </div>
-                <div className="flex-shrink-0">
-                  {stat.icon}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
       </div>
 
       {/* Settings Cards */}
@@ -355,8 +308,8 @@ export default function SettingsPage() {
               Manage Office Staff
             </Button>
             <Button variant="outline" onClick={() => router.push('/settings/prices')}>
-              <DollarSign className="mr-2 h-4 w-4" />
-              Update Prices
+              <Fuel className="mr-2 h-4 w-4" />
+              Manage Fuels
             </Button>
             <Button variant="outline" onClick={() => router.push('/settings/users')}>
               <Shield className="mr-2 h-4 w-4" />

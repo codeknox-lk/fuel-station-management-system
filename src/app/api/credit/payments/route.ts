@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { safeParseFloat, validateAmount, validateRequired, validateDate } from '@/lib/validation'
 
 export async function GET(request: NextRequest) {
   try {
@@ -69,12 +70,24 @@ export async function POST(request: NextRequest) {
     
     const { customerId, amount, paymentType, referenceNumber, chequeNumber, bankId, paymentDate, receivedBy, stationId } = body
     
-    if (!customerId || !amount || !paymentType || !receivedBy) {
+    // Validate required fields
+    const errors: string[] = []
+    if (validateRequired(customerId, 'Customer ID')) errors.push(validateRequired(customerId, 'Customer ID')!)
+    if (validateRequired(paymentType, 'Payment type')) errors.push(validateRequired(paymentType, 'Payment type')!)
+    if (validateRequired(receivedBy, 'Received by')) errors.push(validateRequired(receivedBy, 'Received by')!)
+    
+    // Validate amount
+    const amountError = validateAmount(amount, 'Amount')
+    if (amountError) errors.push(amountError)
+    
+    if (errors.length > 0) {
       return NextResponse.json(
-        { error: 'Customer ID, amount, payment type, and received by are required' },
+        { error: errors.join(', ') },
         { status: 400 }
       )
     }
+    
+    const validatedAmount = safeParseFloat(amount)
 
     // Get customer
     const customer = await prisma.creditCustomer.findUnique({
@@ -91,7 +104,7 @@ export async function POST(request: NextRequest) {
       const payment = await tx.creditPayment.create({
         data: {
           customerId,
-          amount: parseFloat(amount),
+          amount: validatedAmount,
           paymentType,
           referenceNumber: referenceNumber || null,
           chequeNumber: chequeNumber || null,
@@ -109,11 +122,11 @@ export async function POST(request: NextRequest) {
       // Update customer balance (decrease)
       await tx.creditCustomer.update({
         where: { id: customerId },
-        data: {
-          currentBalance: {
-            decrement: parseFloat(amount)
+          data: {
+            currentBalance: {
+              decrement: validatedAmount
+            }
           }
-        }
       })
 
       // Create safe transaction for CASH payments only
@@ -164,7 +177,7 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        const balanceAfter = balanceBefore + parseFloat(amount)
+        const balanceAfter = balanceBefore + validatedAmount
 
         // Get bank name if bankId is provided
         let bankName = ''
@@ -181,7 +194,7 @@ export async function POST(request: NextRequest) {
           data: {
             safeId: safe.id,
             type: 'CREDIT_PAYMENT',
-            amount: parseFloat(amount),
+            amount: validatedAmount,
             balanceBefore,
             balanceAfter,
             description: `Credit payment from ${customer.name} - ${paymentType}${chequeNumber ? ` (Cheque: ${chequeNumber})` : ''}${bankName}`,

@@ -33,7 +33,7 @@ interface Pump {
   id: string
   pumpNumber: string
   station: { name: string }
-  nozzles: { id: string; nozzleNumber: string; tank: { fuelType: string } }[]
+  nozzles: { id: string; nozzleNumber: string; tank: { fuel?: { name: string } } }[]
 }
 
 interface Nozzle {
@@ -46,7 +46,7 @@ interface Nozzle {
 
 interface Tank {
   id: string
-  fuelType: string
+  fuelName: string
   capacity: number
   currentLevel: number
 }
@@ -220,9 +220,9 @@ export default function InfrastructureSetupPage() {
       title: 'Nozzles',
       render: (value: unknown) => (
         <div className="flex flex-wrap gap-2">
-          {(value as { nozzleNumber: string; tank: { fuelType: string } }[]).map((nozzle) => (
+          {(value as { nozzleNumber: string; tank: { fuel?: { name: string } } }[]).map((nozzle) => (
             <Badge key={nozzle.nozzleNumber} variant="outline">
-              {nozzle.nozzleNumber} → {nozzle.tank.fuelType.replace(/_/g, ' ')}
+              {nozzle.nozzleNumber} → {nozzle.tank.fuel?.name || 'Unknown'}
             </Badge>
           ))}
         </div>
@@ -257,7 +257,7 @@ export default function InfrastructureSetupPage() {
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
           <Fuel className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-          <Badge variant="outline">{(value as { fuelType: string }).fuelType.replace(/_/g, ' ')}</Badge>
+          <Badge variant="outline">{(value as { fuel?: { name: string } }).fuel?.name || 'Unknown'}</Badge>
         </div>
       )
     },

@@ -51,7 +51,8 @@ export async function GET(
                   tank: {
                     select: {
                       id: true,
-                      fuelType: true,
+                      fuelId: true,
+                      fuel: true,
                       capacity: true,
                       currentLevel: true
                     }

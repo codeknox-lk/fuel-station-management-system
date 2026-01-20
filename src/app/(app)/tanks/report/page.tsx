@@ -41,14 +41,14 @@ interface Tank {
   id: string
   stationId: string
   tankNumber: string
-  fuelType: string
+  fuelName: string
   capacity: number
 }
 
 interface TankReport {
   tankId: string
   tankNumber: string
-  fuelType: string
+  fuelName: string
   capacity: number
   openingStock: number
   deliveries: number

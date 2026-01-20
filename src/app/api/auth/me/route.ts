@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import jwt, { JwtPayload } from 'jsonwebtoken'
-
-const SECRET_KEY = process.env.JWT_SECRET || 'your-secret-key-here-change-in-production'
+import { getJwtSecret } from '@/lib/jwt'
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,7 +21,7 @@ export async function GET(request: NextRequest) {
     // Verify token
     let decoded: JwtPayload | string
     try {
-      decoded = jwt.verify(token, SECRET_KEY) as JwtPayload
+      decoded = jwt.verify(token, getJwtSecret()) as JwtPayload
     } catch (error) {
       return NextResponse.json(
         { detail: 'Invalid or expired token' },

@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
               name: true
             }
           },
+          fuel: true,
           nozzles: {
             include: {
               pump: {
@@ -79,7 +80,8 @@ export async function GET(request: NextRequest) {
             tank: {
               select: {
                 id: true,
-                fuelType: true
+                fuelId: true,
+                fuel: true
               }
             }
           },
@@ -124,7 +126,8 @@ export async function GET(request: NextRequest) {
           tank: {
             select: {
               id: true,
-              fuelType: true,
+              fuelId: true,
+              fuel: true,
               capacity: true,
               currentLevel: true
             }
@@ -144,9 +147,7 @@ export async function GET(request: NextRequest) {
     
     // Filter out oil tanks for dipping operations if type is 'tanks'
     if (type === 'tanks') {
-      // In Prisma, we can filter by fuelType, but OIL might not be a valid FuelType enum value
-      // For now, we'll get all tanks and filter in code if needed
-      // Or we can just return all tanks and let the frontend handle the filtering
+      // We filter out OIL tanks in code after fetching
     }
 
     const tanks = await prisma.tank.findMany({
@@ -158,6 +159,7 @@ export async function GET(request: NextRequest) {
             name: true
           }
         },
+        fuel: true,
         nozzles: {
           include: {
             pump: {
@@ -174,7 +176,7 @@ export async function GET(request: NextRequest) {
 
     // Filter out oil tanks if type is 'tanks' (for dipping operations)
     if (type === 'tanks') {
-      const filteredTanks = tanks.filter(tank => tank.fuelType !== 'OIL')
+      const filteredTanks = tanks.filter(tank => tank.fuel?.code !== 'OIL')
       return NextResponse.json(filteredTanks)
     }
 
@@ -189,12 +191,12 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    const { stationId, fuelType, capacity, currentLevel } = body
+    const { stationId, fuelId, capacity, currentLevel } = body
     
     // Validation
-    if (!stationId || !fuelType || !capacity) {
+    if (!stationId || !fuelId || !capacity) {
       return NextResponse.json(
-        { error: 'Station ID, fuel type, and capacity are required' },
+        { error: 'Station ID, fuel ID, and capacity are required' },
         { status: 400 }
       )
     }
@@ -262,7 +264,7 @@ export async function POST(request: NextRequest) {
       data: {
         stationId,
         tankNumber,
-        fuelType,
+        fuelId,
         capacity: parseFloat(capacity),
         currentLevel: parseFloat(initialLevel),
         isActive: true
@@ -273,7 +275,8 @@ export async function POST(request: NextRequest) {
             id: true,
             name: true
           }
-        }
+        },
+        fuel: true
       }
     })
 

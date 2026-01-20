@@ -11,12 +11,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Station ID is required' }, { status: 400 })
     }
 
-    // Parse month and get date range
+    // Parse month and get business month date range (7th to 6th)
     const [year, monthNum] = month.split('-').map(Number)
-    const startOfMonth = new Date(year, monthNum - 1, 1)
-    startOfMonth.setHours(0, 0, 0, 0)
-    const endOfMonth = new Date(year, monthNum, 0)
-    endOfMonth.setHours(23, 59, 59, 999)
+    const startOfMonth = new Date(year, monthNum - 1, 7, 0, 0, 0, 0)
+    const endOfMonth = new Date(year, monthNum, 6, 23, 59, 59, 999)
 
     // Get all CLOSED shifts for the month
     // Use endTime to capture shifts that ended in this month (even if started previous month)
@@ -65,12 +63,12 @@ export async function GET(request: NextRequest) {
           
           if (litersSold <= 0) continue
           
-          const fuelType = assignment.nozzle.tank.fuelType
-          if (!fuelType) continue
+          const fuelId = assignment.nozzle.tank.fuelId
+          if (!fuelId) continue
           
           const price = await prisma.price.findFirst({
             where: {
-              fuelType,
+              fuelId,
               stationId,
               effectiveDate: { lte: shift.endTime || shift.startTime },
               isActive: true
@@ -201,21 +199,22 @@ export async function GET(request: NextRequest) {
     const totalOutstanding = creditCustomers.reduce((sum, customer) => sum + customer.currentBalance, 0)
     const overdueAmount = totalOutstanding * 0.25 // Placeholder - would need payment terms to calculate
 
-    // Calculate trends by day using real data
-    const daysInMonth = endOfMonth.getDate()
-    const salesByDay = await Promise.all(Array.from({ length: daysInMonth }, async (_, i) => {
-      const dayDate = new Date(year, monthNum - 1, i + 1)
-      const dayStart = new Date(dayDate)
+    // Calculate trends by day using real data (business month: 7th to 6th)
+    const salesByDay = []
+    let currentDate = new Date(startOfMonth)
+    
+    while (currentDate <= endOfMonth) {
+      const dayStart = new Date(currentDate)
       dayStart.setHours(0, 0, 0, 0)
-      const dayEnd = new Date(dayDate)
+      const dayEnd = new Date(currentDate)
       dayEnd.setHours(23, 59, 59, 999)
       
       // Filter shifts that ended on this day (use endTime for accurate day assignment)
       const dayShifts = shifts.filter(s => {
         const shiftEndDate = s.endTime ? new Date(s.endTime) : new Date(s.startTime)
-        return shiftEndDate.getDate() === i + 1 && 
-               shiftEndDate.getMonth() === monthNum - 1 &&
-               shiftEndDate.getFullYear() === year
+        return shiftEndDate.getDate() === currentDate.getDate() && 
+               shiftEndDate.getMonth() === currentDate.getMonth() &&
+               shiftEndDate.getFullYear() === currentDate.getFullYear()
       })
       
       let daySales = 0
@@ -236,13 +235,13 @@ export async function GET(request: NextRequest) {
             
             if (litersSold <= 0) continue
             
-            const fuelType = assignment.nozzle?.tank?.fuelType
-            if (!fuelType) continue
+            const fuelId = assignment.nozzle?.tank?.fuelId
+            if (!fuelId) continue
             
             // Get actual price for this fuel type effective at shift end time (when shift closed)
             const price = await prisma.price.findFirst({
               where: {
-                fuelType,
+                fuelId,
                 stationId,
                 effectiveDate: { lte: shift.endTime || shift.startTime },
                 isActive: true
@@ -259,35 +258,44 @@ export async function GET(request: NextRequest) {
       const dayExpenses = expenses
         .filter(e => {
           const expDate = new Date(e.expenseDate)
-          return expDate.getDate() === i + 1 && 
-                 expDate.getMonth() === monthNum - 1 &&
-                 expDate.getFullYear() === year
+          return expDate.getDate() === currentDate.getDate() && 
+                 expDate.getMonth() === currentDate.getMonth() &&
+                 expDate.getFullYear() === currentDate.getFullYear()
         })
         .reduce((sum, exp) => sum + exp.amount, 0)
       
-      return {
-        date: `${month}-${String(i + 1).padStart(2, '0')}`,
+      salesByDay.push({
+        date: `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`,
         sales: Math.round(daySales),
         profit: Math.round(daySales - dayExpenses)
-      }
-    }))
+      })
+      
+      currentDate.setDate(currentDate.getDate() + 1)
+    }
 
     const profitTrend = salesByDay.map(day => ({
       date: day.date,
       profit: day.profit
     }))
 
-    // Calculate real tank variance trend for each day
-    const tankVarianceTrend = await Promise.all(Array.from({ length: daysInMonth }, async (_, i) => {
-      const dayDate = new Date(year, monthNum - 1, i + 1)
-      const dayStart = new Date(dayDate)
+    // Calculate real tank variance trend for each day (business month: 7th to 6th)
+    const tankVarianceTrend = []
+    currentDate = new Date(startOfMonth)
+    
+    while (currentDate <= endOfMonth) {
+      const dayStart = new Date(currentDate)
       dayStart.setHours(0, 0, 0, 0)
-      const dayEnd = new Date(dayDate)
+      const dayEnd = new Date(currentDate)
       dayEnd.setHours(23, 59, 59, 999)
       
       // Get all tanks for the station
       const stationTanks = await prisma.tank.findMany({
-        where: { stationId, fuelType: { not: 'OIL' } },
+        where: { 
+          stationId, 
+          fuel: {
+            code: { not: 'OIL' }
+          }
+        },
         select: { id: true }
       })
       
@@ -385,11 +393,13 @@ export async function GET(request: NextRequest) {
         totalVariance += variance
       }
       
-      return {
-        date: `${month}-${String(i + 1).padStart(2, '0')}`,
+      tankVarianceTrend.push({
+        date: `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`,
         variance: Math.round(totalVariance * 100) / 100
-      }
-    }))
+      })
+      
+      currentDate.setDate(currentDate.getDate() + 1)
+    }
 
     // Get tank data for variance summary
     const tanks = await prisma.tank.findMany({

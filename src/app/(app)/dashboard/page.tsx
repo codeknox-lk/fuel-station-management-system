@@ -2,422 +2,426 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useStation } from '@/contexts/StationContext'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { FormCard } from '@/components/ui/FormCard'
 import { 
-  Fuel, 
-  CreditCard, 
-  DollarSign, 
-  TrendingUp, 
-  AlertTriangle,
-  Clock,
-  Activity,
-  FileText
+  Fuel, CreditCard, DollarSign, TrendingUp, TrendingDown,
+  AlertTriangle, Clock, Activity, FileText, Wallet, Users,
+  Droplet, Building2, ArrowRight, CheckCircle2, Package, Zap
 } from 'lucide-react'
-
-interface AuditLogEntry {
-  id: string
-  userName: string
-  userRole: string
-  action: string
-  entity: string
-  details: string
-  timestamp: string
-  stationName?: string
-}
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { selectedStation, isAllStations, getSelectedStation } = useStation()
-  const [recentActivities, setRecentActivities] = useState<AuditLogEntry[]>([])
-  const [stats, setStats] = useState([
-    {
-      title: 'Today\'s Sales',
-      value: 'Rs. 0',
-      change: 'No data',
-      changeType: 'neutral' as const,
-      icon: DollarSign
-    },
-    {
-      title: 'Active Shifts',
-      value: '0',
-      change: 'No active shifts',
-      changeType: 'neutral' as const,
-      icon: Clock
-    },
-    {
-      title: 'Avg Duration',
-      value: '0h',
-      change: 'No data',
-      changeType: 'neutral' as const,
-      icon: Clock
-    },
-    {
-      title: 'Total Shifts',
-      value: '0',
-      change: 'No shifts',
-      changeType: 'neutral' as const,
-      icon: Activity
-    }
-  ])
+  const { selectedStation, isAllStations } = useStation()
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({
+    todaySales: 0,
+    todayTransactions: 0,
+    activeShifts: 0,
+    activeShiftDetails: [] as any[],
+    safeBalance: 0,
+    creditOutstanding: 0,
+    todayPOSSales: 0,
+    totalTanks: 0,
+    lowStockTanks: 0,
+    criticalAlerts: 0,
+    pendingDeliveries: 0
+  })
+  const [fuelStock, setFuelStock] = useState<any[]>([])
+  const [recentActivity, setRecentActivity] = useState<any[]>([])
+  const [alerts, setAlerts] = useState<any[]>([])
 
-  // Load recent activities based on selected station
   useEffect(() => {
-    const loadRecentActivities = async () => {
-      try {
-        const url = isAllStations 
-          ? '/api/audit-log?recent=true&limit=5'
-          : `/api/audit-log?recent=true&limit=5&stationId=${selectedStation}`
-        
-        const res = await fetch(url)
-        if (res.ok) {
-          const activities = await res.json()
-          setRecentActivities(activities)
-        }
-      } catch (error) {
-        console.error('Failed to load recent activities:', error)
-      }
+    loadDashboardData()
+  }, [selectedStation])
+
+  const loadDashboardData = async () => {
+    setLoading(true)
+    try {
+      await Promise.all([
+        loadStats(),
+        loadFuelStock(),
+        loadRecentActivity(),
+        loadAlerts()
+      ])
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error)
+    } finally {
+      setLoading(false)
     }
+  }
 
-    loadRecentActivities()
-  }, [selectedStation, isAllStations])
+  const loadStats = async () => {
+    try {
+      const params = selectedStation && selectedStation !== 'all' ? `?stationId=${selectedStation}` : ''
+      
+      const [shiftsRes, safeRes, tanksRes] = await Promise.all([
+        fetch(`/api/shifts${params}`),
+        fetch(`/api/safe/summary${params}`),
+        fetch(`/api/tanks${params}`)
+      ])
 
-  // Load real statistics
-  useEffect(() => {
-    const loadStats = async () => {
-      try {
-        const url = isAllStations 
-          ? '/api/shifts'
-          : `/api/shifts?stationId=${selectedStation}`
+      if (shiftsRes.ok) {
+        const shiftsData = await shiftsRes.json()
+        const shifts = Array.isArray(shiftsData) ? shiftsData : shiftsData.shifts || []
+        const activeShiftsList = shifts.filter((s: any) => s.status === 'OPEN')
+        const activeShifts = activeShiftsList.length
         
-        const response = await fetch(url)
-        const data = await response.json()
-        const shifts = Array.isArray(data) ? data : data.shifts || []
-        
-        // Calculate real statistics
-        const activeShifts = shifts.filter((s: Shift) => s.status === 'OPEN')
-        const closedShifts = shifts.filter((s: Shift) => s.status === 'CLOSED')
-        
-                // Calculate total sales from all closed shifts (to match shifts page)
-                const totalSales = closedShifts.reduce((sum: number, s: Shift) => 
-                  sum + (s.statistics?.totalSales || 0), 0
-                )
-                
-                // Also calculate today's sales for reference
-                const today = new Date().toDateString()
-                const todayShifts = closedShifts.filter((s: Shift) => 
-                  new Date(s.startTime).toDateString() === today
-                )
-                const todaySales = todayShifts.reduce((sum: number, s: Shift) => 
-                  sum + (s.statistics?.totalSales || 0), 0
-                )
-                
-                // Calculate average duration from closed shifts
-                const shiftsWithDuration = closedShifts.filter((s: Shift) => 
-                  s.statistics?.durationHours && s.statistics.durationHours > 0
-                )
-                const avgDuration = shiftsWithDuration.length > 0 
-                  ? shiftsWithDuration.reduce((sum: number, s: Shift) => 
-                      sum + s.statistics.durationHours, 0
-                    ) / shiftsWithDuration.length
-                  : 0
-        
-        setStats([
-          {
-            title: 'Total Sales',
-            value: `Rs. ${totalSales.toLocaleString()}`,
-            change: totalSales > 0 ? `From ${closedShifts.length} shifts` : 'No sales yet',
-            changeType: totalSales > 0 ? 'positive' as const : 'neutral' as const,
-            icon: DollarSign
-          },
-          {
-            title: 'Active Shifts',
-            value: activeShifts.length.toString(),
-            change: activeShifts.length > 0 ? `${activeShifts.length} running` : 'No active shifts',
-            changeType: activeShifts.length > 0 ? 'positive' as const : 'neutral' as const,
-            icon: Clock
-          },
-          {
-            title: 'Avg Duration',
-            value: `${Math.round(avgDuration * 10) / 10}h`,
-            change: shiftsWithDuration.length > 0 ? `From ${shiftsWithDuration.length} shifts` : 'No data',
-            changeType: avgDuration > 0 ? 'positive' as const : 'neutral' as const,
-            icon: Clock
-          },
-          {
-            title: 'Total Shifts',
-            value: shifts.length.toString(),
-            change: `${closedShifts.length} closed, ${activeShifts.length} active`,
-            changeType: 'neutral' as const,
-            icon: Activity
-          }
-        ])
-      } catch (error) {
-        console.error('Failed to load statistics:', error)
+        const today = new Date().toDateString()
+        const todayShifts = shifts.filter((s: any) => 
+          s.status === 'CLOSED' && new Date(s.startTime).toDateString() === today
+        )
+        const todaySales = todayShifts.reduce((sum: number, s: any) => sum + (s.statistics?.totalSales || 0), 0)
+        const todayTransactions = todayShifts.reduce((sum: number, s: any) => sum + (s.statistics?.totalTransactions || 0), 0)
+
+        setStats(prev => ({ 
+          ...prev, 
+          todaySales, 
+          todayTransactions, 
+          activeShifts,
+          activeShiftDetails: activeShiftsList 
+        }))
       }
+
+      if (safeRes.ok) {
+        const safeData = await safeRes.json()
+        setStats(prev => ({ 
+          ...prev, 
+          safeBalance: safeData.physicalCash || 0,
+          creditOutstanding: safeData.outstandingCredit || 0
+        }))
+      }
+
+      if (tanksRes.ok) {
+        const tanks = await tanksRes.json()
+        const totalTanks = tanks.length
+        const lowStockTanks = tanks.filter((t: any) => 
+          (t.currentLevel / t.capacity) < 0.2
+        ).length
+        const criticalTanks = tanks.filter((t: any) => 
+          (t.currentLevel / t.capacity) < 0.1
+        ).length
+        const criticalAlerts = criticalTanks + (lowStockTanks > 0 ? 1 : 0)
+        setStats(prev => ({ ...prev, totalTanks, lowStockTanks, criticalAlerts }))
+      }
+    } catch (error) {
+      console.error('Failed to load stats:', error)
     }
+  }
 
-    loadStats()
-  }, [selectedStation, isAllStations])
+  const loadFuelStock = async () => {
+    try {
+      const params = selectedStation && selectedStation !== 'all' ? `?stationId=${selectedStation}` : ''
+      const res = await fetch(`/api/tanks${params}`)
+      
+      if (res.ok) {
+        const tanks = await res.json()
+        const stockByFuel = new Map<string, {capacity: number, stock: number}>()
+        
+        tanks.forEach((tank: any) => {
+          const fuelName = tank.fuel?.name || 'Unknown'
+          const current = stockByFuel.get(fuelName) || { capacity: 0, stock: 0 }
+          stockByFuel.set(fuelName, {
+            capacity: current.capacity + tank.capacity,
+            stock: current.stock + tank.currentLevel
+          })
+        })
 
-  // Get current station info for display
-  const currentStation = getSelectedStation()
-  const stationName = isAllStations ? 'All Stations' : (currentStation?.name || 'Unknown Station')
+        const fuelData = Array.from(stockByFuel.entries()).map(([fuelName, data]) => ({
+          name: fuelName,
+          capacity: data.capacity,
+          stock: data.stock,
+          percentage: (data.stock / data.capacity) * 100
+        }))
 
+        setFuelStock(fuelData)
+      }
+    } catch (error) {
+      console.error('Failed to load fuel stock:', error)
+    }
+  }
 
+  const loadRecentActivity = async () => {
+    try {
+      const params = selectedStation && selectedStation !== 'all' ? `&stationId=${selectedStation}` : ''
+      const res = await fetch(`/api/audit-log?recent=true&limit=10${params}`)
+      if (res.ok) {
+        const activities = await res.json()
+        setRecentActivity(activities)
+      }
+    } catch (error) {
+      console.error('Failed to load recent activity:', error)
+    }
+  }
 
-  const getChangeColor = (changeType: string) => {
-    switch (changeType) {
-      case 'positive': return 'text-green-600 dark:text-green-400'
-      case 'negative': return 'text-red-600 dark:text-red-400'
-      case 'warning': return 'text-yellow-600 dark:text-yellow-400'
-      default: return 'text-muted-foreground'
+  const loadAlerts = async () => {
+    try {
+      const params = selectedStation && selectedStation !== 'all' ? `?stationId=${selectedStation}` : ''
+      const res = await fetch(`/api/notifications${params}`)
+      if (res.ok) {
+        const notifs = await res.json()
+        // Handle both array and object responses
+        const notifsArray = Array.isArray(notifs) ? notifs : (notifs.notifications || [])
+        setAlerts(notifsArray.slice(0, 5))
+      }
+    } catch (error) {
+      console.error('Failed to load alerts:', error)
+      setAlerts([]) // Set empty array on error
     }
   }
 
   return (
-    <div className="space-y-6">
-      {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg p-6 text-white">
-          <h1 className="text-2xl font-bold mb-2">
-            {isAllStations ? 'Multi-Station Overview' : `Welcome to ${currentStation?.name || 'Station'}`}
-          </h1>
-          <p className="text-purple-100">
-            {isAllStations 
-              ? 'Monitor all your fuel stations, track combined sales, and manage operations across locations.'
-              : `Monitor your fuel station operations, track sales, and manage daily activities at ${currentStation?.address || 'this location'}.`
-            }
-          </p>
+    <div className="space-y-6 p-6">
+      {/* Welcome Header */}
+      <div className="bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg p-6 text-white">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
+            <p className="text-purple-100">
+              {isAllStations ? 'All Stations Overview' : 'Station Operations Overview'}
+            </p>
+          </div>
+          <Building2 className="h-12 w-12 opacity-50" />
         </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => {
-          const Icon = stat.icon
-          return (
-            <Card key={index}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {stat.title}
-                </CardTitle>
-                <Icon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground">
-                  {stat.value}
-                </div>
-                <p className={`text-xs ${getChangeColor(stat.changeType)}`}>
-                  {stat.change}
-                </p>
-              </CardContent>
-            </Card>
-          )
-        })}
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Quick Actions
-            </CardTitle>
-            <CardDescription>
-              Common tasks and operations
-            </CardDescription>
+      {/* Key Metrics */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {/* Active Shifts */}
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/shifts')}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Shifts</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Button 
-                variant="outline" 
-                className="h-20 flex flex-col gap-2 transition-colors"
-                onClick={() => router.push('/shifts/open')}
-              >
-                <Clock className="h-5 w-5" />
-                <span className="text-xs">Start Shift</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-20 flex flex-col gap-2 transition-colors"
-                onClick={() => router.push('/tanks/dips')}
-              >
-                <Fuel className="h-5 w-5" />
-                <span className="text-xs">Tank Dip</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-20 flex flex-col gap-2 transition-colors"
-                onClick={() => router.push('/pos/batches')}
-              >
-                <CreditCard className="h-5 w-5" />
-                <span className="text-xs">POS Batch</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-20 flex flex-col gap-2 transition-colors"
-                onClick={() => router.push('/audits')}
-              >
-                <AlertTriangle className="h-5 w-5" />
-                <span className="text-xs">Audit</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-20 flex flex-col gap-2 transition-colors"
-                onClick={() => router.push('/shifts/close')}
-              >
-                <Clock className="h-5 w-5" />
-                <span className="text-xs">Close Shift</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-20 flex flex-col gap-2 transition-colors"
-                onClick={() => router.push('/credit/sales')}
-              >
-                <DollarSign className="h-5 w-5" />
-                <span className="text-xs">Credit Sale</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-20 flex flex-col gap-2 transition-colors"
-                onClick={() => router.push('/reports/daily')}
-              >
-                <FileText className="h-5 w-5" />
-                <span className="text-xs">Daily Report</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-20 flex flex-col gap-2 transition-colors"
-                onClick={() => router.push('/safe/summary')}
-              >
-                <Activity className="h-5 w-5" />
-                <span className="text-xs">Safe Summary</span>
-              </Button>
+            <div className="text-3xl font-bold text-green-600">{stats.activeShifts}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {stats.activeShifts > 0 ? 'Currently running' : 'No active shifts'}
+            </p>
+            {stats.activeShiftDetails.length > 0 && (
+              <div className="mt-2 pt-2 border-t">
+                <p className="text-xs font-medium">Latest: {stats.activeShiftDetails[0].template?.name || 'Shift'}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Today's Revenue */}
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/reports/daily-sales')}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Today's Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-blue-600">Rs. {stats.todaySales.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {stats.todayTransactions} transactions
+            </p>
+            <div className="mt-2 pt-2 border-t">
+              <p className="text-xs font-medium">
+                {stats.todaySales > 0 ? (
+                  <>Avg: Rs. {Math.round(stats.todaySales / (stats.todayTransactions || 1)).toLocaleString()}/sale</>
+                ) : (
+                  'No sales yet today'
+                )}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Inventory Alerts */}
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/tanks')}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Inventory Status</CardTitle>
+            <Fuel className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-3xl font-bold ${stats.lowStockTanks > 0 ? 'text-red-600' : 'text-green-600'}`}>
+              {stats.lowStockTanks > 0 ? stats.lowStockTanks : stats.totalTanks}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {stats.lowStockTanks > 0 ? 'Tanks below 20%' : 'All tanks OK'}
+            </p>
+            <div className="mt-2 pt-2 border-t">
+              <p className="text-xs font-medium">
+                Total: {stats.totalTanks} tanks
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Safe & Credit */}
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/safe')}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Cash & Credit</CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">Rs. {stats.safeBalance.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground mt-1">Safe balance</p>
+            <div className="mt-2 pt-2 border-t">
+              <p className="text-xs font-medium text-orange-600">
+                Credit: Rs. {stats.creditOutstanding.toLocaleString()}
+              </p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Alerts */}
-      <Card className="border-red-500/20 dark:border-red-500/30 bg-red-500/10 dark:bg-red-500/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-300">
-            <AlertTriangle className="h-5 w-5" />
-            System Alerts
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div 
-              className="flex items-center gap-2 text-sm cursor-pointer hover:bg-red-500/10 dark:hover:bg-red-600/20 p-2 rounded transition-colors"
-              onClick={() => router.push('/tanks')}
-            >
-              <div className="w-2 h-2 bg-red-600 dark:bg-red-400 rounded-full" />
-              <span>
-                {isAllStations 
-                  ? 'Multiple tanks across stations are at low capacity'
-                  : `Tank 2 (Diesel) at ${currentStation?.name || 'this station'} is at 15% capacity`
-                }
-              </span>
-            </div>
-            <div 
-              className="flex items-center gap-2 text-sm cursor-pointer hover:bg-red-500/10 dark:hover:bg-red-600/20 p-2 rounded transition-colors"
-              onClick={() => router.push('/pos/reconcile')}
-            >
-              <div className="w-2 h-2 bg-red-600 dark:bg-red-400 rounded-full" />
-              <span>
-                {isAllStations 
-                  ? 'POS Batch reconciliation pending across multiple stations'
-                  : `POS Batch reconciliation pending for 3 terminals at ${currentStation?.name || 'this station'}`
-                }
-              </span>
-            </div>
-            <div 
-              className="flex items-center gap-2 text-sm cursor-pointer hover:bg-red-500/10 dark:hover:bg-red-600/20 p-2 rounded transition-colors"
-              onClick={() => router.push('/credit/aging')}
-            >
-              <div className="w-2 h-2 bg-red-600 dark:bg-red-400 rounded-full" />
-              <span>
-                {isAllStations 
-                  ? 'Multiple credit customers have overdue payments'
-                  : `Credit customer payment overdue: ABC Company (${currentStation?.name || 'this station'})`
-                }
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Recent Activities */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
-            Recent Activities
-          </CardTitle>
-          <CardDescription>Latest system activities and user actions</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {recentActivities.length > 0 ? (
-            <div className="space-y-3">
-              {recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3 p-3 bg-muted rounded-lg">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-purple-500/20 dark:bg-purple-600/30 rounded-full flex items-center justify-center">
-                      <Activity className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium text-foreground">{activity.userName}</span>
-                      <Badge variant="outline" className="text-xs">
-                        {activity.userRole}
-                      </Badge>
-                      <Badge className={`text-xs ${
-                        activity.action === 'CREATE' ? 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300' :
-                        activity.action === 'UPDATE' ? 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300' :
-                        activity.action === 'DELETE' ? 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300' :
-                        'bg-muted text-foreground'
-                      }`}>
-                        {activity.action}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-foreground mb-1">{activity.details}</p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      <span>{new Date(activity.timestamp).toLocaleString()}</span>
-                      {activity.stationName && (
-                        <>
-                          <span>•</span>
-                          <span>{activity.stationName}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Fuel Stock Status */}
+        <FormCard title="Fuel Inventory" description="Current stock levels">
+          <div className="space-y-4">
+            {fuelStock.map((fuel, idx) => (
+              <div key={idx} className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium">{fuel.name}</span>
+                  <span className="text-muted-foreground">
+                    {fuel.stock.toLocaleString()} / {fuel.capacity.toLocaleString()} L
+                  </span>
                 </div>
-              ))}
-              <div className="pt-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full"
-                  onClick={() => router.push('/audit-log')}
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  View Full Audit Log
-                </Button>
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full transition-all ${
+                      fuel.percentage < 20 ? 'bg-red-500' :
+                      fuel.percentage < 50 ? 'bg-yellow-500' : 'bg-green-500'
+                    }`}
+                    style={{ width: `${Math.min(fuel.percentage, 100)}%` }}
+                  />
+                </div>
               </div>
+            ))}
+            {fuelStock.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">No tank data available</p>
+            )}
+          </div>
+        </FormCard>
+
+        {/* Alerts */}
+        <FormCard title="Alerts & Notifications" description="System alerts">
+          <div className="space-y-2">
+            {stats.lowStockTanks > 0 && (
+              <div className="flex items-start gap-2 p-2 bg-red-50 dark:bg-red-950 rounded">
+                <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-red-900 dark:text-red-100">Low Stock Alert</p>
+                  <p className="text-xs text-red-700 dark:text-red-300">{stats.lowStockTanks} tanks below 20%</p>
+                </div>
+              </div>
+            )}
+            {alerts.slice(0, 5).map((alert, idx) => (
+              <div key={idx} className="flex items-start gap-2 p-2 border rounded">
+                <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm">{alert.message}</p>
+                  <p className="text-xs text-muted-foreground">{new Date(alert.createdAt).toLocaleString()}</p>
+                </div>
+              </div>
+            ))}
+            {alerts.length === 0 && stats.lowStockTanks === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">No alerts</p>
+            )}
+          </div>
+        </FormCard>
+      </div>
+
+      {/* Quick Actions */}
+      <FormCard title="Quick Actions" description="Common operations">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <Button 
+            variant="outline" 
+            className="h-24 flex flex-col gap-2 hover:bg-green-50 hover:border-green-300 dark:hover:bg-green-950" 
+            onClick={(e) => {
+              e.preventDefault()
+              router.push('/shifts/open')
+            }}
+          >
+            <Clock className="h-6 w-6 text-green-600" />
+            <span className="text-sm font-medium">Start Shift</span>
+          </Button>
+          <Button 
+            variant="outline" 
+            className="h-24 flex flex-col gap-2 hover:bg-blue-50 hover:border-blue-300 dark:hover:bg-blue-950" 
+            onClick={(e) => {
+              e.preventDefault()
+              router.push('/shifts/close')
+            }}
+          >
+            <CheckCircle2 className="h-6 w-6 text-blue-600" />
+            <span className="text-sm font-medium">Close Shift</span>
+          </Button>
+          <Button 
+            variant="outline" 
+            className="h-24 flex flex-col gap-2 hover:bg-purple-50 hover:border-purple-300 dark:hover:bg-purple-950" 
+            onClick={(e) => {
+              e.preventDefault()
+              router.push('/banks')
+            }}
+          >
+            <CreditCard className="h-6 w-6 text-purple-600" />
+            <span className="text-sm font-medium">Banks</span>
+          </Button>
+          <Button 
+            variant="outline" 
+            className="h-24 flex flex-col gap-2 hover:bg-orange-50 hover:border-orange-300 dark:hover:bg-orange-950" 
+            onClick={(e) => {
+              e.preventDefault()
+              router.push('/tanks/deliveries')
+            }}
+          >
+            <Package className="h-6 w-6 text-orange-600" />
+            <span className="text-sm font-medium">Add Delivery</span>
+          </Button>
+          <Button 
+            variant="outline" 
+            className="h-24 flex flex-col gap-2 hover:bg-yellow-50 hover:border-yellow-300 dark:hover:bg-yellow-950" 
+            onClick={(e) => {
+              e.preventDefault()
+              router.push('/safe')
+            }}
+          >
+            <Wallet className="h-6 w-6 text-yellow-600" />
+            <span className="text-sm font-medium">Safe</span>
+          </Button>
+          <Button 
+            variant="outline" 
+            className="h-24 flex flex-col gap-2 hover:bg-indigo-50 hover:border-indigo-300 dark:hover:bg-indigo-950" 
+            onClick={(e) => {
+              e.preventDefault()
+              router.push('/reports')
+            }}
+          >
+            <FileText className="h-6 w-6 text-indigo-600" />
+            <span className="text-sm font-medium">Reports</span>
+          </Button>
+        </div>
+      </FormCard>
+
+      {/* Recent Activity */}
+      <FormCard title="Recent Activity" description="Latest system activities">
+        <div className="space-y-2">
+          {recentActivity.slice(0, 8).map((activity, idx) => (
+            <div key={idx} className="flex items-center justify-between p-2 border rounded">
+              <div className="flex items-center gap-3">
+                <Activity className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">{activity.action} - {activity.entity}</p>
+                  <p className="text-xs text-muted-foreground">{activity.userName}</p>
+                </div>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {new Date(activity.timestamp).toLocaleTimeString()}
+              </span>
             </div>
-          ) : (
-            <div className="text-center py-6 text-muted-foreground">
-              <Activity className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-              <p>No recent activities</p>
-            </div>
+          ))}
+          {recentActivity.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">No recent activity</p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </FormCard>
     </div>
   )
 }

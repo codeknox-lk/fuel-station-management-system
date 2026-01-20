@@ -102,7 +102,8 @@ export async function GET(request: NextRequest) {
                   tank: {
                     select: {
                       id: true,
-                      fuelType: true,
+                      fuelId: true,
+                      fuel: true,
                       capacity: true,
                       currentLevel: true
                     }
@@ -130,7 +131,7 @@ export async function GET(request: NextRequest) {
       shifts.forEach((shift, idx) => {
         console.log(`[Daily Report API] Shift ${idx + 1}: id=${shift.id}, status=${shift.status}, assignments=${shift.assignments.length}`)
         shift.assignments.forEach((assignment, aIdx) => {
-          console.log(`  Assignment ${aIdx + 1}: start=${assignment.startMeterReading}, end=${assignment.endMeterReading}, nozzle=${assignment.nozzleId}, tank=${assignment.nozzle?.tank?.id || 'N/A'}, fuelType=${assignment.nozzle?.tank?.fuelType || 'N/A'}`)
+          console.log(`  Assignment ${aIdx + 1}: start=${assignment.startMeterReading}, end=${assignment.endMeterReading}, nozzle=${assignment.nozzleId}, tank=${assignment.nozzle?.tank?.id || 'N/A'}, fuel=${assignment.nozzle?.tank?.fuel?.name || 'N/A'}`)
         })
       })
     } catch (shiftsError) {
@@ -214,7 +215,7 @@ export async function GET(request: NextRequest) {
           continue
         }
 
-        const fuelType = assignment.nozzle.tank.fuelType
+        const fuelId = assignment.nozzle.tank.fuelId
         if (!fuelType) {
           console.log(`[Daily Report API] Assignment ${assignment.id} has no fuel type`)
           continue

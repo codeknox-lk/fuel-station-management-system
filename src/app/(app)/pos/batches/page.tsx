@@ -29,7 +29,8 @@ import {
   Plus,
   DollarSign,
   Clock,
-  Wallet
+  Wallet,
+  ArrowLeft
 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 
@@ -315,7 +316,13 @@ export default function POSBatchesPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-foreground">POS Batches</h1>
+      <div className="flex items-center gap-4 mb-6">
+        <Button variant="outline" onClick={() => router.push('/pos')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <h1 className="text-3xl font-bold text-foreground">POS Batches</h1>
+      </div>
 
       {error && (
         <Alert variant="destructive">

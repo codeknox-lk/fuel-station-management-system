@@ -33,7 +33,8 @@ export async function POST(
                 tank: {
                   select: {
                     id: true,
-                    fuelType: true,
+                    fuelId: true,
+                    fuel: true,
                     capacity: true,
                     currentLevel: true
                   }
@@ -119,10 +120,10 @@ export async function POST(
         salesByTank.set(tankId, salesByTank.get(tankId)! + litersSold)
         
         // Get price effective at shift start time (to match stats calculation)
-        const fuelType = assignment.nozzle.tank.fuelType
+        const fuelId = assignment.nozzle.tank.fuelId
         const price = await prisma.price.findFirst({
           where: {
-            fuelType,
+            fuelId,
             stationId: shift.stationId,
             effectiveDate: { lte: shift.startTime },
             isActive: true

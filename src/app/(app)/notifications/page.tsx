@@ -154,10 +154,20 @@ export default function NotificationsPage() {
 
   // Load notifications on mount and when station changes
   useEffect(() => {
-    loadNotifications()
+    // Auto-generate notifications first, then load them
+    const initializeNotifications = async () => {
+      await generateNotifications()
+      await loadNotifications()
+    }
     
-    // Auto-refresh every 5 minutes
-    const interval = setInterval(loadNotifications, 5 * 60 * 1000)
+    initializeNotifications()
+    
+    // Auto-refresh and regenerate every 5 minutes
+    const interval = setInterval(async () => {
+      await generateNotifications()
+      await loadNotifications()
+    }, 5 * 60 * 1000)
+    
     return () => clearInterval(interval)
   }, [selectedStation])
 
@@ -222,6 +232,10 @@ export default function NotificationsPage() {
         setNotifications(prev => 
           prev.map(n => n.id === id ? { ...n, isRead: true, readAt: new Date().toISOString() } : n)
         )
+        // Notify TopBar to refresh
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('notificationRead'))
+        }
       }
     } catch (err) {
       console.error('Failed to mark as read:', err)
@@ -240,6 +254,10 @@ export default function NotificationsPage() {
         setNotifications(prev => 
           prev.map(n => n.id === id ? { ...n, isRead: false, readAt: null } : n)
         )
+        // Notify TopBar to refresh
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('notificationUpdated'))
+        }
       }
     } catch (err) {
       console.error('Failed to mark as unread:', err)
@@ -254,6 +272,10 @@ export default function NotificationsPage() {
       
       if (response.ok) {
         setNotifications(prev => prev.filter(n => n.id !== id))
+        // Notify TopBar to refresh
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('notificationUpdated'))
+        }
       }
     } catch (err) {
       console.error('Failed to delete notification:', err)
@@ -264,6 +286,10 @@ export default function NotificationsPage() {
     try {
       const unreadNotifications = notifications.filter(n => !n.isRead)
       await Promise.all(unreadNotifications.map(n => markAsRead(n.id)))
+      // Notify TopBar to refresh (single event after all are marked)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('notificationRead'))
+      }
     } catch (err) {
       console.error('Failed to mark all as read:', err)
     }
@@ -333,14 +359,6 @@ export default function NotificationsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={generateNotifications}
-            disabled={generating}
-          >
-            <Sparkles className={`h-4 w-4 mr-2 ${generating ? 'animate-spin' : ''}`} />
-            {generating ? 'Generating...' : 'Generate Notifications'}
-          </Button>
           <Button variant="outline" onClick={loadNotifications} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -489,7 +507,7 @@ export default function NotificationsPage() {
                   <p className="text-muted-foreground">
                     {searchTerm || filterType !== 'all' || filterPriority !== 'all' || filterCategory !== 'all'
                       ? 'Try adjusting your filters'
-                      : 'You\'re all caught up! Click "Generate Notifications" to check for system events.'}
+                      : 'You\'re all caught up! Notifications are automatically generated based on system events.'}
                   </p>
                 </div>
               ) : (

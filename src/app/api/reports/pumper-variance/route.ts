@@ -20,9 +20,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid month format' }, { status: 400 })
     }
 
-    const startOfMonth = new Date(year, monthNum - 1, 1)
-    startOfMonth.setHours(0, 0, 0, 0)
-    const endOfMonth = new Date(year, monthNum, 0, 23, 59, 59, 999)
+    // Business month: 7th of selected month to 6th of next month
+    const startOfMonth = new Date(year, monthNum - 1, 7, 0, 0, 0, 0)
+    const endOfMonth = new Date(year, monthNum, 6, 23, 59, 59, 999)
 
     // Get all closed shifts for the month
     const shifts = await prisma.shift.findMany({
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
         totalVarianceAmount: 0,
         maxSingleVariance: 0,
         varianceRate: 0,
-        dailyVariances: Array.from({ length: 31 }, (_, i) => ({ day: i + 1, variance: 0 }))
+        dailyVariances: []
       })
     }
 
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
             totalVarianceAmount: 0,
             maxSingleVariance: 0,
             varianceRate: 0,
-            dailyVariances: Array.from({ length: 31 }, (_, i) => ({ day: i + 1, variance: 0 }))
+            dailyVariances: []
           }
           pumperVarianceMap.set(pumperName, pumperData)
         }

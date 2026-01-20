@@ -36,12 +36,15 @@ export interface SalesDelta {
 
 /**
  * Get price for a fuel type at a specific datetime
+ * @param fuelId - The fuel ID (or name for backward compatibility)
+ * @param datetime - ISO datetime string
+ * @param prices - Array of prices
  */
-export function priceAt(fuelType: string, datetime: string, prices: Price[]): number {
+export function priceAt(fuelId: string, datetime: string, prices: Price[]): number {
   const targetDate = new Date(datetime)
   
   const price = prices
-    .filter(p => p.fuelType === fuelType)
+    .filter(p => p.fuelId === fuelId || p.fuel?.name === fuelId)
     .find(p => {
       const effectiveFrom = new Date(p.effectiveFrom)
       const effectiveTo = p.effectiveTo ? new Date(p.effectiveTo) : new Date('2099-12-31T23:59:59Z')
@@ -53,12 +56,13 @@ export function priceAt(fuelType: string, datetime: string, prices: Price[]): nu
 
 /**
  * Split sales interval by price changes
+ * @param fuelId - The fuel ID (or name for backward compatibility)
  */
 export function splitIntervalByPrice(
   startTime: string,
   endTime: string,
   prices: Price[],
-  fuelType: string
+  fuelId: string
 ): Array<{ startTime: string; endTime: string; price: number }> {
   const intervals: Array<{ startTime: string; endTime: string; price: number }> = []
   const start = new Date(startTime)
@@ -66,7 +70,7 @@ export function splitIntervalByPrice(
   
   // Get all price changes in the interval
   const relevantPrices = prices
-    .filter(p => p.fuelType === fuelType)
+    .filter(p => p.fuelId === fuelId || p.fuel?.name === fuelId)
     .filter(p => {
       const effectiveFrom = new Date(p.effectiveFrom)
       const effectiveTo = p.effectiveTo ? new Date(p.effectiveTo) : new Date('2099-12-31T23:59:59Z')
@@ -140,9 +144,9 @@ export function computeSalesFromDeltas(
     const endReading = readings.end.reading
     const delta = endReading - startReading
     
-    // Get fuel type from nozzle (would need to look up from tank)
-    const fuelType = 'PETROL_92' // This would be looked up from nozzle -> tank -> fuelType
-    const price = priceAt(fuelType, readings.start.timestamp, prices)
+    // Get fuel ID from nozzle (would need to look up from tank)
+    const fuelId = 'petrol-92-id' // This would be looked up from nozzle -> tank -> fuelId
+    const price = priceAt(fuelId, readings.start.timestamp, prices)
     
     // Subtract test pours for this nozzle
     const nozzleTestPours = testPours.filter(tp => tp.nozzleId === nozzleId && tp.returned)

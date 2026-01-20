@@ -17,7 +17,8 @@ export async function GET(request: NextRequest) {
           tank: {
             select: {
               id: true,
-              fuelType: true,
+              fuelId: true,
+              fuel: true,
               capacity: true,
               currentLevel: true
             }
@@ -55,7 +56,8 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             tankNumber: true,
-            fuelType: true,
+            fuelId: true,
+            fuel: true,
             capacity: true,
             currentLevel: true
           }
@@ -94,7 +96,7 @@ export async function GET(request: NextRequest) {
       return {
         ...dip,
         tankNumber: dip.tank?.tankNumber || null,
-        fuelType: dip.tank?.fuelType || null,
+        fuel: dip.tank?.fuel || null,
         dipLitres: dip.reading,
         changeFromPrevious,
         changePercentage,
@@ -145,7 +147,8 @@ export async function POST(request: NextRequest) {
         tank: {
           select: {
             id: true,
-            fuelType: true,
+            fuelId: true,
+            fuel: true,
             capacity: true,
             currentLevel: true
           }

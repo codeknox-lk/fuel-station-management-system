@@ -54,6 +54,23 @@ interface ExternalLoan {
   }
 }
 
+interface OfficeStaffLoan {
+  id: string
+  staffName: string
+  amount: number
+  paidAmount?: number
+  monthlyRental?: number
+  reason: string
+  givenBy?: string
+  dueDate: string
+  status: 'ACTIVE' | 'PAID' | 'OVERDUE'
+  createdAt: string
+  station?: {
+    id: string
+    name: string
+  }
+}
+
 interface LoanPayment {
   id: string
   amount: number
@@ -72,13 +89,14 @@ export default function LoansPage() {
 
   const [pumperLoans, setPumperLoans] = useState<PumperLoan[]>([])
   const [externalLoans, setExternalLoans] = useState<ExternalLoan[]>([])
-  const [selectedLoan, setSelectedLoan] = useState<{ id: string; type: 'PUMPER' | 'EXTERNAL'; name: string } | null>(null)
+  const [officeStaffLoans, setOfficeStaffLoans] = useState<OfficeStaffLoan[]>([])
+  const [selectedLoan, setSelectedLoan] = useState<{ id: string; type: 'PUMPER' | 'EXTERNAL' | 'OFFICE'; name: string } | null>(null)
   const [loanPayments, setLoanPayments] = useState<LoanPayment[]>([])
   const [paymentsDialogOpen, setPaymentsDialogOpen] = useState(false)
 
   // Payment dialog state
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
-  const [selectedLoanForPayment, setSelectedLoanForPayment] = useState<{ id: string; type: 'PUMPER' | 'EXTERNAL'; name: string; amount: number; paidAmount?: number } | null>(null)
+  const [selectedLoanForPayment, setSelectedLoanForPayment] = useState<{ id: string; type: 'PUMPER' | 'EXTERNAL' | 'OFFICE'; name: string; amount: number; paidAmount?: number } | null>(null)
   const [paymentAmount, setPaymentAmount] = useState<number | undefined>(undefined)
   const [paymentNotes, setPaymentNotes] = useState('')
   const [processingPayment, setProcessingPayment] = useState(false)
@@ -96,9 +114,10 @@ export default function LoansPage() {
     setLoading(true)
     setError('')
       
-      const [pumperRes, externalRes] = await Promise.all([
+      const [pumperRes, externalRes, officeRes] = await Promise.all([
         fetch(`/api/loans/pumper?stationId=${selectedStation}`),
-        fetch(`/api/loans/external?stationId=${selectedStation}`)
+        fetch(`/api/loans/external?stationId=${selectedStation}`),
+        fetch(`/api/loans/office?stationId=${selectedStation}`)
       ])
 
       if (pumperRes.ok) {
@@ -110,6 +129,11 @@ export default function LoansPage() {
         const externalData = await externalRes.json()
         setExternalLoans(externalData)
       }
+
+      if (officeRes.ok) {
+        const officeData = await officeRes.json()
+        setOfficeStaffLoans(officeData)
+      }
     } catch (err) {
       console.error('Error fetching loans:', err)
       setError('Failed to fetch loans')
@@ -118,7 +142,7 @@ export default function LoansPage() {
     }
   }
 
-  const fetchLoanPayments = async (loanId: string, loanType: 'PUMPER' | 'EXTERNAL') => {
+  const fetchLoanPayments = async (loanId: string, loanType: 'PUMPER' | 'EXTERNAL' | 'OFFICE') => {
     try {
       const res = await fetch(`/api/loans/payments?stationId=${selectedStation}&loanId=${loanId}&loanType=${loanType}`)
       if (res.ok) {
@@ -130,18 +154,22 @@ export default function LoansPage() {
     }
   }
 
-  const handleViewPayments = (loan: PumperLoan | ExternalLoan, type: 'PUMPER' | 'EXTERNAL') => {
-    const loanName = type === 'PUMPER' ? (loan as PumperLoan).pumperName : (loan as ExternalLoan).borrowerName
+  const handleViewPayments = (loan: PumperLoan | ExternalLoan | OfficeStaffLoan, type: 'PUMPER' | 'EXTERNAL' | 'OFFICE') => {
+    const loanName = type === 'PUMPER' ? (loan as PumperLoan).pumperName : 
+                     type === 'OFFICE' ? (loan as OfficeStaffLoan).staffName :
+                     (loan as ExternalLoan).borrowerName
     setSelectedLoan({ id: loan.id, type, name: loanName })
     fetchLoanPayments(loan.id, type)
     setPaymentsDialogOpen(true)
   }
 
-  const handlePayLoan = (loan: PumperLoan | ExternalLoan, type: 'PUMPER' | 'EXTERNAL') => {
-    const loanName = type === 'PUMPER' ? (loan as PumperLoan).pumperName : (loan as ExternalLoan).borrowerName
-    const pumperLoan = loan as PumperLoan
-    const paidAmount = type === 'PUMPER' ? (pumperLoan.paidAmount || 0) : undefined
-    const remainingAmount = type === 'PUMPER' ? (pumperLoan.amount - paidAmount) : loan.amount
+  const handlePayLoan = (loan: PumperLoan | ExternalLoan | OfficeStaffLoan, type: 'PUMPER' | 'EXTERNAL' | 'OFFICE') => {
+    const loanName = type === 'PUMPER' ? (loan as PumperLoan).pumperName :
+                     type === 'OFFICE' ? (loan as OfficeStaffLoan).staffName : 
+                     (loan as ExternalLoan).borrowerName
+    const typedLoan = loan as (PumperLoan | OfficeStaffLoan)
+    const paidAmount = (type === 'PUMPER' || type === 'OFFICE') ? (typedLoan.paidAmount || 0) : 0
+    const remainingAmount = (type === 'PUMPER' || type === 'OFFICE') ? (typedLoan.amount - paidAmount) : loan.amount
     
     setSelectedLoanForPayment({ 
       id: loan.id, 
@@ -176,9 +204,20 @@ export default function LoansPage() {
       let res
       if (selectedLoanForPayment.type === 'PUMPER') {
         res = await fetch(`/api/loans/pumper/${selectedLoanForPayment.id}/pay`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            stationId: selectedStation,
+            amount: paymentAmount,
+            notes: paymentNotes || undefined,
+            performedBy: username
+          })
+        })
+      } else if (selectedLoanForPayment.type === 'OFFICE') {
+        res = await fetch(`/api/loans/office/${selectedLoanForPayment.id}/pay`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             stationId: selectedStation,
             amount: paymentAmount,
             notes: paymentNotes || undefined,
@@ -307,6 +346,9 @@ export default function LoansPage() {
           </TabsTrigger>
           <TabsTrigger value="external">
             External Loans ({externalLoans.length})
+          </TabsTrigger>
+          <TabsTrigger value="office">
+            Office Staff Loans ({officeStaffLoans.length})
           </TabsTrigger>
         </TabsList>
 
@@ -567,6 +609,142 @@ export default function LoansPage() {
                               size="sm"
                               variant="outline"
                               onClick={() => handleViewPayments(loan, 'EXTERNAL')}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Payments
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Office Staff Loans */}
+        <TabsContent value="office" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Active Office Staff Loans</CardTitle>
+              <CardDescription>Loans given to office staff that are currently active</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+                </div>
+              ) : officeStaffLoans.filter(l => l.status === 'ACTIVE').length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CreditCard className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p>No active office staff loans</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Staff Name</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-right">Paid</TableHead>
+                        <TableHead className="text-right">Balance</TableHead>
+                        <TableHead className="text-right">Monthly Rental</TableHead>
+                        <TableHead>Due Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {officeStaffLoans.filter(l => l.status === 'ACTIVE').map((loan) => {
+                        const balance = loan.amount - (loan.paidAmount || 0)
+                        return (
+                          <TableRow key={loan.id}>
+                            <TableCell className="font-medium">{loan.staffName}</TableCell>
+                            <TableCell className="text-right font-mono">
+                              Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-green-600 dark:text-green-400">
+                              Rs. {(loan.paidAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </TableCell>
+                            <TableCell className="text-right font-mono font-bold text-orange-600 dark:text-orange-400">
+                              Rs. {balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              Rs. {(loan.monthlyRental || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </TableCell>
+                            <TableCell>{new Date(loan.dueDate).toLocaleDateString()}</TableCell>
+                            <TableCell>
+                              <Badge variant={loan.status === 'ACTIVE' ? 'default' : loan.status === 'PAID' ? 'secondary' : 'destructive'}>
+                                {loan.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleViewPayments(loan, 'OFFICE')}
+                                >
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  Payments
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={() => handlePayLoan(loan, 'OFFICE')}
+                                  disabled={balance <= 0}
+                                >
+                                  <DollarSign className="h-4 w-4 mr-1" />
+                                  Pay
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {officeStaffLoans.filter(l => l.status === 'PAID').length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Paid Office Staff Loans</CardTitle>
+                <CardDescription>Office staff loans that have been fully paid</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Staff Name</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>Due Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {officeStaffLoans.filter(l => l.status === 'PAID').map((loan) => (
+                        <TableRow key={loan.id}>
+                          <TableCell className="font-medium">{loan.staffName}</TableCell>
+                          <TableCell className="text-right font-mono">
+                            Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell>{new Date(loan.dueDate).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{loan.status}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleViewPayments(loan, 'OFFICE')}
                             >
                               <Eye className="h-4 w-4 mr-1" />
                               Payments

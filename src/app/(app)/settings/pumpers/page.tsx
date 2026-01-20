@@ -9,8 +9,9 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Users, Plus, Edit, Trash2, Phone, Star, Building2, Clock, Award } from 'lucide-react'
+import { Users, Plus, Edit, Trash2, Phone, Star, Building2, Clock, Award, ArrowLeft } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { useRouter } from 'next/navigation'
 
 interface Pumper {
   id: string
@@ -35,6 +36,7 @@ interface Station {
 }
 
 export default function PumpersPage() {
+  const router = useRouter()
   const [pumpers, setPumpers] = useState<Pumper[]>([])
   const [stations, setStations] = useState<Station[]>([])
   const [loading, setLoading] = useState(true)
@@ -512,11 +514,17 @@ export default function PumpersPage() {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Pumper Management</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage pumper employees, their shifts, and specializations
-          </p>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => router.push('/settings')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Pumper Management</h1>
+            <p className="text-muted-foreground mt-2">
+              Manage pumper employees, their shifts, and specializations
+            </p>
+          </div>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>

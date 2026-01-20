@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
@@ -14,7 +15,8 @@ import {
   Building2,
   Clock,
   DollarSign,
-  AlertTriangle
+  AlertTriangle,
+  GitCompare
 } from 'lucide-react'
 
 interface ReportCard {
@@ -24,97 +26,145 @@ interface ReportCard {
   href: string
   features: string[]
   color: string
+  ownerOnly?: boolean
 }
 
 export default function ReportsPage() {
   const router = useRouter()
+  const [userRole, setUserRole] = useState<string>('')
 
-  const reports: ReportCard[] = [
+  useEffect(() => {
+    // Get user role from localStorage
+    if (typeof window !== 'undefined') {
+      const role = localStorage.getItem('userRole') || ''
+      setUserRole(role)
+    }
+  }, [])
+
+  const allReports: ReportCard[] = [
     {
-      title: 'Daily Reports',
-      description: 'Comprehensive daily sales, expenses, and variance analysis',
-      icon: <Calendar className="h-8 w-8" />,
-      href: '/reports/daily',
+      title: 'Daily Sales Report (Rs)',
+      description: 'Daily fuel sales revenue (Rupees) for each fuel type',
+      icon: <BarChart3 className="h-8 w-8" />,
+      href: '/reports/daily-sales',
       features: [
-        'Sales breakdown by fuel type',
-        'Expense tracking and analysis',
-        'Missing slip exceptions',
-        'Payment method breakdown',
-        'Variance analysis with tolerance'
-      ],
-      color: 'text-blue-600 dark:text-blue-400'
-    },
-    {
-      title: 'Shift Reports',
-      description: 'Detailed shift performance with nozzle and pumper breakdown',
-      icon: <Clock className="h-8 w-8" />,
-      href: '/reports/shift',
-      features: [
-        'Per-nozzle sales analysis',
-        'Pumper performance tracking',
-        'Tender reconciliation',
-        'Variance by assignment',
-        'Print shift PDF'
-      ],
-      color: 'text-green-600 dark:text-green-400'
-    },
-    {
-      title: 'Tank Reports',
-      description: 'Tank movement and variance tracking with printable lists',
-      icon: <Fuel className="h-8 w-8" />,
-      href: '/reports/tanks',
-      features: [
-        'Opening vs closing stock',
-        'Delivery tracking',
-        'Fill level monitoring',
-        'Variance classification',
-        'Print-optimized layout'
+        'Sales revenue by fuel type',
+        'Daily revenue totals',
+        'Fuel type comparison',
+        'Revenue trend analysis',
+        'Export to PDF/Excel'
       ],
       color: 'text-purple-600 dark:text-purple-400'
     },
     {
-      title: 'Profit Reports',
-      description: 'Monthly profit analysis with charts and breakdown tables',
+      title: 'Daily Sales Report (Liters)',
+      description: 'Daily fuel sales volume (Liters) for each fuel type',
+      icon: <Fuel className="h-8 w-8" />,
+      href: '/reports/daily-sales-liters',
+      features: [
+        'Sales volume in liters by fuel type',
+        'Total volume sold per day',
+        'Fuel type comparison',
+        'Volume trend analysis',
+        'Export to PDF/Excel'
+      ],
+      color: 'text-blue-600 dark:text-blue-400'
+    },
+    {
+      title: 'Daily Profit Report',
+      description: 'Daily profit analysis with revenue and expense breakdown',
       icon: <TrendingUp className="h-8 w-8" />,
       href: '/reports/profit',
       features: [
-        'Daily profit trend charts',
-        'Revenue source breakdown',
+        'Daily profit calculations',
+        'Revenue breakdown by source',
         'Expense categorization',
-        'Growth analysis',
-        'Best/worst day tracking'
+        'Profit margin analysis',
+        'Monthly trends'
+      ],
+      color: 'text-green-600 dark:text-green-400'
+    },
+    {
+      title: 'POS Sales Report',
+      description: 'POS machine sales with bank reconciliation and transaction summary',
+      icon: <DollarSign className="h-8 w-8" />,
+      href: '/reports/pos-sales',
+      features: [
+        'POS terminal sales breakdown',
+        'Bank-wise transaction summary',
+        'Card payment reconciliation',
+        'Missing slip tracking',
+        'Daily settlement report'
+      ],
+      color: 'text-purple-600 dark:text-purple-400'
+    },
+    {
+      title: 'Credit Customer Reports',
+      description: 'Credit sales, payments, and outstanding balance analysis',
+      icon: <Users className="h-8 w-8" />,
+      href: '/reports/credit',
+      features: [
+        'Outstanding balances',
+        'Credit sales summary',
+        'Payment collection tracking',
+        'Aging analysis',
+        'Customer-wise breakdown'
       ],
       color: 'text-orange-600 dark:text-orange-400'
     },
     {
-      title: 'Pumper Variance',
-      description: 'Pumper performance analysis with variance tracking and sparklines',
-      icon: <Users className="h-8 w-8" />,
-      href: '/reports/pumper-variance',
+      title: 'Shift Reports & Variance',
+      description: 'Shift performance with variance analysis and pumper tracking',
+      icon: <Clock className="h-8 w-8" />,
+      href: '/reports/shift',
       features: [
-        'Individual pumper analysis',
-        '30-day trend sparklines',
-        'Performance rating system',
-        'Variance accountability',
-        'Recovery tracking'
+        'Per-shift sales analysis',
+        'Variance by pumper',
+        'Tender reconciliation',
+        'Nozzle-wise breakdown',
+        'Print shift summary'
       ],
-      color: 'text-red-600 dark:text-red-400'
+      color: 'text-yellow-600 dark:text-yellow-400'
     },
     {
-      title: 'Daily Sales by Fuel Type',
-      description: 'Monthly sales trend with daily breakdown by fuel type',
-      icon: <TrendingUp className="h-8 w-8" />,
-      href: '/reports/daily-sales',
+      title: 'Pumper Details Report',
+      description: 'Comprehensive pumper performance, salary, and loan information',
+      icon: <Users className="h-8 w-8" />,
+      href: '/reports/pumper-details',
       features: [
-        'Daily sales line chart',
-        'Fuel type breakdown',
-        'Monthly trend analysis',
-        'Interactive data visualization',
-        'Export capabilities'
+        'Complete pumper profile',
+        'Shift performance & variance',
+        'Salary payments history',
+        'Active loans & deductions',
+        'Fuel type breakdown'
       ],
-      color: 'text-indigo-600 dark:text-indigo-400'
+      color: 'text-teal-600 dark:text-teal-400'
+    },
+    {
+      title: 'Station Comparison Report',
+      description: 'Compare performance metrics across all stations (Owner Only)',
+      icon: <GitCompare className="h-8 w-8" />,
+      href: '/reports/station-comparison',
+      features: [
+        'Side-by-side station comparison',
+        'Sales & revenue analysis',
+        'Profitability metrics',
+        'Pumper performance comparison',
+        'Best & worst performers',
+        'Monthly trends comparison'
+      ],
+      color: 'text-indigo-600 dark:text-indigo-400',
+      ownerOnly: true
     }
   ]
+
+  // Filter reports based on user role
+  const reports = allReports.filter(report => {
+    if (report.ownerOnly && userRole !== 'OWNER') {
+      return false
+    }
+    return true
+  })
 
   const quickStats = [
     {
@@ -192,9 +242,9 @@ export default function ReportsPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold text-foreground">4</div>
+                <div className="text-2xl font-bold text-foreground">2</div>
                 <div className="text-sm font-medium text-foreground">Export Formats</div>
-                <div className="text-xs text-muted-foreground">PDF, Excel, Print, Email</div>
+                <div className="text-xs text-muted-foreground">PDF, Excel</div>
               </div>
               <div className="flex-shrink-0">
                 <DollarSign className="h-5 w-5 text-purple-600 dark:text-purple-400" />
@@ -261,50 +311,6 @@ export default function ReportsPage() {
         ))}
       </div>
 
-      {/* Additional Information */}
-      <FormCard title="Report Features & Capabilities">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div>
-            <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              Data Visualization
-            </h4>
-            <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• Interactive charts and graphs</li>
-              <li>• Trend analysis with sparklines</li>
-              <li>• Color-coded performance indicators</li>
-              <li>• Real-time data updates</li>
-            </ul>
-          </div>
-          
-          <div>
-            <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-              <FileText className="h-4 w-4 text-green-600 dark:text-green-400" />
-              Export Options
-            </h4>
-            <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• PDF reports with professional formatting</li>
-              <li>• Excel exports for data analysis</li>
-              <li>• Print-optimized layouts</li>
-              <li>• Email distribution capabilities</li>
-            </ul>
-          </div>
-          
-          <div>
-            <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-              Business Intelligence
-            </h4>
-            <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• Variance analysis with tolerance checking</li>
-              <li>• Performance rating systems</li>
-              <li>• Exception tracking and alerts</li>
-              <li>• Comparative analysis tools</li>
-            </ul>
-          </div>
-        </div>
-      </FormCard>
-
       {/* Quick Access */}
       <Card>
         <CardHeader>
@@ -324,13 +330,21 @@ export default function ReportsPage() {
               <TrendingUp className="mr-2 h-4 w-4" />
               Monthly Profit
             </Button>
-            <Button variant="outline" onClick={() => router.push('/reports/tanks')}>
+            <Button variant="outline" onClick={() => router.push('/reports/daily-sales')}>
+              <BarChart3 className="mr-2 h-4 w-4" />
+              Daily Sales (Rs)
+            </Button>
+            <Button variant="outline" onClick={() => router.push('/reports/daily-sales-liters')}>
               <Fuel className="mr-2 h-4 w-4" />
-              Tank Status
+              Daily Sales (Liters)
             </Button>
             <Button variant="outline" onClick={() => router.push('/reports/pumper-variance')}>
               <Users className="mr-2 h-4 w-4" />
-              Pumper Performance
+              Pumper Variance
+            </Button>
+            <Button variant="outline" onClick={() => router.push('/reports/pumper-details')}>
+              <Users className="mr-2 h-4 w-4" />
+              Pumper Details
             </Button>
           </div>
         </CardContent>

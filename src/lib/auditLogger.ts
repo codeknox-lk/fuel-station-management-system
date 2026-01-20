@@ -114,8 +114,8 @@ export class AuditLogger {
   }
 
   // Price operations
-  async logPriceUpdated(priceId: string, fuelType: string, oldPrice: number, newPrice: number) {
-    await this.log('UPDATE', 'PRICE', `Updated ${fuelType} price from Rs. ${oldPrice.toFixed(2)} to Rs. ${newPrice.toFixed(2)}`, priceId)
+  async logPriceUpdated(priceId: string, fuelName: string, oldPrice: number, newPrice: number) {
+    await this.log('UPDATE', 'PRICE', `Updated ${fuelName} price from Rs. ${oldPrice.toFixed(2)} to Rs. ${newPrice.toFixed(2)}`, priceId)
   }
 
   // Credit operations
@@ -146,8 +146,8 @@ export class AuditLogger {
   }
 
   // Tank operations
-  async logDeliveryCreated(deliveryId: string, fuelType: string, quantity: number, supplier: string, stationId: string, stationName: string) {
-    await this.log('CREATE', 'DELIVERY', `Fuel delivery: ${quantity.toLocaleString()}L ${fuelType} from ${supplier}`, deliveryId, stationId, stationName)
+  async logDeliveryCreated(deliveryId: string, fuelName: string, quantity: number, supplier: string, stationId: string, stationName: string) {
+    await this.log('CREATE', 'DELIVERY', `Fuel delivery: ${quantity.toLocaleString()}L ${fuelName} from ${supplier}`, deliveryId, stationId, stationName)
   }
 
   async logTankDipCreated(dipId: string, tankId: string, dipLevel: number, stationId: string, stationName: string) {

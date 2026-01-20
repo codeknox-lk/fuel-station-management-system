@@ -35,11 +35,19 @@ interface Station {
   city: string
 }
 
+interface Fuel {
+  id: string
+  code: string
+  name: string
+  icon?: string | null
+}
+
 interface Tank {
   id: string
   stationId: string
   tankNumber: string
-  fuelType: string
+  fuelId: string
+  fuel?: Fuel
   capacity: number
   currentLevel: number
   isActive?: boolean
@@ -51,7 +59,8 @@ interface TankDip {
   id: string
   tankId: string
   tankNumber?: string
-  fuelType?: string
+  fuelId?: string
+  fuel?: Fuel
   dipLitres: number
   dipTime: string
   recordedBy: string
@@ -75,7 +84,8 @@ interface ActiveShift {
       tank: {
         id: string
         tankNumber: string
-        fuelType: string
+        fuelId: string
+        fuel?: Fuel
       }
     }
     startMeterReading: number
@@ -398,7 +408,7 @@ export default function TankDipsPage() {
       render: (value: unknown, row: TankDip) => (
         <div className="flex items-center gap-2">
           <span className="font-medium">Tank {value || 'N/A'}</span>
-          {row.fuelType && <Badge variant="outline">{row.fuelType}</Badge>}
+          {row.fuel && <Badge variant="outline">{row.fuel.icon} {row.fuel.name}</Badge>}
         </div>
       )
     },
@@ -423,8 +433,8 @@ export default function TankDipsPage() {
         }
         return (
           <span className={`font-mono ${numValue >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {numValue > 0 ? '+' : ''}{numValue.toLocaleString()}L
-          </span>
+              {numValue > 0 ? '+' : ''}{numValue.toLocaleString()}L
+            </span>
         )
       }
     },
@@ -468,11 +478,11 @@ export default function TankDipsPage() {
     <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.push('/tanks')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
+      <div className="flex items-center gap-4">
+        <Button variant="outline" onClick={() => router.push('/tanks')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
           <div>
             <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
               <Droplets className="h-8 w-8 text-blue-600" />
@@ -516,39 +526,39 @@ export default function TankDipsPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Basic Info */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
+            <div>
                 <Label htmlFor="station">Station *</Label>
-                <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
-                  <SelectTrigger id="station">
-                    <SelectValue placeholder="Select a station" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stations.map((station) => (
-                      <SelectItem key={station.id} value={station.id}>
-                        {station.name} ({station.city})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
+                <SelectTrigger id="station">
+                  <SelectValue placeholder="Select a station" />
+                </SelectTrigger>
+                <SelectContent>
+                  {stations.map((station) => (
+                    <SelectItem key={station.id} value={station.id}>
+                      {station.name} ({station.city})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-              <div>
+            <div>
                 <Label htmlFor="tank">Tank *</Label>
-                <Select value={selectedTank} onValueChange={setSelectedTank} disabled={loading || !selectedStation}>
-                  <SelectTrigger id="tank">
-                    <SelectValue placeholder="Select a tank" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableTanks.map((tank) => (
-                      <SelectItem key={tank.id} value={tank.id}>
-                        Tank {tank.tankNumber} - {tank.fuelType} ({tank.capacity.toLocaleString()}L)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <Select value={selectedTank} onValueChange={setSelectedTank} disabled={loading || !selectedStation}>
+                <SelectTrigger id="tank">
+                  <SelectValue placeholder="Select a tank" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableTanks.map((tank) => (
+                    <SelectItem key={tank.id} value={tank.id}>
+                        Tank {tank.tankNumber} - {tank.fuel?.icon} {tank.fuel?.name} ({tank.capacity.toLocaleString()}L)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-              <div>
+            <div>
                 <Label htmlFor="dipTime">Dip Time *</Label>
                 <DateTimePicker
                   value={dipTime}
@@ -643,7 +653,7 @@ export default function TankDipsPage() {
                                   <Label className="text-xs text-muted-foreground">Nozzle/Tank</Label>
                                   <div className="font-medium text-sm">
                                     Nozzle {assignment.nozzle.nozzleNumber}
-                                    <Badge variant="outline" className="ml-1 text-xs">{assignment.nozzle.tank.fuelType}</Badge>
+                                    <Badge variant="outline" className="ml-1 text-xs">{assignment.nozzle.tank.fuel?.icon} {assignment.nozzle.tank.fuel?.name}</Badge>
                                   </div>
                                 </div>
                                 <div>
@@ -712,7 +722,7 @@ export default function TankDipsPage() {
                               return (
                                 <div key={tank.id} className="p-3 bg-background rounded border text-sm">
                                   <div className="font-medium mb-2">
-                                    Tank {tank.tankNumber} <Badge variant="outline" className="ml-1 text-xs">{tank.fuelType}</Badge>
+                                    Tank {tank.tankNumber} <Badge variant="outline" className="ml-1 text-xs">{tank.fuel?.icon} {tank.fuel?.name}</Badge>
                                   </div>
                                   <div className="space-y-1">
                                     <div className="flex justify-between text-muted-foreground">
@@ -761,9 +771,9 @@ export default function TankDipsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="dipDepth">Liquid Depth (cm) *</Label>
-                      <Input
+              <Input
                         id="dipDepth"
-                        type="number"
+                type="number"
                         value={dipDepth}
                         onChange={(e) => {
                           const depth = e.target.value
@@ -780,11 +790,11 @@ export default function TankDipsPage() {
                           }
                         }}
                         placeholder="Enter depth from dipstick"
-                        min="0"
+                min="0"
                         max={maxDepth}
-                        step="0.1"
-                        disabled={loading}
-                        required
+                step="0.1"
+                disabled={loading}
+                required
                         className="text-lg font-mono"
                       />
                       <p className="text-xs text-muted-foreground mt-1">
@@ -818,12 +828,12 @@ export default function TankDipsPage() {
                   {dipLitres && (() => {
                     const adjustedLevel = getAdjustedTankLevel(selectedTank)
                     if (adjustedLevel > 0) {
-                      const dipReading = parseFloat(dipLitres)
+                  const dipReading = parseFloat(dipLitres)
                       const variance = dipReading - adjustedLevel
                       const variancePercentage = (variance / adjustedLevel) * 100
-                      const isWarning = Math.abs(variancePercentage) > 2
+                  const isWarning = Math.abs(variancePercentage) > 2
 
-                      return (
+                  return (
                         <Card className={isWarning ? 'border-red-500/30 bg-red-500/5' : 'border-green-500/30 bg-green-500/5'}>
                           <CardContent className="pt-6">
                             <div className="flex items-center gap-2 mb-3">
@@ -835,12 +845,12 @@ export default function TankDipsPage() {
                               <div className={`font-semibold ${isWarning ? 'text-red-600' : 'text-green-600'}`}>
                                 {isWarning ? 'Variance Warning' : 'Variance OK'}
                               </div>
-                            </div>
+                      </div>
                             <div className="space-y-2 text-sm">
                               <div className="flex justify-between">
                                 <span className="text-muted-foreground">
                                   {showUpdatedLevels ? 'Adjusted:' : 'System:'}
-                                </span>
+                          </span>
                                 <span className="font-mono font-semibold">{adjustedLevel.toLocaleString()}L</span>
                               </div>
                               <div className="flex justify-between">
@@ -856,33 +866,33 @@ export default function TankDipsPage() {
                                   <div className={`text-xs ${isWarning ? 'text-red-600' : 'text-green-600'}`}>
                                     ({variancePercentage > 0 ? '+' : ''}{variancePercentage.toFixed(2)}%)
                                   </div>
-                                </div>
-                              </div>
-                            </div>
+                        </div>
+                      </div>
+                    </div>
                           </CardContent>
                         </Card>
-                      )
-                    }
-                    return null
-                  })()}
-                </div>
+                  )
+                }
+                return null
+              })()}
+            </div>
               )
             })()}
 
             <div className="flex justify-end gap-4 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={() => router.push('/tanks')} disabled={loading}>
-                Cancel
-              </Button>
+            <Button type="button" variant="outline" onClick={() => router.push('/tanks')} disabled={loading}>
+              Cancel
+            </Button>
               <Button type="submit" disabled={loading || !dipLitres}>
-                {loading ? 'Recording...' : (
-                  <>
-                    <Plus className="mr-2 h-4 w-4" />
+              {loading ? 'Recording...' : (
+                <>
+                  <Plus className="mr-2 h-4 w-4" />
                     Record Tank Dip
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
         </CardContent>
       </Card>
 
@@ -893,8 +903,8 @@ export default function TankDipsPage() {
           <CardDescription>Latest 10 tank dip records</CardDescription>
         </CardHeader>
         <CardContent>
-          <DataTable
-            data={recentDips}
+        <DataTable
+          data={recentDips}
             columns={columns}
             onRowClick={handleViewDetails}
           />
@@ -917,7 +927,7 @@ export default function TankDipsPage() {
                   <Label className="text-xs text-muted-foreground">Tank</Label>
                   <div className="font-semibold">
                     Tank {selectedDip.tankNumber || 'N/A'}
-                    {selectedDip.fuelType && <Badge variant="outline" className="ml-2">{selectedDip.fuelType}</Badge>}
+                    {selectedDip.fuel && <Badge variant="outline" className="ml-2">{selectedDip.fuel.icon} {selectedDip.fuel.name}</Badge>}
                   </div>
                 </div>
                 <div>
@@ -938,7 +948,7 @@ export default function TankDipsPage() {
                     {(selectedDip.variance || 0) > 0 ? '+' : ''}{selectedDip.variance != null ? selectedDip.variance.toLocaleString() : '0'}L
                     <span className="text-sm ml-2">
                       ({(selectedDip.variancePercentage || 0) > 0 ? '+' : ''}{selectedDip.variancePercentage != null ? selectedDip.variancePercentage.toFixed(2) : '0'}%)
-                    </span>
+                        </span>
                   </div>
                 </div>
                 <div className="col-span-2">

@@ -72,10 +72,10 @@ export async function GET(
       totalLiters += litersSold
       
       // Get current price for the fuel type
-      const fuelType = assignment.nozzle.tank.fuelType
+      const fuelId = assignment.nozzle.tank.fuelId
       const price = await prisma.price.findFirst({
         where: {
-          fuelType,
+          fuelId,
           stationId: shift.stationId,
           effectiveDate: { lte: shift.startTime },
           isActive: true
@@ -97,7 +97,7 @@ export async function GET(
         litersSold: Math.round(litersSold * 100) / 100,
         sales: Math.round(sales),
         pricePerLiter: Math.round(pricePerLiter * 100) / 100,
-        fuelType: fuelType,
+        fuelName: assignment.nozzle.tank.fuel?.name || 'Unknown',
         status: assignment.status,
         assignedAt: assignment.assignedAt,
         closedAt: assignment.closedAt

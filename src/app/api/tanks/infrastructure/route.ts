@@ -31,7 +31,9 @@ export async function GET(request: NextRequest) {
       },
       select: {
         id: true,
-        fuelType: true,
+        tankNumber: true,
+        fuelId: true,
+        fuel: true,
         capacity: true,
         currentLevel: true,
         nozzles: {
@@ -51,7 +53,7 @@ export async function GET(request: NextRequest) {
         }
       },
       orderBy: {
-        fuelType: 'asc'
+        tankNumber: 'asc'
       }
     })
 
@@ -71,7 +73,8 @@ export async function GET(request: NextRequest) {
             tank: {
               select: {
                 id: true,
-                fuelType: true
+                fuelId: true,
+                fuel: true
               }
             }
           },

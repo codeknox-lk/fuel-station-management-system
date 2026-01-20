@@ -1,14 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
-// GET: Get safe for station or create if doesn't exist
+// GET: Get safe for station(s) or create if doesn't exist
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const stationId = searchParams.get('stationId')
 
+    // If no stationId, return aggregated data for all stations
     if (!stationId) {
-      return NextResponse.json({ error: 'Station ID is required' }, { status: 400 })
+      const allSafes = await prisma.safe.findMany({
+        include: {
+          station: {
+            select: { name: true, city: true }
+          }
+        }
+      })
+      
+      // Calculate total balance across all safes
+      let totalBalance = 0
+      let totalOpeningBalance = 0
+      
+      for (const safe of allSafes) {
+        // Calculate current balance from transactions
+        const allTransactions = await prisma.safeTransaction.findMany({
+          where: { safeId: safe.id },
+          orderBy: { timestamp: 'asc' }
+        })
+        
+        let calculatedBalance = safe.openingBalance
+        for (const tx of allTransactions) {
+          if (tx.type === 'OPENING_BALANCE') {
+            calculatedBalance = tx.amount
+          } else {
+            const isIncome = [
+              'CASH_FUEL_SALES',
+              'POS_CARD_PAYMENT',
+              'CREDIT_PAYMENT',
+              'CHEQUE_RECEIVED',
+              'LOAN_REPAID'
+            ].includes(tx.type)
+            calculatedBalance += isIncome ? tx.amount : -tx.amount
+          }
+        }
+        
+        totalBalance += calculatedBalance
+        totalOpeningBalance += safe.openingBalance
+      }
+      
+      // Return aggregated safe data
+      return NextResponse.json({
+        id: 'all-stations',
+        stationId: 'all',
+        openingBalance: totalOpeningBalance,
+        currentBalance: totalBalance,
+        isAggregated: true,
+        stationCount: allSafes.length
+      })
     }
 
     let safe = await prisma.safe.findUnique({

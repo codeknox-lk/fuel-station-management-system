@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { auditOperations } from '@/lib/auditMiddleware'
+import { safeParseFloat, validateAmount, validateRequired, validateDate } from '@/lib/validation'
 
 export async function GET(request: NextRequest) {
   try {
@@ -70,19 +71,33 @@ export async function POST(request: NextRequest) {
     
     const { stationId, category, description, amount, fromSafe, paidBy, proof, expenseDate } = body
     
-    if (!stationId || !category || !description || amount === undefined || !paidBy || !expenseDate) {
+    // Validate required fields
+    const errors: string[] = []
+    if (validateRequired(stationId, 'Station ID')) errors.push(validateRequired(stationId, 'Station ID')!)
+    if (validateRequired(category, 'Category')) errors.push(validateRequired(category, 'Category')!)
+    if (validateRequired(description, 'Description')) errors.push(validateRequired(description, 'Description')!)
+    if (validateRequired(paidBy, 'Paid by')) errors.push(validateRequired(paidBy, 'Paid by')!)
+    if (validateDate(expenseDate, 'Expense date')) errors.push(validateDate(expenseDate, 'Expense date')!)
+    
+    // Validate amount
+    const amountError = validateAmount(amount, 'Amount')
+    if (amountError) errors.push(amountError)
+    
+    if (errors.length > 0) {
       return NextResponse.json(
-        { error: 'Station ID, category, description, amount, paid by, and expense date are required' },
+        { error: errors.join(', ') },
         { status: 400 }
       )
     }
+    
+    const validatedAmount = safeParseFloat(amount)
 
     const newExpense = await prisma.expense.create({
       data: {
         stationId,
         category,
         description,
-        amount: parseFloat(amount),
+        amount: validatedAmount,
         fromSafe: fromSafe || false,
         paidBy,
         proof: proof || null,
@@ -99,7 +114,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Deduct from safe if fromSafe is true
-    if (fromSafe && parseFloat(amount) > 0) {
+    if (fromSafe && validatedAmount > 0) {
       try {
         // Get or create safe
         let safe = await prisma.safe.findUnique({
@@ -144,14 +159,14 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        const balanceAfter = balanceBefore - parseFloat(amount)
+        const balanceAfter = balanceBefore - validatedAmount
 
         // Create safe transaction
         await prisma.safeTransaction.create({
           data: {
             safeId: safe.id,
             type: 'EXPENSE',
-            amount: parseFloat(amount),
+            amount: validatedAmount,
             balanceBefore,
             balanceAfter,
             expenseId: newExpense.id,

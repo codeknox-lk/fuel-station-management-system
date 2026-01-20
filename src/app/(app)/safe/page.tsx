@@ -36,10 +36,27 @@ import {
   CheckCircle,
   ArrowUpRight,
   ArrowDownRight,
+  ArrowUpCircle,
+  Building2,
   Users,
   ShoppingCart,
-  AlertTriangle
+  AlertTriangle,
+  ArrowLeft,
+  Download,
+  BarChart3
 } from 'lucide-react'
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts'
 
 interface Safe {
   id: string
@@ -261,6 +278,21 @@ export default function SafePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  
+  const [cashFlowData, setCashFlowData] = useState<Array<{
+    date: string
+    income: number
+    expenses: number
+    balance: number
+  }>>([])
+  
+  const [topTransactions, setTopTransactions] = useState<{
+    largestIncome: SafeTransaction | null
+    largestExpense: SafeTransaction | null
+  }>({
+    largestIncome: null,
+    largestExpense: null
+  })
 
   // Dialog states
   const [addDialogOpen, setAddDialogOpen] = useState(false)
@@ -273,11 +305,17 @@ export default function SafePage() {
   const [transactionType, setTransactionType] = useState('CASH_FUEL_SALES')
   const [amount, setAmount] = useState<number | undefined>(undefined)
   const [description, setDescription] = useState('')
+  const [sourceOfIncome, setSourceOfIncome] = useState('')
+  const [responsiblePerson, setResponsiblePerson] = useState('')
+  const [expenseCategory, setExpenseCategory] = useState('EXPENSE')
+  const [customExpense, setCustomExpense] = useState('')
   const [transactionDate, setTransactionDate] = useState<Date>(new Date())
   const [openingBalance, setOpeningBalance] = useState<number | undefined>(undefined)
   
   // Loan form states
+  const [loanCategory, setLoanCategory] = useState<'PUMPER' | 'EXTERNAL' | 'OFFICE'>('PUMPER')
   const [loanPumperId, setLoanPumperId] = useState('')
+  const [loanRecipientName, setLoanRecipientName] = useState('')
   const [loanAmount, setLoanAmount] = useState<number | undefined>(undefined)
   const [loanMonthlyRental, setLoanMonthlyRental] = useState<number | undefined>(undefined)
   const [loanNotes, setLoanNotes] = useState('')
@@ -338,14 +376,20 @@ export default function SafePage() {
   }, [selectedStation])
 
   const fetchSafe = async () => {
-    if (!selectedStation || selectedStation === 'all') return
+    if (!selectedStation) return
 
     try {
       setLoading(true)
+      
+      // Build API URLs with station filter
+      const stationParam = selectedStation === 'all' ? '' : `stationId=${selectedStation}`
+      const stationQuery = stationParam ? `?${stationParam}` : ''
+      const stationQueryAmp = stationParam ? `${stationParam}&` : ''
+      
       const [safeRes, transactionsRes, creditRes] = await Promise.all([
-        fetch(`/api/safe?stationId=${selectedStation}`),
-        fetch(`/api/safe/transactions?stationId=${selectedStation}&limit=50`),
-        fetch(`/api/safe/outstanding-credit?stationId=${selectedStation}`)
+        fetch(`/api/safe${stationQuery}`),
+        fetch(`/api/safe/transactions?${stationQueryAmp}limit=50`),
+        fetch(`/api/safe/outstanding-credit${stationQuery}`)
       ])
 
       if (!safeRes.ok || !transactionsRes.ok) {
@@ -378,23 +422,25 @@ export default function SafePage() {
 
   const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedStation || selectedStation === 'all' || amount === undefined || !description) {
+    if (!selectedStation || selectedStation === 'all' || amount === undefined || !sourceOfIncome || !responsiblePerson) {
       setError('Please fill in all required fields')
       return
     }
 
     try {
-      const username = typeof window !== 'undefined' ? localStorage.getItem('username') || 'System' : 'System'
+      const finalDescription = description 
+        ? `${sourceOfIncome} - ${description}` 
+        : sourceOfIncome
 
       const response = await fetch('/api/safe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           stationId: selectedStation,
-          type: transactionType,
+          type: 'CASH_FUEL_SALES', // Default income type for API
           amount: amount || 0,
-          description,
-          performedBy: username,
+          description: finalDescription,
+          performedBy: responsiblePerson,
           timestamp: transactionDate.toISOString()
         })
       })
@@ -405,6 +451,8 @@ export default function SafePage() {
 
       setAddDialogOpen(false)
       setAmount(undefined)
+      setSourceOfIncome('')
+      setResponsiblePerson('')
       setDescription('')
       setTransactionDate(new Date())
       setSuccess('Transaction added successfully!')
@@ -418,23 +466,31 @@ export default function SafePage() {
 
   const handleRemoveTransaction = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedStation || selectedStation === 'all' || amount === undefined || !description) {
+    if (!selectedStation || selectedStation === 'all' || amount === undefined || !responsiblePerson) {
       setError('Please fill in all required fields')
       return
     }
 
+    if (expenseCategory === 'OTHER' && !customExpense) {
+      setError('Please specify the expense type')
+      return
+    }
+
     try {
-      const username = typeof window !== 'undefined' ? localStorage.getItem('username') || 'System' : 'System'
+      const expenseType = expenseCategory === 'OTHER' ? customExpense : 'General Expense'
+      const finalDescription = description 
+        ? `${expenseType} - ${description}` 
+        : expenseType
 
       const response = await fetch('/api/safe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           stationId: selectedStation,
-          type: transactionType,
+          type: 'EXPENSE',
           amount: amount || 0,
-          description,
-          performedBy: username,
+          description: finalDescription,
+          performedBy: responsiblePerson,
           timestamp: transactionDate.toISOString()
         })
       })
@@ -445,6 +501,9 @@ export default function SafePage() {
 
       setRemoveDialogOpen(false)
       setAmount(undefined)
+      setExpenseCategory('EXPENSE')
+      setCustomExpense('')
+      setResponsiblePerson('')
       setDescription('')
       setTransactionDate(new Date())
       setSuccess('Transaction recorded successfully!')
@@ -494,30 +553,64 @@ export default function SafePage() {
 
   const handleGiveLoan = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedStation || selectedStation === 'all' || !loanPumperId || loanAmount === undefined) {
-      setError('Please select a pumper and enter loan amount')
+    if (!selectedStation || selectedStation === 'all' || loanAmount === undefined) {
+      setError('Please fill in all required fields')
+      return
+    }
+    
+    if (loanCategory === 'PUMPER' && !loanPumperId) {
+      setError('Please select a pumper')
+      return
+    }
+    
+    if ((loanCategory === 'EXTERNAL' || loanCategory === 'OFFICE') && !loanRecipientName) {
+      setError('Please enter recipient name')
       return
     }
 
     try {
       const username = typeof window !== 'undefined' ? localStorage.getItem('username') || 'System' : 'System'
-      const selectedPumper = pumpers.find(p => p.id === loanPumperId)
-      const pumperName = selectedPumper?.name || 'Unknown Pumper'
+      
+      let apiUrl = ''
+      let bodyData: any = {
+        stationId: selectedStation,
+        amount: loanAmount || 0,
+        monthlyRental: loanMonthlyRental || 0,
+        givenBy: username,
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+        fromSafe: true
+      }
 
-      // Create LoanPumper record with monthly rental
-      const loanResponse = await fetch('/api/loans/pumper', {
+      if (loanCategory === 'PUMPER') {
+        const selectedPumper = pumpers.find(p => p.id === loanPumperId)
+        const pumperName = selectedPumper?.name || 'Unknown Pumper'
+        apiUrl = '/api/loans/pumper'
+        bodyData = {
+          ...bodyData,
+          pumperName: pumperName,
+          reason: loanNotes || 'Loan given from safe'
+        }
+      } else if (loanCategory === 'OFFICE') {
+        apiUrl = '/api/loans/office'
+        bodyData = {
+          ...bodyData,
+          staffName: loanRecipientName,
+          reason: loanNotes || 'Loan given from safe'
+        }
+      } else if (loanCategory === 'EXTERNAL') {
+        apiUrl = '/api/loans/external'
+        bodyData = {
+          ...bodyData,
+          borrowerName: loanRecipientName,
+          borrowerPhone: 'N/A',
+          notes: loanNotes || 'Loan given from safe'
+        }
+      }
+
+      const loanResponse = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          stationId: selectedStation,
-          pumperName: pumperName,
-          amount: loanAmount || 0,
-          monthlyRental: loanMonthlyRental || 0,
-          reason: loanNotes || 'Loan given from safe',
-          givenBy: username,
-          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
-          fromSafe: true
-        })
+        body: JSON.stringify(bodyData)
       })
 
       if (!loanResponse.ok) {
@@ -525,7 +618,9 @@ export default function SafePage() {
       }
 
       setLoanDialogOpen(false)
+      setLoanCategory('PUMPER')
       setLoanPumperId('')
+      setLoanRecipientName('')
       setLoanAmount(undefined)
       setLoanMonthlyRental(undefined)
       setLoanNotes('')
@@ -921,18 +1016,117 @@ export default function SafePage() {
         </div>
       </div>
 
-      {/* Info Alert about Credit */}
-      <Alert className="mt-4">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Understanding Credit in Safe</AlertTitle>
-        <AlertDescription className="mt-2">
-          <div className="space-y-1 text-sm">
-            <p><strong>Credit Sales:</strong> When fuel is sold on credit, a credit slip is stored in the safe (not cash). This increases "Outstanding Credit" but does NOT increase physical cash.</p>
-            <p><strong>Credit Payments:</strong> When a credit customer pays their debt, that actual cash is added to the safe and their outstanding balance decreases.</p>
-            <p><strong>Total Assets:</strong> Shows the combined value of physical cash + money owed to you (outstanding credit).</p>
+      {/* Key Metrics - More Valuable Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Outstanding Loans */}
+        <div className="p-4 border rounded-lg bg-card">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-muted-foreground">Outstanding Loans</h3>
+              <p className="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1">
+                Rs. {(() => {
+                  const loanGiven = groupedTransactions
+                    .filter(t => !t.isGrouped && t.type === 'LOAN_GIVEN')
+                    .reduce((sum, t) => sum + t.amount, 0)
+                  const loanRepaid = groupedTransactions
+                    .filter(t => !t.isGrouped && t.type === 'LOAN_REPAID')
+                    .reduce((sum, t) => sum + t.amount, 0)
+                  return (loanGiven - loanRepaid).toLocaleString()
+                })()}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Money to be collected
+              </p>
+            </div>
+            <CreditCard className="h-8 w-8 text-amber-600 dark:text-amber-400 ml-2" />
           </div>
-        </AlertDescription>
-      </Alert>
+        </div>
+
+        {/* Today's Collections */}
+        <div className="p-4 border rounded-lg bg-card">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-muted-foreground">Today's Collections</h3>
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
+                Rs. {(() => {
+                  const today = new Date()
+                  today.setHours(0, 0, 0, 0)
+                  const todayCollections = groupedTransactions
+                    .filter(t => {
+                      const txDate = new Date(t.timestamp)
+                      txDate.setHours(0, 0, 0, 0)
+                      return txDate.getTime() === today.getTime() && 
+                             ['CASH_FUEL_SALES', 'POS_CARD_PAYMENT', 'CREDIT_PAYMENT', 'CHEQUE_RECEIVED', 'LOAN_REPAID'].includes(t.type)
+                    })
+                    .reduce((sum, t) => sum + t.amount, 0)
+                  return todayCollections.toLocaleString()
+                })()}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {groupedTransactions.filter(t => {
+                  const today = new Date()
+                  today.setHours(0, 0, 0, 0)
+                  const txDate = new Date(t.timestamp)
+                  txDate.setHours(0, 0, 0, 0)
+                  return txDate.getTime() === today.getTime()
+                }).length} transactions today
+              </p>
+            </div>
+            <TrendingUp className="h-8 w-8 text-green-600 dark:text-green-400 ml-2" />
+          </div>
+        </div>
+
+        {/* Bank Deposits This Week */}
+        <div className="p-4 border rounded-lg bg-card">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-muted-foreground">Bank Deposits (7d)</h3>
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
+                Rs. {(() => {
+                  const weekAgo = new Date()
+                  weekAgo.setDate(weekAgo.getDate() - 7)
+                  const deposits = groupedTransactions
+                    .filter(t => !t.isGrouped && t.type === 'BANK_DEPOSIT' && new Date(t.timestamp) >= weekAgo)
+                    .reduce((sum, t) => sum + t.amount, 0)
+                  return deposits.toLocaleString()
+                })()}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Banked last 7 days
+              </p>
+            </div>
+            <Building2 className="h-8 w-8 text-blue-600 dark:text-blue-400 ml-2" />
+          </div>
+        </div>
+
+        {/* Largest Transaction Today */}
+        <div className="p-4 border rounded-lg bg-card">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-muted-foreground">Largest Transaction</h3>
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">
+                Rs. {(() => {
+                  const today = new Date()
+                  today.setHours(0, 0, 0, 0)
+                  const todayTx = groupedTransactions.filter(t => {
+                    const txDate = new Date(t.timestamp)
+                    txDate.setHours(0, 0, 0, 0)
+                    return txDate.getTime() === today.getTime()
+                  })
+                  const largest = todayTx.length > 0 
+                    ? Math.max(...todayTx.map(t => t.amount))
+                    : 0
+                  return largest.toLocaleString()
+                })()}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Today's peak transaction
+              </p>
+            </div>
+            <ArrowUpCircle className="h-8 w-8 text-red-600 dark:text-red-400 ml-2" />
+          </div>
+        </div>
+      </div>
 
       {/* Quick Actions */}
       <div className="flex flex-wrap gap-4">
@@ -941,125 +1135,203 @@ export default function SafePage() {
             <Button onClick={() => setTransactionType('CASH_FUEL_SALES')}>
               <Plus className="mr-2 h-4 w-4" />
               Add Money
-        </Button>
+            </Button>
           </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Add Money to Safe</DialogTitle>
+              <DialogTitle className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                <ArrowDownRight className="h-5 w-5" />
+                Add Money to Safe
+              </DialogTitle>
+              <p className="text-sm text-muted-foreground">Record incoming cash to the safe</p>
             </DialogHeader>
             <form onSubmit={handleAddTransaction} className="space-y-4">
-              <div>
-                <Label htmlFor="addType">Transaction Type</Label>
-                <Select value={transactionType} onValueChange={setTransactionType}>
-                  <SelectTrigger id="addType">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CASH_FUEL_SALES">Cash from Fuel Sales</SelectItem>
-                    <SelectItem value="POS_CARD_PAYMENT">POS Card Payment</SelectItem>
-                    <SelectItem value="CHEQUE_RECEIVED">Cheque Received</SelectItem>
-                    <SelectItem value="LOAN_REPAID">Loan Repaid</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Note: Credit payments should be recorded through the Credit Customers page to update customer balances.
+              <div className="p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Plus className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <span className="text-sm font-semibold text-green-900 dark:text-green-100">Incoming Transaction</span>
+                </div>
+                <p className="text-xs text-green-700 dark:text-green-300">
+                  This will increase the safe balance
                 </p>
               </div>
               <div>
-                <Label htmlFor="addAmount">Amount (Rs.)</Label>
+                <Label htmlFor="sourceOfIncome" className="text-base font-semibold">Source of Income *</Label>
+                <Input
+                  id="sourceOfIncome"
+                  value={sourceOfIncome}
+                  onChange={(e) => setSourceOfIncome(e.target.value)}
+                  placeholder="E.g., Fuel Sales, Card Payment, Loan Repayment, etc."
+                  className="mt-1"
+                  required
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Enter the source of this income
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="addAmount" className="text-base font-semibold">Amount (Rs.) *</Label>
                 <MoneyInput
                   id="addAmount"
                   value={amount}
                   onChange={setAmount}
                   placeholder="0.00"
+                  className="mt-1"
                 />
               </div>
               <div>
-                <Label htmlFor="addDescription">Description</Label>
+                <Label htmlFor="responsiblePersonAdd" className="text-base font-semibold">Responsible Person *</Label>
+                <Input
+                  id="responsiblePersonAdd"
+                  value={responsiblePerson}
+                  onChange={(e) => setResponsiblePerson(e.target.value)}
+                  placeholder="Name of person responsible"
+                  className="mt-1"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="addDescription" className="text-base font-semibold">Additional Notes (Optional)</Label>
                 <Input
                   id="addDescription"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Transaction description"
+                  placeholder="Enter additional details"
+                  className="mt-1"
                 />
               </div>
               <div>
-                <Label htmlFor="addDate">Date & Time</Label>
+                <Label htmlFor="addDate" className="text-base font-semibold">Date & Time</Label>
                 <DateTimePicker
                   value={transactionDate}
                   onChange={(date) => setTransactionDate(date || new Date())}
                 />
               </div>
               <div className="flex justify-end gap-3">
-                <Button type="button" variant="outline" onClick={() => setAddDialogOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => {
+                  setAddDialogOpen(false)
+                  setSourceOfIncome('')
+                  setResponsiblePerson('')
+                  setDescription('')
+                  setAmount(undefined)
+                }}>
                   Cancel
-        </Button>
+                </Button>
                 <Button type="submit">Add to Safe</Button>
               </div>
             </form>
           </DialogContent>
         </Dialog>
 
+        {/* Continue with Remove Money, Give Loan, Bank Deposit buttons... */}
         <Dialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" onClick={() => setTransactionType('EXPENSE')}>
               <Minus className="mr-2 h-4 w-4" />
               Remove Money
-        </Button>
+            </Button>
           </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Remove Money from Safe</DialogTitle>
+              <DialogTitle className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                <ArrowUpRight className="h-5 w-5" />
+                Remove Money from Safe
+              </DialogTitle>
+              <p className="text-sm text-muted-foreground">Record outgoing cash from the safe</p>
             </DialogHeader>
             <form onSubmit={handleRemoveTransaction} className="space-y-4">
+              <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Minus className="h-4 w-4 text-red-600 dark:text-red-400" />
+                  <span className="text-sm font-semibold text-red-900 dark:text-red-100">Outgoing Transaction</span>
+                </div>
+                <p className="text-xs text-red-700 dark:text-red-300">
+                  This will decrease the safe balance
+                </p>
+              </div>
               <div>
-                <Label htmlFor="removeType">Transaction Type</Label>
-                <Select value={transactionType} onValueChange={setTransactionType}>
-                  <SelectTrigger id="removeType">
+                <Label htmlFor="expenseCategory" className="text-base font-semibold">Expense Category *</Label>
+                <Select value={expenseCategory} onValueChange={setExpenseCategory}>
+                  <SelectTrigger id="expenseCategory" className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="EXPENSE">Expense</SelectItem>
-                    <SelectItem value="LOAN_GIVEN">Loan Given</SelectItem>
-                    <SelectItem value="CASH_TRANSFER">Cash Transfer</SelectItem>
+                    <SelectItem value="EXPENSE">General Expense</SelectItem>
+                    <SelectItem value="OTHER">Other (Specify below)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              
+              {expenseCategory === 'OTHER' && (
+                <div>
+                  <Label htmlFor="customExpense" className="text-base font-semibold">Specify Expense Type *</Label>
+                  <Input
+                    id="customExpense"
+                    value={customExpense}
+                    onChange={(e) => setCustomExpense(e.target.value)}
+                    placeholder="Enter expense type"
+                    className="mt-1"
+                    required
+                  />
+                </div>
+              )}
+
               <div>
-                <Label htmlFor="removeAmount">Amount (Rs.)</Label>
+                <Label htmlFor="removeAmount" className="text-base font-semibold">Amount (Rs.) *</Label>
                 <MoneyInput
                   id="removeAmount"
                   value={amount}
                   onChange={setAmount}
                   placeholder="0.00"
+                  className="mt-1"
                 />
               </div>
               <div>
-                <Label htmlFor="removeDescription">Description</Label>
+                <Label htmlFor="responsiblePersonRemove" className="text-base font-semibold">Responsible Person *</Label>
+                <Input
+                  id="responsiblePersonRemove"
+                  value={responsiblePerson}
+                  onChange={(e) => setResponsiblePerson(e.target.value)}
+                  placeholder="Name of person responsible"
+                  className="mt-1"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="removeDescription" className="text-base font-semibold">Additional Notes (Optional)</Label>
                 <Input
                   id="removeDescription"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Transaction description"
+                  placeholder="Enter additional details"
+                  className="mt-1"
                 />
               </div>
               <div>
-                <Label htmlFor="removeDate">Date & Time</Label>
+                <Label htmlFor="removeDate" className="text-base font-semibold">Date & Time</Label>
                 <DateTimePicker
                   value={transactionDate}
                   onChange={(date) => setTransactionDate(date || new Date())}
                 />
               </div>
               <div className="flex justify-end gap-3">
-                <Button type="button" variant="outline" onClick={() => setRemoveDialogOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => {
+                  setRemoveDialogOpen(false)
+                  setExpenseCategory('EXPENSE')
+                  setCustomExpense('')
+                  setResponsiblePerson('')
+                  setDescription('')
+                  setAmount(undefined)
+                }}>
                   Cancel
-        </Button>
+                </Button>
                 <Button type="submit" variant="destructive">Remove from Safe</Button>
               </div>
             </form>
           </DialogContent>
         </Dialog>
 
+        {/* Loan Dialog */}
         <Dialog open={loanDialogOpen} onOpenChange={setLoanDialogOpen}>
           <DialogTrigger asChild>
             <Button variant="outline">
@@ -1069,28 +1341,69 @@ export default function SafePage() {
           </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Give Loan from Safe</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                Give Loan from Safe
+              </DialogTitle>
+              <p className="text-sm text-muted-foreground">Record a loan given from safe cash</p>
             </DialogHeader>
             <form onSubmit={handleGiveLoan} className="space-y-4">
               <div>
-                <Label htmlFor="loanPumper">Pumper</Label>
-                <Select value={loanPumperId} onValueChange={setLoanPumperId}>
-                  <SelectTrigger id="loanPumper">
-                    <SelectValue placeholder="Select a pumper" />
+                <Label htmlFor="loanCategory" className="text-base font-semibold">Loan Category</Label>
+                <Select value={loanCategory} onValueChange={(value) => {
+                  setLoanCategory(value as 'PUMPER' | 'EXTERNAL' | 'OFFICE')
+                  setLoanPumperId('')
+                  setLoanRecipientName('')
+                }}>
+                  <SelectTrigger id="loanCategory" className="mt-1">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {pumpers.length === 0 ? (
-                      <SelectItem value="" disabled>No pumpers available</SelectItem>
-                    ) : (
-                      pumpers.map((pumper) => (
-                        <SelectItem key={pumper.id} value={pumper.id}>
-                          {pumper.name}{pumper.employeeId ? ` (${pumper.employeeId})` : ''}
-                        </SelectItem>
-                      ))
-                    )}
+                    <SelectItem value="PUMPER">Pumper Loan</SelectItem>
+                    <SelectItem value="EXTERNAL">External Loan (Customer/Supplier)</SelectItem>
+                    <SelectItem value="OFFICE">Office/Staff Loan</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {loanCategory === 'PUMPER' && 'Loan to a pumper employee'}
+                  {loanCategory === 'EXTERNAL' && 'Loan to external party (customer, supplier, etc.)'}
+                  {loanCategory === 'OFFICE' && 'Loan to office staff or management'}
+                </p>
               </div>
+
+              {loanCategory === 'PUMPER' ? (
+                <div>
+                  <Label htmlFor="loanPumper" className="text-base font-semibold">Select Pumper</Label>
+                  <Select value={loanPumperId} onValueChange={setLoanPumperId}>
+                    <SelectTrigger id="loanPumper" className="mt-1">
+                      <SelectValue placeholder="Choose a pumper..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pumpers.length === 0 ? (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">No pumpers available</div>
+                      ) : (
+                        pumpers.map((pumper) => (
+                          <SelectItem key={pumper.id} value={pumper.id}>
+                            {pumper.name}{pumper.employeeId ? ` (${pumper.employeeId})` : ''}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div>
+                  <Label htmlFor="loanRecipient" className="text-base font-semibold">Recipient Name</Label>
+                  <Input
+                    id="loanRecipient"
+                    value={loanRecipientName}
+                    onChange={(e) => setLoanRecipientName(e.target.value)}
+                    placeholder={loanCategory === 'EXTERNAL' ? 'E.g., Customer Name, Supplier Name' : 'E.g., Office Manager, Accountant'}
+                    className="mt-1"
+                  />
+                </div>
+              )}
+
               <div>
                 <Label htmlFor="loanAmount">Loan Amount (Rs.)</Label>
                 <MoneyInput
@@ -1100,6 +1413,7 @@ export default function SafePage() {
                   placeholder="0.00"
                 />
               </div>
+
               <div>
                 <Label htmlFor="loanMonthlyRental">Monthly Rental (Rs.)</Label>
                 <MoneyInput
@@ -1109,38 +1423,31 @@ export default function SafePage() {
                   placeholder="0.00"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Amount to deduct monthly from pumper's salary (default: 0)
+                  Amount to deduct monthly (default: 0)
                 </p>
               </div>
+
               <div>
                 <Label htmlFor="loanNotes">Notes (Optional)</Label>
                 <Input
                   id="loanNotes"
                   value={loanNotes}
                   onChange={(e) => setLoanNotes(e.target.value)}
-                  placeholder="Additional details"
+                  placeholder="Additional notes"
                 />
               </div>
+
               <div className="flex justify-end gap-3">
                 <Button type="button" variant="outline" onClick={() => setLoanDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" variant="destructive">Give Loan</Button>
+                <Button type="submit">Give Loan</Button>
               </div>
             </form>
           </DialogContent>
         </Dialog>
 
-        <Dialog open={bankDepositDialogOpen} onOpenChange={(open) => {
-          setBankDepositDialogOpen(open)
-          if (!open) {
-            // Reset when dialog closes
-            setDepositPerformedBy('')
-            setDepositBankId('')
-            setDepositAmount(undefined)
-            setDepositNotes('')
-          }
-        }}>
+        <Dialog open={bankDepositDialogOpen} onOpenChange={setBankDepositDialogOpen}>
           <DialogTrigger asChild>
             <Button variant="outline">
               <DollarSign className="mr-2 h-4 w-4" />
@@ -1149,23 +1456,16 @@ export default function SafePage() {
           </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Record Bank Deposit</DialogTitle>
+              <DialogTitle>Bank Deposit</DialogTitle>
+              <DialogDescription>
+                Record money deposited to bank from safe
+              </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleBankDeposit} className="space-y-4">
               <div>
-                <Label htmlFor="depositPerformedBy">Deposited By</Label>
-                <Input
-                  id="depositPerformedBy"
-                  value={depositPerformedBy}
-                  onChange={(e) => setDepositPerformedBy(e.target.value)}
-                  placeholder="Enter name (e.g., Manager, Owner)"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="depositBankId">Bank Account</Label>
+                <Label htmlFor="depositBank" className="text-base font-semibold">Bank Account *</Label>
                 <Select value={depositBankId} onValueChange={setDepositBankId}>
-                  <SelectTrigger id="depositBankId">
+                  <SelectTrigger id="depositBank" className="mt-1">
                     <SelectValue placeholder="Select bank account" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1175,9 +1475,9 @@ export default function SafePage() {
                       banks.map((bank) => (
                         <SelectItem key={bank.id} value={bank.id}>
                           <div className="flex flex-col">
-                            <span className="font-medium">{bank.name}{bank.branch && ` - ${bank.branch}`}</span>
+                            <span className="font-medium">{bank.name}</span>
                             {bank.accountNumber && (
-                              <span className="text-xs text-muted-foreground">Account: {bank.accountNumber}</span>
+                              <span className="text-xs text-muted-foreground">A/C: {bank.accountNumber}</span>
                             )}
                           </div>
                         </SelectItem>
@@ -1185,43 +1485,76 @@ export default function SafePage() {
                     )}
                   </SelectContent>
                 </Select>
+                {depositBankId && banks.find(b => b.id === depositBankId)?.accountNumber && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Account Number: <span className="font-mono font-medium">{banks.find(b => b.id === depositBankId)?.accountNumber}</span>
+                  </p>
+                )}
               </div>
+
               <div>
-                <Label htmlFor="depositAmount">Deposit Amount (Rs.)</Label>
+                <Label htmlFor="depositAmount" className="text-base font-semibold">Deposit Amount (Rs.) *</Label>
                 <MoneyInput
                   id="depositAmount"
                   value={depositAmount}
                   onChange={setDepositAmount}
-                  placeholder="0.00"
+                  placeholder="Enter amount"
+                  className="mt-1"
                 />
                 {safe && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    Available cash: Rs. {safe.currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Available in safe: Rs. {(safe.currentBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 )}
               </div>
+
               <div>
-                <Label htmlFor="depositNotes">Notes (Optional)</Label>
+                <Label htmlFor="depositPerformedBy" className="text-base font-semibold">Performed By *</Label>
+                <Input
+                  id="depositPerformedBy"
+                  value={depositPerformedBy}
+                  onChange={(e) => setDepositPerformedBy(e.target.value)}
+                  placeholder="Name of person making deposit"
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="depositNotes" className="text-base font-semibold">Notes (Optional)</Label>
                 <Input
                   id="depositNotes"
                   value={depositNotes}
                   onChange={(e) => setDepositNotes(e.target.value)}
-                  placeholder="Additional details"
+                  placeholder="Additional notes"
+                  className="mt-1"
                 />
               </div>
-              <div className="flex justify-end gap-3">
-                <Button type="button" variant="outline" onClick={() => setBankDepositDialogOpen(false)}>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setBankDepositDialogOpen(false)
+                    setDepositBankId('')
+                    setDepositAmount(undefined)
+                    setDepositPerformedBy('')
+                    setDepositNotes('')
+                  }}
+                >
                   Cancel
                 </Button>
-                <Button type="submit">Record Deposit</Button>
+                <Button type="submit">
+                  Record Deposit
+                </Button>
               </div>
             </form>
           </DialogContent>
         </Dialog>
+      </div>
 
-        {/* Removed: All POS verification/reconciliation - Now handled in Close Shift page */}
-                    </div>
 
+      {/* Removed: All POS verification/reconciliation - Now handled in Close Shift page */}
       {/* Removed: Unprocessed Shifts section - All verification now happens in Close Shift page */}
 
       {/* Transactions Table */}

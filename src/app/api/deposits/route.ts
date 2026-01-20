@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { safeParseFloat, validateAmount, validateRequired, validateDate } from '@/lib/validation'
 
 export async function GET(request: NextRequest) {
   try {
@@ -81,19 +82,33 @@ export async function POST(request: NextRequest) {
     
     const { stationId, amount, bankId, accountId, depositSlip, depositedBy, depositDate } = body
     
-    if (!stationId || !amount || !bankId || !accountId || !depositedBy || !depositDate) {
+    // Validate required fields
+    const errors: string[] = []
+    if (validateRequired(stationId, 'Station ID')) errors.push(validateRequired(stationId, 'Station ID')!)
+    if (validateRequired(bankId, 'Bank ID')) errors.push(validateRequired(bankId, 'Bank ID')!)
+    if (validateRequired(accountId, 'Account ID')) errors.push(validateRequired(accountId, 'Account ID')!)
+    if (validateRequired(depositedBy, 'Deposited by')) errors.push(validateRequired(depositedBy, 'Deposited by')!)
+    if (validateDate(depositDate, 'Deposit date')) errors.push(validateDate(depositDate, 'Deposit date')!)
+    
+    // Validate amount
+    const amountError = validateAmount(amount, 'Amount')
+    if (amountError) errors.push(amountError)
+    
+    if (errors.length > 0) {
       return NextResponse.json(
-        { error: 'Station ID, amount, bank ID, account ID, deposited by, and deposit date are required' },
+        { error: errors.join(', ') },
         { status: 400 }
       )
     }
+    
+    const validatedAmount = safeParseFloat(amount)
 
     // Create deposit and deduct from safe in a transaction
     const result = await prisma.$transaction(async (tx) => {
       const deposit = await tx.deposit.create({
         data: {
           stationId,
-          amount: parseFloat(amount),
+          amount: validatedAmount,
           bankId,
           accountId,
           depositSlip: depositSlip || null,
@@ -159,14 +174,14 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      const balanceAfter = balanceBefore - parseFloat(amount)
+      const balanceAfter = balanceBefore - validatedAmount
 
       // Create safe transaction
       await tx.safeTransaction.create({
         data: {
           safeId: safe.id,
           type: 'BANK_DEPOSIT',
-          amount: parseFloat(amount),
+          amount: validatedAmount,
           balanceBefore,
           balanceAfter,
           depositId: deposit.id,
@@ -188,7 +203,7 @@ export async function POST(request: NextRequest) {
           bankId,
           stationId,
           type: 'DEPOSIT',
-          amount: parseFloat(amount),
+          amount: validatedAmount,
           description: `Cash deposit from safe - Deposited by ${depositedBy}${depositSlip ? ` - Slip: ${depositSlip}` : ''}`,
           referenceNumber: depositSlip || null,
           transactionDate: depositTimestamp,

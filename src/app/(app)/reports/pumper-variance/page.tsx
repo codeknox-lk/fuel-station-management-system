@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useStation } from '@/contexts/StationContext'
+import { getCurrentBusinessMonth } from '@/lib/businessMonth'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -34,7 +36,8 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  Calendar
+  Calendar,
+  ArrowLeft
 } from 'lucide-react'
 
 interface Station {
@@ -107,6 +110,7 @@ const Sparkline = ({ data }: { data: { day: number; variance: number }[] }) => (
 )
 
 export default function PumperVariancePage() {
+  const router = useRouter()
   const [stations, setStations] = useState<Station[]>([])
   const [pumperVariances, setPumperVariances] = useState<PumperVariance[]>([])
   const [loading, setLoading] = useState(false)
@@ -114,8 +118,9 @@ export default function PumperVariancePage() {
 
   // Form state
   const { selectedStation, setSelectedStation } = useStation()
-  const [selectedMonth, setSelectedMonth] = useState(String(new Date().getMonth() + 1).padStart(2, '0'))
-  const [selectedYear, setSelectedYear] = useState(String(currentYear))
+  const currentBusinessMonth = getCurrentBusinessMonth()
+  const [selectedMonth, setSelectedMonth] = useState(String(currentBusinessMonth.month).padStart(2, '0'))
+  const [selectedYear, setSelectedYear] = useState(String(currentBusinessMonth.year))
 
   // Load initial data
   useEffect(() => {
@@ -345,7 +350,13 @@ export default function PumperVariancePage() {
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-foreground">Pumper Variance Report</h1>
+      <div className="flex items-center gap-4 mb-6">
+        <Button variant="outline" onClick={() => router.push('/reports')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <h1 className="text-3xl font-bold text-foreground">Pumper Variance Report</h1>
+      </div>
 
       {error && (
         <Alert variant="destructive">

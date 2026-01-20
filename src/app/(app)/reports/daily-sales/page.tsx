@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useStation } from '@/contexts/StationContext'
+import { useRouter } from 'next/navigation'
+import { getCurrentBusinessMonth, getBusinessMonth, getBusinessMonthDateRange, formatBusinessMonthRange } from '@/lib/businessMonth'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -12,6 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { 
   LineChart, 
@@ -29,8 +37,13 @@ import {
   Calendar,
   Download,
   RefreshCw,
-  BarChart3
+  BarChart3,
+  ArrowLeft,
+  ArrowRight,
+  FileText,
+  FileSpreadsheet
 } from 'lucide-react'
+import { exportDailySalesReportPDF, exportDailySalesReportExcel, captureChartAsImage } from '@/lib/exportUtils'
 
 interface DailySalesData {
   date: string
@@ -63,46 +76,45 @@ const months = [
   { value: '12', label: 'December' }
 ]
 
-const fuelTypeColors: Record<string, string> = {
-  'PETROL_92': '#3b82f6', // Blue
-  'PETROL_95': '#8b5cf6', // Purple
-  'DIESEL': '#10b981', // Green
-  'SUPER_DIESEL': '#f59e0b', // Amber
-  'OIL': '#ef4444' // Red
+const fuelColors: Record<string, string> = {
+  'Petrol 92': '#3b82f6',
+  'Petrol 95': '#8b5cf6',
+  'Diesel': '#10b981',
+  'Super Diesel': '#f59e0b',
+  'Extra Mile': '#ec4899',
+  'Oil': '#ef4444'
 }
 
-const formatFuelType = (fuelType: string): string => {
-  return fuelType
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ')
+const getFuelColor = (fuelName: string): string => {
+  return fuelColors[fuelName] || '#666'
 }
 
 export default function DailySalesReportPage() {
+  const router = useRouter()
   const { selectedStation, stations, setSelectedStation } = useStation()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [salesData, setSalesData] = useState<DailySalesResponse | null>(null)
   
-  // Month selection
-  const currentDate = new Date()
-  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear().toString())
-  const [selectedMonth, setSelectedMonth] = useState(String(currentDate.getMonth() + 1).padStart(2, '0'))
+  // Month selection - using business month (7th to 6th)
+  const currentBusinessMonth = getCurrentBusinessMonth()
+  const [selectedYear, setSelectedYear] = useState(currentBusinessMonth.year.toString())
+  const [selectedMonth, setSelectedMonth] = useState(String(currentBusinessMonth.month).padStart(2, '0'))
 
   // Generate years (current year and previous 2 years)
   const years = Array.from({ length: 3 }, (_, i) => {
-    const year = currentDate.getFullYear() - i
+    const year = currentBusinessMonth.year - i
     return { value: year.toString(), label: year.toString() }
   })
 
   useEffect(() => {
-    if (selectedStation && selectedStation !== 'all') {
+    if (selectedStation) {
       fetchSalesData()
     }
   }, [selectedStation, selectedYear, selectedMonth])
 
   const fetchSalesData = async () => {
-    if (!selectedStation || selectedStation === 'all') {
+    if (!selectedStation) {
       setError('Please select a station')
       return
     }
@@ -111,6 +123,8 @@ export default function DailySalesReportPage() {
       setLoading(true)
       setError('')
       
+      // Get business month date range (7th to 6th)
+      const dateRange = getBusinessMonthDateRange(parseInt(selectedMonth), parseInt(selectedYear))
       const month = `${selectedYear}-${selectedMonth}`
       const res = await fetch(`/api/reports/daily-sales?stationId=${selectedStation}&month=${month}`)
       
@@ -137,14 +151,47 @@ export default function DailySalesReportPage() {
     }
     
     // Add sales for each fuel type
-    salesData.fuelTypes.forEach(fuelType => {
-      dataPoint[fuelType] = day.sales[fuelType] || 0
+    salesData.fuelTypes.forEach(fuelName => {
+      dataPoint[fuelName] = day.sales[fuelName] || 0
     })
     
     dataPoint.total = day.totalSales
     
     return dataPoint
   }) || []
+
+  const exportToPDF = async () => {
+    if (!salesData) return
+    const station = stations.find(s => s.id === selectedStation)
+    const stationName = station?.name || 'All Stations'
+    const monthLabel = `${selectedYear}-${selectedMonth}`
+    
+    // Capture chart as image
+    const chartImage = await captureChartAsImage('daily-sales-chart')
+    
+    const reportData = {
+      dailySales: salesData.dailySales,
+      fuelTypes: salesData.fuelTypes,
+      grandTotal: salesData.dailySales.reduce((sum, day) => sum + day.totalSales, 0)
+    }
+    
+    await exportDailySalesReportPDF(reportData, stationName, monthLabel, chartImage || undefined)
+  }
+
+  const exportToExcel = () => {
+    if (!salesData) return
+    const station = stations.find(s => s.id === selectedStation)
+    const stationName = station?.name || 'All Stations'
+    const monthLabel = `${selectedYear}-${selectedMonth}`
+    
+    const reportData = {
+      dailySales: salesData.dailySales,
+      fuelTypes: salesData.fuelTypes,
+      grandTotal: salesData.dailySales.reduce((sum, day) => sum + day.totalSales, 0)
+    }
+    
+    exportDailySalesReportExcel(reportData, stationName, monthLabel)
+  }
 
   if (loading && !salesData) {
     return (
@@ -158,24 +205,48 @@ export default function DailySalesReportPage() {
     <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <BarChart3 className="h-8 w-8 text-purple-600 dark:text-purple-400" />
-            Daily Sales Report by Fuel Type
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Monthly sales trend analysis with daily breakdown by fuel type
-          </p>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => router.push('/reports')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+              <BarChart3 className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+              Daily Sales Report by Fuel Type (Rs)
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Monthly sales revenue analysis with daily breakdown by fuel type
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => router.push('/reports/daily-sales-liters')}>
+            View Liters Report
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
           <Button variant="outline" onClick={fetchSalesData}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" disabled={!salesData}>
+                <Download className="h-4 w-4 mr-2" />
+                Export Report
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={exportToPDF} className="cursor-pointer">
+                <FileText className="mr-2 h-4 w-4 text-red-600" />
+                <span>Export as PDF</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportToExcel} className="cursor-pointer">
+                <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" />
+                <span>Export as Excel</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -253,17 +324,17 @@ export default function DailySalesReportPage() {
       {/* Summary Cards */}
       {salesData && salesData.totalsByFuelType && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {salesData.fuelTypes.map(fuelType => (
-            <Card key={fuelType}>
+          {salesData.fuelTypes.map(fuelName => (
+            <Card key={fuelName}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Fuel className="h-4 w-4" style={{ color: fuelTypeColors[fuelType] || '#666' }} />
-                  {formatFuelType(fuelType)}
+                  <Fuel className="h-4 w-4" style={{ color: getFuelColor(fuelName) }} />
+                  {fuelName}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  Rs. {(salesData.totalsByFuelType[fuelType] || 0).toLocaleString()}
+                  Rs. {(salesData.totalsByFuelType[fuelName] || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   Total for {months.find(m => m.value === selectedMonth)?.label} {selectedYear}
@@ -294,15 +365,19 @@ export default function DailySalesReportPage() {
       {salesData && salesData.dailySales.length > 0 ? (
         <FormCard
           title="Daily Sales Trend"
-          description={`Sales breakdown by fuel type for ${months.find(m => m.value === selectedMonth)?.label} ${selectedYear}`}
+          description={`Business Month: ${formatBusinessMonthRange(getBusinessMonth(parseInt(selectedMonth), parseInt(selectedYear)))}`}
         >
-          <div className="w-full h-96 mt-4">
+          <div id="daily-sales-chart" className="w-full h-96 mt-4">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
-                  dataKey="day" 
-                  label={{ value: 'Day of Month', position: 'insideBottom', offset: -5 }}
+                  dataKey="date" 
+                  tick={{ fontSize: 10 }}
+                  tickFormatter={(value) => {
+                    const d = new Date(value)
+                    return `${d.getDate()}/${d.getMonth() + 1}`
+                  }}
                 />
                 <YAxis 
                   label={{ value: 'Sales (Rs.)', angle: -90, position: 'insideLeft' }}
@@ -310,20 +385,23 @@ export default function DailySalesReportPage() {
                 />
                 <Tooltip 
                   formatter={(value: number) => `Rs. ${value.toLocaleString()}`}
-                  labelFormatter={(label) => `Day ${label}`}
+                  labelFormatter={(date) => {
+                    const d = new Date(date)
+                    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                  }}
                 />
                 <Legend 
-                  formatter={(value) => formatFuelType(value)}
+                  formatter={(value) => value}
                 />
-                {salesData.fuelTypes.map(fuelType => (
+                {salesData.fuelTypes.map(fuelName => (
                   <Line
-                    key={fuelType}
+                    key={fuelName}
                     type="monotone"
-                    dataKey={fuelType}
-                    stroke={fuelTypeColors[fuelType] || '#666'}
+                    dataKey={fuelName}
+                    stroke={getFuelColor(fuelName)}
                     strokeWidth={2}
                     dot={{ r: 3 }}
-                    name={fuelType}
+                    name={fuelName}
                   />
                 ))}
               </LineChart>
@@ -346,43 +424,43 @@ export default function DailySalesReportPage() {
       {salesData && salesData.dailySales.length > 0 && (
         <FormCard
           title="Daily Sales Breakdown"
-          description="Detailed daily sales by fuel type"
+          description="Detailed daily sales by fuel type with totals"
         >
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b">
-                  <th className="text-left p-2 font-semibold">Day</th>
-                  {salesData.fuelTypes.map(fuelType => (
-                    <th key={fuelType} className="text-right p-2 font-semibold">
-                      {formatFuelType(fuelType)}
+                <tr className="border-b-2 bg-muted/30">
+                  <th className="text-left p-3 font-semibold">Day</th>
+                  {salesData.fuelTypes.map(fuelName => (
+                    <th key={fuelName} className="text-right p-3 font-semibold" style={{ color: getFuelColor(fuelName) }}>
+                      {fuelName}
                     </th>
                   ))}
-                  <th className="text-right p-2 font-semibold">Total</th>
+                  <th className="text-right p-3 font-semibold text-purple-600 dark:text-purple-400">Daily Total</th>
                 </tr>
               </thead>
               <tbody>
                 {salesData.dailySales.map((day, index) => (
                   <tr key={day.date} className={index % 2 === 0 ? 'bg-muted/50' : ''}>
-                    <td className="p-2 font-medium">Day {day.day}</td>
-                    {salesData.fuelTypes.map(fuelType => (
-                      <td key={fuelType} className="text-right p-2 font-mono text-sm">
-                        Rs. {(day.sales[fuelType] || 0).toLocaleString()}
+                    <td className="p-3 font-medium">Day {day.day}</td>
+                    {salesData.fuelTypes.map(fuelName => (
+                      <td key={fuelName} className="text-right p-3 font-mono text-sm">
+                        Rs. {(day.sales[fuelName] || 0).toLocaleString()}
                       </td>
                     ))}
-                    <td className="text-right p-2 font-mono font-semibold">
+                    <td className="text-right p-3 font-mono font-semibold text-purple-600 dark:text-purple-400">
                       Rs. {day.totalSales.toLocaleString()}
                     </td>
                   </tr>
                 ))}
-                <tr className="border-t-2 font-bold">
-                  <td className="p-2">Total</td>
-                  {salesData.fuelTypes.map(fuelType => (
-                    <td key={fuelType} className="text-right p-2 font-mono">
-                      Rs. {(salesData.totalsByFuelType[fuelType] || 0).toLocaleString()}
+                <tr className="border-t-4 font-bold bg-purple-50 dark:bg-purple-950/20">
+                  <td className="p-3 text-lg">TOTAL</td>
+                  {salesData.fuelTypes.map(fuelName => (
+                    <td key={fuelName} className="text-right p-3 font-mono text-base" style={{ color: getFuelColor(fuelName) }}>
+                      Rs. {(salesData.totalsByFuelType[fuelName] || 0).toLocaleString()}
                     </td>
                   ))}
-                  <td className="text-right p-2 font-mono">
+                  <td className="text-right p-3 font-mono text-lg text-purple-600 dark:text-purple-400">
                     Rs. {salesData.dailySales.reduce((sum, day) => sum + day.totalSales, 0).toLocaleString()}
                   </td>
                 </tr>

@@ -5,7 +5,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const stationId = searchParams.get('stationId')
-    const fuelType = searchParams.get('fuelType')
+    const fuelId = searchParams.get('fuelId')
 
     const now = new Date()
     
@@ -31,7 +31,8 @@ export async function GET(request: NextRequest) {
             id: true,
             name: true
           }
-        }
+        },
+        fuel: true
       },
       orderBy: { effectiveDate: 'asc' }
     })
@@ -47,30 +48,33 @@ export async function GET(request: NextRequest) {
 
     const currentPrices = await prisma.price.findMany({
       where: currentPricesWhere,
+      include: {
+        fuel: true
+      },
       orderBy: [
         { stationId: 'asc' },
-        { fuelType: 'asc' },
+        { fuelId: 'asc' },
         { effectiveDate: 'desc' }
       ],
-      distinct: ['stationId', 'fuelType']
+      distinct: ['stationId', 'fuelId']
     })
 
-    // Group by station, fuel type and get the next price for each
+    // Group by station, fuel ID and get the next price for each
     const nextPrices: any[] = []
     const processedKeys = new Set<string>()
 
     for (const scheduledPrice of scheduledPrices) {
-      const key = `${scheduledPrice.stationId}-${scheduledPrice.fuelType}`
+      const key = `${scheduledPrice.stationId}-${scheduledPrice.fuelId}`
       
       if (processedKeys.has(key)) {
         continue
       }
       processedKeys.add(key)
 
-      // Find current price for this station and fuel type
+      // Find current price for this station and fuel ID
       const currentPrice = currentPrices.find(p => 
         p.stationId === scheduledPrice.stationId && 
-        p.fuelType === scheduledPrice.fuelType
+        p.fuelId === scheduledPrice.fuelId
       )
 
       if (currentPrice) {
@@ -80,7 +84,8 @@ export async function GET(request: NextRequest) {
         nextPrices.push({
           stationId: scheduledPrice.stationId,
           stationName: scheduledPrice.station.name,
-          fuelType: scheduledPrice.fuelType,
+          fuelId: scheduledPrice.fuelId,
+          fuelName: scheduledPrice.fuel?.name || 'Unknown',
           currentPrice: currentPrice.price,
           nextPrice: scheduledPrice.price,
           effectiveDate: scheduledPrice.effectiveDate,
@@ -92,7 +97,8 @@ export async function GET(request: NextRequest) {
         nextPrices.push({
           stationId: scheduledPrice.stationId,
           stationName: scheduledPrice.station.name,
-          fuelType: scheduledPrice.fuelType,
+          fuelId: scheduledPrice.fuelId,
+          fuelName: scheduledPrice.fuel?.name || 'Unknown',
           currentPrice: null,
           nextPrice: scheduledPrice.price,
           effectiveDate: scheduledPrice.effectiveDate,

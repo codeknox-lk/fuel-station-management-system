@@ -27,7 +27,8 @@ import {
   Plus,
   DollarSign,
   Calendar,
-  Building2
+  Building2,
+  ArrowLeft
 } from 'lucide-react'
 
 interface POSBatch {
@@ -281,7 +282,13 @@ export default function MissingSlipsPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-foreground">Missing POS Slips</h1>
+      <div className="flex items-center gap-4 mb-6">
+        <Button variant="outline" onClick={() => router.push('/pos')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <h1 className="text-3xl font-bold text-foreground">Missing POS Slips</h1>
+      </div>
 
       {error && (
         <Alert variant="destructive">

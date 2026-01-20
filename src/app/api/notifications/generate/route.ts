@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
               title: fillPercentage < 15 
                 ? 'Critical: Low Tank Level' 
                 : 'Low Tank Level Warning',
-              message: `Tank ${tank.tankNumber || 'Unknown'} (${tank.fuelType.replace(/_/g, ' ')}) is at ${fillPercentage.toFixed(1)}% capacity - refill needed ${fillPercentage < 15 ? 'urgently' : 'soon'}`,
+              message: `Tank ${tank.tankNumber || 'Unknown'} (${tank.fuel?.name || 'Unknown'}) is at ${fillPercentage.toFixed(1)}% capacity - refill needed ${fillPercentage < 15 ? 'urgently' : 'soon'}`,
               type: fillPercentage < 15 ? 'ERROR' : 'WARNING',
               priority: fillPercentage < 15 ? 'CRITICAL' : fillPercentage < 20 ? 'HIGH' : 'MEDIUM',
               category: 'TANK',
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
               metadata: {
                 tankId: tank.id,
                 tankNumber: tank.tankNumber,
-                fuelType: tank.fuelType,
+                fuelName: tank.fuel?.name || 'Unknown',
                 fillPercentage: fillPercentage.toFixed(1)
               }
             }

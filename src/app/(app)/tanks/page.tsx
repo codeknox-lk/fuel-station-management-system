@@ -41,12 +41,20 @@ import {
   Wrench
 } from 'lucide-react'
 
+interface Fuel {
+  id: string
+  name: string
+  icon: string
+  code: string
+}
+
 interface Tank {
   id: string
   stationId: string
   stationName?: string
   tankNumber: string
-  fuelType: string
+  fuelId: string
+  fuel?: Fuel
   capacity: number
   currentStock: number
   lastDipTime: string
@@ -106,33 +114,41 @@ export default function TanksPage() {
       }
 
       // Transform the data to include calculated fields
-      const transformedTanks = data.map((tank: { id: string; stationId: string; tankNumber?: string; capacity: number; fuelType: string; currentLevel: number; station?: { name: string } }) => ({
-        ...tank,
+      const transformedTanks = data.map((tank: { id: string; stationId: string; tankNumber?: string; capacity: number; fuelId: string; fuel?: Fuel; currentLevel: number; station?: { name: string } }) => ({
+        id: tank.id,
+        stationId: tank.stationId,
         tankNumber: tank.tankNumber || 'TANK-1',
+        fuelId: tank.fuelId,
+        fuel: tank.fuel,
+        capacity: tank.capacity,
         currentStock: tank.currentLevel,
         stationName: tank.station?.name || `Station ${tank.stationId}`,
         fillPercentage: Math.round((tank.currentLevel / tank.capacity) * 100),
-        status: tank.currentLevel / tank.capacity < 0.1 ? 'CRITICAL' : 
-                tank.currentLevel / tank.capacity < 0.25 ? 'LOW' : 'NORMAL',
+        status: (tank.currentLevel / tank.capacity < 0.1 ? 'CRITICAL' : 
+                tank.currentLevel / tank.capacity < 0.25 ? 'LOW' : 'NORMAL') as 'NORMAL' | 'LOW' | 'CRITICAL',
         lastDipTime: new Date().toISOString(),
         lastDipReading: tank.currentLevel
       }))
 
       setTanks(transformedTanks)
 
-      // Calculate stats
-      const totalCapacity = transformedTanks.reduce((sum: number, tank: Tank) => sum + tank.capacity, 0)
-      const totalStock = transformedTanks.reduce((sum: number, tank: Tank) => sum + tank.currentStock, 0)
-      const criticalTanks = transformedTanks.filter((tank: Tank) => tank.status === 'CRITICAL').length
-      const lowTanks = transformedTanks.filter((tank: Tank) => tank.status === 'LOW').length
+      // Calculate stats by fuel type
+      const fuelTypeStats: Record<string, { capacity: number; stock: number }> = {}
+      
+      transformedTanks.forEach((tank: Tank) => {
+        const fuelName = tank.fuel?.name || 'Unknown'
+        if (!fuelTypeStats[fuelName]) {
+          fuelTypeStats[fuelName] = { capacity: 0, stock: 0 }
+        }
+        fuelTypeStats[fuelName].capacity += tank.capacity
+        fuelTypeStats[fuelName].stock += tank.currentStock
+      })
 
       setStats({
         totalTanks: transformedTanks.length,
-        totalCapacity,
-        totalStock,
-        fillPercentage: totalCapacity > 0 ? Math.round((totalStock / totalCapacity) * 100) : 0,
-        criticalTanks,
-        lowTanks
+        fuelTypes: fuelTypeStats,
+        criticalTanks: transformedTanks.filter((tank: Tank) => tank.status === 'CRITICAL').length,
+        lowTanks: transformedTanks.filter((tank: Tank) => tank.status === 'LOW').length
       })
 
     } catch (err) {
@@ -144,11 +160,14 @@ export default function TanksPage() {
     }
   }
 
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<{
+    totalTanks: number;
+    fuelTypes: Record<string, { capacity: number; stock: number }>;
+    criticalTanks: number;
+    lowTanks: number;
+  }>({
     totalTanks: 0,
-    totalCapacity: 0,
-    totalStock: 0,
-    fillPercentage: 0,
+    fuelTypes: {},
     criticalTanks: 0,
     lowTanks: 0,
   })
@@ -174,13 +193,20 @@ export default function TanksPage() {
     try {
       const response = await fetch(`/api/tanks/infrastructure?stationId=${stationId}`)
       const data = await response.json()
+      
+      if (data.error) {
+        throw new Error(data.error)
+      }
+      
       setInfrastructure(data)
       setShowInfrastructure(true)
       // Expand all tanks by default
-      setExpandedTanks(new Set(data.tanks.map((t: any) => t.id)))
+      if (data.tanks && Array.isArray(data.tanks)) {
+        setExpandedTanks(new Set(data.tanks.map((t: any) => t.id)))
+      }
     } catch (err) {
       console.error('Failed to load infrastructure:', err)
-      setError('Failed to load infrastructure')
+      setError(err instanceof Error ? err.message : 'Failed to load infrastructure')
     } finally {
       setInfraLoading(false)
     }
@@ -246,7 +272,7 @@ export default function TanksPage() {
       render: (value: unknown, row: Tank) => (
         <div className="flex items-center gap-2">
           <span className="font-semibold">Tank {value as string}</span>
-          <Badge variant="outline">{row.fuelType}</Badge>
+          <Badge variant="outline">{row.fuel?.icon} {row.fuel?.name || 'Unknown'}</Badge>
         </div>
       )
     },
@@ -309,17 +335,17 @@ export default function TanksPage() {
     }
   ]
 
+  const getFuelTypeColor = (fuelName: string) => {
+    const lower = fuelName.toLowerCase()
+    if (lower.includes('petrol')) return 'text-blue-600 dark:text-blue-400'
+    if (lower.includes('diesel')) return 'text-green-600 dark:text-green-400'
+    if (lower.includes('extra')) return 'text-orange-600 dark:text-orange-400'
+    return 'text-purple-600 dark:text-purple-400'
+  }
+
   return (
     <div className="space-y-6 p-6">
       <h1 className="text-3xl font-bold text-foreground">Tank Management</h1>
-
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -327,40 +353,19 @@ export default function TanksPage() {
           <h3 className="text-lg font-semibold text-foreground">Total Tanks</h3>
           <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">{stats.totalTanks}</p>
         </FormCard>
-        <FormCard className="p-4">
-          <h3 className="text-lg font-semibold text-foreground">Total Capacity</h3>
-          <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-            {stats.totalCapacity.toLocaleString()}L
-          </p>
-        </FormCard>
-        <FormCard className="p-4">
-          <h3 className="text-lg font-semibold text-foreground">Current Stock</h3>
-          <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-            {stats.totalStock.toLocaleString()}L
-          </p>
-          <p className="text-sm text-muted-foreground">({stats.fillPercentage}% full)</p>
-        </FormCard>
-        <FormCard className="p-4">
-          <h3 className="text-lg font-semibold text-foreground">Alerts</h3>
-          <div className="flex gap-2">
-            <Badge className="bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300">
-              {stats.criticalTanks} Critical
-            </Badge>
-            <Badge className="bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300">
-              {stats.lowTanks} Low
-            </Badge>
-          </div>
-        </FormCard>
+        {Object.entries(stats.fuelTypes).map(([fuelName, data]) => (
+          <FormCard key={fuelName} className="p-4">
+            <h3 className="text-lg font-semibold text-foreground">{fuelName}</h3>
+            <p className={`text-3xl font-bold ${getFuelTypeColor(fuelName)}`}>
+              {data.capacity.toLocaleString()}L
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Stock: {data.stock.toLocaleString()}L
+              {data.capacity > 0 && ` (${Math.round((data.stock / data.capacity) * 100)}%)`}
+            </p>
+          </FormCard>
+        ))}
       </div>
-
-      {/* Success Alert */}
-      {success && (
-        <Alert>
-          <CheckCircle className="h-4 w-4" />
-          <AlertTitle>Success</AlertTitle>
-          <AlertDescription>{success}</AlertDescription>
-        </Alert>
-      )}
 
       {/* Quick Actions */}
       <div className="flex flex-wrap gap-4">
@@ -433,7 +438,7 @@ export default function TanksPage() {
                             <ChevronRight className="h-4 w-4 text-muted-foreground" />
                           )}
                           <Fuel className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                          <span className="font-semibold">{tank.fuelType.replace(/_/g, ' ')}</span>
+                          <span className="font-semibold">{tank.fuel?.icon} {tank.fuel?.name || 'Unknown'}</span>
                           <Badge variant="outline">
                             {fillPercentage}% full
                           </Badge>
@@ -529,7 +534,7 @@ export default function TanksPage() {
                 <div>
                   <Label className="text-xs text-muted-foreground">Fuel Type</Label>
                   <div>
-                    <Badge variant="outline">{tankDetails.fuelType?.replace(/_/g, ' ') || 'N/A'}</Badge>
+                    <Badge variant="outline">{tankDetails.fuel?.icon} {tankDetails.fuel?.name || 'N/A'}</Badge>
                   </div>
                 </div>
                 <div>

@@ -142,7 +142,8 @@ export async function GET(
               tank: {
                 select: {
                   id: true,
-                  fuelType: true,
+                  fuelId: true,
+                  fuel: true,
                   capacity: true,
                   currentLevel: true
                 }
@@ -215,7 +216,7 @@ export async function GET(
       canSales?: number
       pumpSales?: number
       nozzleId: string
-      fuelType?: string
+      fuelName?: string
     }
     
     // Use provided assignments or get from shift
@@ -229,34 +230,35 @@ export async function GET(
             : null,
           canSales: typeof a.canSales === 'number' ? a.canSales : (a.canSales ? parseFloat(a.canSales) : 0),
           pumpSales: typeof a.pumpSales === 'number' ? a.pumpSales : (a.pumpSales ? parseFloat(a.pumpSales) : undefined),
-          fuelType: a.fuelType || null
+          fuelName: a.fuelName || null,
+          fuelId: a.fuelId || null
         }))
       : shift.assignments.map((a) => ({
           nozzleId: a.nozzleId,
           startMeterReading: a.startMeterReading,
           endMeterReading: a.endMeterReading,
-          fuelType: a.nozzle?.tank?.fuelType
+          fuelId: a.nozzle?.tank?.fuelId
         }))
     
     if (shiftAssignments.length > 0) {
-      // Get prices for fuel types
-      const fuelTypes = [...new Set(shiftAssignments.map((a) => a.fuelType).filter(Boolean))] as string[]
+      // Get prices for fuel IDs
+      const fuelIds = [...new Set(shiftAssignments.map((a) => a.fuelId).filter(Boolean))] as string[]
       const prices = await Promise.all(
-        fuelTypes.map(async (fuelType) => {
+        fuelIds.map(async (fuelId) => {
           const price = await prisma.price.findFirst({
             where: {
-              fuelType: fuelType,
+              fuelId: fuelId,
               stationId: shift.stationId,
               effectiveDate: { lte: shift.endTime || new Date() },
               isActive: true
             },
             orderBy: { effectiveDate: 'desc' }
           })
-          return { fuelType, price: price?.price || 0 }
+          return { fuelId, price: price?.price || 0 }
         })
       )
       
-      const priceMap = Object.fromEntries(prices.map(p => [p.fuelType, p.price]))
+      const priceMap = Object.fromEntries(prices.map(p => [p.fuelId, p.price]))
       
       salesData = await Promise.all(shiftAssignments.map(async (assignment: AssignmentData) => {
         // Validate meter readings
@@ -268,7 +270,7 @@ export async function GET(
         const delta = Math.max(0, endReading - assignment.startMeterReading) // Ensure non-negative
         const canSales = assignment.canSales || 0
         const pumpSales = assignment.pumpSales || Math.max(0, delta - canSales)
-        const price = assignment.fuelType ? (priceMap[assignment.fuelType] || 470) : 470
+        const price = assignment.fuelId ? (priceMap[assignment.fuelId] || 470) : 470
         
         // Calculate sales amount from pump sales only (can sales are handled separately)
         const salesAmount = pumpSales * price

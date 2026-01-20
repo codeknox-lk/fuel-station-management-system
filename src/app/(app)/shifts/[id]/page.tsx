@@ -68,7 +68,12 @@ interface Assignment {
       pumpNumber: string
     }
     tank?: {
-      fuelType: string
+      fuelId: string
+      fuel?: {
+        id: string
+        name: string
+        icon?: string | null
+      }
     }
   }
 }
@@ -418,7 +423,7 @@ export default function ShiftDetailsPage() {
             id: row.nozzle.id,
             pumpNumber: row.nozzle.pump?.pumpNumber || '?',
             nozzleNumber: row.nozzle.nozzleNumber,
-            fuelType: row.nozzle.tank?.fuelType || 'Unknown'
+            fuelType: row.nozzle.tank?.fuel?.name || 'Unknown'
           })
           return (
             <div className="flex items-center gap-2">

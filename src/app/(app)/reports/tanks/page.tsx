@@ -72,7 +72,7 @@ interface TankMovement {
   tankId: string
   tankNumber: string
   tankName: string
-  fuelType: string
+  fuelName: string
   capacity: number
   date: string
   
@@ -192,7 +192,7 @@ export default function TanksReportsPage() {
           tankId: tank.tankId,
           tankNumber: tank.tankNumber || `T-${String(idx + 1).padStart(3, '0')}`,
           tankName: `Tank ${tank.tankNumber || idx + 1}`,
-          fuelType: tank.fuelType || 'UNKNOWN',
+          fuelName: tank.fuel?.name || 'UNKNOWN',
           capacity,
           date: selectedDate,
           openingDip: closingDipStock, // Use closing dip as approximation for opening (API limitation)
@@ -326,7 +326,7 @@ export default function TanksReportsPage() {
           <Fuel className="h-4 w-4 text-muted-foreground" />
           <div>
             <div className="font-medium">{value as string}</div>
-            <div className="text-xs text-muted-foreground">{row.tankNumber} • {row.fuelType}</div>
+            <div className="text-xs text-muted-foreground">{row.tankNumber} • {row.fuelName}</div>
           </div>
         </div>
       )
@@ -838,7 +838,7 @@ export default function TanksReportsPage() {
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       <Fuel className="h-5 w-5" />
-                      {tank.tankName} - {tank.fuelType}
+                      {tank.tankName} - {tank.fuelName}
                     </CardTitle>
                     <CardDescription>
                       {tank.tankNumber} • Capacity: {tank.capacity.toLocaleString()}L

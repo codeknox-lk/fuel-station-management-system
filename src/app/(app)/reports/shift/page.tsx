@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { useStation } from '@/contexts/StationContext'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
@@ -12,6 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -28,7 +35,10 @@ import {
   Calculator,
   TrendingUp,
   TrendingDown,
-  AlertTriangle
+  AlertTriangle,
+  ArrowLeft,
+  Download,
+  FileSpreadsheet
 } from 'lucide-react'
 import { exportShiftReportPDF } from '@/lib/exportUtils'
 
@@ -83,6 +93,7 @@ interface TenderSummary {
 }
 
 export default function ShiftReportsPage() {
+  const router = useRouter()
   const [stations, setStations] = useState<Station[]>([])
   const [shifts, setShifts] = useState<Shift[]>([])
   const [shiftReport, setShiftReport] = useState<ShiftReport | null>(null)
@@ -108,18 +119,8 @@ export default function ShiftReportsPage() {
     loadStations()
   }, [])
 
-  // Load shifts when station changes
-  useEffect(() => {
-    if (selectedStation) {
-      loadShifts()
-    } else {
-      setShifts([])
-      setSelectedShift('')
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStation])
-
-  const loadShifts = async () => {
+  // Load shifts from API
+  const loadShifts = useCallback(async () => {
     try {
       const response = await fetch(`/api/shifts?stationId=${selectedStation}&status=CLOSED&limit=10`)
       if (!response.ok) {
@@ -146,7 +147,17 @@ export default function ShiftReportsPage() {
       setError('Failed to load shifts')
       setShifts([])
     }
-  }
+  }, [selectedStation])
+
+  // Load shifts when station changes
+  useEffect(() => {
+    if (selectedStation) {
+      loadShifts()
+    } else {
+      setShifts([])
+      setSelectedShift('')
+    }
+  }, [selectedStation, loadShifts])
 
   const generateReport = async () => {
     if (!selectedShift) {
@@ -198,7 +209,8 @@ export default function ShiftReportsPage() {
         return {
           nozzleId: assignment.nozzleId || assignment.id,
           nozzleName: `Nozzle ${assignment.nozzleNumber || assignment.nozzleId || 'Unknown'}`,
-          fuelType: assignment.fuelType || 'UNKNOWN',
+          fuelId: assignment.fuelId || '',
+          fuel: assignment.fuel,
           pumperName: assignment.pumperName || 'Unknown',
           startMeter: assignment.startMeterReading || 0,
           endMeter: assignment.endMeterReading || 0,
@@ -313,7 +325,7 @@ export default function ShiftReportsPage() {
           <Fuel className="h-4 w-4 text-muted-foreground" />
           <div>
             <div className="font-medium">{value as string}</div>
-            <div className="text-xs text-muted-foreground">{row.fuelType}</div>
+            <div className="text-xs text-muted-foreground">{row.fuel?.icon} {row.fuel?.name || 'Unknown'}</div>
           </div>
         </div>
       )
@@ -398,7 +410,13 @@ export default function ShiftReportsPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-foreground">Shift Reports</h1>
+      <div className="flex items-center gap-4 mb-6">
+        <Button variant="outline" onClick={() => router.push('/reports')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <h1 className="text-3xl font-bold text-foreground">Shift Reports</h1>
+      </div>
 
       {error && (
         <Alert variant="destructive">
@@ -661,14 +679,24 @@ export default function ShiftReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="flex gap-4">
-                <Button onClick={printShiftPDF}>
-                  <Printer className="mr-2 h-4 w-4" />
-                  Print Shift PDF
-                </Button>
-                <Button variant="outline">
-                  <FileText className="mr-2 h-4 w-4" />
-                  Export to Excel
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" disabled={!shiftReport}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Export Report
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={printShiftPDF} className="cursor-pointer">
+                      <FileText className="mr-2 h-4 w-4 text-red-600" />
+                      <span>Export as PDF</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer">
+                      <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" />
+                      <span>Export as Excel</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </CardContent>
           </Card>

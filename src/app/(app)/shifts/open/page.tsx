@@ -97,12 +97,20 @@ interface ShiftTemplate {
   duration: number
 }
 
+interface Fuel {
+  id: string
+  code: string
+  name: string
+  icon?: string | null
+}
+
 interface Nozzle {
   id: string
   pumpId: string
   tankId: string
   nozzleNumber: string
-  fuelType: string
+  fuelId: string
+  fuel?: Fuel
   pumpNumber: string
 }
 
@@ -119,7 +127,8 @@ interface Pumper {
 interface Assignment {
   nozzleId: string
   nozzleNumber: string
-  fuelType: string
+  fuelId: string
+  fuel?: Fuel
   pumpNumber: string
   pumperId: string
   pumperName: string
@@ -215,7 +224,8 @@ export default function OpenShiftPage() {
               pumpId: nozzle.pumpId,
               tankId: nozzle.tankId,
               nozzleNumber: nozzle.nozzleNumber,
-              fuelType: nozzle.tank?.fuelType || nozzle.fuelType || 'Unknown',
+              fuelId: nozzle.tank?.fuelId || nozzle.fuelId || '',
+              fuel: nozzle.tank?.fuel || nozzle.fuel,
               pumpNumber: nozzle.pump?.pumpNumber || nozzle.pumpNumber || '?'
             }))
           }
@@ -442,7 +452,8 @@ export default function OpenShiftPage() {
     const newAssignment: Assignment = {
       nozzleId,
       nozzleNumber: nozzle.nozzleNumber,
-      fuelType: nozzle.fuelType,
+      fuelId: nozzle.fuelId,
+      fuel: nozzle.fuel,
       pumpNumber: nozzle.pumpNumber,
       pumperId: '',
       pumperName: '',
@@ -579,7 +590,8 @@ export default function OpenShiftPage() {
                 id: assignment.nozzleId,
                 pumpNumber: assignment.pumpNumber,
                 nozzleNumber: assignment.nozzleNumber,
-                fuelType: assignment.fuelType
+                fuelId: assignment.fuelId,
+                fuel: assignment.fuel
               })
               throw new Error(`${nozzleDisplay} is already assigned to an active shift. Please refresh the page to see updated nozzle availability.`)
             }
@@ -595,7 +607,8 @@ export default function OpenShiftPage() {
               id: assignment.nozzleId,
               pumpNumber: assignment.pumpNumber,
               nozzleNumber: assignment.nozzleNumber,
-              fuelType: assignment.fuelType
+              fuelId: assignment.fuelId,
+              fuel: assignment.fuel
             })
             await auditLogger.logPumperAssigned(
               assignData.id, 
@@ -641,7 +654,7 @@ export default function OpenShiftPage() {
           id: row.nozzleId,
           pumpNumber: row.pumpNumber,
           nozzleNumber: row.nozzleNumber,
-          fuelType: row.fuelType
+          fuelType: row.fuel?.name || 'Unknown'
         })
         return (
           <div className="flex items-center gap-2">
@@ -818,7 +831,7 @@ export default function OpenShiftPage() {
                         id: nozzle.id,
                         pumpNumber: nozzle.pumpNumber,
                         nozzleNumber: nozzle.nozzleNumber,
-                        fuelType: nozzle.fuelType
+                        fuelType: nozzle.fuel?.name || 'Unknown'
                       })
                       return (
                         <SelectItem key={nozzle.id} value={nozzle.id}>
@@ -858,7 +871,7 @@ export default function OpenShiftPage() {
                     id: nozzle.id,
                     pumpNumber: nozzle.pumpNumber,
                     nozzleNumber: nozzle.nozzleNumber,
-                    fuelType: nozzle.fuelType
+                    fuelType: nozzle.fuel?.name || 'Unknown'
                   })
                   return (
                     <span key={nozzle.id}>

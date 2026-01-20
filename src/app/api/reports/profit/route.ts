@@ -23,9 +23,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid month or year' }, { status: 400 })
     }
 
-    const startOfMonth = new Date(yearNum, monthNum - 1, 1)
-    startOfMonth.setHours(0, 0, 0, 0)
-    const endOfMonth = new Date(yearNum, monthNum, 0, 23, 59, 59, 999)
+    // Business month: 7th of selected month to 6th of next month
+    const startOfMonth = new Date(yearNum, monthNum - 1, 7, 0, 0, 0, 0)
+    const endOfMonth = new Date(yearNum, monthNum, 6, 23, 59, 59, 999)
 
     // Get all closed shifts for the month
     // Use endTime to capture shifts that ended in this month (even if started previous month)
@@ -75,13 +75,14 @@ export async function GET(request: NextRequest) {
       orderBy: { effectiveDate: 'desc' }
     })
 
-    // Calculate daily profit data
-    const daysInMonth = endOfMonth.getDate()
-    const dailyData = await Promise.all(Array.from({ length: daysInMonth }, async (_, i) => {
-      const dayDate = new Date(yearNum, monthNum - 1, i + 1)
-      const dayStart = new Date(dayDate)
+    // Calculate daily profit data for business month (7th to 6th)
+    const dailyData = []
+    let currentDate = new Date(startOfMonth)
+    
+    while (currentDate <= endOfMonth) {
+      const dayStart = new Date(currentDate)
       dayStart.setHours(0, 0, 0, 0)
-      const dayEnd = new Date(dayDate)
+      const dayEnd = new Date(currentDate)
       dayEnd.setHours(23, 59, 59, 999)
 
       // Filter shifts for this day - use endTime to capture shifts that ended on this day
@@ -109,14 +110,14 @@ export async function GET(request: NextRequest) {
             
             if (litersSold <= 0) continue
 
-            const fuelType = assignment.nozzle?.tank?.fuelType
-            if (!fuelType) continue
+            const fuelId = assignment.nozzle?.tank?.fuelId
+            if (!fuelId) continue
 
             // Get price effective at shift end time (when shift closed)
             const price = prices.find(p => 
-              p.fuelType === fuelType && 
+              p.fuelId === fuelId && 
               new Date(p.effectiveDate) <= (shift.endTime || shift.startTime)
-            ) || prices.find(p => p.fuelType === fuelType)
+            ) || prices.find(p => p.fuelId === fuelId)
 
             const pricePerLiter = price ? price.price : 0
             revenue += litersSold * pricePerLiter
@@ -135,15 +136,18 @@ export async function GET(request: NextRequest) {
       const profit = revenue - dayExpenses
       const margin = revenue > 0 ? (profit / revenue) * 100 : 0
 
-      return {
-        day: i + 1,
-        date: `${yearNum}-${String(monthNum).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`,
+      dailyData.push({
+        day: currentDate.getDate(),
+        date: `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`,
         revenue: Math.round(revenue),
         expenses: Math.round(dayExpenses),
         profit: Math.round(profit),
         margin: Math.round(margin * 100) / 100
-      }
-    }))
+      })
+      
+      // Move to next day
+      currentDate.setDate(currentDate.getDate() + 1)
+    }
 
     // Calculate totals
     const totalRevenue = dailyData.reduce((sum, day) => sum + day.revenue, 0)
@@ -208,6 +212,39 @@ export async function GET(request: NextRequest) {
       percentage: totalExpenses > 0 ? Math.round((amount / totalExpenses) * 100 * 100) / 100 : 0
     })).sort((a, b) => b.amount - a.amount)
 
+    // Exclude days with no activity (revenue = 0, expenses = 0, profit = 0)
+    // This handles both incomplete days and future dates with no data
+    const today = new Date()
+    const todayDateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    
+    console.log('[Profit Report] Today date string:', todayDateString)
+    console.log('[Profit Report] Daily data dates:', dailyData.map(d => d.date))
+    
+    const completedDays = dailyData.filter(day => {
+      const isToday = day.date === todayDateString
+      const hasActivity = day.revenue > 0 || day.expenses > 0 || day.profit !== 0
+      const isFutureOrToday = day.date >= todayDateString
+      
+      console.log(`[Profit Report] Date ${day.date}: isToday=${isToday}, hasActivity=${hasActivity}, isFutureOrToday=${isFutureOrToday}`)
+      
+      // Exclude: (1) today/future dates OR (2) days with no activity
+      return !isFutureOrToday && hasActivity
+    })
+
+    console.log('[Profit Report] Completed days with activity:', completedDays.length)
+
+    // If there are no completed days yet, use empty data
+    const bestDay = completedDays.length > 0 
+      ? completedDays.reduce((best, day) => day.profit > best.profit ? day : best, completedDays[0])
+      : { day: 0, date: '', profit: 0, revenue: 0, expenses: 0, margin: 0 }
+    
+    const worstDay = completedDays.length > 0
+      ? completedDays.reduce((worst, day) => day.profit < worst.profit ? day : worst, completedDays[0])
+      : { day: 0, date: '', profit: 0, revenue: 0, expenses: 0, margin: 0 }
+    
+    console.log('[Profit Report] Best day:', bestDay.date, 'Profit:', bestDay.profit)
+    console.log('[Profit Report] Worst day:', worstDay.date, 'Profit:', worstDay.profit)
+
     return NextResponse.json({
       month: `${yearNum}-${String(monthNum).padStart(2, '0')}`,
       stationId,
@@ -217,8 +254,8 @@ export async function GET(request: NextRequest) {
         totalExpenses: Math.round(totalExpenses),
         totalProfit: Math.round(totalProfit),
         averageMargin: Math.round(averageMargin * 100) / 100,
-        bestDay: dailyData.reduce((best, day) => day.profit > best.profit ? day : best, dailyData[0] || { day: 0, profit: 0 }),
-        worstDay: dailyData.reduce((worst, day) => day.profit < worst.profit ? day : worst, dailyData[0] || { day: 0, profit: 0 })
+        bestDay,
+        worstDay
       },
       breakdown: {
         revenue: revenueBreakdown,

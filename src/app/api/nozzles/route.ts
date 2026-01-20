@@ -35,7 +35,8 @@ export async function GET(request: NextRequest) {
         tank: {
           select: {
             id: true,
-            fuelType: true,
+            fuelId: true,
+            fuel: true,
             capacity: true,
             currentLevel: true
           }
@@ -134,7 +135,8 @@ export async function POST(request: NextRequest) {
         tank: {
           select: {
             id: true,
-            fuelType: true,
+            fuelId: true,
+            fuel: true,
             capacity: true,
             currentLevel: true
           }

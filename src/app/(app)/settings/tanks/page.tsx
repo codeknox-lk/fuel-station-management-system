@@ -41,22 +41,31 @@ interface Pump {
   id: string
   pumpNumber: string
   station: { name: string }
-  nozzles: { id: string; nozzleNumber: string; tank: { fuelType: string } }[]
+  nozzles: { id: string; nozzleNumber: string; tank: { fuelId: string; fuel?: Fuel } }[]
 }
 
 interface Nozzle {
   id: string
   nozzleNumber: string
   pump: { pumpNumber: string }
-  tank: { fuelType: string }
+  tank: { fuelId: string; fuel?: Fuel }
   isActive: boolean
+}
+
+interface Fuel {
+  id: string
+  code: string
+  name: string
+  icon?: string | null
 }
 
 interface Tank {
   id: string
-  fuelType: string
+  fuelId: string
+  fuel?: Fuel
   capacity: number
   currentLevel: number
+  tankNumber: string
 }
 
 export default function TanksSettingsPage() {
@@ -72,7 +81,8 @@ export default function TanksSettingsPage() {
   const [showCreateTankDialog, setShowCreateTankDialog] = useState(false)
   const [createTankLoading, setCreateTankLoading] = useState(false)
   const [selectedStationForTank, setSelectedStationForTank] = useState('')
-  const [fuelType, setFuelType] = useState('')
+  const [fuelId, setFuelId] = useState('')
+  const [fuels, setFuels] = useState<Fuel[]>([])
   const [capacity, setCapacity] = useState('')
   
   // Pump state
@@ -88,8 +98,9 @@ export default function TanksSettingsPage() {
   const [nozzleNumber, setNozzleNumber] = useState('')
   const [nozzleLoading, setNozzleLoading] = useState(false)
   
-  // Load pumps and nozzles when station changes
+  // Load pumps, nozzles, and fuels when station changes
   useEffect(() => {
+    loadFuels()
     if (selectedStation) {
       loadPumps()
       loadNozzles()
@@ -100,6 +111,16 @@ export default function TanksSettingsPage() {
       setTanks([])
     }
   }, [selectedStation])
+
+  const loadFuels = async () => {
+    try {
+      const response = await fetch('/api/fuels')
+      const data = await response.json()
+      setFuels(data.filter((f: Fuel) => f.isActive))
+    } catch (err) {
+      console.error('Failed to load fuels:', err)
+    }
+  }
 
   const loadPumps = async () => {
     try {
@@ -134,7 +155,7 @@ export default function TanksSettingsPage() {
   const handleCreateTank = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!selectedStationForTank || !fuelType || !capacity) {
+    if (!selectedStationForTank || !fuelId || !capacity) {
       setError('Please fill in all required fields')
       return
     }
@@ -149,7 +170,7 @@ export default function TanksSettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           stationId: selectedStationForTank,
-          fuelType,
+          fuelId,
           capacity: parseFloat(capacity),
           currentLevel: 0
         })
@@ -163,7 +184,7 @@ export default function TanksSettingsPage() {
       setSuccess('Tank created successfully!')
       setShowCreateTankDialog(false)
       setSelectedStationForTank('')
-      setFuelType('')
+      setFuelId('')
       setCapacity('')
       
       // Refresh tanks if viewing a station
@@ -283,9 +304,9 @@ export default function TanksSettingsPage() {
       title: 'Nozzles',
       render: (value: unknown) => (
         <div className="flex flex-wrap gap-2">
-          {(value as { nozzleNumber: string; tank: { fuelType: string } }[]).map((nozzle) => (
+          {(value as { nozzleNumber: string; tank: { fuelId: string; fuel?: Fuel } }[]).map((nozzle) => (
             <Badge key={nozzle.nozzleNumber} variant="outline">
-              {nozzle.nozzleNumber} → {nozzle.tank.fuelType.replace(/_/g, ' ')}
+              {nozzle.nozzleNumber} → {nozzle.tank.fuel?.name || 'Unknown'}
             </Badge>
           ))}
         </div>
@@ -320,7 +341,7 @@ export default function TanksSettingsPage() {
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
           <Fuel className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-          <Badge variant="outline">{(value as { fuelType: string }).fuelType.replace(/_/g, ' ')}</Badge>
+          <Badge variant="outline">{(value as { fuelId: string; fuel?: Fuel }).fuel?.name || 'Unknown'}</Badge>
         </div>
       )
     },
@@ -405,16 +426,17 @@ export default function TanksSettingsPage() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="fuelType">Fuel Type *</Label>
-              <Select value={fuelType} onValueChange={setFuelType} required>
-                <SelectTrigger id="fuelType" className="mt-2">
+              <Label htmlFor="fuelId">Fuel Type *</Label>
+              <Select value={fuelId} onValueChange={setFuelId} required>
+                <SelectTrigger id="fuelId" className="mt-2">
                   <SelectValue placeholder="Select fuel type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="PETROL">Petrol</SelectItem>
-                  <SelectItem value="DIESEL">Diesel</SelectItem>
-                  <SelectItem value="SUPER_PETROL">Super Petrol</SelectItem>
-                  <SelectItem value="KEROSENE">Kerosene</SelectItem>
+                  {fuels.map(fuel => (
+                    <SelectItem key={fuel.id} value={fuel.id}>
+                      {fuel.icon} {fuel.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -558,7 +580,7 @@ export default function TanksSettingsPage() {
                           <SelectItem key={tank.id} value={tank.id}>
                             <div className="flex items-center gap-2">
                               <Fuel className="h-4 w-4" />
-                              <span>{tank.fuelType.replace(/_/g, ' ')}</span>
+                              <span>{tank.fuel?.name || 'Unknown'}</span>
                               <span className="text-xs text-muted-foreground">
                                 ({tank.capacity.toLocaleString()}L)
                               </span>

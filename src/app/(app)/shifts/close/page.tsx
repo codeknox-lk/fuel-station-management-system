@@ -60,7 +60,12 @@ interface Assignment {
       pumpNumber: string
     }
     tank?: {
-      fuelType: string
+      fuelId: string
+      fuel?: {
+        id: string
+        name: string
+        icon?: string | null
+      }
     }
   }
 }
@@ -204,6 +209,7 @@ export default function CloseShiftPage() {
   const [pumperExpenses, setPumperExpenses] = useState<Record<string, PumperExpense[]>>({}) // pumperName -> expenses array
   const [pumperTestPours, setPumperTestPours] = useState<Record<string, PumperTestPour[]>>({}) // pumperName -> test pours array
   const [pumperBreakdowns, setPumperBreakdowns] = useState<PumperBreakdown[]>([])
+  const [pumperMonthlyRentals, setPumperMonthlyRentals] = useState<Record<string, number>>({}) // pumperId -> total monthly rental from active loans
   
   // POS Terminal Verification (individual slips per pumper)
   const [posSlips, setPosSlips] = useState<Record<string, POSSlipEntry[]>>({}) // pumperName -> array of slips
@@ -260,6 +266,9 @@ export default function CloseShiftPage() {
         } else {
           const pumpersData = await pumpersRes.json()
           setPumpers(Array.isArray(pumpersData) ? pumpersData : [])
+          
+          // Fetch monthly loan rentals for all pumpers
+          await fetchPumperMonthlyRentals(pumpersData)
         }
       } catch (err) {
         setError('Failed to load data')
@@ -268,6 +277,34 @@ export default function CloseShiftPage() {
     
     loadData()
   }, [])
+  
+  // Fetch monthly rental totals for all pumpers
+  const fetchPumperMonthlyRentals = async (pumpersData: any[]) => {
+    try {
+      const rentals: Record<string, number> = {}
+      
+      for (const pumper of pumpersData) {
+        // Fetch active loans for this pumper
+        const loansRes = await fetch(`/api/loans/pumper?pumperName=${encodeURIComponent(pumper.name)}&status=ACTIVE`)
+        
+        if (loansRes.ok) {
+          const loans = await loansRes.json()
+          // Sum up monthly rental amounts from all active loans
+          const totalMonthlyRental = loans.reduce((sum: number, loan: any) => {
+            return sum + (loan.monthlyRental || 0)
+          }, 0)
+          
+          rentals[pumper.id] = totalMonthlyRental
+        } else {
+          rentals[pumper.id] = 0
+        }
+      }
+      
+      setPumperMonthlyRentals(rentals)
+    } catch (err) {
+      console.error('Failed to fetch pumper monthly rentals:', err)
+    }
+  }
 
   // Load POS terminals when station changes
   useEffect(() => {
@@ -409,11 +446,11 @@ export default function CloseShiftPage() {
       const calculatePumperBreakdown = async () => {
         try {
           // Get prices for fuel types
-          const fuelTypes = [...new Set(assignments.map(a => a.nozzle?.tank?.fuelType).filter(Boolean))]
+          const fuelTypes = [...new Set(assignments.map(a => a.nozzle?.tank?.fuelId).filter(Boolean))]
           const prices = await Promise.all(
             fuelTypes.map(async (fuelType) => {
               try {
-                const res = await fetch(`/api/prices?stationId=${selectedStation}&fuelType=${fuelType}`)
+                const res = await fetch(`/api/prices?stationId=${selectedStation}&fuelId=${fuelType}`)
                 if (res.ok) {
                   const priceData = await res.json()
                   // API returns single price object when fuelType is specified
@@ -433,7 +470,7 @@ export default function CloseShiftPage() {
               return { fuelType, price: 470 }
             })
           )
-          const priceMap = Object.fromEntries(prices.map(p => [p.fuelType, p.price]))
+          const priceMap = Object.fromEntries(prices.map(p => [p.fuelId, p.price]))
           
           // Group assignments by pumper
           const pumperMap = new Map<string, Assignment[]>()
@@ -456,8 +493,8 @@ export default function CloseShiftPage() {
                 const delta = Math.max(0, assignment.endMeterReading - assignment.startMeterReading)
                 const canSales = assignment.canSales || 0
                 const pumpSales = assignment.pumpSales || Math.max(0, delta - canSales)
-                const fuelType = assignment.nozzle?.tank?.fuelType
-                const price = fuelType ? (priceMap[fuelType] || 470) : 470
+                const fuelId = assignment.nozzle?.tank?.fuelId
+                const price = fuelId ? (priceMap[fuelId] || 470) : 470
                 calculatedSales += pumpSales * price
               }
             })
@@ -613,7 +650,7 @@ export default function CloseShiftPage() {
             endMeterReading: assignment.endMeterReading,
             canSales: assignment.canSales || 0,
             pumpSales: assignment.pumpSales || 0,
-            fuelType: assignment.nozzle?.tank?.fuelType || null
+            fuelType: assignment.nozzle?.tank?.fuel?.name || null
           }))
           
           const assignmentsParam = encodeURIComponent(JSON.stringify(assignmentsForApi))
@@ -762,6 +799,21 @@ export default function CloseShiftPage() {
   }
 
   const handleUpdatePumperAdvance = (pumperName: string, amount: number) => {
+    // Find pumper ID
+    const pumper = pumpers.find(p => p.name === pumperName)
+    const pumperId = pumper?.id
+    
+    // Check advance limit: monthly rental + advance cannot exceed 50,000
+    const ADVANCE_LIMIT = 50000
+    const monthlyRental = pumperId ? (pumperMonthlyRentals[pumperId] || 0) : 0
+    const availableAdvanceLimit = ADVANCE_LIMIT - monthlyRental
+    
+    if (amount > availableAdvanceLimit) {
+      setError(`Advance limit exceeded for ${pumperName}! Monthly loan rental: Rs. ${monthlyRental.toLocaleString()}, Available advance limit: Rs. ${availableAdvanceLimit.toLocaleString()}. Total (rental + advance) cannot exceed Rs. ${ADVANCE_LIMIT.toLocaleString()}.`)
+      setTimeout(() => setError(''), 7000)
+      return
+    }
+    
     // Validate: Total advances (taken + given) cannot exceed cash declared
     const currentCash = pumperDeclaredCash[pumperName] || 0
     const otherAdvances = otherPumperAdvances[pumperName] || []
@@ -793,11 +845,27 @@ export default function CloseShiftPage() {
         const selectedPumperName = value as string
         advances[index] = { ...advances[index], pumperId: selectedPumperName, pumperName: selectedPumperName }
       } else if (field === 'amount') {
+        // Find the receiving pumper ID to check their advance limit
+        const receivingPumperName = advances[index].pumperName
+        const receivingPumper = pumpers.find(p => p.name === receivingPumperName)
+        const receivingPumperId = receivingPumper?.id
+        
+        // Check advance limit for receiving pumper: monthly rental + advance cannot exceed 50,000
+        const ADVANCE_LIMIT = 50000
+        const monthlyRental = receivingPumperId ? (pumperMonthlyRentals[receivingPumperId] || 0) : 0
+        const availableAdvanceLimit = ADVANCE_LIMIT - monthlyRental
+        const newAmount = value as number
+        
+        if (newAmount > availableAdvanceLimit) {
+          setError(`Advance limit exceeded for ${receivingPumperName}! Monthly loan rental: Rs. ${monthlyRental.toLocaleString()}, Available advance limit: Rs. ${availableAdvanceLimit.toLocaleString()}. Total (rental + advance) cannot exceed Rs. ${ADVANCE_LIMIT.toLocaleString()}.`)
+          setTimeout(() => setError(''), 7000)
+          return prev // Don't update if validation fails
+        }
+        
         // Validate: Total advances (taken + given) cannot exceed cash declared
         const currentCash = pumperDeclaredCash[pumperName] || 0
         const advanceTaken = pumperAdvances[pumperName] || 0
         const otherAdvancesTotal = advances.reduce((sum, a, i) => i !== index ? sum + a.amount : sum, 0)
-        const newAmount = value as number
         const totalAdvances = advanceTaken + otherAdvancesTotal + newAmount
         
         if (totalAdvances > currentCash && currentCash > 0) {
@@ -1217,7 +1285,7 @@ export default function CloseShiftPage() {
             if (selectedNozzle) {
               updated.nozzleNumber = selectedNozzle.nozzleNumber
               updated.pumpNumber = selectedNozzle.pumpNumber
-              updated.fuelType = selectedNozzle.fuelType
+              updated.fuelType = selectedNozzle.fuel?.name
             }
           }
           return updated
@@ -1466,10 +1534,10 @@ export default function CloseShiftPage() {
           const firstAssignment = assignments[0]
           const nozzleId = firstAssignment.nozzleId
 
-          // Get fuel type from assignment's nozzle data
-          const fuelType = firstAssignment.nozzle?.tank?.fuelType
-          if (!fuelType) {
-            throw new Error('Cannot determine fuel type for credit sale')
+          // Get fuel ID from assignment's nozzle data
+          const fuelId = firstAssignment.nozzle?.tank?.fuelId
+          if (!fuelId) {
+            throw new Error('Cannot determine fuel ID for credit sale')
           }
 
           // Get shift data to get stationId and startTime
@@ -1965,7 +2033,7 @@ export default function CloseShiftPage() {
             id: row.nozzle.id,
             pumpNumber: row.nozzle.pump?.pumpNumber || '?',
             nozzleNumber: row.nozzle.nozzleNumber,
-            fuelType: row.nozzle.tank?.fuelType || 'Unknown'
+            fuelType: row.nozzle.tank?.fuel?.name || 'Unknown'
           })
           return (
             <div className="flex items-center gap-2">
@@ -3055,7 +3123,7 @@ export default function CloseShiftPage() {
                                         <div className="px-2 py-1.5 text-sm text-muted-foreground">No nozzles assigned</div>
                                       ) : (
                                         assignedNozzles.map((nozzle) => {
-                                          const fuelType = nozzle.tank?.fuelType || 'Unknown'
+                                          const fuelType = nozzle.tank?.fuel?.name || 'Unknown'
                                           const pumpNumber = nozzle.pump?.pumpNumber || '?'
                                           return (
                                             <SelectItem key={nozzle.id} value={nozzle.id}>
@@ -3142,17 +3210,38 @@ export default function CloseShiftPage() {
                         <p className="text-xs text-muted-foreground">
                           Money taken as advance FROM CASH SALES (will be deducted from cash declared above). 
                           Advance can only be taken from cash, not from card/credit/cheque.
-                          {breakdown.advanceTaken > 0 && breakdown.declaredCash >= 0 && (
-                            <span className="block mt-1 text-orange-600 dark:text-orange-400">
-                              Cash after advance: Rs. {(breakdown.declaredCash - breakdown.advanceTaken).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 
-                              (Rs. {breakdown.declaredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} declared - Rs. {breakdown.advanceTaken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} advance)
-                            </span>
-                          )}
-                          {breakdown.advanceTaken > (breakdown.declaredCash || 0) && (
-                            <span className="block mt-1 text-red-600 dark:text-red-400 font-medium">
-                              ⚠️ Warning: Advance exceeds cash declared. Advance can only be taken from cash sales.
-                            </span>
-                          )}
+                          {(() => {
+                            const pumper = pumpers.find(p => p.name === breakdown.pumperName)
+                            const pumperId = pumper?.id
+                            const monthlyRental = pumperId ? (pumperMonthlyRentals[pumperId] || 0) : 0
+                            const ADVANCE_LIMIT = 50000
+                            const availableLimit = ADVANCE_LIMIT - monthlyRental
+                            
+                            return (
+                              <>
+                                <span className="block mt-1 text-blue-600 dark:text-blue-400 font-medium">
+                                  💰 Advance Limit: Rs. {availableLimit.toLocaleString()} 
+                                  {monthlyRental > 0 && ` (Limit: Rs. 50,000 - Monthly Rental: Rs. ${monthlyRental.toLocaleString()})`}
+                                </span>
+                                {breakdown.advanceTaken > 0 && breakdown.declaredCash >= 0 && (
+                                  <span className="block mt-1 text-orange-600 dark:text-orange-400">
+                                    Cash after advance: Rs. {(breakdown.declaredCash - breakdown.advanceTaken).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 
+                                    (Rs. {breakdown.declaredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} declared - Rs. {breakdown.advanceTaken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} advance)
+                                  </span>
+                                )}
+                                {breakdown.advanceTaken > (breakdown.declaredCash || 0) && (
+                                  <span className="block mt-1 text-red-600 dark:text-red-400 font-medium">
+                                    ⚠️ Warning: Advance exceeds cash declared. Advance can only be taken from cash sales.
+                                  </span>
+                                )}
+                                {breakdown.advanceTaken > availableLimit && (
+                                  <span className="block mt-1 text-red-600 dark:text-red-400 font-medium">
+                                    ⚠️ Limit Exceeded: Advance + Monthly Rental cannot exceed Rs. 50,000!
+                                  </span>
+                                )}
+                              </>
+                            )
+                          })()}
                         </p>
                   </div>
 
@@ -3710,7 +3799,7 @@ export default function CloseShiftPage() {
                           : 0
                         const canSales = assignment.canSales || 0
                         const pumpSales = assignment.pumpSales || Math.max(0, delta - canSales)
-                        const fuelType = assignment.nozzle?.tank?.fuelType || 'Unknown'
+                        const fuelType = assignment.nozzle?.tank?.fuel?.name || 'Unknown'
                         const nozzleDisplay = assignment.nozzle 
                           ? `P-${assignment.nozzle.pump?.pumpNumber || '?'} N-${assignment.nozzle.nozzleNumber}`
                           : 'Unknown Nozzle'

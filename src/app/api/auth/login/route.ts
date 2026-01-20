@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
+import { getJwtSecret } from '@/lib/jwt'
 
-const SECRET_KEY = process.env.JWT_SECRET || 'your-secret-key-here-change-in-production'
 const ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 export async function POST(request: NextRequest) {
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         role: user.role
       },
-      SECRET_KEY,
+      getJwtSecret(),
       { expiresIn }
     )
 

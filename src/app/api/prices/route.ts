@@ -5,13 +5,13 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const current = searchParams.get('current')
-    const fuelType = searchParams.get('fuelType')
+    const fuelId = searchParams.get('fuelId')
     const datetime = searchParams.get('datetime')
     const stationId = searchParams.get('stationId')
 
-    if (fuelType) {
+    if (fuelId) {
       const where: any = {
-        fuelType,
+        fuelId,
         isActive: true
       }
       
@@ -31,7 +31,8 @@ export async function GET(request: NextRequest) {
                 id: true,
                 name: true
               }
-            }
+            },
+            fuel: true
           }
         })
         
@@ -54,7 +55,8 @@ export async function GET(request: NextRequest) {
               id: true,
               name: true
             }
-          }
+          },
+          fuel: true
         }
       })
       
@@ -74,17 +76,18 @@ export async function GET(request: NextRequest) {
         },
         orderBy: [
           { stationId: 'asc' },
-          { fuelType: 'asc' },
+          { fuelId: 'asc' },
           { effectiveDate: 'desc' }
         ],
-        distinct: ['stationId', 'fuelType'],
+        distinct: ['stationId', 'fuelId'],
         include: {
           station: {
             select: {
               id: true,
               name: true
             }
-          }
+          },
+          fuel: true
         }
       })
       return NextResponse.json(prices)
@@ -104,11 +107,12 @@ export async function GET(request: NextRequest) {
             id: true,
             name: true
           }
-        }
+        },
+        fuel: true
       },
       orderBy: [
         { stationId: 'asc' },
-        { fuelType: 'asc' },
+        { fuelId: 'asc' },
         { effectiveDate: 'desc' }
       ]
     })
@@ -124,11 +128,11 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    const { stationId, fuelType, price, effectiveDate } = body
+    const { stationId, fuelId, price, effectiveDate } = body
     
-    if (!stationId || !fuelType || price === undefined || !effectiveDate) {
+    if (!stationId || !fuelId || price === undefined || !effectiveDate) {
       return NextResponse.json(
-        { error: 'Station ID, fuel type, price, and effective date are required' },
+        { error: 'Station ID, fuel ID, price, and effective date are required' },
         { status: 400 }
       )
     }
@@ -136,7 +140,7 @@ export async function POST(request: NextRequest) {
     const newPrice = await prisma.price.create({
       data: {
         stationId,
-        fuelType,
+        fuelId,
         price: parseFloat(price),
         effectiveDate: new Date(effectiveDate),
         isActive: true
@@ -147,7 +151,8 @@ export async function POST(request: NextRequest) {
             id: true,
             name: true
           }
-        }
+        },
+        fuel: true
       }
     })
 
@@ -158,7 +163,7 @@ export async function POST(request: NextRequest) {
     // Handle foreign key constraint violations
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
       return NextResponse.json(
-        { error: 'Invalid station ID' },
+        { error: 'Invalid station ID or fuel ID' },
         { status: 400 }
       )
     }

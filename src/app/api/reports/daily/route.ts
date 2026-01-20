@@ -59,11 +59,11 @@ export async function GET(request: NextRequest) {
           
           if (litersSold <= 0) continue
           
-          const fuelType = assignment.nozzle.tank.fuelType
+          const fuelId = assignment.nozzle.tank.fuelId
           
           const price = await prisma.price.findFirst({
             where: {
-              fuelType,
+              fuelId,
               stationId,
               effectiveDate: { lte: shift.endTime || new Date() },
               isActive: true
@@ -201,7 +201,7 @@ export async function GET(request: NextRequest) {
       // Variance calculation would need more complex logic based on actual usage
       return {
         tankId: tank.id,
-        fuelType: tank.fuelType,
+        fuelName: tank.fuel?.name || 'Unknown',
         capacity: tank.capacity,
         currentLevel: tank.currentLevel,
         deliveries: deliveries,

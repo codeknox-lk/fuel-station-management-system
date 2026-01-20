@@ -27,21 +27,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Loan is already paid' }, { status: 400 })
     }
 
-    // Update loan status to PAID
-    const updatedLoan = await prisma.loanPumper.update({
-      where: { id: loanId },
-      data: {
-        status: 'PAID',
-        updatedAt: repaymentDate ? new Date(repaymentDate) : new Date()
-      }
+    // Update loan status to PAID and create safe transaction in a single transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Update loan status
+      const updatedLoan = await tx.loanPumper.update({
+        where: { id: loanId },
+        data: {
+          status: 'PAID',
+          updatedAt: repaymentDate ? new Date(repaymentDate) : new Date()
+        },
+        include: {
+          pumper: true
+        }
+      })
+
+      // Create safe transaction record for the loan repayment (money returning to safe)
+      await tx.safeTransaction.create({
+        data: {
+          type: 'INCOME',
+          category: 'LOAN_REPAYMENT',
+          amount: loan.amount,
+          description: `Loan repayment from ${updatedLoan.pumper?.name || 'Pumper'} - ${notes || 'Loan fully repaid'}`,
+          performedBy: repaidBy,
+          transactionDate: repaymentDate ? new Date(repaymentDate) : new Date()
+        }
+      })
+
+      return updatedLoan
     })
 
-    // TODO: Create safe transaction if loan was repaid from safe
-    // This can be added later if needed
-
     return NextResponse.json({
-      message: 'Loan marked as paid',
-      loan: updatedLoan
+      message: 'Loan marked as paid and safe transaction recorded',
+      loan: result
     })
   } catch (error) {
     console.error('Error repaying loan:', error)

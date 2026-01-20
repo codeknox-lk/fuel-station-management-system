@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useStation } from '@/contexts/StationContext'
+import { useRouter } from 'next/navigation'
+import { getCurrentBusinessMonth, getBusinessMonth, formatBusinessMonthRange } from '@/lib/businessMonth'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -12,6 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -36,7 +44,9 @@ import {
   AlertCircle, 
   Calculator,
   Download,
-  FileText
+  FileText,
+  ArrowLeft,
+  FileSpreadsheet
 } from 'lucide-react'
 import { exportProfitReportPDF } from '@/lib/exportUtils'
 
@@ -108,6 +118,7 @@ const currentYear = new Date().getFullYear()
 const years = Array.from({ length: 5 }, (_, i) => currentYear - i)
 
 export default function ProfitReportsPage() {
+  const router = useRouter()
   const [stations, setStations] = useState<Station[]>([])
   const [profitReport, setProfitReport] = useState<MonthlyProfitReport | null>(null)
   const [loading, setLoading] = useState(false)
@@ -115,8 +126,9 @@ export default function ProfitReportsPage() {
 
   // Form state
   const { selectedStation, setSelectedStation } = useStation()
-  const [selectedMonth, setSelectedMonth] = useState(String(new Date().getMonth() + 1).padStart(2, '0'))
-  const [selectedYear, setSelectedYear] = useState(String(currentYear))
+  const currentBusinessMonth = getCurrentBusinessMonth()
+  const [selectedMonth, setSelectedMonth] = useState(String(currentBusinessMonth.month).padStart(2, '0'))
+  const [selectedYear, setSelectedYear] = useState(String(currentBusinessMonth.year))
 
   // Load initial data
   useEffect(() => {
@@ -135,7 +147,7 @@ export default function ProfitReportsPage() {
 
   const generateReport = async () => {
     if (!selectedStation || !selectedMonth || !selectedYear) {
-      setError('Please select station, month, and year')
+      setError('Please select month and year')
       return
     }
 
@@ -143,9 +155,10 @@ export default function ProfitReportsPage() {
     setError('')
 
     try {
-      // Call API endpoint to get real profit report data
+      // Get business month date range (7th to 6th)
+      const businessMonth = getBusinessMonth(parseInt(selectedMonth), parseInt(selectedYear))
       const monthStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`
-      const url = `/api/reports/profit?stationId=${selectedStation}&month=${selectedMonth}&year=${selectedYear}`
+      const url = `/api/reports/profit?stationId=${selectedStation}&month=${selectedMonth}&year=${selectedYear}&startDate=${businessMonth.startDate.toISOString()}&endDate=${businessMonth.endDate.toISOString()}`
       
       const response = await fetch(url, {
         method: 'GET',
@@ -161,7 +174,8 @@ export default function ProfitReportsPage() {
       const reportData = await response.json()
       
       const station = stations.find(s => s.id === selectedStation)
-      const monthName = months.find(m => m.value === selectedMonth)?.label || 'Unknown'
+      const monthName = businessMonth.label
+      const dateRange = formatBusinessMonthRange(businessMonth)
 
       // Transform API data to match frontend interface
       const dailyData: ProfitData[] = reportData.dailyData || []
@@ -235,9 +249,12 @@ export default function ProfitReportsPage() {
         }
       ]
 
-      // Find best and worst days
-      const bestDay = dailyData.reduce((best, day) => day.profit > best.profit ? day : best, dailyData[0])
-      const worstDay = dailyData.reduce((worst, day) => day.profit < worst.profit ? day : worst, dailyData[0])
+      // Use best and worst days from API (which excludes today)
+      const bestDay = reportData.summary.bestDay || dailyData[0] || { day: 0, date: '', profit: 0, revenue: 0, expenses: 0, margin: 0 }
+      const worstDay = reportData.summary.worstDay || dailyData[0] || { day: 0, date: '', profit: 0, revenue: 0, expenses: 0, margin: 0 }
+
+      console.log('[Profit Report Frontend] Using bestDay:', bestDay.date, 'Profit:', bestDay.profit)
+      console.log('[Profit Report Frontend] Using worstDay:', worstDay.date, 'Profit:', worstDay.profit)
 
       // Mock previous month data
       const previousMonthProfit = totalProfit * (0.9 + Math.random() * 0.2)
@@ -278,7 +295,7 @@ export default function ProfitReportsPage() {
     
     const station = stations.find(s => s.id === selectedStation)
     const stationName = station?.name || 'Unknown Station'
-    const monthStr = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}`
+    const monthStr = `${selectedYear}-${selectedMonth}`
     
     exportProfitReportPDF(profitReport, stationName, monthStr)
   }
@@ -382,7 +399,13 @@ export default function ProfitReportsPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-foreground">Profit Reports</h1>
+      <div className="flex items-center gap-4 mb-6">
+        <Button variant="outline" onClick={() => router.push('/reports')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <h1 className="text-3xl font-bold text-foreground">Profit Reports</h1>
+      </div>
 
       {error && (
         <Alert variant="destructive">
@@ -392,7 +415,7 @@ export default function ProfitReportsPage() {
         </Alert>
       )}
 
-      <FormCard title="Generate Monthly Profit Report">
+      <FormCard title="Generate Monthly Profit Report" description="Business month runs from 7th to 6th of next month">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <Label htmlFor="station">Station</Label>
@@ -539,6 +562,9 @@ export default function ProfitReportsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Daily Profit Trend</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Business Month: {formatBusinessMonthRange(getBusinessMonth(parseInt(selectedMonth), parseInt(selectedYear)))}
+              </p>
             </CardHeader>
             <CardContent>
               <div className="h-80">
@@ -546,8 +572,12 @@ export default function ProfitReportsPage() {
                   <LineChart data={profitReport.dailyData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
-                      dataKey="day" 
-                      tick={{ fontSize: 12 }}
+                      dataKey="date" 
+                      tick={{ fontSize: 10 }}
+                      tickFormatter={(value) => {
+                        const d = new Date(value)
+                        return `${d.getDate()}/${d.getMonth() + 1}`
+                      }}
                     />
                     <YAxis 
                       tick={{ fontSize: 12 }}
@@ -558,7 +588,10 @@ export default function ProfitReportsPage() {
                         `Rs. ${value.toLocaleString()}`, 
                         name === 'profit' ? 'Profit' : name === 'revenue' ? 'Revenue' : 'Expenses'
                       ]}
-                      labelFormatter={(day) => `Day ${day}`}
+                      labelFormatter={(date) => {
+                        const d = new Date(date)
+                        return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                      }}
                     />
                     <Line 
                       type="monotone" 
@@ -689,14 +722,24 @@ export default function ProfitReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-4">
-                <Button onClick={exportToPDF} variant="outline">
-                  <Download className="mr-2 h-4 w-4" />
-                  Export to PDF
-                </Button>
-                <Button onClick={exportToExcel} variant="outline">
-                  <Download className="mr-2 h-4 w-4" />
-                  Export to Excel
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" disabled={!profitReport}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Export Report
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={exportToPDF} className="cursor-pointer">
+                      <FileText className="mr-2 h-4 w-4 text-red-600" />
+                      <span>Export as PDF</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={exportToExcel} className="cursor-pointer">
+                      <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" />
+                      <span>Export as Excel</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button variant="outline">
                   <FileText className="mr-2 h-4 w-4" />
                   Email Report

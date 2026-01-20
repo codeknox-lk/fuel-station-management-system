@@ -137,8 +137,12 @@ export async function GET(request: NextRequest) {
       )
       const loans = staffLoans.reduce((sum, loan) => sum + (loan.amount || 0), 0)
 
-      // Absent days deduction (to be tracked - for now set to 0)
-      // TODO: Implement absent days tracking
+      // Absent days deduction
+      // Note: Absent days tracking is a future feature that will require:
+      // 1. Attendance tracking system for office staff
+      // 2. Integration with shift/attendance records
+      // 3. Policy configuration for deduction rates
+      // For now, defaulting to 0 absent days
       const absentDays = 0
       const absentDeductionPerDay = baseSalary / 30 // Daily salary rate
       const absentDeduction = absentDays * absentDeductionPerDay

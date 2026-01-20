@@ -46,14 +46,23 @@ export default function ProfilePage() {
     try {
       setLoading(true)
       setError('')
+      
+      // Get user data from localStorage first (fallback)
+      const userId = localStorage.getItem('userId')
+      const username = localStorage.getItem('username')
+      const userRole = localStorage.getItem('userRole')
       const token = localStorage.getItem('accessToken')
       
       if (!token) {
-        setError('No authentication token found. Please log in again.')
+        setError('Not logged in. Redirecting to login...')
+        setTimeout(() => {
+          window.location.href = '/login'
+        }, 1500)
         setLoading(false)
         return
       }
 
+      // Try to fetch from API
       const response = await fetch('/api/auth/me', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -68,31 +77,53 @@ export default function ProfilePage() {
           username: data.username
         })
       } else {
-        const errorData = await response.json().catch(() => ({}))
-        console.error('Profile fetch error:', response.status, errorData)
-        
-        // Handle 401 Unauthorized - token expired or invalid
-        if (response.status === 401) {
-          setError('Your session has expired. Please log in again.')
-          // Clear invalid token and redirect to login
-          localStorage.removeItem('accessToken')
-          localStorage.removeItem('userRole')
-          localStorage.removeItem('userId')
-          localStorage.removeItem('username')
-          
-          // Redirect to login after a short delay
-          setTimeout(() => {
-            if (typeof window !== 'undefined') {
-              window.location.href = '/login'
-            }
-          }, 2000)
+        // If API fails but we have localStorage data, use that as fallback
+        if (userId && username && userRole) {
+          console.warn('Using localStorage fallback for profile data')
+          const fallbackProfile = {
+            id: userId,
+            username: username,
+            email: '',
+            role: userRole,
+            station_id: localStorage.getItem('stationId') || undefined,
+            is_active: true
+          }
+          setProfile(fallbackProfile)
+          setProfileForm({
+            username: username
+          })
+          setError('Could not verify session with server, using cached profile data')
         } else {
+          const errorData = await response.json().catch(() => ({}))
+          console.error('Profile fetch error:', response.status, errorData)
           setError(errorData.detail || errorData.error || `Failed to load profile (${response.status})`)
         }
       }
     } catch (error) {
       console.error('Profile fetch exception:', error)
-      setError(`Unable to connect to server: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      
+      // Use localStorage fallback on network error
+      const userId = localStorage.getItem('userId')
+      const username = localStorage.getItem('username')
+      const userRole = localStorage.getItem('userRole')
+      
+      if (userId && username && userRole) {
+        const fallbackProfile = {
+          id: userId,
+          username: username,
+          email: '',
+          role: userRole,
+          station_id: localStorage.getItem('stationId') || undefined,
+          is_active: true
+        }
+        setProfile(fallbackProfile)
+        setProfileForm({
+          username: username
+        })
+        setError('Could not connect to server, using cached profile data')
+      } else {
+        setError('Unable to load profile. Please try logging in again.')
+      }
     } finally {
       setLoading(false)
     }

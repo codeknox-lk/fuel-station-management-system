@@ -51,28 +51,29 @@ model Station {
   updatedAt DateTime @updatedAt
 
   // Relations
-  users          User[]
-  tanks          Tank[]
-  pumps          Pump[]
-  shifts         Shift[]
-  expenses       Expense[]
-  deposits       Deposit[]
-  externalLoans  LoanExternal[]
-  pumperLoans    LoanPumper[]
-  cheques        Cheque[]
-  shiftTemplates ShiftTemplate[]
-  posTerminals   PosTerminal[]
-  deliveries     Delivery[]
-  tankDips       TankDip[]
-  oilSales       OilSale[]
-  prices         Price[]
-  pumpers        Pumper[]
-  officeStaff    OfficeStaff[]
+  users                     User[]
+  tanks                     Tank[]
+  pumps                     Pump[]
+  shifts                    Shift[]
+  expenses                  Expense[]
+  deposits                  Deposit[]
+  externalLoans             LoanExternal[]
+  pumperLoans               LoanPumper[]
+  officeStaffLoans          LoanOfficeStaff[]
+  cheques                   Cheque[]
+  shiftTemplates            ShiftTemplate[]
+  posTerminals              PosTerminal[]
+  deliveries                Delivery[]
+  tankDips                  TankDip[]
+  oilSales                  OilSale[]
+  prices                    Price[]
+  pumpers                   Pumper[]
+  officeStaff               OfficeStaff[]
   officeStaffSalaryPayments OfficeStaffSalaryPayment[]
-  safe           Safe?
-  notifications  Notification[]
-  salaryPayments SalaryPayment[]
-  bankTransactions BankTransaction[]
+  safe                      Safe?
+  notifications             Notification[]
+  salaryPayments            SalaryPayment[]
+  bankTransactions          BankTransaction[]
 
   @@index([isActive])
 }
@@ -168,7 +169,8 @@ model Tank {
   stationId    String
   station      Station  @relation(fields: [stationId], references: [id])
   tankNumber   String   @default("TANK-1")
-  fuelType     FuelType
+  fuelId       String
+  fuel         Fuel     @relation(fields: [fuelId], references: [id])
   capacity     Float // in liters
   currentLevel Float // in liters
   isActive     Boolean  @default(true)
@@ -182,17 +184,28 @@ model Tank {
 
   @@unique([stationId, tankNumber])
   @@index([stationId])
-  @@index([fuelType])
+  @@index([fuelId])
 }
 
-enum FuelType {
-  PETROL_92
-  PETROL_95
-  PETROL_EURO_3
-  DIESEL
-  SUPER_DIESEL
-  EXTRA_MILE
-  OIL
+model Fuel {
+  id          String   @id @default(uuid())
+  code        String   @unique // e.g., "PETROL_92", "DIESEL"
+  name        String // e.g., "Petrol 92", "Diesel"
+  category    String // e.g., "PETROL", "DIESEL", "OIL"
+  description String?
+  icon        String? // emoji or icon identifier
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0) // For display ordering
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  tanks  Tank[]
+  prices Price[]
+
+  @@index([code])
+  @@index([category])
+  @@index([isActive])
 }
 
 model Pump {
@@ -249,33 +262,33 @@ model TankDip {
 }
 
 model Delivery {
-  id                 String            @id @default(uuid())
-  stationId          String
-  station            Station           @relation(fields: [stationId], references: [id])
-  tankId             String
-  tank               Tank              @relation(fields: [tankId], references: [id])
-  quantity           Float             // in liters - final measured/calculated quantity
-  invoiceQuantity    Float?            // in liters - invoice quantity from supplier
-  supplier           String
-  deliveryDate       DateTime
-  receivedBy         String
-  invoiceNumber      String?
-  notes              String?
-  
+  id              String   @id @default(uuid())
+  stationId       String
+  station         Station  @relation(fields: [stationId], references: [id])
+  tankId          String
+  tank            Tank     @relation(fields: [tankId], references: [id])
+  quantity        Float // in liters - final measured/calculated quantity
+  invoiceQuantity Float? // in liters - invoice quantity from supplier
+  supplier        String
+  deliveryDate    DateTime
+  receivedBy      String
+  invoiceNumber   String?
+  notes           String?
+
   // Dip verification fields
-  beforeDipReading   Float?            // Tank level before delivery
-  afterDipReading    Float?            // Tank level after delivery
-  beforeDipTime      DateTime?
-  afterDipTime       DateTime?
-  fuelSoldDuring     Float?            // Fuel sold during delivery (from active shifts)
-  beforeMeterReadings Json?            // Pump meter readings at before dip time
-  actualReceived     Float?            // Calculated: after - before + soldDuring
-  verificationStatus DeliveryStatus    @default(PENDING_VERIFICATION)
-  verifiedBy         String?
-  verifiedAt         DateTime?
-  
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+  beforeDipReading    Float? // Tank level before delivery
+  afterDipReading     Float? // Tank level after delivery
+  beforeDipTime       DateTime?
+  afterDipTime        DateTime?
+  fuelSoldDuring      Float? // Fuel sold during delivery (from active shifts)
+  beforeMeterReadings Json? // Pump meter readings at before dip time
+  actualReceived      Float? // Calculated: after - before + soldDuring
+  verificationStatus  DeliveryStatus @default(PENDING_VERIFICATION)
+  verifiedBy          String?
+  verifiedAt          DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([stationId])
   @@index([tankId])
@@ -356,10 +369,30 @@ model LoanPumper {
   station       Station    @relation(fields: [stationId], references: [id])
   pumperName    String
   amount        Float
-  paidAmount    Float     @default(0) // Amount paid so far
+  paidAmount    Float      @default(0) // Amount paid so far
   monthlyRental Float?     @default(0) // Monthly rental amount to deduct from salary
   reason        String
-  givenBy       String?    // Who gave the loan (username or pumper name)
+  givenBy       String? // Who gave the loan (username or pumper name)
+  dueDate       DateTime
+  status        LoanStatus @default(ACTIVE)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([stationId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model LoanOfficeStaff {
+  id            String     @id @default(uuid())
+  stationId     String
+  station       Station    @relation(fields: [stationId], references: [id])
+  staffName     String
+  amount        Float
+  paidAmount    Float      @default(0) // Amount paid so far
+  monthlyRental Float?     @default(0) // Monthly rental amount to deduct from salary
+  reason        String
+  givenBy       String? // Who gave the loan (username)
   dueDate       DateTime
   status        LoanStatus @default(ACTIVE)
   createdAt     DateTime   @default(now())
@@ -527,21 +560,21 @@ model PosBatch {
 }
 
 model PosBatchTerminalEntry {
-  id               String      @id @default(uuid())
-  batchId          String
-  batch            PosBatch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  terminalId       String
-  terminal         PosTerminal @relation(fields: [terminalId], references: [id])
-  startNumber      String
-  endNumber        String
-  transactionCount Int
-  visaAmount       Float       @default(0)
-  masterAmount     Float       @default(0)
-  amexAmount       Float       @default(0)
-  qrAmount         Float       @default(0)
-  dialogTouchAmount Float      @default(0)
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  id                String      @id @default(uuid())
+  batchId           String
+  batch             PosBatch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  terminalId        String
+  terminal          PosTerminal @relation(fields: [terminalId], references: [id])
+  startNumber       String
+  endNumber         String
+  transactionCount  Int
+  visaAmount        Float       @default(0)
+  masterAmount      Float       @default(0)
+  amexAmount        Float       @default(0)
+  qrAmount          Float       @default(0)
+  dialogTouchAmount Float       @default(0)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 
   @@index([batchId])
   @@index([terminalId])
@@ -634,7 +667,8 @@ model Price {
   id            String   @id @default(uuid())
   stationId     String
   station       Station  @relation(fields: [stationId], references: [id])
-  fuelType      FuelType
+  fuelId        String
+  fuel          Fuel     @relation(fields: [fuelId], references: [id])
   price         Float
   effectiveDate DateTime
   isActive      Boolean  @default(true)
@@ -642,7 +676,7 @@ model Price {
   updatedAt     DateTime @updatedAt
 
   @@index([stationId])
-  @@index([fuelType])
+  @@index([fuelId])
   @@index([effectiveDate])
   @@index([isActive])
 }
@@ -668,20 +702,20 @@ model Bank {
 }
 
 model BankTransaction {
-  id            String                @id @default(uuid())
-  bankId        String
-  bank          Bank                  @relation(fields: [bankId], references: [id])
-  stationId     String?
-  station       Station?              @relation(fields: [stationId], references: [id])
-  type          BankTransactionType
-  amount        Float
-  description   String
+  id              String              @id @default(uuid())
+  bankId          String
+  bank            Bank                @relation(fields: [bankId], references: [id])
+  stationId       String?
+  station         Station?            @relation(fields: [stationId], references: [id])
+  type            BankTransactionType
+  amount          Float
+  description     String
   referenceNumber String?
   transactionDate DateTime
-  createdBy     String
-  notes         String?
-  createdAt     DateTime              @default(now())
-  updatedAt     DateTime              @updatedAt
+  createdBy       String
+  notes           String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 
   @@index([bankId])
   @@index([stationId])
@@ -690,33 +724,33 @@ model BankTransaction {
 }
 
 enum BankTransactionType {
-  DEPOSIT       // Money added to bank
-  WITHDRAWAL    // Money withdrawn/expense
-  TRANSFER_IN   // Transfer from another account
-  TRANSFER_OUT  // Transfer to another account
-  FEE           // Bank fees/charges
-  INTEREST      // Interest earned
-  ADJUSTMENT    // Manual adjustment/correction
+  DEPOSIT // Money added to bank
+  WITHDRAWAL // Money withdrawn/expense
+  TRANSFER_IN // Transfer from another account
+  TRANSFER_OUT // Transfer to another account
+  FEE // Bank fees/charges
+  INTEREST // Interest earned
+  ADJUSTMENT // Manual adjustment/correction
 }
 
 model Pumper {
-  id              String       @id @default(uuid())
-  name            String
-  employeeId      String?
-  stationId       String?
-  station         Station?     @relation(fields: [stationId], references: [id])
-  phone           String?
-  status          PumperStatus @default(ACTIVE)
-  shift           PumperShift  @default(ANY)
-  hireDate        DateTime?
-  experience      Float? // in years
-  rating          Float? // 1-5 rating
-  specializations String[]     @default([])
-  baseSalary      Float?       @default(0) // Monthly base salary in LKR
-  holidayAllowance Float?      @default(4500) // Monthly holiday allowance in LKR
-  isActive        Boolean      @default(true)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  id               String       @id @default(uuid())
+  name             String
+  employeeId       String?
+  stationId        String?
+  station          Station?     @relation(fields: [stationId], references: [id])
+  phone            String?
+  status           PumperStatus @default(ACTIVE)
+  shift            PumperShift  @default(ANY)
+  hireDate         DateTime?
+  experience       Float? // in years
+  rating           Float? // 1-5 rating
+  specializations  String[]     @default([])
+  baseSalary       Float?       @default(0) // Monthly base salary in LKR
+  holidayAllowance Float?       @default(4500) // Monthly holiday allowance in LKR
+  isActive         Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 
   // Relations
   salaryPayments SalaryPayment[]
@@ -740,27 +774,27 @@ enum PumperShift {
 }
 
 model OfficeStaff {
-  id                String          @id @default(uuid())
-  name              String
-  employeeId        String?
-  stationId         String
-  station           Station         @relation(fields: [stationId], references: [id])
-  role              OfficeStaffRole @default(MANAGER)
-  phone             String?
-  email             String?
-  baseSalary        Float           @default(0) // Monthly base salary in LKR
-  specialAllowance  Float           @default(0) // Special allowance (different for each staff)
-  otherAllowances   Float           @default(0) // Other allowances
-  medicalAllowance  Float           @default(0) // Medical allowance
-  holidayAllowance  Float           @default(0) // Holiday allowance
-  fuelAllowance     Float           @default(0) // Fuel allowance (only for managers)
-  isActive          Boolean         @default(true)
-  hireDate          DateTime?
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  id               String          @id @default(uuid())
+  name             String
+  employeeId       String?
+  stationId        String
+  station          Station         @relation(fields: [stationId], references: [id])
+  role             OfficeStaffRole @default(MANAGER)
+  phone            String?
+  email            String?
+  baseSalary       Float           @default(0) // Monthly base salary in LKR
+  specialAllowance Float           @default(0) // Special allowance (different for each staff)
+  otherAllowances  Float           @default(0) // Other allowances
+  medicalAllowance Float           @default(0) // Medical allowance
+  holidayAllowance Float           @default(0) // Holiday allowance
+  fuelAllowance    Float           @default(0) // Fuel allowance (only for managers)
+  isActive         Boolean         @default(true)
+  hireDate         DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   // Relations
-  salaryPayments    OfficeStaffSalaryPayment[]
+  salaryPayments OfficeStaffSalaryPayment[]
 
   @@index([stationId])
   @@index([role])

@@ -107,7 +107,8 @@ export async function POST(
             select: {
               id: true,
               tankNumber: true,
-              fuelType: true,
+              fuelId: true,
+              fuel: true,
               capacity: true,
               currentLevel: true
             }

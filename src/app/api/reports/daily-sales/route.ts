@@ -11,18 +11,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Station ID is required' }, { status: 400 })
     }
 
-    // Parse month or use current month
+    // Parse month and calculate business month range (7th to 6th)
     let startDate: Date
     let endDate: Date
     
     if (month) {
       const [year, monthNum] = month.split('-').map(Number)
-      startDate = new Date(year, monthNum - 1, 1)
-      endDate = new Date(year, monthNum, 0, 23, 59, 59, 999)
+      // Business month: 7th of current month to 6th of next month
+      startDate = new Date(year, monthNum - 1, 7, 0, 0, 0, 0)
+      endDate = new Date(year, monthNum, 6, 23, 59, 59, 999)
     } else {
       const now = new Date()
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+      const currentDay = now.getDate()
+      
+      // If today is before 7th, business month is previous calendar month (7th) to current month (6th)
+      // If today is 7th or after, business month is current month (7th) to next month (6th)
+      if (currentDay < 7) {
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 7, 0, 0, 0, 0)
+        endDate = new Date(now.getFullYear(), now.getMonth(), 6, 23, 59, 59, 999)
+      } else {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 7, 0, 0, 0, 0)
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 6, 23, 59, 59, 999)
+      }
     }
 
     // Get all closed shifts for the month
@@ -47,7 +57,8 @@ export async function GET(request: NextRequest) {
                 tank: {
                   select: {
                     id: true,
-                    fuelType: true
+                    fuelId: true,
+                    fuel: true
                   }
                 }
               }
@@ -66,14 +77,17 @@ export async function GET(request: NextRequest) {
       orderBy: { effectiveDate: 'desc' }
     })
 
-    // Create a map for daily sales by fuel type
-    const dailySalesMap = new Map<string, Map<string, number>>() // date -> fuelType -> amount
+    // Create maps for daily sales by fuel type (both Rs and Liters)
+    const dailySalesMap = new Map<string, Map<string, number>>() // date -> fuelType -> amount in Rs
+    const dailyLitersMap = new Map<string, Map<string, number>>() // date -> fuelType -> liters sold
 
-    // Initialize all days in the month
-    const daysInMonth = endDate.getDate()
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateKey = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    // Initialize all days in the business month (7th to 6th)
+    let currentDate = new Date(startDate)
+    while (currentDate <= endDate) {
+      const dateKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
       dailySalesMap.set(dateKey, new Map())
+      dailyLitersMap.set(dateKey, new Map())
+      currentDate.setDate(currentDate.getDate() + 1)
     }
 
     // Process each shift
@@ -86,6 +100,7 @@ export async function GET(request: NextRequest) {
       if (!dailySalesMap.has(dateKey)) continue
 
       const daySales = dailySalesMap.get(dateKey)!
+      const dayLiters = dailyLitersMap.get(dateKey)!
 
       // Process each assignment
       for (const assignment of shift.assignments) {
@@ -106,21 +121,27 @@ export async function GET(request: NextRequest) {
         
         if (litersSold <= 0) continue
 
-        const fuelType = assignment.nozzle.tank.fuelType
-        if (!fuelType) continue
+        const fuel = assignment.nozzle.tank.fuel
+        if (!fuel) continue
+        
+        const fuelName = fuel.name
         
         // Find price effective at shift end time
         const price = prices.find(p => 
-          p.fuelType === fuelType && 
+          p.fuelId === fuel.id && 
           new Date(p.effectiveDate) <= (shift.endTime || new Date())
-        ) || prices.find(p => p.fuelType === fuelType)
+        ) || prices.find(p => p.fuelId === fuel.id)
 
         const pricePerLiter = price ? price.price : 0
         const salesAmount = litersSold * pricePerLiter
 
-        // Add to daily sales for this fuel type
-        const currentAmount = daySales.get(fuelType) || 0
-        daySales.set(fuelType, currentAmount + salesAmount)
+        // Add to daily sales for this fuel type (Rs)
+        const currentAmount = daySales.get(fuelName) || 0
+        daySales.set(fuelName, currentAmount + salesAmount)
+        
+        // Add to daily liters for this fuel type
+        const currentLiters = dayLiters.get(fuelName) || 0
+        dayLiters.set(fuelName, currentLiters + litersSold)
       }
     }
 
@@ -128,14 +149,30 @@ export async function GET(request: NextRequest) {
     const dailySales: Array<{
       date: string
       day: number
-      sales: Record<string, number> // fuelType -> amount
+      sales: Record<string, number> // fuelType -> amount in Rs
+      liters: Record<string, number> // fuelType -> liters sold
       totalSales: number
+      totalLiters: number
     }> = []
 
-    // Get all unique fuel types
+    // Get all unique fuel types from BOTH sales data AND station tanks (to show all fuel types even with zero sales)
     const allFuelTypes = new Set<string>()
+    
+    // Add fuel types from actual sales
     dailySalesMap.forEach(daySales => {
-      daySales.forEach((_, fuelType) => allFuelTypes.add(fuelType))
+      daySales.forEach((_, fuelName) => allFuelTypes.add(fuelName))
+    })
+    
+    // Add all fuel types from station tanks (so we show columns even with no sales)
+    const stationTanks = await prisma.tank.findMany({
+      where: { stationId },
+      include: { fuel: true },
+      distinct: ['fuelId']
+    })
+    stationTanks.forEach(tank => {
+      if (tank.fuel && tank.fuel.code !== 'OIL') { // Exclude OIL from sales reports
+        allFuelTypes.add(tank.fuel.name)
+      }
     })
 
     // Sort dates and build response
@@ -143,25 +180,33 @@ export async function GET(request: NextRequest) {
     
     for (const dateKey of sortedDates) {
       const daySales = dailySalesMap.get(dateKey)!
+      const dayLiters = dailyLitersMap.get(dateKey)!
       const totalSales = Array.from(daySales.values()).reduce((sum, amount) => sum + amount, 0)
+      const totalLiters = Array.from(dayLiters.values()).reduce((sum, liters) => sum + liters, 0)
       
       const salesByFuelType: Record<string, number> = {}
-      allFuelTypes.forEach(fuelType => {
-        salesByFuelType[fuelType] = daySales.get(fuelType) || 0
+      const litersByFuelType: Record<string, number> = {}
+      allFuelTypes.forEach(fuelName => {
+        salesByFuelType[fuelName] = daySales.get(fuelName) || 0
+        litersByFuelType[fuelName] = dayLiters.get(fuelName) || 0
       })
 
       dailySales.push({
         date: dateKey,
         day: parseInt(dateKey.split('-')[2]),
         sales: salesByFuelType,
-        totalSales
+        liters: litersByFuelType,
+        totalSales,
+        totalLiters
       })
     }
 
-    // Calculate totals by fuel type
+    // Calculate totals by fuel type (both Rs and Liters)
     const totalsByFuelType: Record<string, number> = {}
-    allFuelTypes.forEach(fuelType => {
-      totalsByFuelType[fuelType] = dailySales.reduce((sum, day) => sum + (day.sales[fuelType] || 0), 0)
+    const totalLitersByFuelType: Record<string, number> = {}
+    allFuelTypes.forEach(fuelName => {
+      totalsByFuelType[fuelName] = dailySales.reduce((sum, day) => sum + (day.sales[fuelName] || 0), 0)
+      totalLitersByFuelType[fuelName] = dailySales.reduce((sum, day) => sum + (day.liters[fuelName] || 0), 0)
     })
 
     return NextResponse.json({
@@ -170,6 +215,7 @@ export async function GET(request: NextRequest) {
       endDate: endDate.toISOString(),
       dailySales,
       totalsByFuelType,
+      totalLitersByFuelType,
       fuelTypes: Array.from(allFuelTypes)
     })
   } catch (error) {

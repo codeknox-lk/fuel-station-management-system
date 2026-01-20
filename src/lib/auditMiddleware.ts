@@ -145,13 +145,13 @@ export const auditOperations = {
     }, request),
 
   // Price operations
-  priceUpdated: (request: NextRequest, priceId: string, fuelType: string, newPrice: number, stationId?: string) => 
+  priceUpdated: (request: NextRequest, priceId: string, fuelName: string, newPrice: number, stationId?: string) => 
     auditLog({
       ...getUserContext(request),
       action: 'UPDATE',
       entity: 'Price',
       entityId: priceId,
-      details: `Updated ${fuelType} price to Rs. ${newPrice.toFixed(2)}`,
+      details: `Updated ${fuelName} price to Rs. ${newPrice.toFixed(2)}`,
       stationId
     }, request),
 

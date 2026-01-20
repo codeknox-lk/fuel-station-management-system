@@ -69,7 +69,7 @@ const navigation: NavItem[] = [
     roles: ['OWNER', 'MANAGER']
   },
   {
-    title: 'Safe & POS',
+    title: 'Safe',
     href: '/safe',
     icon: Wallet,
     roles: ['OWNER', 'MANAGER', 'ACCOUNTS']
@@ -110,12 +110,12 @@ const navigation: NavItem[] = [
     icon: Bell,
     roles: ['OWNER', 'MANAGER', 'ACCOUNTS']
   },
-  {
-    title: 'Audit Log',
-    href: '/audit-log',
-    icon: FileText,
-    roles: ['OWNER']
-  },
+  // {
+  //   title: 'Audit Log',
+  //   href: '/audit-log',
+  //   icon: FileText,
+  //   roles: ['OWNER']
+  // },
   {
     title: 'Settings',
     href: '/settings',

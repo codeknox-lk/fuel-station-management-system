@@ -34,12 +34,15 @@ export async function GET(request: NextRequest) {
     const tanks = await prisma.tank.findMany({
       where: { 
         stationId,
-        fuelType: { not: 'OIL' }
+        fuel: {
+          code: { not: 'OIL' }
+        }
       },
       select: {
         id: true,
         tankNumber: true,
-        fuelType: true,
+        fuelId: true,
+        fuel: true,
         capacity: true
       }
     })
@@ -197,7 +200,7 @@ export async function GET(request: NextRequest) {
       return {
         tankId: tank.id,
         tankNumber: tank.tankNumber || 'TANK-1',
-        fuelType: tank.fuelType,
+        fuelName: tank.fuel?.name || 'Unknown',
         capacity: tank.capacity,
             openingStock: Math.round(estimatedOpeningStock * 100) / 100,
             deliveries: Math.round(totalDeliveries * 100) / 100,

@@ -10,15 +10,19 @@ export interface NozzleDisplay {
 }
 
 /**
- * Format fuel type enum to readable string
- * PETROL_95 -> Petrol 95
- * DIESEL -> Diesel
- * etc.
+ * Format fuel type to readable string
+ * Handles both old enum values (PETROL_95) and new fuel names (Petrol 95)
+ * If already formatted (no underscores), returns as-is
  */
 export function formatFuelType(fuelType: string): string {
   if (!fuelType) return 'Unknown'
   
-  // Handle enum values like PETROL_95, SUPER_DIESEL, etc.
+  // If no underscores, assume it's already a formatted fuel name (e.g., "Petrol 95")
+  if (!fuelType.includes('_')) {
+    return fuelType
+  }
+  
+  // Handle old enum values like PETROL_95, SUPER_DIESEL, etc.
   return fuelType
     .split('_')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())

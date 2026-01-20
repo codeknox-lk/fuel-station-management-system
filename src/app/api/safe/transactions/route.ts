@@ -201,26 +201,35 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(enrichedTransactions)
     }
 
+    // If no stationId, get transactions from all safes
+    let safeIds: string[] = []
+    
     if (!stationId) {
-      return NextResponse.json({ error: 'Station ID is required' }, { status: 400 })
-    }
-
-    // Get or create safe
-    let safe = await prisma.safe.findUnique({
-      where: { stationId }
-    })
-
-    if (!safe) {
-      safe = await prisma.safe.create({
-        data: {
-          stationId,
-          openingBalance: 0,
-          currentBalance: 0
-        }
+      const allSafes = await prisma.safe.findMany({
+        select: { id: true }
       })
+      safeIds = allSafes.map(s => s.id)
+    } else {
+      // Get or create safe for specific station
+      let safe = await prisma.safe.findUnique({
+        where: { stationId }
+      })
+
+      if (!safe) {
+        safe = await prisma.safe.create({
+          data: {
+            stationId,
+            openingBalance: 0,
+            currentBalance: 0
+          }
+        })
+      }
+      safeIds = [safe.id]
     }
 
-    const where: any = { safeId: safe.id }
+    const where: any = { 
+      safeId: safeIds.length === 1 ? safeIds[0] : { in: safeIds }
+    }
 
     if (type) {
       where.type = type
