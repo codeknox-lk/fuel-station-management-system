@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStation } from '@/contexts/StationContext'
+import { useToast } from '@/hooks/use-toast'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -12,14 +13,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
-import { 
+import {
   CreditCard,
-  DollarSign, 
+  DollarSign,
   User,
   Building2,
   Calendar,
   CheckCircle,
-  AlertCircle, 
+  AlertCircle,
   RefreshCw,
   Eye
 } from 'lucide-react'
@@ -36,8 +37,8 @@ interface PumperLoan {
   status: 'ACTIVE' | 'PAID' | 'OVERDUE'
   createdAt: string
   station?: {
-  id: string
-  name: string
+    id: string
+    name: string
   }
 }
 
@@ -84,8 +85,7 @@ export default function LoansPage() {
   const router = useRouter()
   const { selectedStation } = useStation()
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const { toast } = useToast()
 
   const [pumperLoans, setPumperLoans] = useState<PumperLoan[]>([])
   const [externalLoans, setExternalLoans] = useState<ExternalLoan[]>([])
@@ -111,9 +111,9 @@ export default function LoansPage() {
     if (!selectedStation) return
 
     try {
-    setLoading(true)
-    setError('')
-      
+      setLoading(true)
+
+
       const [pumperRes, externalRes, officeRes] = await Promise.all([
         fetch(`/api/loans/pumper?stationId=${selectedStation}`),
         fetch(`/api/loans/external?stationId=${selectedStation}`),
@@ -136,7 +136,11 @@ export default function LoansPage() {
       }
     } catch (err) {
       console.error('Error fetching loans:', err)
-      setError('Failed to fetch loans')
+      toast({
+        title: "Error",
+        description: "Failed to fetch loans",
+        variant: "destructive"
+      })
     } finally {
       setLoading(false)
     }
@@ -155,9 +159,9 @@ export default function LoansPage() {
   }
 
   const handleViewPayments = (loan: PumperLoan | ExternalLoan | OfficeStaffLoan, type: 'PUMPER' | 'EXTERNAL' | 'OFFICE') => {
-    const loanName = type === 'PUMPER' ? (loan as PumperLoan).pumperName : 
-                     type === 'OFFICE' ? (loan as OfficeStaffLoan).staffName :
-                     (loan as ExternalLoan).borrowerName
+    const loanName = type === 'PUMPER' ? (loan as PumperLoan).pumperName :
+      type === 'OFFICE' ? (loan as OfficeStaffLoan).staffName :
+        (loan as ExternalLoan).borrowerName
     setSelectedLoan({ id: loan.id, type, name: loanName })
     fetchLoanPayments(loan.id, type)
     setPaymentsDialogOpen(true)
@@ -165,16 +169,16 @@ export default function LoansPage() {
 
   const handlePayLoan = (loan: PumperLoan | ExternalLoan | OfficeStaffLoan, type: 'PUMPER' | 'EXTERNAL' | 'OFFICE') => {
     const loanName = type === 'PUMPER' ? (loan as PumperLoan).pumperName :
-                     type === 'OFFICE' ? (loan as OfficeStaffLoan).staffName : 
-                     (loan as ExternalLoan).borrowerName
+      type === 'OFFICE' ? (loan as OfficeStaffLoan).staffName :
+        (loan as ExternalLoan).borrowerName
     const typedLoan = loan as (PumperLoan | OfficeStaffLoan)
     const paidAmount = (type === 'PUMPER' || type === 'OFFICE') ? (typedLoan.paidAmount || 0) : 0
     const remainingAmount = (type === 'PUMPER' || type === 'OFFICE') ? (typedLoan.amount - paidAmount) : loan.amount
-    
-    setSelectedLoanForPayment({ 
-      id: loan.id, 
-      type, 
-      name: loanName, 
+
+    setSelectedLoanForPayment({
+      id: loan.id,
+      type,
+      name: loanName,
       amount: loan.amount,
       paidAmount: paidAmount
     })
@@ -186,21 +190,29 @@ export default function LoansPage() {
 
   const handleProcessPayment = async () => {
     if (!selectedLoanForPayment || paymentAmount === undefined || paymentAmount <= 0) {
-      setError('Please enter a valid payment amount')
+      toast({
+        title: "Error",
+        description: "Please enter a valid payment amount",
+        variant: "destructive"
+      })
       return
     }
 
     if (!selectedStation) {
-      setError('Please select a station')
+      toast({
+        title: "Error",
+        description: "Please select a station",
+        variant: "destructive"
+      })
       return
     }
 
     try {
       setProcessingPayment(true)
-    setError('')
-      
+
+
       const username = typeof window !== 'undefined' ? localStorage.getItem('username') || 'System' : 'System'
-      
+
       let res
       if (selectedLoanForPayment.type === 'PUMPER') {
         res = await fetch(`/api/loans/pumper/${selectedLoanForPayment.id}/pay`, {
@@ -226,7 +238,11 @@ export default function LoansPage() {
         })
       } else {
         // External loan payment - need to create endpoint
-        setError('External loan payment not yet implemented')
+        toast({
+          title: "Error",
+          description: "External loan payment not yet implemented",
+          variant: "destructive"
+        })
         return
       }
 
@@ -236,21 +252,21 @@ export default function LoansPage() {
       }
 
       await fetchAllLoans()
-      
+
       setPaymentDialogOpen(false)
       setSelectedLoanForPayment(null)
       setPaymentAmount(undefined)
       setPaymentNotes('')
-      setSuccess('Loan payment processed successfully! Money has been added to safe.')
-      setTimeout(() => {
-        setSuccess('')
-      }, 5000)
+      toast({
+        title: "Success",
+        description: "Loan payment processed successfully! Money has been added to safe."
+      })
     } catch (err) {
-      setSuccess('')
-      setError(err instanceof Error ? err.message : 'Failed to process loan payment')
-      setTimeout(() => {
-        setError('')
-      }, 5000)
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : 'Failed to process loan payment',
+        variant: "destructive"
+      })
     } finally {
       setProcessingPayment(false)
     }
@@ -277,7 +293,7 @@ export default function LoansPage() {
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
-          </div>
+      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -289,7 +305,7 @@ export default function LoansPage() {
             <div className="text-2xl font-bold">{activePumperLoans.length}</div>
             <div className="text-sm text-muted-foreground mt-1">
               Rs. {totalActivePumper.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </div>
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -299,7 +315,7 @@ export default function LoansPage() {
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
               Rs. {totalMonthlyRental.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </div>
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -310,7 +326,7 @@ export default function LoansPage() {
             <div className="text-2xl font-bold">{activeExternalLoans.length}</div>
             <div className="text-sm text-muted-foreground mt-1">
               Rs. {totalActiveExternal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </div>
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -320,23 +336,14 @@ export default function LoansPage() {
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
               {paidPumperLoans.length + paidExternalLoans.length}
-          </div>
+            </div>
             <div className="text-sm text-muted-foreground mt-1">Loans fully paid</div>
           </CardContent>
         </Card>
-          </div>
+      </div>
 
       {/* Messages */}
-      {success && (
-        <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
-          <p className="text-sm text-green-600 font-medium">{success}</p>
-        </div>
-      )}
-      {error && (
-        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
-          <p className="text-sm text-red-600">{error}</p>
-        </div>
-      )}
+
 
       {/* Loans Tabs */}
       <Tabs defaultValue="pumper" className="space-y-4">
@@ -774,7 +781,7 @@ export default function LoansPage() {
             <div className="text-center py-8 text-muted-foreground">
               <DollarSign className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <p>No payments recorded for this loan</p>
-                </div>
+            </div>
           ) : (
             <Table>
               <TableHeader>
@@ -830,9 +837,9 @@ export default function LoansPage() {
                   <div>Loan Type: {selectedLoanForPayment.type === 'PUMPER' ? 'Pumper Loan' : 'External Loan'}</div>
                 </div>
               </div>
-                <div>
+              <div>
                 <Label>Payment Amount (Rs.)</Label>
-                  <MoneyInput
+                <MoneyInput
                   value={paymentAmount}
                   onChange={(value) => setPaymentAmount(value)}
                   placeholder="Enter payment amount"

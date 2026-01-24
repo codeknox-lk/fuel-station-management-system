@@ -9,7 +9,7 @@ export default function HomePage() {
   useEffect(() => {
     // Check if user is logged in
     const userRole = localStorage.getItem('userRole')
-    if (userRole && ['OWNER', 'MANAGER', 'ACCOUNTS'].includes(userRole)) {
+    if (userRole && ['DEVELOPER', 'OWNER', 'MANAGER', 'ACCOUNTS'].includes(userRole)) {
       router.push('/dashboard')
     } else {
       router.push('/login')

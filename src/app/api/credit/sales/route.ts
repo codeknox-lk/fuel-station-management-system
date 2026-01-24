@@ -9,10 +9,30 @@ export async function GET(request: NextRequest) {
     const id = searchParams.get('id')
 
     if (id) {
+      // OPTIMIZED: Use select for single sale
       const sale = await prisma.creditSale.findUnique({
         where: { id },
-        include: {
-          customer: true,
+        select: {
+          id: true,
+          customerId: true,
+          shiftId: true,
+          nozzleId: true,
+          amount: true,
+          liters: true,
+          price: true,
+          slipPhoto: true,
+          signedBy: true,
+          timestamp: true,
+          createdAt: true,
+          updatedAt: true,
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              currentBalance: true
+            }
+          },
           shift: {
             select: {
               id: true,
@@ -38,9 +58,21 @@ export async function GET(request: NextRequest) {
       where.shiftId = shiftId
     }
 
+    // OPTIMIZED: Use select for list query
     const sales = await prisma.creditSale.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        customerId: true,
+        shiftId: true,
+        nozzleId: true,
+        amount: true,
+        liters: true,
+        price: true,
+        slipPhoto: true,
+        signedBy: true,
+        timestamp: true,
+        createdAt: true,
         customer: {
           select: {
             id: true,

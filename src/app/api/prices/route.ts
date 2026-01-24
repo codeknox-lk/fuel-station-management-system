@@ -6,19 +6,33 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const current = searchParams.get('current')
     const fuelId = searchParams.get('fuelId')
+    const fuelType = searchParams.get('fuelType')
     const datetime = searchParams.get('datetime')
     const stationId = searchParams.get('stationId')
 
-    if (fuelId) {
-      const where: any = {
-        fuelId,
+    interface PriceWhereInput {
+      fuelId?: string
+      fuel?: { name: string }
+      isActive?: boolean
+      stationId?: string
+      effectiveDate?: { lte: Date }
+    }
+
+    if (fuelId || fuelType) {
+      const where: PriceWhereInput = {
         isActive: true
       }
-      
+
+      if (fuelId) {
+        where.fuelId = fuelId
+      } else if (fuelType) {
+        where.fuel = { name: fuelType }
+      }
+
       if (stationId) {
         where.stationId = stationId
       }
-      
+
       if (datetime) {
         // Get price at specific date/time
         where.effectiveDate = { lte: new Date(datetime) }
@@ -35,13 +49,13 @@ export async function GET(request: NextRequest) {
             fuel: true
           }
         })
-        
+
         if (!price) {
           return NextResponse.json({ error: 'Price not found for the given date/time' }, { status: 404 })
         }
         return NextResponse.json(price)
       }
-      
+
       // Get current price
       const price = await prisma.price.findFirst({
         where: {
@@ -59,7 +73,7 @@ export async function GET(request: NextRequest) {
           fuel: true
         }
       })
-      
+
       if (!price) {
         return NextResponse.json({ error: 'Current price not found for fuel type' }, { status: 404 })
       }
@@ -94,7 +108,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all prices
-    const where: any = {}
+    interface PriceWhereInput {
+      stationId?: string
+    }
+    const where: PriceWhereInput = {}
     if (stationId) {
       where.stationId = stationId
     }
@@ -127,9 +144,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    
+
     const { stationId, fuelId, price, effectiveDate } = body
-    
+
     if (!stationId || !fuelId || price === undefined || !effectiveDate) {
       return NextResponse.json(
         { error: 'Station ID, fuel ID, price, and effective date are required' },
@@ -159,7 +176,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newPrice, { status: 201 })
   } catch (error) {
     console.error('Error creating price:', error)
-    
+
     // Handle foreign key constraint violations
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
       return NextResponse.json(
@@ -167,7 +184,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

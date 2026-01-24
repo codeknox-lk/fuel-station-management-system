@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
@@ -20,19 +21,19 @@ export async function GET(request: NextRequest) {
           }
         }
       })
-      
+
       if (!loan) {
         return NextResponse.json({ error: 'External loan not found' }, { status: 404 })
       }
       return NextResponse.json(loan)
     }
 
-    const where: any = {}
+    const where: Prisma.LoanExternalWhereInput = {}
     if (stationId) {
       where.stationId = stationId
     }
     if (status) {
-      where.status = status
+      where.status = status as any
     }
 
     const loans = await prisma.loanExternal.findMany({
@@ -58,9 +59,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    
+
     const { stationId, borrowerName, borrowerPhone, amount, interestRate, dueDate, notes, fromSafe } = body
-    
+
     if (!stationId || !borrowerName || !borrowerPhone || !amount || !dueDate) {
       return NextResponse.json(
         { error: 'Station ID, borrower name, borrower phone, amount, and due date are required' },
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest) {
         // Calculate balance before transaction chronologically
         const loanTimestamp = new Date(dueDate) // Use loan date, or could use createdAt
         const allTransactions = await prisma.safeTransaction.findMany({
-          where: { 
+          where: {
             safeId: safe.id,
             timestamp: { lte: loanTimestamp }
           },
@@ -166,7 +167,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newLoan, { status: 201 })
   } catch (error) {
     console.error('Error creating external loan:', error)
-    
+
     // Handle foreign key constraint violations
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
       return NextResponse.json(
@@ -174,7 +175,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

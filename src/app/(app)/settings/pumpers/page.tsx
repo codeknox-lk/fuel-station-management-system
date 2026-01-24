@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Users, Plus, Edit, Trash2, Phone, Star, Building2, Clock, Award, ArrowLeft } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useRouter } from 'next/navigation'
+import { useStation } from '@/contexts/StationContext'
 
 interface Pumper {
   id: string
@@ -28,6 +29,8 @@ interface Pumper {
   specializations: string[]
   createdAt: string
   updatedAt: string
+  baseSalary?: number
+  holidayAllowance?: number
 }
 
 interface Station {
@@ -37,6 +40,7 @@ interface Station {
 
 export default function PumpersPage() {
   const router = useRouter()
+  const { selectedStation, isAllStations } = useStation()
   const [pumpers, setPumpers] = useState<Pumper[]>([])
   const [stations, setStations] = useState<Station[]>([])
   const [loading, setLoading] = useState(true)
@@ -46,7 +50,7 @@ export default function PumpersPage() {
   const [formData, setFormData] = useState({
     name: '',
     employeeId: '',
-    stationId: '',
+    stationId: !isAllStations && selectedStation ? selectedStation : '',
     status: 'ACTIVE' as Pumper['status'],
     shift: 'MORNING' as Pumper['shift'],
     phoneNumber: '',
@@ -62,28 +66,63 @@ export default function PumpersPage() {
   useEffect(() => {
     fetchPumpers()
     fetchStations()
-  }, [])
+    // Update formData stationId when selectedStation changes
+    if (selectedStation && !isAllStations) {
+      setFormData(prev => ({
+        ...prev,
+        stationId: selectedStation
+      }))
+    }
+  }, [selectedStation])
 
   const fetchPumpers = async () => {
     try {
-      const response = await fetch('/api/pumpers')
+      const url = isAllStations
+        ? '/api/pumpers'
+        : `/api/pumpers?stationId=${selectedStation}`
+
+      const response = await fetch(url)
       const data = await response.json()
-      
+
       // Map station names to pumpers
       const stationsResponse = await fetch('/api/stations')
       const stationsData = await stationsResponse.json()
-      
-      const pumpersWithStations = data.map((pumper: any) => ({
+
+      interface ApiPumper {
+        id: string
+        name: string
+        employeeId: string
+        stationId: string
+        shift: string
+        status: string
+        phone?: string
+        phoneNumber?: string
+        hireDate?: string
+        experience?: number
+        rating?: number
+        specializations?: string[] | string
+        baseSalary?: number
+        holidayAllowance?: number
+        createdAt: string
+        updatedAt: string
+      }
+
+      const pumpersWithStations = data.map((pumper: ApiPumper) => ({
         ...pumper,
         stationName: stationsData.find((s: Station) => s.id === pumper.stationId)?.name || 'Unknown Station',
         // Map phone to phoneNumber for frontend compatibility
         phoneNumber: pumper.phone || pumper.phoneNumber || '',
         // Ensure specializations is always an array (handle null, undefined, or string)
-        specializations: Array.isArray(pumper.specializations) 
-          ? pumper.specializations 
-          : (pumper.specializations ? [pumper.specializations] : [])
+        specializations: Array.isArray(pumper.specializations)
+          ? pumper.specializations
+          : (pumper.specializations ? [pumper.specializations] : []),
+        shift: (pumper.shift as Pumper['shift']) || 'MORNING',
+        status: (pumper.status as Pumper['status']) || 'ACTIVE',
+        hireDate: pumper.hireDate || new Date().toISOString().split('T')[0],
+        experience: pumper.experience || 0,
+        rating: pumper.rating || 0
       }))
-      
+
       setPumpers(pumpersWithStations)
     } catch (error) {
       toast({
@@ -110,23 +149,23 @@ export default function PumpersPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Prevent double submission
     if (isSubmitting) {
       return
     }
-    
+
     setIsSubmitting(true)
-    
+
     try {
       const url = editingPumper ? `/api/pumpers/${editingPumper.id}` : '/api/pumpers'
       const method = editingPumper ? 'PUT' : 'POST'
-      
+
       // Remove employeeId from formData when creating (always auto-generated)
-      const submitData = editingPumper 
+      const submitData = editingPumper
         ? formData // Keep employeeId when editing (display only)
         : { ...formData, employeeId: undefined } // Remove employeeId when creating
-      
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -140,7 +179,7 @@ export default function PumpersPage() {
       }
 
       const result = await response.json()
-      
+
       // Verify ID matches when editing
       if (editingPumper && result.id !== editingPumper.id) {
         throw new Error('Update failed: Returned pumper ID does not match')
@@ -155,7 +194,7 @@ export default function PumpersPage() {
       setDialogOpen(false)
       setEditingPumper(null)
       resetForm()
-      
+
       // Refresh list
       fetchPumpers()
     } catch (error) {
@@ -179,13 +218,13 @@ export default function PumpersPage() {
       status: pumper.status || 'ACTIVE',
       shift: pumper.shift || 'MORNING',
       // Use phoneNumber if available, otherwise fallback to phone property
-      phoneNumber: pumper.phoneNumber || (pumper as any).phone || '',
+      phoneNumber: pumper.phoneNumber || '',
       hireDate: pumper.hireDate ? (new Date(pumper.hireDate).toISOString().split('T')[0]) : new Date().toISOString().split('T')[0],
       experience: typeof pumper.experience === 'number' ? pumper.experience : (pumper.experience ? parseFloat(String(pumper.experience)) : 0),
       rating: typeof pumper.rating === 'number' ? pumper.rating : (pumper.rating ? parseFloat(String(pumper.rating)) : 5),
       specializations: Array.isArray(pumper.specializations) ? pumper.specializations : [],
-      baseSalary: typeof (pumper as any).baseSalary === 'number' ? (pumper as any).baseSalary : 0,
-      holidayAllowance: typeof (pumper as any).holidayAllowance === 'number' ? (pumper as any).holidayAllowance : 4500
+      baseSalary: pumper.baseSalary || 0,
+      holidayAllowance: pumper.holidayAllowance || 4500
     })
     setDialogOpen(true)
   }
@@ -203,17 +242,22 @@ export default function PumpersPage() {
 
     try {
       console.log('🔄 Deleting pumper:', { id: pumper.id, name: pumper.name })
-      
+
       const response = await fetch(`/api/pumpers/${pumper.id}`, {
         method: 'DELETE'
       })
 
       if (!response.ok) {
-        let errorData: any = {}
+        interface ErrorResponse {
+          error?: string
+          details?: string
+          [key: string]: unknown
+        }
+        let errorData: ErrorResponse = {}
         try {
           const text = await response.text()
           console.log('📥 Raw error response text:', text)
-          
+
           if (text && text.trim()) {
             try {
               errorData = JSON.parse(text)
@@ -236,21 +280,21 @@ export default function PumpersPage() {
           }
         } catch (parseError) {
           console.error('❌ Failed to parse error response:', parseError)
-          errorData = { 
+          errorData = {
             error: `HTTP ${response.status} ${response.statusText}`,
             details: 'Failed to parse error response from server'
           }
         }
-        
+
         console.error('❌ Delete error:', {
           status: response.status,
           statusText: response.statusText,
           errorData: errorData,
           headers: Object.fromEntries(response.headers.entries())
         })
-        
+
         const errorMessage = errorData.details || errorData.error || `Failed to delete pumper (${response.status})`
-        
+
         toast({
           title: "Error",
           description: errorMessage,
@@ -278,13 +322,13 @@ export default function PumpersPage() {
       }, 300)
     } catch (error) {
       console.error('❌ Error deleting pumper:', error)
-      const errorMessage = error instanceof Error 
-        ? error.message 
+      const errorMessage = error instanceof Error
+        ? error.message
         : 'Failed to delete pumper'
-      
+
       // Restore the pumper in UI if deletion failed
       fetchPumpers()
-      
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -300,7 +344,7 @@ export default function PumpersPage() {
     setFormData({
       name: '',
       employeeId: '',
-      stationId: '',
+      stationId: !isAllStations && selectedStation ? selectedStation : '',
       status: 'ACTIVE',
       shift: 'MORNING',
       phoneNumber: '',
@@ -360,7 +404,7 @@ export default function PumpersPage() {
       key: 'employeeId' as keyof Pumper,
       title: 'Employee ID',
       render: (value: unknown) => (
-        <span className="font-mono font-medium">{value as string}</span>
+        <span className="font-medium">{value as string}</span>
       )
     },
     {
@@ -371,7 +415,7 @@ export default function PumpersPage() {
           <div className="font-medium">{value as string}</div>
           <div className="text-sm text-muted-foreground flex items-center gap-1">
             <Phone className="h-3 w-3" />
-            {row.phoneNumber || (row as any).phone || 'N/A'}
+            {row.phoneNumber || 'N/A'}
           </div>
         </div>
       )
@@ -421,11 +465,11 @@ export default function PumpersPage() {
       render: (value: unknown) => {
         // Ensure value is an array before mapping
         const specializations = Array.isArray(value) ? value : (value ? [value] : [])
-        
+
         if (specializations.length === 0) {
           return <span className="text-muted-foreground text-sm">None</span>
         }
-        
+
         return (
           <div className="flex flex-wrap gap-1">
             {specializations.map((spec, index) => (
@@ -501,7 +545,7 @@ export default function PumpersPage() {
     },
     {
       title: 'Avg Rating',
-      value: pumpers.length > 0 
+      value: pumpers.length > 0
         ? (pumpers.reduce((acc, p) => acc + p.rating, 0) / pumpers.length).toFixed(1)
         : '0.0',
       description: 'Average performance',
@@ -670,15 +714,15 @@ export default function PumpersPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="baseSalary">Base Monthly Salary (LKR)</Label>
-                <Input
-                  id="baseSalary"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.baseSalary || 0}
-                  onChange={(e) => setFormData({ ...formData, baseSalary: parseFloat(e.target.value) || 0 })}
+                <div>
+                  <Label htmlFor="baseSalary">Base Monthly Salary (LKR)</Label>
+                  <Input
+                    id="baseSalary"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.baseSalary || 0}
+                    onChange={(e) => setFormData({ ...formData, baseSalary: parseFloat(e.target.value) || 0 })}
                     placeholder="27000"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
@@ -695,10 +739,10 @@ export default function PumpersPage() {
                     value={formData.holidayAllowance || 4500}
                     onChange={(e) => setFormData({ ...formData, holidayAllowance: parseFloat(e.target.value) || 4500 })}
                     placeholder="4500"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
                     Monthly holiday allowance (default: 4500). Deduct 900rs per rest day taken (up to 5 rest days)
-                </p>
+                  </p>
                 </div>
               </div>
 

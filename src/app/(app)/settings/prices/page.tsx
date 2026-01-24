@@ -15,6 +15,8 @@ import { useToast } from '@/hooks/use-toast'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useRouter } from 'next/navigation'
+import { ArrowLeft } from 'lucide-react'
 
 interface Fuel {
   id: string
@@ -58,6 +60,7 @@ interface Tank {
 }
 
 export default function FuelsPage() {
+  const router = useRouter()
   const [prices, setPrices] = useState<Price[]>([])
   const [tanks, setTanks] = useState<Tank[]>([])
   const [fuels, setFuels] = useState<Fuel[]>([])
@@ -91,10 +94,10 @@ export default function FuelsPage() {
     try {
       const response = await fetch('/api/fuels')
       if (!response.ok) throw new Error('Failed to fetch fuels')
-      
+
       const data = await response.json()
       setFuels(Array.isArray(data) ? data : [])
-      
+
       // Set default fuel if not set
       if (data.length > 0 && !formData.fuelId) {
         setFormData(prev => ({ ...prev, fuelId: data[0].id }))
@@ -115,10 +118,10 @@ export default function FuelsPage() {
       const url = selectedStation && selectedStation !== 'all'
         ? `/api/prices?stationId=${selectedStation}`
         : '/api/prices'
-      
+
       const response = await fetch(url)
       if (!response.ok) throw new Error('Failed to fetch prices')
-      
+
       const data = await response.json()
       setPrices(Array.isArray(data) ? data : [])
     } catch (error) {
@@ -139,10 +142,10 @@ export default function FuelsPage() {
       const url = selectedStation && selectedStation !== 'all'
         ? `/api/tanks?stationId=${selectedStation}`
         : '/api/tanks'
-      
+
       const response = await fetch(url)
       if (!response.ok) throw new Error('Failed to fetch tanks')
-      
+
       const data = await response.json()
       setTanks(Array.isArray(data) ? data : [])
     } catch (error) {
@@ -257,10 +260,10 @@ export default function FuelsPage() {
         description: '',
         icon: '⛽'
       })
-      
+
       // Refresh fuels list
       await fetchFuels()
-      
+
       // Open price dialog with new fuel selected
       setFormData(prev => ({ ...prev, fuelId: newFuel.id }))
       setFuelTypeDialogOpen(false)
@@ -277,50 +280,50 @@ export default function FuelsPage() {
   // Get current prices (most recent for each fuel type)
   const getCurrentPrices = () => {
     const currentPricesMap = new Map<string, Price>()
-    
+
     // Filter out any invalid prices and sort by date
     const validPrices = prices.filter(p => p && p.fuelId && p.effectiveDate && p.price !== undefined)
-    
-    const sortedPrices = [...validPrices].sort((a, b) => 
+
+    const sortedPrices = [...validPrices].sort((a, b) =>
       new Date(b.effectiveDate).getTime() - new Date(a.effectiveDate).getTime()
     )
-    
+
     // Get the most recent price for each fuel type
     for (const price of sortedPrices) {
       if (!currentPricesMap.has(price.fuelId)) {
         currentPricesMap.set(price.fuelId, price)
       }
     }
-    
+
     return Array.from(currentPricesMap.values())
   }
 
   const currentPrices = getCurrentPrices()
-  const activePricesCount = currentPrices.filter(p => 
+  const activePricesCount = currentPrices.filter(p =>
     p && p.effectiveDate && new Date(p.effectiveDate) <= new Date()
   ).length
-  
+
   // Get valid prices for history table
-  const validPricesForHistory = prices.filter(p => 
+  const validPricesForHistory = prices.filter(p =>
     p && p.fuelId && p.effectiveDate !== undefined && p.price !== undefined
   )
 
   // Calculate fuel statistics
   const getFuelStats = () => {
-    const stats = new Map<string, { 
-      totalCapacity: number, 
-      currentStock: number, 
+    const stats = new Map<string, {
+      totalCapacity: number,
+      currentStock: number,
       tankCount: number,
-      currentPrice: number 
+      currentPrice: number
     }>()
 
     // Initialize stats for all fuel types
     fuels.forEach(fuel => {
-      stats.set(fuel.id, { 
-        totalCapacity: 0, 
-        currentStock: 0, 
+      stats.set(fuel.id, {
+        totalCapacity: 0,
+        currentStock: 0,
         tankCount: 0,
-        currentPrice: 0 
+        currentPrice: 0
       })
     })
 
@@ -351,22 +354,22 @@ export default function FuelsPage() {
   const isCurrentPrice = (price: Price): boolean => {
     const now = new Date()
     const priceDate = new Date(price.effectiveDate)
-    
+
     // If price is in the future, it's not current
     if (priceDate > now) return false
-    
+
     // Find all prices for the same fuel type and station
-    const sameFuelPrices = prices.filter(p => 
-      p.fuelId === price.fuelId && 
+    const sameFuelPrices = prices.filter(p =>
+      p.fuelId === price.fuelId &&
       p.stationId === price.stationId &&
       new Date(p.effectiveDate) <= now
     )
-    
+
     // Sort by date descending to find the most recent
-    const sortedPrices = sameFuelPrices.sort((a, b) => 
+    const sortedPrices = sameFuelPrices.sort((a, b) =>
       new Date(b.effectiveDate).getTime() - new Date(a.effectiveDate).getTime()
     )
-    
+
     // This price is current if it's the most recent one
     return sortedPrices.length > 0 && sortedPrices[0].id === price.id
   }
@@ -374,7 +377,7 @@ export default function FuelsPage() {
   const columns: Column<Price>[] = [
     {
       key: 'fuelId',
-      label: 'Fuel Type',
+      title: 'Fuel Type',
       render: (value, row) => (
         <div className="flex items-center gap-2">
           <span className="text-xl">{row.fuel?.icon || '⛽'}</span>
@@ -384,7 +387,7 @@ export default function FuelsPage() {
     },
     {
       key: 'price',
-      label: 'Price (LKR/L)',
+      title: 'Price (LKR/L)',
       render: (value, row) => (
         <div className="font-semibold text-lg">
           Rs. {row.price.toFixed(2)}
@@ -393,7 +396,7 @@ export default function FuelsPage() {
     },
     {
       key: 'effectiveDate',
-      label: 'Effective From',
+      title: 'Effective From',
       render: (value, row) => (
         <div className="text-sm">
           {new Date(row.effectiveDate).toLocaleString('en-US', {
@@ -408,7 +411,7 @@ export default function FuelsPage() {
     },
     {
       key: 'stationId',
-      label: 'Station',
+      title: 'Station',
       render: (value, row) => (
         <div className="text-sm text-muted-foreground">
           {row.station?.name || 'Unknown'}
@@ -417,11 +420,11 @@ export default function FuelsPage() {
     },
     {
       key: 'isActive',
-      label: 'Status',
+      title: 'Status',
       render: (value, row) => {
         const priceDate = new Date(row.effectiveDate)
         const now = new Date()
-        
+
         // Future price
         if (priceDate > now) {
           return (
@@ -430,10 +433,10 @@ export default function FuelsPage() {
             </Badge>
           )
         }
-        
+
         // Check if this is the current active price
         const isCurrent = isCurrentPrice(row)
-        
+
         if (isCurrent) {
           return (
             <Badge variant="default" className="bg-green-600 text-white">
@@ -441,7 +444,7 @@ export default function FuelsPage() {
             </Badge>
           )
         }
-        
+
         // Historical/superseded price
         return (
           <Badge variant="secondary" className="bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
@@ -452,6 +455,7 @@ export default function FuelsPage() {
     }
   ]
 
+
   const totalCapacity = Array.from(fuelStats.values()).reduce((sum, stat) => sum + stat.totalCapacity, 0)
   const totalStock = Array.from(fuelStats.values()).reduce((sum, stat) => sum + stat.currentStock, 0)
   const stockPercentage = totalCapacity > 0 ? (totalStock / totalCapacity) * 100 : 0
@@ -460,11 +464,17 @@ export default function FuelsPage() {
     <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Fuels</h1>
-          <p className="text-muted-foreground mt-1">
-            Comprehensive fuel management - types, pricing, and inventory
-          </p>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => router.push('/settings')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Fuels</h1>
+            <p className="text-muted-foreground mt-1">
+              Comprehensive fuel management - types, pricing, and inventory
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Dialog open={fuelTypeDialogOpen} onOpenChange={setFuelTypeDialogOpen}>
@@ -481,7 +491,7 @@ export default function FuelsPage() {
                   Add a completely new fuel or oil type to your system.
                 </DialogDescription>
               </DialogHeader>
-              
+
               <div className="overflow-y-auto flex-1 pr-2">
                 <form onSubmit={handleAddFuel} className="space-y-4 mt-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -600,7 +610,7 @@ export default function FuelsPage() {
               </div>
             </DialogContent>
           </Dialog>
-          
+
           <Dialog open={priceDialogOpen} onOpenChange={setPriceDialogOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -608,75 +618,75 @@ export default function FuelsPage() {
                 Add New Price
               </Button>
             </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Fuel Price</DialogTitle>
-              <DialogDescription>
-                Add a new price for a fuel type. This will be effective from the date you specify.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="fuelId">Fuel Type</Label>
-                <Select
-                  value={formData.fuelId}
-                  onValueChange={(value) => setFormData({ ...formData, fuelId: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select fuel type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {fuels.filter(f => f.isActive).map(fuel => (
-                      <SelectItem key={fuel.id} value={fuel.id}>
-                        {fuel.icon} {fuel.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="price">Price (LKR per Liter)</Label>
-                <MoneyInput
-                  id="price"
-                  value={formData.price}
-                  onChange={(value) => setFormData({ ...formData, price: value })}
-                  placeholder="0.00"
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="effectiveDate">Effective From</Label>
-                <Input
-                  type="datetime-local"
-                  id="effectiveDate"
-                  value={formData.effectiveDate}
-                  onChange={(e) => setFormData({ ...formData, effectiveDate: e.target.value })}
-                  required
-                />
-              </div>
-
-              {selectedStation === 'all' && (
-                <div className="bg-yellow-50 dark:bg-yellow-950 p-3 rounded-lg flex items-start gap-2">
-                  <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
-                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                    Please select a specific station to add prices
-                  </p>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Fuel Price</DialogTitle>
+                <DialogDescription>
+                  Add a new price for a fuel type. This will be effective from the date you specify.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <Label htmlFor="fuelId">Fuel Type</Label>
+                  <Select
+                    value={formData.fuelId}
+                    onValueChange={(value) => setFormData({ ...formData, fuelId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select fuel type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fuels.filter(f => f.isActive).map(fuel => (
+                        <SelectItem key={fuel.id} value={fuel.id}>
+                          {fuel.icon} {fuel.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
 
-              <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setPriceDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={selectedStation === 'all'}>
-                  Add Price
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <div>
+                  <Label htmlFor="price">Price (LKR per Liter)</Label>
+                  <MoneyInput
+                    id="price"
+                    value={formData.price}
+                    onChange={(value) => setFormData({ ...formData, price: value })}
+                    placeholder="0.00"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="effectiveDate">Effective From</Label>
+                  <Input
+                    type="datetime-local"
+                    id="effectiveDate"
+                    value={formData.effectiveDate}
+                    onChange={(e) => setFormData({ ...formData, effectiveDate: e.target.value })}
+                    required
+                  />
+                </div>
+
+                {selectedStation === 'all' && (
+                  <div className="bg-yellow-50 dark:bg-yellow-950 p-3 rounded-lg flex items-start gap-2">
+                    <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      Please select a specific station to add prices
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setPriceDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={selectedStation === 'all'}>
+                    Add Price
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -738,8 +748,8 @@ export default function FuelsPage() {
           </div>
 
           {/* Fuel Type Details */}
-          <FormCard 
-            title="Fuel Types & Statistics" 
+          <FormCard
+            title="Fuel Types & Statistics"
             description="Detailed breakdown by fuel type"
           >
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -747,8 +757,8 @@ export default function FuelsPage() {
                 const stats = fuelStats.get(fuel.id)
                 if (!stats) return null
 
-                const stockPerc = stats.totalCapacity > 0 
-                  ? (stats.currentStock / stats.totalCapacity) * 100 
+                const stockPerc = stats.totalCapacity > 0
+                  ? (stats.currentStock / stats.totalCapacity) * 100
                   : 0
 
                 return (
@@ -786,11 +796,10 @@ export default function FuelsPage() {
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Fill Level:</span>
-                          <span className={`font-medium ${
-                            stockPerc < 20 ? 'text-red-600' : 
-                            stockPerc < 50 ? 'text-yellow-600' : 
-                            'text-green-600'
-                          }`}>
+                          <span className={`font-medium ${stockPerc < 20 ? 'text-red-600' :
+                            stockPerc < 50 ? 'text-yellow-600' :
+                              'text-green-600'
+                            }`}>
                             {stockPerc.toFixed(1)}%
                           </span>
                         </div>
@@ -798,12 +807,11 @@ export default function FuelsPage() {
 
                       {/* Progress Bar */}
                       <div className="w-full bg-muted rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full transition-all ${
-                            stockPerc < 20 ? 'bg-red-500' : 
-                            stockPerc < 50 ? 'bg-yellow-500' : 
-                            'bg-green-500'
-                          }`}
+                        <div
+                          className={`h-2 rounded-full transition-all ${stockPerc < 20 ? 'bg-red-500' :
+                            stockPerc < 50 ? 'bg-yellow-500' :
+                              'bg-green-500'
+                            }`}
                           style={{ width: `${Math.min(stockPerc, 100)}%` }}
                         />
                       </div>
@@ -818,8 +826,8 @@ export default function FuelsPage() {
         {/* Prices Tab */}
         <TabsContent value="prices" className="space-y-6">
           {/* Current Prices */}
-          <FormCard 
-            title="Current Prices" 
+          <FormCard
+            title="Current Prices"
             description="Latest effective prices for each fuel type"
           >
             {currentPrices.length > 0 ? (
@@ -858,8 +866,8 @@ export default function FuelsPage() {
           </FormCard>
 
           {/* Price History */}
-          <FormCard 
-            title="Price History" 
+          <FormCard
+            title="Price History"
             description={`All ${validPricesForHistory.length} price records (view only)`}
           >
             {validPricesForHistory.length > 0 ? (
@@ -878,8 +886,8 @@ export default function FuelsPage() {
 
         {/* Inventory Tab */}
         <TabsContent value="inventory" className="space-y-6">
-          <FormCard 
-            title="Tank Inventory by Fuel Type" 
+          <FormCard
+            title="Tank Inventory by Fuel Type"
             description={`Current stock levels across ${tanks.length} tanks`}
           >
             {tanks.length > 0 ? (
@@ -887,7 +895,7 @@ export default function FuelsPage() {
                 {fuels.map(fuel => {
                   const fuelTanks = tanks.filter(t => t && t.fuelId === fuel.id)
                   const stats = fuelStats.get(fuel.id)
-                  
+
                   // Show all fuel types, even if no tanks
                   const totalCap = stats?.totalCapacity || 0
                   const currentStock = stats?.currentStock || 0
@@ -904,7 +912,7 @@ export default function FuelsPage() {
                           {fuelTanks.length} {fuelTanks.length === 1 ? 'tank' : 'tanks'}
                         </Badge>
                       </div>
-                      
+
                       {fuelTanks.length > 0 ? (
                         <>
                           <div className="grid gap-3 md:grid-cols-4 text-sm">
@@ -924,24 +932,22 @@ export default function FuelsPage() {
                             </div>
                             <div>
                               <p className="text-muted-foreground">Fill Level</p>
-                              <p className={`text-lg font-semibold ${
-                                fillPercentage < 20 ? 'text-red-600' :
+                              <p className={`text-lg font-semibold ${fillPercentage < 20 ? 'text-red-600' :
                                 fillPercentage < 50 ? 'text-yellow-600' :
-                                'text-green-600'
-                              }`}>
+                                  'text-green-600'
+                                }`}>
                                 {fillPercentage.toFixed(1)}%
                               </p>
                             </div>
                           </div>
-                          
+
                           {/* Progress Bar */}
                           <div className="w-full bg-muted rounded-full h-2">
-                            <div 
-                              className={`h-2 rounded-full transition-all ${
-                                fillPercentage < 20 ? 'bg-red-500' :
+                            <div
+                              className={`h-2 rounded-full transition-all ${fillPercentage < 20 ? 'bg-red-500' :
                                 fillPercentage < 50 ? 'bg-yellow-500' :
-                                'bg-green-500'
-                              }`}
+                                  'bg-green-500'
+                                }`}
                               style={{ width: `${Math.min(fillPercentage, 100)}%` }}
                             />
                           </div>
@@ -965,12 +971,11 @@ export default function FuelsPage() {
                                       <span>Cap: {tank.capacity.toLocaleString()} L</span>
                                     </div>
                                     <div className="w-full bg-background rounded-full h-1 mt-1">
-                                      <div 
-                                        className={`h-1 rounded-full ${
-                                          tankFill < 20 ? 'bg-red-500' :
+                                      <div
+                                        className={`h-1 rounded-full ${tankFill < 20 ? 'bg-red-500' :
                                           tankFill < 50 ? 'bg-yellow-500' :
-                                          'bg-green-500'
-                                        }`}
+                                            'bg-green-500'
+                                          }`}
                                         style={{ width: `${Math.min(tankFill, 100)}%` }}
                                       />
                                     </div>

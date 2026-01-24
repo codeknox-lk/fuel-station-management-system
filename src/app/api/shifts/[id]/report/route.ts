@@ -24,7 +24,7 @@ export async function GET(
         }
       }
     })
-    
+
     if (!shift) {
       return NextResponse.json({ error: 'Shift not found' }, { status: 404 })
     }
@@ -34,24 +34,28 @@ export async function GET(
       include: {
         nozzle: {
           include: {
-            tank: true
+            tank: {
+              include: {
+                fuel: true
+              }
+            }
           }
         }
       }
     })
-    
+
     // Calculate comprehensive report data
     const shiftStart = shift.startTime
     const shiftEnd = shift.endTime || new Date()
     const durationHours = (shiftEnd.getTime() - shiftStart.getTime()) / (1000 * 60 * 60)
-    
+
     // Generate report data with prices from database
     let totalSales = 0
     let totalLiters = 0
-    
+
     const assignmentReports = await Promise.all(assignments.map(async (assignment) => {
       let litersSold = 0
-      
+
       if (assignment.endMeterReading && assignment.startMeterReading) {
         // Validate meter readings
         if (assignment.endMeterReading < assignment.startMeterReading) {
@@ -68,9 +72,9 @@ export async function GET(
           }
         }
       }
-      
+
       totalLiters += litersSold
-      
+
       // Get current price for the fuel type
       const fuelId = assignment.nozzle.tank.fuelId
       const price = await prisma.price.findFirst({
@@ -82,11 +86,11 @@ export async function GET(
         },
         orderBy: { effectiveDate: 'desc' }
       })
-      
+
       const pricePerLiter = price ? price.price : 470 // Fallback price
       const sales = litersSold * pricePerLiter
       totalSales += sales
-      
+
       return {
         id: assignment.id,
         nozzleId: assignment.nozzleId,
@@ -152,7 +156,7 @@ export async function POST(
 ) {
   try {
     const { id } = await params
-    
+
     return NextResponse.json({
       success: true,
       message: 'PDF generation initiated',

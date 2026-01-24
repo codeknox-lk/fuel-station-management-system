@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
           }
         }
       })
-      
+
       if (!station) {
         return NextResponse.json({ error: 'Station not found' }, { status: 404 })
       }
@@ -29,16 +29,21 @@ export async function GET(request: NextRequest) {
     }
 
     const where = active === 'true' ? { isActive: true } : {}
+
+    // Optimized: Only select needed fields, skip counts for list view
     const stations = await prisma.station.findMany({
       where,
-      include: {
-        _count: {
-          select: {
-            users: true,
-            tanks: true,
-            shifts: true
-          }
-        }
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        city: true,
+        phone: true,
+        email: true,
+        openingHours: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true
       },
       orderBy: { name: 'asc' }
     })
@@ -52,10 +57,28 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    
-    const { name, address, city } = body
-    
+    // PERMISSION CHECK: Only DEVELOPER can add stations
+    const userRole = request.headers.get('x-user-role')
+
+    if (userRole !== 'DEVELOPER') {
+      return NextResponse.json(
+        { error: 'Permission denied. Only DEVELOPER role can add stations.' },
+        { status: 403 }
+      )
+    }
+
+    interface StationBody {
+      name?: string
+      address?: string
+      city?: string
+      phone?: string
+      email?: string
+      openingHours?: string
+    }
+    const body = await request.json() as StationBody
+
+    const { name, address, city, phone, email, openingHours } = body
+
     if (!name || !address || !city) {
       return NextResponse.json(
         { error: 'Name, address, and city are required' },
@@ -68,6 +91,9 @@ export async function POST(request: NextRequest) {
         name,
         address,
         city,
+        phone: phone || null,
+        email: email || null,
+        openingHours: openingHours || null,
         isActive: true
       }
     })
@@ -78,7 +104,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newStation, { status: 201 })
   } catch (error) {
     console.error('Error creating station:', error)
-    
+
     // Handle unique constraint violations
     if (error instanceof Error && error.message.includes('Unique constraint')) {
       return NextResponse.json(
@@ -86,7 +112,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

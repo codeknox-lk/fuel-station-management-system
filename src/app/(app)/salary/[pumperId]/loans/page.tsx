@@ -6,7 +6,7 @@ import { useStation } from '@/contexts/StationContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
+import {
   ArrowLeft,
   CreditCard,
   Edit,
@@ -24,19 +24,35 @@ export default function PumperLoansPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { selectedStation } = useStation()
-  
+
   const pumperId = useMemo(() => (params?.pumperId as string) || '', [params])
   const pumperName = useMemo(() => searchParams?.get('pumperName') || 'Unknown', [searchParams])
-  
+
+  interface Loan {
+    id: string
+    stationId: string
+    pumperId: string
+    pumperName: string
+    amount: number
+    monthlyRental?: number
+    paidAmount?: number
+    status: 'ACTIVE' | 'PAID' | 'DEFAULTED'
+    reason: string
+    givenBy?: string
+    dueDate: string
+    createdAt: string
+    updatedAt: string
+  }
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [pumperLoans, setPumperLoans] = useState<any[]>([])
+  const [pumperLoans, setPumperLoans] = useState<Loan[]>([])
   const [loadingLoans, setLoadingLoans] = useState(false)
   const [editingLoanId, setEditingLoanId] = useState<string | null>(null)
   const [editingMonthlyRental, setEditingMonthlyRental] = useState<number | undefined>(undefined)
   const [loanPaymentDialogOpen, setLoanPaymentDialogOpen] = useState(false)
-  const [selectedLoanForPayment, setSelectedLoanForPayment] = useState<any | null>(null)
+  const [selectedLoanForPayment, setSelectedLoanForPayment] = useState<Loan | null>(null)
   const [loanPaymentAmount, setLoanPaymentAmount] = useState<number | undefined>(undefined)
   const [loanPaymentNotes, setLoanPaymentNotes] = useState('')
   const [processingLoanPayment, setProcessingLoanPayment] = useState(false)
@@ -87,7 +103,7 @@ export default function PumperLoansPage() {
       }
 
       await fetchPumperLoans()
-      
+
       setEditingLoanId(null)
       setEditingMonthlyRental(undefined)
       setSuccess('Monthly rental updated successfully!')
@@ -108,12 +124,12 @@ export default function PumperLoansPage() {
     setEditingMonthlyRental(undefined)
   }
 
-  const handleStartEdit = (loan: any) => {
+  const handleStartEdit = (loan: Loan) => {
     setEditingLoanId(loan.id)
     setEditingMonthlyRental(loan.monthlyRental || 0)
   }
 
-  const handlePayLoan = (loan: any) => {
+  const handlePayLoan = (loan: Loan) => {
     const remainingAmount = loan.amount - (loan.paidAmount || 0)
     setSelectedLoanForPayment(loan)
     setLoanPaymentAmount(remainingAmount > 0 ? remainingAmount : loan.amount)
@@ -135,9 +151,9 @@ export default function PumperLoansPage() {
     try {
       setProcessingLoanPayment(true)
       setError('')
-      
+
       const username = typeof window !== 'undefined' ? localStorage.getItem('username') || 'System' : 'System'
-      
+
       const res = await fetch(`/api/loans/pumper/${selectedLoanForPayment.id}/pay`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -156,7 +172,7 @@ export default function PumperLoansPage() {
 
       // Refresh loans list to show updated status
       await fetchPumperLoans()
-      
+
       setLoanPaymentDialogOpen(false)
       setSelectedLoanForPayment(null)
       setLoanPaymentAmount(undefined)
@@ -307,83 +323,83 @@ export default function PumperLoansPage() {
                           Rs. {remainingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell>
-                        {editingLoanId === loan.id ? (
-                          <div className="flex items-center gap-2">
-                            <MoneyInput
-                              value={editingMonthlyRental}
-                              onChange={(value) => setEditingMonthlyRental(value)}
-                              className="w-32"
-                            />
-                            <Button
-                              size="sm"
-                              onClick={() => editingMonthlyRental !== undefined && handleUpdateMonthlyRental(loan.id, editingMonthlyRental)}
+                          {editingLoanId === loan.id ? (
+                            <div className="flex items-center gap-2">
+                              <MoneyInput
+                                value={editingMonthlyRental}
+                                onChange={(value) => setEditingMonthlyRental(value)}
+                                className="w-32"
+                              />
+                              <Button
+                                size="sm"
+                                onClick={() => editingMonthlyRental !== undefined && handleUpdateMonthlyRental(loan.id, editingMonthlyRental)}
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleCancelEdit}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <span
+                              className="font-mono cursor-pointer hover:text-orange-600 hover:underline"
+                              onClick={() => handleStartEdit(loan)}
+                              title="Click to edit monthly rental"
                             >
-                              Save
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={handleCancelEdit}
-                            >
-                              Cancel
-                            </Button>
+                              Rs. {(loan.monthlyRental || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={loan.status === 'ACTIVE' ? 'default' : loan.status === 'PAID' ? 'secondary' : 'destructive'}>
+                            {loan.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(loan.createdAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          {new Date(loan.dueDate).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="max-w-xs">
+                          <div className="space-y-1">
+                            <div className="font-medium">{loan.reason}</div>
+                            {loan.reason?.toLowerCase().includes('loan given from safe') && loan.givenBy && (
+                              <div className="text-xs text-muted-foreground">
+                                Given by: {loan.givenBy}
+                              </div>
+                            )}
+                            {loan.reason?.toLowerCase().includes('shift close') && loan.givenBy && (
+                              <div className="text-xs text-muted-foreground">
+                                Given by: {loan.givenBy} | Taken by: {loan.pumperName}
+                              </div>
+                            )}
+                            {loan.reason?.toLowerCase().includes('shift close') && !loan.givenBy && (
+                              <div className="text-xs text-muted-foreground">
+                                Taken by: {loan.pumperName}
+                              </div>
+                            )}
                           </div>
-                        ) : (
-                          <span 
-                            className="font-mono cursor-pointer hover:text-orange-600 hover:underline"
-                            onClick={() => handleStartEdit(loan)}
-                            title="Click to edit monthly rental"
-                          >
-                            Rs. {(loan.monthlyRental || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={loan.status === 'ACTIVE' ? 'default' : loan.status === 'PAID' ? 'secondary' : 'destructive'}>
-                          {loan.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(loan.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        {new Date(loan.dueDate).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="max-w-xs">
-                        <div className="space-y-1">
-                          <div className="font-medium">{loan.reason}</div>
-                          {loan.reason?.toLowerCase().includes('loan given from safe') && loan.givenBy && (
-                            <div className="text-xs text-muted-foreground">
-                              Given by: {loan.givenBy}
-                            </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {editingLoanId === loan.id ? (
+                            <span className="text-xs text-muted-foreground">Editing...</span>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => handlePayLoan(loan)}
+                            >
+                              <DollarSign className="h-4 w-4 mr-1" />
+                              Pay Loan
+                            </Button>
                           )}
-                          {loan.reason?.toLowerCase().includes('shift close') && loan.givenBy && (
-                            <div className="text-xs text-muted-foreground">
-                              Given by: {loan.givenBy} | Taken by: {loan.pumperName}
-                            </div>
-                          )}
-                          {loan.reason?.toLowerCase().includes('shift close') && !loan.givenBy && (
-                            <div className="text-xs text-muted-foreground">
-                              Taken by: {loan.pumperName}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {editingLoanId === loan.id ? (
-                          <span className="text-xs text-muted-foreground">Editing...</span>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="default"
-                            onClick={() => handlePayLoan(loan)}
-                          >
-                            <DollarSign className="h-4 w-4 mr-1" />
-                            Pay Loan
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
+                        </TableCell>
+                      </TableRow>
                     )
                   })}
                 </TableBody>
@@ -437,28 +453,28 @@ export default function PumperLoansPage() {
                       <TableCell className="font-mono">
                         Rs. {(loan.monthlyRental || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">
-                        {loan.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(loan.createdAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(loan.dueDate).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="max-w-xs">
-                      <div className="space-y-1">
-                        <div className="font-medium">{loan.reason}</div>
-                        {loan.givenBy && (
-                          <div className="text-xs text-muted-foreground">
-                            Given by: {loan.givenBy}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                      <TableCell>
+                        <Badge variant="secondary">
+                          {loan.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(loan.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        {new Date(loan.dueDate).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="max-w-xs">
+                        <div className="space-y-1">
+                          <div className="font-medium">{loan.reason}</div>
+                          {loan.givenBy && (
+                            <div className="text-xs text-muted-foreground">
+                              Given by: {loan.givenBy}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   )
                 })}
               </TableBody>

@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/db'
 
 // GET /api/fuels - Get all fuel types
 export async function GET(request: NextRequest) {

@@ -20,15 +20,15 @@ import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { FileUploadStub } from '@/components/FileUploadStub'
-import { 
-  Users, 
-  Building2, 
-  DollarSign, 
-  Calendar, 
-  FileText, 
+import {
+  Users,
+  Building2,
+  DollarSign,
+  Calendar,
+  FileText,
   Camera,
-  AlertCircle, 
-  CheckCircle, 
+  AlertCircle,
+  CheckCircle,
   Plus,
   Clock
 } from 'lucide-react'
@@ -54,6 +54,7 @@ interface Fuel {
   code: string
   name: string
   icon?: string | null
+  isActive: boolean
 }
 
 interface CreditSale {
@@ -129,7 +130,7 @@ export default function CreditSalesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!selectedCustomer || !selectedStation || amount <= 0 || !slipNumber) {
       setError('Please fill in all required fields')
       return
@@ -173,29 +174,28 @@ export default function CreditSalesPage() {
       }
 
       const newSale = await response.json()
-      
+
       // Add to recent sales list
       setRecentSales(prev => [newSale, ...prev.slice(0, 9)])
-      
+
       // Update customer available credit
-      setCustomers(prev => prev.map(c => 
-        c.id === selectedCustomer 
+      setCustomers(prev => prev.map(c =>
+        c.id === selectedCustomer
           ? { ...c, currentBalance: c.currentBalance + amount, availableCredit: c.availableCredit - amount }
           : c
       ))
-      
+
       // Reset form
       setSelectedCustomer('')
-      setSelectedStation('')
       setAmount(0)
       setSaleDate(new Date())
       setSlipNumber('')
-      setFuelType('')
+      setFuelId('')
       setLitres('')
       setSignedSlipFile(null)
-      
+
       setSuccess('Credit sale recorded successfully!')
-      
+
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000)
 
@@ -385,7 +385,7 @@ export default function CreditSalesPage() {
 
             <div>
               <Label htmlFor="station">Station *</Label>
-              <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
+              <Select value={selectedStation} onValueChange={() => { }} disabled={true}>
                 <SelectTrigger id="station">
                   <SelectValue placeholder="Select a station" />
                 </SelectTrigger>

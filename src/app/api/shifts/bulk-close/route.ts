@@ -3,15 +3,19 @@ import { prisma } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    interface BulkCloseBody {
+      closedBy?: string
+      stationId?: string
+    }
+    const body = await request.json() as BulkCloseBody
     const { closedBy, stationId } = body
-    
+
     // Find all active shifts
     const whereClause: any = { status: 'OPEN' }
     if (stationId) {
       whereClause.stationId = stationId
     }
-    
+
     const activeShifts = await prisma.shift.findMany({
       where: whereClause,
       include: {
@@ -29,24 +33,24 @@ export async function POST(request: NextRequest) {
         station: true
       }
     })
-    
+
     if (activeShifts.length === 0) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: 'No active shifts found',
         closed: 0
       })
     }
-    
+
     const results = []
     const errors = []
     const now = new Date()
-    
+
     // Close each shift
     for (const shift of activeShifts) {
       try {
         // First, close all open assignments for this shift
         const openAssignments = shift.assignments.filter(a => a.status === 'ACTIVE')
-        
+
         if (openAssignments.length > 0) {
           // Close all open assignments - set end reading to start reading if not already set
           for (const assignment of openAssignments) {
@@ -59,36 +63,36 @@ export async function POST(request: NextRequest) {
             })
           }
         }
-        
+
         // Calculate shift statistics
         const shiftStart = shift.startTime
         const shiftEnd = now
         const durationHours = Math.max(0, (shiftEnd.getTime() - shiftStart.getTime()) / (1000 * 60 * 60))
-        
+
         // Calculate total sales from assignments
         let totalSales = 0
         let totalLiters = 0
         const salesByTank = new Map<string, number>()
-        
+
         for (const assignment of shift.assignments) {
           if (assignment.endMeterReading && assignment.startMeterReading) {
             if (assignment.endMeterReading < assignment.startMeterReading) {
               continue // Skip invalid assignments
             }
-            
+
             const litersSold = assignment.endMeterReading - assignment.startMeterReading
             if (litersSold < 0) {
               continue // Skip invalid assignments
             }
-            
+
             totalLiters += litersSold
-            
+
             const tankId = assignment.nozzle.tank.id
             if (!salesByTank.has(tankId)) {
               salesByTank.set(tankId, 0)
             }
             salesByTank.set(tankId, salesByTank.get(tankId)! + litersSold)
-            
+
             // Get price effective at shift start time
             const fuelId = assignment.nozzle.tank.fuelId
             const price = await prisma.price.findFirst({
@@ -100,12 +104,12 @@ export async function POST(request: NextRequest) {
               },
               orderBy: { effectiveDate: 'desc' }
             })
-            
+
             const pricePerLiter = price ? price.price : 470
             totalSales += litersSold * pricePerLiter
           }
         }
-        
+
         // Update shift and tank levels in a transaction
         await prisma.$transaction(async (tx) => {
           // Get test pours for this shift that were returned (should add back to tank)
@@ -158,12 +162,12 @@ export async function POST(request: NextRequest) {
               }
             }
           })
-          
+
           // Update tank levels: decrement sales but add back test returns
           for (const [tankId, litersSold] of salesByTank) {
             const testReturns = testReturnsByTank.get(tankId) || 0
             const netLitersToDeduct = litersSold - testReturns // Sales minus returns
-            
+
             if (netLitersToDeduct > 0) {
               await tx.tank.update({
                 where: { id: tankId },
@@ -179,24 +183,24 @@ export async function POST(request: NextRequest) {
             // If netLitersToDeduct === 0, no change needed
           }
         })
-        
+
         results.push({
           shiftId: shift.id,
-          shiftName: shift.template?.name || 'Shift',
-          stationName: shift.station?.name || 'Unknown Station',
+          shiftName: (shift as any).template?.name || 'Shift',
+          stationName: (shift as any).station?.name || 'Unknown Station',
           success: true
         })
       } catch (error) {
         console.error(`Error closing shift ${shift.id}:`, error)
         errors.push({
           shiftId: shift.id,
-          shiftName: shift.template?.name || 'Shift',
-          stationName: shift.station?.name || 'Unknown Station',
+          shiftName: (shift as any).template?.name || 'Shift',
+          stationName: (shift as any).station?.name || 'Unknown Station',
           error: error instanceof Error ? error.message : 'Unknown error'
         })
       }
     }
-    
+
     return NextResponse.json({
       message: `Closed ${results.length} shift(s) successfully`,
       closed: results.length,
@@ -206,7 +210,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error in bulk close shifts:', error)
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { safeParseFloat } from '@/lib/validation'
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,7 +13,14 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '100')
 
     // Build where clause
-    const where: any = {}
+    interface OilSaleWhereInput {
+      stationId?: string
+      saleDate?: {
+        gte: Date
+        lte: Date
+      }
+    }
+    const where: OilSaleWhereInput = {}
     if (stationId) {
       where.stationId = stationId
     }
@@ -77,27 +85,39 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    
+    interface OilSaleBody {
+      stationId?: string
+      productName?: string
+      quantity?: number | string
+      unit?: string
+      price?: number | string
+      totalAmount?: number
+      customerName?: string
+      saleDate?: string | Date
+    }
+    const body = await request.json() as OilSaleBody
+
     const { stationId, productName, quantity, unit, price, totalAmount, customerName, saleDate } = body
-    
+
     // Validate required fields
     if (!stationId || !productName || quantity === undefined || price === undefined) {
-      return NextResponse.json({ 
-        error: 'Station ID, product name, quantity, and price are required' 
+      return NextResponse.json({
+        error: 'Station ID, product name, quantity, and price are required'
       }, { status: 400 })
     }
 
-    const calculatedTotal = totalAmount || (quantity * price)
+    const quantityNum = safeParseFloat(quantity)
+    const priceNum = safeParseFloat(price)
+    const calculatedTotal = totalAmount || (quantityNum * priceNum)
     const saleDateObj = saleDate ? new Date(saleDate) : new Date()
 
     const newSale = await prisma.oilSale.create({
       data: {
         stationId,
         productName,
-        quantity: parseFloat(quantity),
+        quantity: quantityNum,
         unit: unit || 'liters',
-        price: parseFloat(price),
+        price: priceNum,
         totalAmount: calculatedTotal,
         customerName: customerName || null,
         saleDate: saleDateObj
@@ -115,7 +135,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newSale, { status: 201 })
   } catch (error) {
     console.error('Error creating oil sale:', error)
-    
+
     // Handle foreign key constraint violations
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
       return NextResponse.json(
@@ -123,7 +143,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

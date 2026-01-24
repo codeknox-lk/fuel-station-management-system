@@ -15,13 +15,13 @@ export interface CurrentUser {
  */
 export function getCurrentUser(): CurrentUser | null {
   if (typeof window === 'undefined') return null
-  
+
   try {
     const userId = localStorage.getItem('userId')
     const username = localStorage.getItem('username')
     const role = localStorage.getItem('userRole')
     const stationId = localStorage.getItem('stationId')
-    
+
     if (!userId || !username || !role) return null
 
     return {
@@ -51,3 +51,34 @@ export function getCurrentUserId(): string | null {
   return user?.id || null
 }
 
+/**
+ * Logout current user
+ */
+export function logout() {
+  // Clear localStorage
+  localStorage.removeItem('accessToken')
+  localStorage.removeItem('userRole')
+  localStorage.removeItem('userId')
+  localStorage.removeItem('username')
+  localStorage.removeItem('stationId')
+
+  // Clear any other session data
+  sessionStorage.clear()
+
+  // Redirect to login
+  window.location.href = '/login'
+}
+
+/**
+ * Check if user is authenticated
+ */
+export function isAuthenticated(): boolean {
+  return !!localStorage.getItem('accessToken')
+}
+
+/**
+ * Get access token
+ */
+export function getAccessToken(): string | null {
+  return localStorage.getItem('accessToken')
+}

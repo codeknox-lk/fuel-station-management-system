@@ -3,12 +3,12 @@
 import { forwardRef, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
-import { 
-  Popover, 
-  PopoverContent, 
-  PopoverTrigger 
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
 } from '@/components/ui/popover'
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -29,10 +29,10 @@ interface DateTimePickerProps {
   showSeconds?: boolean
 }
 
-export const DateTimePicker = forwardRef<HTMLInputElement, DateTimePickerProps>(
-  ({ 
-    value, 
-    onChange, 
+export const DateTimePicker = forwardRef<HTMLButtonElement, DateTimePickerProps>(
+  ({
+    value,
+    onChange,
     placeholder = 'Select date and time',
     className,
     disabled = false,
@@ -93,12 +93,12 @@ export const DateTimePicker = forwardRef<HTMLInputElement, DateTimePickerProps>(
     const handleTimeChange = (field: 'hours' | 'minutes' | 'seconds', value: string) => {
       const newTime = { ...time, [field]: value }
       setTime(newTime)
-      
+
       if (selectedDate) {
         const newDate = new Date(selectedDate)
         newDate.setHours(
-          parseInt(newTime.hours), 
-          parseInt(newTime.minutes), 
+          parseInt(newTime.hours),
+          parseInt(newTime.minutes),
           parseInt(newTime.seconds)
         )
         onChange?.(newDate)
@@ -107,10 +107,10 @@ export const DateTimePicker = forwardRef<HTMLInputElement, DateTimePickerProps>(
 
     const formatDisplayValue = (date: Date | undefined): string => {
       if (!date) return ''
-      
+
       const dateStr = format(date, 'MMM dd, yyyy')
       if (showTime) {
-        const timeStr = showSeconds 
+        const timeStr = showSeconds
           ? format(date, 'HH:mm:ss')
           : format(date, 'HH:mm')
         return `${dateStr} ${timeStr}`

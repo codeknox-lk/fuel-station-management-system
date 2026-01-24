@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
     }>()
 
     // Initialize daily breakdown for all days in range
-    let currentDate = new Date(dateStart)
+    const currentDate = new Date(dateStart)
     while (currentDate <= dateEnd) {
       const dateKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
       dailyBreakdown.set(dateKey, {
@@ -156,7 +156,7 @@ export async function GET(request: NextRequest) {
     // Initialize daily by bank maps for all banks
     for (const [bankId, bankName] of uniqueBanks.entries()) {
       const bankDailyMap = new Map<string, number>()
-      let currentDate = new Date(dateStart)
+      const currentDate = new Date(dateStart)
       while (currentDate <= dateEnd) {
         const dateKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
         bankDailyMap.set(dateKey, 0)
@@ -168,7 +168,7 @@ export async function GET(request: NextRequest) {
     // Initialize daily by terminal maps for all terminals
     for (const terminal of posTerminals) {
       const terminalDailyMap = new Map<string, number>()
-      let currentDate = new Date(dateStart)
+      const currentDate = new Date(dateStart)
       while (currentDate <= dateEnd) {
         const dateKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
         terminalDailyMap.set(dateKey, 0)

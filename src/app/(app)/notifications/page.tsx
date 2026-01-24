@@ -12,11 +12,11 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { 
-  Bell, 
-  AlertTriangle, 
-  Clock, 
-  CheckCircle, 
+import {
+  Bell,
+  AlertTriangle,
+  Clock,
+  CheckCircle,
   XCircle,
   Search,
   MoreVertical,
@@ -80,16 +80,16 @@ export default function NotificationsPage() {
     try {
       setLoading(true)
       setError('')
-      
+
       const params = new URLSearchParams()
       if (selectedStation && selectedStation !== 'all') {
         params.append('stationId', selectedStation)
       }
       params.append('limit', '100')
-      
+
       const response = await fetch(`/api/notifications?${params.toString()}`)
       const data = await response.json()
-      
+
       // Handle migration required case
       if (data.migrationRequired) {
         setError(`Database migration required: ${data.migrationCommand || 'npx prisma migrate dev --name add_notifications'}`)
@@ -102,12 +102,12 @@ export default function NotificationsPage() {
         })
         return
       }
-      
+
       if (!response.ok && !data.notifications) {
         const errorMsg = data.details || data.error || 'Failed to load notifications'
         throw new Error(errorMsg)
       }
-      
+
       setNotifications(data.notifications || [])
       setPagination(data.pagination || null)
     } catch (err) {
@@ -125,23 +125,23 @@ export default function NotificationsPage() {
       setGenerating(true)
       setError('')
       setSuccess('')
-      
+
       const params = new URLSearchParams()
       if (selectedStation && selectedStation !== 'all') {
         params.append('stationId', selectedStation)
       }
-      
+
       const response = await fetch(`/api/notifications/generate?${params.toString()}`, {
         method: 'POST'
       })
-      
+
       if (!response.ok) {
         throw new Error('Failed to generate notifications')
       }
-      
+
       const data = await response.json()
       setSuccess(`Generated ${data.generated} new notification${data.generated !== 1 ? 's' : ''}`)
-      
+
       // Reload notifications after generation
       await loadNotifications()
     } catch (err) {
@@ -159,15 +159,15 @@ export default function NotificationsPage() {
       await generateNotifications()
       await loadNotifications()
     }
-    
+
     initializeNotifications()
-    
+
     // Auto-refresh and regenerate every 5 minutes
     const interval = setInterval(async () => {
       await generateNotifications()
       await loadNotifications()
     }, 5 * 60 * 1000)
-    
+
     return () => clearInterval(interval)
   }, [selectedStation])
 
@@ -184,7 +184,7 @@ export default function NotificationsPage() {
 
     // Filter by search term
     if (searchTerm) {
-      filtered = filtered.filter(n => 
+      filtered = filtered.filter(n =>
         n.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         n.message.toLowerCase().includes(searchTerm.toLowerCase())
       )
@@ -213,7 +213,7 @@ export default function NotificationsPage() {
     if (!notification.isRead) {
       await markAsRead(notification.id)
     }
-    
+
     // Navigate to action URL if provided
     if (notification.actionUrl) {
       router.push(notification.actionUrl)
@@ -227,9 +227,9 @@ export default function NotificationsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isRead: true })
       })
-      
+
       if (response.ok) {
-        setNotifications(prev => 
+        setNotifications(prev =>
           prev.map(n => n.id === id ? { ...n, isRead: true, readAt: new Date().toISOString() } : n)
         )
         // Notify TopBar to refresh
@@ -249,9 +249,9 @@ export default function NotificationsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isRead: false })
       })
-      
+
       if (response.ok) {
-        setNotifications(prev => 
+        setNotifications(prev =>
           prev.map(n => n.id === id ? { ...n, isRead: false, readAt: null } : n)
         )
         // Notify TopBar to refresh
@@ -269,7 +269,7 @@ export default function NotificationsPage() {
       const response = await fetch(`/api/notifications/${id}`, {
         method: 'DELETE'
       })
-      
+
       if (response.ok) {
         setNotifications(prev => prev.filter(n => n.id !== id))
         // Notify TopBar to refresh
@@ -329,7 +329,7 @@ export default function NotificationsPage() {
     const now = new Date()
     const time = new Date(timestamp)
     const diffInMinutes = Math.floor((now.getTime() - time.getTime()) / (1000 * 60))
-    
+
     if (diffInMinutes < 1) {
       return 'Just now'
     } else if (diffInMinutes < 60) {
@@ -378,8 +378,8 @@ export default function NotificationsPage() {
             {error.includes('migration') || error.includes('regenerated') ? (
               <div className="mt-3 p-3 bg-muted rounded-lg">
                 <p className="text-sm font-semibold mb-2">
-                  {error.includes('regenerated') 
-                    ? 'Prisma client needs to be regenerated:' 
+                  {error.includes('regenerated')
+                    ? 'Prisma client needs to be regenerated:'
                     : 'Database migration was successful! Next step:'}
                 </p>
                 {error.includes('regenerated') ? (
@@ -493,7 +493,7 @@ export default function NotificationsPage() {
               <TabsTrigger value="unread">Unread ({unreadCount})</TabsTrigger>
               <TabsTrigger value="read">Read ({totalCount - unreadCount})</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value={activeTab} className="mt-6">
               {loading ? (
                 <div className="text-center py-12">
@@ -515,16 +515,15 @@ export default function NotificationsPage() {
                   {filteredNotifications.map((notification) => (
                     <div
                       key={notification.id}
-                      className={`p-4 border rounded-lg transition-colors hover:bg-muted cursor-pointer ${
-                        !notification.isRead ? 'bg-blue-500/10 dark:bg-blue-500/20 border-blue-500/20 dark:border-blue-500/30' : 'bg-card border-border'
-                      }`}
+                      className={`p-4 border rounded-lg transition-colors hover:bg-muted cursor-pointer ${!notification.isRead ? 'bg-blue-500/10 dark:bg-blue-500/20 border-blue-500/20 dark:border-blue-500/30' : 'bg-card border-border'
+                        }`}
                       onClick={() => handleNotificationClick(notification)}
                     >
                       <div className="flex items-start gap-4">
                         <div className="flex-shrink-0 mt-1">
                           {getNotificationIcon(notification.type)}
                         </div>
-                        
+
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -565,7 +564,7 @@ export default function NotificationsPage() {
                                       Mark as Read
                                     </DropdownMenuItem>
                                   )}
-                                  <DropdownMenuItem 
+                                  <DropdownMenuItem
                                     onClick={() => deleteNotification(notification.id)}
                                     className="text-red-600 dark:text-red-400"
                                   >
@@ -576,11 +575,11 @@ export default function NotificationsPage() {
                               </DropdownMenu>
                             </div>
                           </div>
-                          
+
                           <p className="text-sm text-foreground mb-3">
                             {notification.message}
                           </p>
-                          
+
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4 text-xs text-muted-foreground">
                               <span>{formatTimeAgo(notification.createdAt)}</span>
@@ -588,10 +587,10 @@ export default function NotificationsPage() {
                                 {notification.category}
                               </Badge>
                             </div>
-                            
+
                             {notification.actionUrl && (
-                              <Button 
-                                size="sm" 
+                              <Button
+                                size="sm"
                                 variant="outline"
                                 onClick={(e) => {
                                   e.stopPropagation()

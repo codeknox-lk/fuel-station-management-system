@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
     const startOfMonth = new Date(yearNum, monthNum - 1, 7, 0, 0, 0, 0)
     const endOfMonth = new Date(yearNum, monthNum, 6, 23, 59, 59, 999)
 
+
     // Get all closed shifts for the month
     // Use endTime to capture shifts that ended in this month (even if started previous month)
     const shifts = await prisma.shift.findMany({
@@ -47,7 +48,11 @@ export async function GET(request: NextRequest) {
           include: {
             nozzle: {
               include: {
-                tank: true
+                tank: {
+                  include: {
+                    fuel: true
+                  }
+                }
               }
             }
           }
@@ -77,8 +82,8 @@ export async function GET(request: NextRequest) {
 
     // Calculate daily profit data for business month (7th to 6th)
     const dailyData = []
-    let currentDate = new Date(startOfMonth)
-    
+    const currentDate = new Date(startOfMonth)
+
     while (currentDate <= endOfMonth) {
       const dayStart = new Date(currentDate)
       dayStart.setHours(0, 0, 0, 0)
@@ -107,15 +112,15 @@ export async function GET(request: NextRequest) {
                 continue // Skip invalid readings (not a rollover)
               }
             }
-            
+
             if (litersSold <= 0) continue
 
             const fuelId = assignment.nozzle?.tank?.fuelId
             if (!fuelId) continue
 
             // Get price effective at shift end time (when shift closed)
-            const price = prices.find(p => 
-              p.fuelId === fuelId && 
+            const price = prices.find(p =>
+              p.fuelId === fuelId &&
               new Date(p.effectiveDate) <= (shift.endTime || shift.startTime)
             ) || prices.find(p => p.fuelId === fuelId)
 
@@ -144,7 +149,7 @@ export async function GET(request: NextRequest) {
         profit: Math.round(profit),
         margin: Math.round(margin * 100) / 100
       })
-      
+
       // Move to next day
       currentDate.setDate(currentDate.getDate() + 1)
     }
@@ -170,22 +175,23 @@ export async function GET(request: NextRequest) {
               continue // Skip invalid readings (not a rollover)
             }
           }
-          
+
           if (litersSold <= 0) continue
 
-          const fuelType = assignment.nozzle?.tank?.fuelType
-          if (!fuelType) continue
+          // Corrected: Use fuelId from tank and filter prices by fuelId
+          const fuelId = assignment.nozzle?.tank?.fuelId
+          if (!fuelId) continue
 
-          const price = prices.find(p => 
-            p.fuelType === fuelType && 
+          const price = prices.find(p =>
+            p.fuelId === fuelId &&
             new Date(p.effectiveDate) <= (shift.endTime || shift.startTime)
-          ) || prices.find(p => p.fuelType === fuelType)
+          ) || prices.find(p => p.fuelId === fuelId) // Fallback to any price for that fuelId if no effective date match
 
-          const pricePerLiter = price ? price.price : 0
-          const salesAmount = litersSold * pricePerLiter
+          const salesAmount = litersSold * (price ? price.price : 0)
 
-          const current = revenueByFuelType.get(fuelType) || 0
-          revenueByFuelType.set(fuelType, current + salesAmount)
+          const fuelTypeName = assignment.nozzle?.tank?.fuel?.name || 'Unknown' // Get fuel name for breakdown category
+          const current = revenueByFuelType.get(fuelTypeName) || 0
+          revenueByFuelType.set(fuelTypeName, current + salesAmount)
         }
       }
     }
@@ -216,17 +222,17 @@ export async function GET(request: NextRequest) {
     // This handles both incomplete days and future dates with no data
     const today = new Date()
     const todayDateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-    
+
     console.log('[Profit Report] Today date string:', todayDateString)
     console.log('[Profit Report] Daily data dates:', dailyData.map(d => d.date))
-    
+
     const completedDays = dailyData.filter(day => {
       const isToday = day.date === todayDateString
       const hasActivity = day.revenue > 0 || day.expenses > 0 || day.profit !== 0
       const isFutureOrToday = day.date >= todayDateString
-      
+
       console.log(`[Profit Report] Date ${day.date}: isToday=${isToday}, hasActivity=${hasActivity}, isFutureOrToday=${isFutureOrToday}`)
-      
+
       // Exclude: (1) today/future dates OR (2) days with no activity
       return !isFutureOrToday && hasActivity
     })
@@ -234,14 +240,14 @@ export async function GET(request: NextRequest) {
     console.log('[Profit Report] Completed days with activity:', completedDays.length)
 
     // If there are no completed days yet, use empty data
-    const bestDay = completedDays.length > 0 
+    const bestDay = completedDays.length > 0
       ? completedDays.reduce((best, day) => day.profit > best.profit ? day : best, completedDays[0])
       : { day: 0, date: '', profit: 0, revenue: 0, expenses: 0, margin: 0 }
-    
+
     const worstDay = completedDays.length > 0
       ? completedDays.reduce((worst, day) => day.profit < worst.profit ? day : worst, completedDays[0])
       : { day: 0, date: '', profit: 0, revenue: 0, expenses: 0, margin: 0 }
-    
+
     console.log('[Profit Report] Best day:', bestDay.date, 'Profit:', bestDay.profit)
     console.log('[Profit Report] Worst day:', worstDay.date, 'Profit:', worstDay.profit)
 
@@ -264,7 +270,7 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error generating profit report:', error)
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })

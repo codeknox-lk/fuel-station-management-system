@@ -21,11 +21,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { 
-  Users, 
-  TrendingUp, 
-  Fuel, 
-  AlertCircle, 
+import {
+  Users,
+  TrendingUp,
+  Fuel,
+  AlertCircle,
   ArrowLeft,
   RefreshCw,
   Download,
@@ -40,8 +40,18 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { exportPumperDetailsReportPDF, exportPumperDetailsReportExcel } from '@/lib/exportUtils'
 
+interface ActiveLoan {
+  id: string
+  description?: string
+  amount: number
+  balance: number
+  monthlyRental: number
+  createdAt: string
+}
+
 interface PumperReport {
   summary: {
+    // ... (unchanged)
     totalPumpers: number
     totalShifts: number
     totalSales: number
@@ -91,7 +101,7 @@ interface PumperReport {
       loans: number
       netSalary: number
     }>
-    activeLoans: Array<any>
+    activeLoans: Array<ActiveLoan>
     fuelTypeBreakdown: Array<{
       fuelName: string
       liters: number
@@ -156,12 +166,12 @@ export default function PumperDetailsReportPage() {
     const station = stations.find(s => s.id === selectedStation)
     const stationName = station?.name || 'All Stations'
     const monthLabel = `${selectedYear}-${selectedMonth}`
-    
+
     const exportData = {
       summary: reportData.summary,
       pumperDetails: reportData.pumperDetails
     }
-    
+
     exportPumperDetailsReportPDF(exportData, stationName, monthLabel)
   }
 
@@ -170,12 +180,12 @@ export default function PumperDetailsReportPage() {
     const station = stations.find(s => s.id === selectedStation)
     const stationName = station?.name || 'All Stations'
     const monthLabel = `${selectedYear}-${selectedMonth}`
-    
+
     const exportData = {
       summary: reportData.summary,
       pumperDetails: reportData.pumperDetails
     }
-    
+
     exportPumperDetailsReportExcel(exportData, stationName, monthLabel)
   }
 
@@ -488,11 +498,11 @@ export default function PumperDetailsReportPage() {
           <FormCard title="Fuel Type Breakdown" description="Sales by fuel type">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
               {selectedPumperData.fuelTypeBreakdown.map((fuel) => (
-                <Card key={fuel.fuelType}>
+                <Card key={fuel.fuelName}>
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <Fuel className="h-4 w-4 text-purple-600" />
-                      <h3 className="text-sm font-semibold">{formatFuelType(fuel.fuelType)}</h3>
+                      <h3 className="text-sm font-semibold">{formatFuelName(fuel.fuelName)}</h3>
                     </div>
                     <p className="text-2xl font-bold">{fuel.liters.toLocaleString()} L</p>
                     <p className="text-xs text-muted-foreground mt-1">{fuel.shifts} shifts</p>
@@ -549,11 +559,11 @@ export default function PumperDetailsReportPage() {
                     {selectedPumperData.activeLoans.map((loan) => (
                       <tr key={loan.id} className="border-b">
                         <td className="p-3">{loan.description || 'N/A'}</td>
-                        <td className="text-right p-3 font-mono">Rs. {loan.amount.toLocaleString()}</td>
-                        <td className="text-right p-3 font-mono text-red-600 font-semibold">
+                        <td className="text-right p-3">Rs. {loan.amount.toLocaleString()}</td>
+                        <td className="text-right p-3 text-red-600 font-semibold">
                           Rs. {loan.balance.toLocaleString()}
                         </td>
-                        <td className="text-right p-3 font-mono">Rs. {(loan.monthlyRental || 0).toLocaleString()}</td>
+                        <td className="text-right p-3">Rs. {(loan.monthlyRental || 0).toLocaleString()}</td>
                         <td className="p-3">{new Date(loan.createdAt).toLocaleDateString()}</td>
                       </tr>
                     ))}
@@ -583,20 +593,20 @@ export default function PumperDetailsReportPage() {
                     {selectedPumperData.recentSalaryPayments.map((payment) => (
                       <tr key={payment.id} className="border-b">
                         <td className="p-3">{new Date(payment.paymentDate).toLocaleDateString()}</td>
-                        <td className="text-right p-3 font-mono">Rs. {payment.baseSalary.toLocaleString()}</td>
-                        <td className="text-right p-3 font-mono text-green-600">
+                        <td className="text-right p-3">Rs. {payment.baseSalary.toLocaleString()}</td>
+                        <td className="text-right p-3 text-green-600">
                           +Rs. {payment.varianceAdd.toLocaleString()}
                         </td>
-                        <td className="text-right p-3 font-mono text-orange-600">
+                        <td className="text-right p-3 text-orange-600">
                           -Rs. {payment.varianceDeduct.toLocaleString()}
                         </td>
-                        <td className="text-right p-3 font-mono text-orange-600">
+                        <td className="text-right p-3 text-orange-600">
                           -Rs. {payment.advances.toLocaleString()}
                         </td>
-                        <td className="text-right p-3 font-mono text-red-600">
+                        <td className="text-right p-3 text-red-600">
                           -Rs. {payment.loans.toLocaleString()}
                         </td>
-                        <td className="text-right p-3 font-mono font-semibold text-blue-600">
+                        <td className="text-right p-3 font-semibold text-blue-600">
                           Rs. {payment.netSalary.toLocaleString()}
                         </td>
                       </tr>
@@ -637,8 +647,8 @@ export default function PumperDetailsReportPage() {
                       </div>
                     </td>
                     <td className="text-right p-3">{pumper.totalShifts}</td>
-                    <td className="text-right p-3 font-mono">Rs. {pumper.totalSales.toLocaleString()}</td>
-                    <td className="text-right p-3 font-mono">{pumper.totalLiters.toLocaleString()} L</td>
+                    <td className="text-right p-3">Rs. {pumper.totalSales.toLocaleString()}</td>
+                    <td className="text-right p-3">{pumper.totalLiters.toLocaleString()} L</td>
                     <td className="text-right p-3">
                       <span className={pumper.varianceRate > 15 ? 'text-red-600 font-semibold' : ''}>
                         {pumper.varianceRate}%
@@ -652,16 +662,16 @@ export default function PumperDetailsReportPage() {
                     <td className="text-right p-3">
                       {pumper.activeLoansCount > 0 && (
                         <div>
-                          <p className="font-mono text-red-600">Rs. {pumper.totalLoanBalance.toLocaleString()}</p>
+                          <p className="text-red-600">Rs. {pumper.totalLoanBalance.toLocaleString()}</p>
                           <p className="text-xs text-muted-foreground">{pumper.activeLoansCount} loans</p>
                         </div>
                       )}
                     </td>
-                    <td className="text-right p-3 font-mono">Rs. {pumper.totalSalaryPaid.toLocaleString()}</td>
+                    <td className="text-right p-3">Rs. {pumper.totalSalaryPaid.toLocaleString()}</td>
                     <td className="text-center p-3">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
+                      <Button
+                        size="sm"
+                        variant="outline"
                         onClick={() => setSelectedPumper(pumper.id)}
                       >
                         View Details

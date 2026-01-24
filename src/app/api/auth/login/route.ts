@@ -8,7 +8,13 @@ const ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    interface LoginBody {
+      username?: string
+      password?: string
+      rememberMe?: boolean
+    }
+    const body = await request.json() as LoginBody
+
     const { username, password } = body
 
     // Validate required fields
@@ -47,7 +53,7 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       )
     }
-    
+
     console.log(`✅ User found: ${user.username} (${user.role})`)
     console.log(`   Password hash: ${user.password.substring(0, 20)}...`)
     console.log(`   Is active: ${user.isActive}`)
@@ -62,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     // Verify password
     let passwordValid = false
-    
+
     // Check if password is hashed (bcrypt hashes start with $2a$, $2b$, or $2y$)
     if (user.password.startsWith('$2')) {
       // Password is hashed with bcrypt
@@ -84,7 +90,7 @@ export async function POST(request: NextRequest) {
       // In production, all passwords should be hashed
       console.log(`⚠️  Plain text password detected for user: ${username}`)
       passwordValid = password === user.password
-      
+
       // If login successful with plain text, hash and update password
       if (passwordValid) {
         console.log(`✅ Plain text login successful, hashing password...`)
@@ -107,22 +113,51 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Update last login time
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        lastLogin: new Date(),
+        failedAttempts: 0 // Reset failed attempts on successful login
+      }
+    })
+
+    // Create audit log for successful login
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        userName: user.username,
+        userRole: user.role,
+        action: 'LOGIN',
+        entity: 'User',
+        entityId: user.id,
+        details: `User ${user.username} logged in successfully`,
+        stationId: user.stationId
+      }
+    })
+
+    // Determine token expiration
+    const { rememberMe } = body
+    const tokenDuration = rememberMe
+      ? 7 * 24 * 60 * 60 // 7 days in seconds
+      : ACCESS_TOKEN_EXPIRE_MINUTES * 60 // 30 minutes in seconds
+
     // Create JWT token
-    const expiresIn = ACCESS_TOKEN_EXPIRE_MINUTES * 60 // Convert to seconds
     const accessToken = jwt.sign(
-      { 
+      {
         sub: user.username,
         userId: user.id,
         role: user.role
       },
       getJwtSecret(),
-      { expiresIn }
+      { expiresIn: tokenDuration }
     )
 
     // Return token and user data
     return NextResponse.json({
       access_token: accessToken,
       token_type: 'bearer',
+      requireChangePassword: user.isFirstLogin,
       user: {
         id: user.id,
         username: user.username,
@@ -134,22 +169,22 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('❌ Login error:', error)
-    
+
     // Handle specific error types
     if (error instanceof Error) {
       console.error('Error message:', error.message)
       console.error('Error stack:', error.stack)
-      
+
       // Check for database connection errors
-      if (error.message.includes('Can\'t reach database') || 
-          error.message.includes('P1001') ||
-          error.message.includes('fetch failed')) {
+      if (error.message.includes('Can\'t reach database') ||
+        error.message.includes('P1001') ||
+        error.message.includes('fetch failed')) {
         return NextResponse.json(
           { detail: 'Database connection failed. Please check if the database is running.' },
           { status: 503 }
         )
       }
-      
+
       // Check for Prisma errors
       if (error.message.includes('prisma') || error.message.includes('Prisma')) {
         return NextResponse.json(
@@ -158,7 +193,7 @@ export async function POST(request: NextRequest) {
         )
       }
     }
-    
+
     // Generic error response
     return NextResponse.json(
       { detail: 'Internal server error. Please try again later.' },

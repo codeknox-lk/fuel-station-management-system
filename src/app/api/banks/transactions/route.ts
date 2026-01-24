@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
@@ -11,12 +12,12 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate')
 
     // Build filters
-    const where: any = {}
-    
+    const where: Prisma.BankTransactionWhereInput = {}
+
     if (bankId) where.bankId = bankId
     if (stationId) where.stationId = stationId
-    if (type) where.type = type
-    
+    if (type) where.type = type as Prisma.EnumBankTransactionTypeFilter<"BankTransaction">
+
     if (startDate && endDate) {
       where.transactionDate = {
         gte: new Date(startDate),

@@ -18,7 +18,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Station not found' }, { status: 404 })
     }
 
-    const { name, address, city, isActive } = body
+    const { name, address, city, phone, email, openingHours, isActive } = body
     
     const updatedStation = await prisma.station.update({
       where: { id },
@@ -26,6 +26,9 @@ export async function PUT(
         ...(name && { name }),
         ...(address && { address }),
         ...(city && { city }),
+        ...(phone !== undefined && { phone: phone || null }),
+        ...(email !== undefined && { email: email || null }),
+        ...(openingHours !== undefined && { openingHours: openingHours || null }),
         ...(isActive !== undefined && { isActive })
       }
     })
@@ -46,6 +49,16 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // PERMISSION CHECK: Only DEVELOPER can delete stations
+    const userRole = request.headers.get('x-user-role')
+    
+    if (userRole !== 'DEVELOPER') {
+      return NextResponse.json(
+        { error: 'Permission denied. Only DEVELOPER role can delete stations.' },
+        { status: 403 }
+      )
+    }
+
     const { id } = await params
     
     const station = await prisma.station.findUnique({

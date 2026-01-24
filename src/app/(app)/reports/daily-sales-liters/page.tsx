@@ -21,19 +21,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer 
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
 } from 'recharts'
-import { 
-  TrendingUp, 
-  Fuel, 
+import {
+  TrendingUp,
+  Fuel,
   Calendar,
   Download,
   RefreshCw,
@@ -97,7 +97,7 @@ export default function DailySalesLitersReportPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [salesData, setSalesData] = useState<DailySalesResponse | null>(null)
-  
+
   // Month selection - using business month (7th to 6th)
   const currentBusinessMonth = getCurrentBusinessMonth()
   const [selectedYear, setSelectedYear] = useState(currentBusinessMonth.year.toString())
@@ -124,10 +124,10 @@ export default function DailySalesLitersReportPage() {
     try {
       setLoading(true)
       setError('')
-      
+
       const month = `${selectedYear}-${selectedMonth}`
       const res = await fetch(`/api/reports/daily-sales?stationId=${selectedStation}&month=${month}`)
-      
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
         throw new Error(errorData.error || 'Failed to fetch daily sales data')
@@ -144,19 +144,26 @@ export default function DailySalesLitersReportPage() {
   }
 
   // Prepare chart data
+  interface ChartDataPoint {
+    day: number
+    date: string
+    total?: number
+    [key: string]: string | number | undefined
+  }
+
   const chartData = salesData?.dailySales.map(day => {
-    const dataPoint: any = {
+    const dataPoint: ChartDataPoint = {
       day: day.day,
       date: day.date
     }
-    
+
     // Add liters for each fuel type
     salesData.fuelTypes.forEach(fuelType => {
       dataPoint[fuelType] = day.liters[fuelType] || 0
     })
-    
+
     dataPoint.total = day.totalLiters
-    
+
     return dataPoint
   }) || []
 
@@ -165,7 +172,7 @@ export default function DailySalesLitersReportPage() {
     const station = stations.find(s => s.id === selectedStation)
     const stationName = station?.name || 'All Stations'
     const monthLabel = `${selectedYear}-${selectedMonth}`
-    
+
     const reportData = {
       dailySales: salesData.dailySales.map(day => ({
         date: day.date,
@@ -175,7 +182,7 @@ export default function DailySalesLitersReportPage() {
       fuelTypes: salesData.fuelTypes,
       grandTotal: salesData.dailySales.reduce((sum, day) => sum + day.totalLiters, 0)
     }
-    
+
     exportDailySalesLitersReportPDF(reportData, stationName, monthLabel)
   }
 
@@ -184,7 +191,7 @@ export default function DailySalesLitersReportPage() {
     const station = stations.find(s => s.id === selectedStation)
     const stationName = station?.name || 'All Stations'
     const monthLabel = `${selectedYear}-${selectedMonth}`
-    
+
     const reportData = {
       dailySales: salesData.dailySales.map(day => ({
         date: day.date,
@@ -194,7 +201,7 @@ export default function DailySalesLitersReportPage() {
       fuelTypes: salesData.fuelTypes,
       grandTotal: salesData.dailySales.reduce((sum, day) => sum + day.totalLiters, 0)
     }
-    
+
     exportDailySalesLitersReportExcel(reportData, stationName, monthLabel)
   }
 
@@ -265,8 +272,8 @@ export default function DailySalesLitersReportPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="station">Station</Label>
-              <Select 
-                value={selectedStation || 'all'} 
+              <Select
+                value={selectedStation || 'all'}
                 onValueChange={(value) => setSelectedStation(value)}
               >
                 <SelectTrigger id="station">
@@ -376,26 +383,26 @@ export default function DailySalesLitersReportPage() {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="date" 
+                <XAxis
+                  dataKey="date"
                   tick={{ fontSize: 10 }}
                   tickFormatter={(value) => {
                     const d = new Date(value)
                     return `${d.getDate()}/${d.getMonth() + 1}`
                   }}
                 />
-                <YAxis 
+                <YAxis
                   label={{ value: 'Liters', angle: -90, position: 'insideLeft' }}
                   tickFormatter={(value) => `${(value / 1000).toFixed(1)}k L`}
                 />
-                <Tooltip 
+                <Tooltip
                   formatter={(value: number) => `${value.toLocaleString()} L`}
                   labelFormatter={(date) => {
                     const d = new Date(date)
                     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                   }}
                 />
-                <Legend 
+                <Legend
                   formatter={(value) => formatFuelType(value)}
                 />
                 {salesData.fuelTypes.map(fuelType => (
@@ -449,11 +456,11 @@ export default function DailySalesLitersReportPage() {
                   <tr key={day.date} className={index % 2 === 0 ? 'bg-muted/50' : ''}>
                     <td className="p-3 font-medium">Day {day.day}</td>
                     {salesData.fuelTypes.map(fuelType => (
-                      <td key={fuelType} className="text-right p-3 font-mono text-sm">
+                      <td key={fuelType} className="text-right p-3 text-sm">
                         {(day.liters[fuelType] || 0).toLocaleString()} L
                       </td>
                     ))}
-                    <td className="text-right p-3 font-mono font-semibold text-blue-600 dark:text-blue-400">
+                    <td className="text-right p-3 font-semibold text-blue-600 dark:text-blue-400">
                       {day.totalLiters.toLocaleString()} L
                     </td>
                   </tr>
@@ -461,11 +468,11 @@ export default function DailySalesLitersReportPage() {
                 <tr className="border-t-4 font-bold bg-blue-50 dark:bg-blue-950/20">
                   <td className="p-3 text-lg">TOTAL</td>
                   {salesData.fuelTypes.map(fuelType => (
-                    <td key={fuelType} className="text-right p-3 font-mono text-base" style={{ color: fuelTypeColors[fuelType] || '#666' }}>
+                    <td key={fuelType} className="text-right p-3 text-base" style={{ color: fuelTypeColors[fuelType] || '#666' }}>
                       {(salesData.totalLitersByFuelType[fuelType] || 0).toLocaleString()} L
                     </td>
                   ))}
-                  <td className="text-right p-3 font-mono text-lg text-blue-600 dark:text-blue-400">
+                  <td className="text-right p-3 text-lg text-blue-600 dark:text-blue-400">
                     {salesData.dailySales.reduce((sum, day) => sum + day.totalLiters, 0).toLocaleString()} L
                   </td>
                 </tr>

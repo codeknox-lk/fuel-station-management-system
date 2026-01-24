@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, User, Lock, Shield } from 'lucide-react'
+import { Loader2, User, Lock, Shield, ArrowLeft } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 interface UserProfile {
   id: string
@@ -20,6 +21,7 @@ interface UserProfile {
 }
 
 export default function ProfilePage() {
+  const router = useRouter()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
@@ -46,13 +48,13 @@ export default function ProfilePage() {
     try {
       setLoading(true)
       setError('')
-      
+
       // Get user data from localStorage first (fallback)
       const userId = localStorage.getItem('userId')
       const username = localStorage.getItem('username')
       const userRole = localStorage.getItem('userRole')
       const token = localStorage.getItem('accessToken')
-      
+
       if (!token) {
         setError('Not logged in. Redirecting to login...')
         setTimeout(() => {
@@ -101,12 +103,12 @@ export default function ProfilePage() {
       }
     } catch (error) {
       console.error('Profile fetch exception:', error)
-      
+
       // Use localStorage fallback on network error
       const userId = localStorage.getItem('userId')
       const username = localStorage.getItem('username')
       const userRole = localStorage.getItem('userRole')
-      
+
       if (userId && username && userRole) {
         const fallbackProfile = {
           id: userId,
@@ -137,7 +139,7 @@ export default function ProfilePage() {
 
     try {
       const token = localStorage.getItem('accessToken')
-      
+
       if (!token) {
         setError('No authentication token found. Please log in again.')
         setUpdating(false)
@@ -190,7 +192,7 @@ export default function ProfilePage() {
 
     try {
       const token = localStorage.getItem('accessToken')
-      
+
       if (!token) {
         setError('No authentication token found. Please log in again.')
         setUpdating(false)
@@ -256,11 +258,17 @@ export default function ProfilePage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Profile Settings</h1>
-        <p className="text-muted-foreground mt-1">
-          Manage your account information and security settings
-        </p>
+      <div className="flex items-center gap-4">
+        <Button variant="outline" onClick={() => router.push('/settings')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Profile Settings</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage your account information and security settings
+          </p>
+        </div>
       </div>
 
       {/* Profile Information */}

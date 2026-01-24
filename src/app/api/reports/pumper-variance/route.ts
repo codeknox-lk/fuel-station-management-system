@@ -82,9 +82,18 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    interface PumperBreakdown {
+      pumperName: string
+      variance?: number
+      varianceStatus?: string
+    }
+    interface DeclaredAmounts {
+      pumperBreakdown?: PumperBreakdown[]
+    }
+
     // Process each shift's pumper breakdown
     for (const shift of shifts) {
-      const declaredAmounts = shift.declaredAmounts as any
+      const declaredAmounts = shift.declaredAmounts as unknown as DeclaredAmounts
       const pumperBreakdown = declaredAmounts?.pumperBreakdown || []
 
       for (const breakdown of pumperBreakdown) {
@@ -132,8 +141,8 @@ export async function GET(request: NextRequest) {
 
     // Calculate variance rate and performance rating for each pumper
     const pumperVariances = Array.from(pumperVarianceMap.values()).map(pumperData => {
-      pumperData.varianceRate = pumperData.totalShifts > 0 
-        ? (pumperData.shiftsWithVariance / pumperData.totalShifts) * 100 
+      pumperData.varianceRate = pumperData.totalShifts > 0
+        ? (pumperData.shiftsWithVariance / pumperData.totalShifts) * 100
         : 0
 
       let performanceRating: 'EXCELLENT' | 'GOOD' | 'NEEDS_IMPROVEMENT' | 'CRITICAL'
@@ -173,7 +182,7 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error generating pumper variance report:', error)
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })

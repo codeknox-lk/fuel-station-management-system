@@ -19,13 +19,13 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { FileUploadStub } from '@/components/FileUploadStub'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
-import { 
-  CreditCard, 
-  Calendar, 
-  Building2, 
-  Camera, 
-  AlertCircle, 
-  CheckCircle, 
+import {
+  CreditCard,
+  Calendar,
+  Building2,
+  Camera,
+  AlertCircle,
+  CheckCircle,
   Plus,
   DollarSign,
   Clock,
@@ -96,10 +96,10 @@ export default function POSBatchesPage() {
   const [selectedTerminal, setSelectedTerminal] = useState('')
   const [startNumber, setStartNumber] = useState('')
   const [endNumber, setEndNumber] = useState('')
-  const [visaAmount, setVisaAmount] = useState('')
-  const [masterAmount, setMasterAmount] = useState('')
-  const [amexAmount, setAmexAmount] = useState('')
-  const [qrAmount, setQrAmount] = useState('')
+  const [visaAmount, setVisaAmount] = useState(0)
+  const [masterAmount, setMasterAmount] = useState(0)
+  const [amexAmount, setAmexAmount] = useState(0)
+  const [qrAmount, setQrAmount] = useState(0)
   const [notes, setNotes] = useState('')
   const [addToSafe, setAddToSafe] = useState(false)
 
@@ -129,17 +129,17 @@ export default function POSBatchesPage() {
   }, [])
 
   // Filter terminals by selected station
-  const availableTerminals = terminals.filter(terminal => 
+  const availableTerminals = terminals.filter(terminal =>
     terminal.stationId === selectedStation && terminal.isActive
   )
 
   // Calculate total amount
   const totalAmount = [visaAmount, masterAmount, amexAmount, qrAmount]
-    .reduce((sum, amount) => sum + (parseFloat(amount) || 0), 0)
+    .reduce((sum, amount) => sum + amount, 0)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!selectedStation || !selectedTerminal || !startNumber || !endNumber) {
       setError('Please fill in all required fields')
       return
@@ -162,10 +162,10 @@ export default function POSBatchesPage() {
           terminalId: selectedTerminal,
           startNumber,
           endNumber,
-          visaAmount: parseFloat(visaAmount) || 0,
-          masterAmount: parseFloat(masterAmount) || 0,
-          amexAmount: parseFloat(amexAmount) || 0,
-          qrAmount: parseFloat(qrAmount) || 0,
+          visaAmount: visaAmount,
+          masterAmount: masterAmount,
+          amexAmount: amexAmount,
+          qrAmount: qrAmount,
           totalAmount,
           notes: notes || undefined,
           addToSafe: addToSafe
@@ -177,27 +177,27 @@ export default function POSBatchesPage() {
       }
 
       const newBatch = await response.json()
-      
+
       // Reload batches to get proper data
       const batchesRes = await fetch('/api/pos/batches?limit=10')
       if (batchesRes.ok) {
         const batchesData = await batchesRes.json()
         setRecentBatches(batchesData)
       }
-      
+
       // Reset form
       setSelectedTerminal('')
       setStartNumber('')
       setEndNumber('')
-      setVisaAmount('')
-      setMasterAmount('')
-      setAmexAmount('')
-      setQrAmount('')
+      setVisaAmount(0)
+      setMasterAmount(0)
+      setAmexAmount(0)
+      setQrAmount(0)
       setNotes('')
       setAddToSafe(false)
-      
+
       setSuccess('POS batch created successfully!')
-      
+
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000)
 
@@ -430,8 +430,8 @@ export default function POSBatchesPage() {
                     id={scheme.key}
                     value={
                       scheme.key === 'visa' ? visaAmount :
-                      scheme.key === 'mastercard' ? masterAmount :
-                      scheme.key === 'amex' ? amexAmount : qrAmount
+                        scheme.key === 'mastercard' ? masterAmount :
+                          scheme.key === 'amex' ? amexAmount : qrAmount
                     }
                     onChange={(value) => {
                       if (scheme.key === 'visa') setVisaAmount(value)
@@ -461,7 +461,7 @@ export default function POSBatchesPage() {
 
           {/* Safe Integration */}
           {totalAmount > 0 && (
-            <FormCard className="p-4">
+            <FormCard title="Safe Integration" className="p-4">
               <div className="flex items-center gap-3">
                 <Checkbox
                   id="addToSafeBatch"

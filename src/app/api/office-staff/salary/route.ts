@@ -28,14 +28,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const stationId = searchParams.get('stationId')
     const month = searchParams.get('month') // Format: YYYY-MM
-    
+
     if (!stationId) {
       return NextResponse.json(
         { error: 'Station ID is required' },
         { status: 400 }
       )
     }
-    
+
     if (!month) {
       return NextResponse.json(
         { error: 'Month is required (format: YYYY-MM)' },
@@ -44,7 +44,28 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all active office staff for the station
-    let officeStaff: any[] = []
+    // Get all active office staff for the station
+    // Define types consistent with Prisma models
+    // Since we're not importing the full Prisma client types, we define compatible interfaces or use 'any' with care
+    // Ideally we should import from @prisma/client but let's try to infer or use simple any if imports are hard
+    // But since the goal is to Remove any... let's try to use proper typing if possible or acceptable replacement
+    // We can use typeof result inference? No, we initialize with [].
+
+    // Let's use basic interfaces for what we need
+    interface OfficeStaff {
+      id: string;
+      name: string;
+      role: string;
+      employeeId: string | null;
+      baseSalary: number | null;
+      specialAllowance: number | null;
+      otherAllowances: number | null;
+      medicalAllowance: number | null;
+      holidayAllowance: number | null;
+      fuelAllowance: number | null;
+    }
+
+    let officeStaff: OfficeStaff[] = []
     try {
       officeStaff = await prisma.officeStaff.findMany({
         where: {
@@ -66,10 +87,14 @@ export async function GET(request: NextRequest) {
     const [year, monthNum] = month.split('-').map(Number)
     const monthStartDate = new Date(year, monthNum - 1, 1)
     const monthEndDate = new Date(year, monthNum, 0, 23, 59, 59, 999) // Last day of the month
-    
+
     // Get loan records for office staff (we'll use external loans or create office staff loans later)
     // For now, we'll check external loans by matching names
-    let externalLoans: any[] = []
+    interface ExternalLoan {
+      amount: number;
+      borrowerName: string;
+    }
+    let externalLoans: ExternalLoan[] = []
     try {
       externalLoans = await prisma.loanExternal.findMany({
         where: {
@@ -87,8 +112,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch all advance expenses once for the month
-    
-    let advanceExpenses: any[] = []
+
+    interface Expense {
+      amount: number;
+      description: string | null;
+      paidBy: string | null;
+    }
+    let advanceExpenses: Expense[] = []
     try {
       advanceExpenses = await prisma.expense.findMany({
         where: {
@@ -118,21 +148,21 @@ export async function GET(request: NextRequest) {
       const holidayAllowance = staff.holidayAllowance || 0
       // Fuel allowance only for managers
       const fuelAllowance = (staff.role === 'MANAGER') ? (staff.fuelAllowance || 0) : 0
-      
+
       const totalAllowances = specialAllowance + otherAllowances + medicalAllowance + holidayAllowance + fuelAllowance
-      
+
       // Calculate gross salary: baseSalary + all allowances
       const grossSalary = baseSalary + totalAllowances
-      
+
       // Calculate advances from expenses (match by staff name in description or paidBy field)
-      const staffAdvances = advanceExpenses.filter(expense => 
+      const staffAdvances = advanceExpenses.filter(expense =>
         expense.description?.toLowerCase().includes(staff.name.toLowerCase()) ||
         expense.paidBy?.toLowerCase().includes(staff.name.toLowerCase())
       )
       const advances = staffAdvances.reduce((sum, expense) => sum + (expense.amount || 0), 0)
 
       // Calculate loans (matching by name from external loans)
-      const staffLoans = externalLoans.filter(loan => 
+      const staffLoans = externalLoans.filter(loan =>
         loan.borrowerName.toLowerCase().trim() === staff.name.toLowerCase().trim()
       )
       const loans = staffLoans.reduce((sum, loan) => sum + (loan.amount || 0), 0)
@@ -149,7 +179,7 @@ export async function GET(request: NextRequest) {
 
       // Calculate EPF: 8% of gross salary
       const epf = Math.round(grossSalary * 0.08 * 100) / 100
-      
+
       // Total deductions: advances + loans + absent deduction + EPF
       const totalDeductions = advances + loans + absentDeduction + epf
 
@@ -188,9 +218,9 @@ export async function GET(request: NextRequest) {
     console.error('Error calculating office staff salary:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     console.error('Error details:', errorMessage)
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Internal server error',
-      details: errorMessage 
+      details: errorMessage
     }, { status: 500 })
   }
 }

@@ -16,12 +16,12 @@ import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { 
-  Users, 
-  TrendingUp, 
-  AlertTriangle, 
-  AlertCircle, 
-  CheckCircle, 
+import {
+  Users,
+  TrendingUp,
+  AlertTriangle,
+  AlertCircle,
+  CheckCircle,
   Building2,
   DollarSign,
   Clock,
@@ -77,7 +77,7 @@ export default function CreditAgingPage() {
   const [error, setError] = useState('')
 
   // Form state
-  const { selectedStation } = useStation()
+  const { selectedStation, setSelectedStation } = useStation()
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0])
 
   // Load initial data
@@ -102,16 +102,16 @@ export default function CreditAgingPage() {
     try {
       // Call real API endpoint for aging data
       const station = selectedStation === 'all' ? null : stations.find(s => s.id === selectedStation)
-      
-      const url = station 
+
+      const url = station
         ? `/api/credit/aging?stationId=${station.id}`
         : '/api/credit/aging'
-      
+
       const response = await fetch(url)
       if (!response.ok) {
         throw new Error('Failed to fetch aging data')
       }
-      
+
       const agingCustomers: CustomerAging[] = await response.json()
 
       setAgingData(agingCustomers)
@@ -254,11 +254,10 @@ export default function CreditAgingPage() {
         return (
           <div className="flex items-center gap-1">
             <Clock className="h-4 w-4 text-muted-foreground" />
-            <span className={`font-semibold ${
-              days > 90 ? 'text-red-600 dark:text-red-400' : 
-              days > 60 ? 'text-orange-600 dark:text-orange-400' : 
-              days > 30 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'
-            }`}>
+            <span className={`font-semibold ${days > 90 ? 'text-red-600 dark:text-red-400' :
+                days > 60 ? 'text-orange-600 dark:text-orange-400' :
+                  days > 30 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'
+              }`}>
               {days} days
             </span>
           </div>
@@ -495,17 +494,17 @@ export default function CreditAgingPage() {
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      <strong>Critical:</strong> {summary.riskDistribution.critical} customers have overdue amounts over 90 days. 
+                      <strong>Critical:</strong> {summary.riskDistribution.critical} customers have overdue amounts over 90 days.
                       Immediate collection action required.
                     </AlertDescription>
                   </Alert>
                 )}
-                
+
                 {summary.riskDistribution.high > 0 && (
                   <Alert>
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
-                      <strong>High Risk:</strong> {summary.riskDistribution.high} customers require close monitoring. 
+                      <strong>High Risk:</strong> {summary.riskDistribution.high} customers require close monitoring.
                       Consider payment plans or credit limit reviews.
                     </AlertDescription>
                   </Alert>
@@ -515,7 +514,7 @@ export default function CreditAgingPage() {
                   <Alert>
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
-                      <strong>Collection Focus:</strong> Over 10% of outstanding debt is 90+ days old. 
+                      <strong>Collection Focus:</strong> Over 10% of outstanding debt is 90+ days old.
                       Review collection procedures and consider debt recovery actions.
                     </AlertDescription>
                   </Alert>

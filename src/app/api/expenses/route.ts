@@ -13,9 +13,21 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category')
 
     if (id) {
+      // OPTIMIZED: Use select
       const expense = await prisma.expense.findUnique({
         where: { id },
-        include: {
+        select: {
+          id: true,
+          stationId: true,
+          category: true,
+          description: true,
+          amount: true,
+          fromSafe: true,
+          paidBy: true,
+          proof: true,
+          expenseDate: true,
+          createdAt: true,
+          updatedAt: true,
           station: {
             select: {
               id: true,
@@ -24,14 +36,22 @@ export async function GET(request: NextRequest) {
           }
         }
       })
-      
+
       if (!expense) {
         return NextResponse.json({ error: 'Expense not found' }, { status: 404 })
       }
       return NextResponse.json(expense)
     }
 
-    const where: any = {}
+    interface ExpenseWhereInput {
+      stationId?: string
+      category?: string
+      expenseDate?: {
+        gte: Date
+        lte: Date
+      }
+    }
+    const where: ExpenseWhereInput = {}
     if (stationId) {
       where.stationId = stationId
     }
@@ -45,9 +65,20 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // OPTIMIZED: Use select for list
     const expenses = await prisma.expense.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        stationId: true,
+        category: true,
+        description: true,
+        amount: true,
+        fromSafe: true,
+        paidBy: true,
+        proof: true,
+        expenseDate: true,
+        createdAt: true,
         station: {
           select: {
             id: true,
@@ -67,48 +98,55 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    
+    interface ExpenseBody {
+      stationId?: string
+      category?: string
+      description?: string
+      amount?: string | number
+      fromSafe?: boolean
+      paidBy?: string
+      proof?: string
+      expenseDate?: string | Date
+    }
+    const body = await request.json() as ExpenseBody
+
     const { stationId, category, description, amount, fromSafe, paidBy, proof, expenseDate } = body
-    
+
     // Validate required fields
     const errors: string[] = []
     if (validateRequired(stationId, 'Station ID')) errors.push(validateRequired(stationId, 'Station ID')!)
     if (validateRequired(category, 'Category')) errors.push(validateRequired(category, 'Category')!)
     if (validateRequired(description, 'Description')) errors.push(validateRequired(description, 'Description')!)
     if (validateRequired(paidBy, 'Paid by')) errors.push(validateRequired(paidBy, 'Paid by')!)
-    if (validateDate(expenseDate, 'Expense date')) errors.push(validateDate(expenseDate, 'Expense date')!)
-    
+    if (validateDate(String(expenseDate), 'Expense date')) errors.push(validateDate(String(expenseDate), 'Expense date')!)
+
     // Validate amount
     const amountError = validateAmount(amount, 'Amount')
     if (amountError) errors.push(amountError)
-    
+
     if (errors.length > 0) {
       return NextResponse.json(
         { error: errors.join(', ') },
         { status: 400 }
       )
     }
-    
+
     const validatedAmount = safeParseFloat(amount)
 
     const newExpense = await prisma.expense.create({
       data: {
-        stationId,
-        category,
-        description,
+        stationId: stationId!,
+        category: category!,
+        description: description!,
         amount: validatedAmount,
         fromSafe: fromSafe || false,
-        paidBy,
+        paidBy: paidBy!,
         proof: proof || null,
-        expenseDate: new Date(expenseDate)
+        expenseDate: new Date(expenseDate!)
       },
       include: {
         station: {
-          select: {
-            id: true,
-            name: true
-          }
+          select: { id: true, name: true }
         }
       }
     })
@@ -124,7 +162,7 @@ export async function POST(request: NextRequest) {
         if (!safe) {
           safe = await prisma.safe.create({
             data: {
-              stationId,
+              stationId: stationId!,
               openingBalance: 0,
               currentBalance: 0
             }
@@ -132,9 +170,9 @@ export async function POST(request: NextRequest) {
         }
 
         // Calculate balance before transaction chronologically
-        const expenseTimestamp = new Date(expenseDate)
+        const expenseTimestamp = new Date(expenseDate!)
         const allTransactions = await prisma.safeTransaction.findMany({
-          where: { 
+          where: {
             safeId: safe.id,
             timestamp: { lte: expenseTimestamp }
           },
@@ -171,8 +209,8 @@ export async function POST(request: NextRequest) {
             balanceAfter,
             expenseId: newExpense.id,
             description: `Expense: ${category} - ${description}`,
-            performedBy: paidBy,
-            timestamp: new Date(expenseDate)
+            performedBy: paidBy!,
+            timestamp: new Date(expenseDate!)
           }
         })
 
@@ -188,12 +226,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Log the expense creation
-    await auditOperations.expenseRecorded(request, newExpense.id, newExpense.amount, category, stationId)
+    await auditOperations.expenseRecorded(request, newExpense.id, newExpense.amount, category!, stationId!)
 
     return NextResponse.json(newExpense, { status: 201 })
   } catch (error) {
     console.error('Error creating expense:', error)
-    
+
     // Handle foreign key constraint violations
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
       return NextResponse.json(
@@ -201,7 +239,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

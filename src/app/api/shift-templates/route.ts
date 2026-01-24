@@ -20,14 +20,18 @@ export async function GET(request: NextRequest) {
           }
         }
       })
-      
+
       if (!template) {
         return NextResponse.json({ error: 'Shift template not found' }, { status: 404 })
       }
       return NextResponse.json(template)
     }
 
-    const where: any = {}
+    interface ShiftTemplateWhereInput {
+      isActive?: boolean
+      stationId?: string
+    }
+    const where: ShiftTemplateWhereInput = {}
     if (active === 'true') {
       where.isActive = true
     }
@@ -59,10 +63,21 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    
-    const { stationId, name, startTime, endTime } = body
-    
+    interface ShiftTemplateBody {
+      stationId?: string
+      name?: string
+      startTime?: string
+      endTime?: string
+      breakDuration?: number
+      breakStartTime?: string
+      description?: string
+      icon?: string
+      status?: string
+    }
+    const body = await request.json() as ShiftTemplateBody
+
+    const { stationId, name, startTime, endTime, breakDuration, breakStartTime, description, icon, status } = body
+
     if (!stationId || !name || !startTime || !endTime) {
       return NextResponse.json(
         { error: 'Station ID, name, start time, and end time are required' },
@@ -76,7 +91,11 @@ export async function POST(request: NextRequest) {
         name,
         startTime,
         endTime,
-        isActive: true
+        breakDuration: breakDuration || 0,
+        breakStartTime: breakStartTime || null,
+        description: description || null,
+        icon: icon || 'sun',
+        isActive: status === 'active'
       },
       include: {
         station: {
@@ -91,7 +110,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newTemplate, { status: 201 })
   } catch (error) {
     console.error('Error creating shift template:', error)
-    
+
     // Handle foreign key constraint violations
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
       return NextResponse.json(
@@ -99,7 +118,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

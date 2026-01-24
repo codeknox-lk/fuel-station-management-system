@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { 
-  Clock, 
-  Users, 
+import {
+  Clock,
+  Users,
   DollarSign,
   ArrowLeft,
   ShoppingCart,
@@ -98,6 +98,7 @@ interface SafeTransaction {
       masterAmount: number
       amexAmount: number
       qrAmount: number
+      dialogTouchAmount?: number
     }>
   }
   cheque?: {
@@ -124,7 +125,7 @@ export default function TransactionDetailsPage() {
   const router = useRouter()
   // Extract id immediately using useMemo to avoid Next.js 15 enumeration issues
   const transactionId = useMemo(() => (params?.id as string) || '', [params])
-  
+
   const [transaction, setTransaction] = useState<SafeTransaction | null>(null)
   const [relatedTransactions, setRelatedTransactions] = useState<SafeTransaction[]>([])
   const [loading, setLoading] = useState(true)
@@ -134,21 +135,21 @@ export default function TransactionDetailsPage() {
     const fetchTransaction = async () => {
       try {
         setLoading(true)
-        
+
         // Fetch transaction details
         const response = await fetch(`/api/safe/transactions?id=${transactionId}`)
         if (!response.ok) {
           throw new Error('Failed to load transaction')
         }
-        
+
         const transactions = await response.json()
         if (!transactions || transactions.length === 0) {
           throw new Error('Transaction not found')
         }
-        
+
         const currentTransaction = transactions[0]
         setTransaction(currentTransaction)
-        
+
         // If this transaction is part of a shift closure, fetch all related transactions
         if (currentTransaction.shiftId) {
           try {
@@ -157,7 +158,7 @@ export default function TransactionDetailsPage() {
             if (relatedResponse.ok) {
               const allShiftTransactions = await relatedResponse.json()
               // Exclude the current transaction from the list
-              const related = allShiftTransactions.filter((tx: SafeTransaction) => 
+              const related = allShiftTransactions.filter((tx: SafeTransaction) =>
                 tx.id !== currentTransaction.id
               )
               setRelatedTransactions(related)
@@ -173,7 +174,7 @@ export default function TransactionDetailsPage() {
         setLoading(false)
       }
     }
-    
+
     if (transactionId) {
       fetchTransaction()
     }
@@ -228,7 +229,7 @@ export default function TransactionDetailsPage() {
           </Button>
           <h1 className="text-3xl font-bold text-foreground">Transaction Details</h1>
         </div>
-        
+
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error || 'Transaction not found'}</AlertDescription>
@@ -239,9 +240,48 @@ export default function TransactionDetailsPage() {
 
   // For shift closures, show a completely redesigned layout
   if (transaction.shiftId && transaction.shift) {
-    const declaredAmounts = transaction.shift.declaredAmounts as any
+    interface BreakdownExpense {
+      type: string
+      amount: number
+      description?: string
+      bankName?: string
+      loanGivenToName?: string
+    }
+
+    interface BreakdownCheque {
+      chequeNumber: string
+      amount: number
+      receivedFrom: string
+      bankName?: string
+    }
+
+    interface PumperBreakdown {
+      pumperName: string
+      calculatedSales: number
+      declaredCash: number
+      declaredAmount: number
+      variance: number
+      varianceStatus: 'ADD_TO_SALARY' | 'DEDUCT_FROM_SALARY' | 'NORMAL'
+      declaredCardAmounts: Record<string, number>
+      declaredCreditAmounts: Record<string, number>
+      declaredCardAmountsWithNames?: Record<string, { terminalName: string }>
+      declaredCreditAmountsWithNames?: Record<string, { customerName: string }>
+      cheques: BreakdownCheque[]
+      expenses: BreakdownExpense[]
+      advanceTaken: number
+    }
+
+    interface DeclaredAmounts {
+      cash: number
+      card: number
+      credit: number
+      cheque: number
+      pumperBreakdown: PumperBreakdown[]
+    }
+
+    const declaredAmounts = transaction.shift.declaredAmounts as unknown as DeclaredAmounts
     const pumperBreakdowns = declaredAmounts?.pumperBreakdown || []
-    
+
     // Calculate totals
     let totalCash = 0
     let totalCard = 0
@@ -250,26 +290,26 @@ export default function TransactionDetailsPage() {
     let totalCalculatedSales = 0
     let totalDeclared = 0
     let totalVariance = 0
-    
+
     if (declaredAmounts) {
       totalCash = declaredAmounts.cash || 0
       totalCard = declaredAmounts.card || 0
       totalCredit = declaredAmounts.credit || 0
       totalCheque = declaredAmounts.cheque || 0
     }
-    
-    pumperBreakdowns.forEach((bd: any) => {
+
+    pumperBreakdowns.forEach((bd) => {
       totalCalculatedSales += bd.calculatedSales || 0
       totalDeclared += bd.declaredAmount || 0
       totalVariance += bd.variance || 0
     })
-    
+
     const shiftName = transaction.shift.template?.name || 'Shift'
     const pumpers = transaction.shift.assignments
       ?.map(a => a.pumper?.name || a.pumperName)
       .filter((name, index, arr) => name && arr.indexOf(name) === index)
       .join(', ') || 'Unknown'
-    
+
     return (
       <div className="space-y-6 p-6">
         {/* Header */}
@@ -360,7 +400,7 @@ export default function TransactionDetailsPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center justify-between p-4 bg-primary/10 dark:bg-primary/20 border-2 border-primary/30 rounded-lg">
               <span className="text-lg font-bold">Total Added to Safe:</span>
               <span className="font-mono text-2xl font-bold text-primary">
@@ -381,14 +421,14 @@ export default function TransactionDetailsPage() {
               <CardDescription>Detailed breakdown of sales and collections by each pumper</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {pumperBreakdowns.map((breakdown: any, idx: number) => {
-                const totalCard = Object.values(breakdown.declaredCardAmounts || {}).reduce((sum: number, amt: any) => sum + (amt || 0), 0)
-                const totalCredit = Object.values(breakdown.declaredCreditAmounts || {}).reduce((sum: number, amt: any) => sum + (amt || 0), 0)
-                const totalCheques = (breakdown.cheques || []).reduce((sum: number, chq: any) => sum + (chq.amount || 0), 0)
-                const bankDeposits = (breakdown.expenses || []).filter((exp: any) => exp.type === 'BANK_DEPOSIT')
-                const loans = (breakdown.expenses || []).filter((exp: any) => exp.type === 'LOAN_GIVEN')
-                const otherExpenses = (breakdown.expenses || []).filter((exp: any) => exp.type !== 'BANK_DEPOSIT' && exp.type !== 'LOAN_GIVEN')
-                
+              {pumperBreakdowns.map((breakdown, idx) => {
+                const totalCard = Object.values(breakdown.declaredCardAmounts || {}).reduce((sum: number, amt) => sum + (amt || 0), 0)
+                const totalCredit = Object.values(breakdown.declaredCreditAmounts || {}).reduce((sum: number, amt) => sum + (amt || 0), 0)
+                const totalCheques = (breakdown.cheques || []).reduce((sum, chq) => sum + (chq.amount || 0), 0)
+                const bankDeposits = (breakdown.expenses || []).filter(exp => exp.type === 'BANK_DEPOSIT')
+                const loans = (breakdown.expenses || []).filter(exp => exp.type === 'LOAN_GIVEN')
+                const otherExpenses = (breakdown.expenses || []).filter(exp => exp.type !== 'BANK_DEPOSIT' && exp.type !== 'LOAN_GIVEN')
+
                 return (
                   <div key={idx} className="border rounded-lg p-5 space-y-4 bg-card">
                     {/* Pumper Header */}
@@ -398,9 +438,9 @@ export default function TransactionDetailsPage() {
                         <p className="text-xs text-muted-foreground mt-1">Pumper Performance Summary</p>
                       </div>
                       <Badge variant={breakdown.varianceStatus === 'ADD_TO_SALARY' ? 'default' : breakdown.varianceStatus === 'DEDUCT_FROM_SALARY' ? 'destructive' : 'outline'}>
-                        {breakdown.varianceStatus === 'ADD_TO_SALARY' ? 'Add to Salary' : 
-                         breakdown.varianceStatus === 'DEDUCT_FROM_SALARY' ? 'Deduct from Salary' : 
-                         'Normal'}
+                        {breakdown.varianceStatus === 'ADD_TO_SALARY' ? 'Add to Salary' :
+                          breakdown.varianceStatus === 'DEDUCT_FROM_SALARY' ? 'Deduct from Salary' :
+                            'Normal'}
                       </Badge>
                     </div>
 
@@ -409,7 +449,7 @@ export default function TransactionDetailsPage() {
                       {/* Left Column - Sales */}
                       <div className="space-y-3">
                         <div className="text-sm font-semibold text-muted-foreground uppercase border-b pb-2">Sales</div>
-                        
+
                         <div className="space-y-2">
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-muted-foreground">Calculated Sales (from meters):</span>
@@ -421,7 +461,7 @@ export default function TransactionDetailsPage() {
                       {/* Right Column - Collections */}
                       <div className="space-y-3">
                         <div className="text-sm font-semibold text-muted-foreground uppercase border-b pb-2">Money Collected</div>
-                        
+
                         <div className="space-y-2">
                           {breakdown.declaredCash > 0 && (
                             <div className="flex justify-between items-center">
@@ -431,7 +471,7 @@ export default function TransactionDetailsPage() {
                               </span>
                             </div>
                           )}
-                          
+
                           {totalCard > 0 && (
                             <div className="flex justify-between items-center">
                               <span className="text-sm text-muted-foreground">Card (POS):</span>
@@ -440,7 +480,7 @@ export default function TransactionDetailsPage() {
                               </span>
                             </div>
                           )}
-                          
+
                           {totalCredit > 0 && (
                             <div className="flex justify-between items-center">
                               <span className="text-sm text-muted-foreground">Credit:</span>
@@ -449,7 +489,7 @@ export default function TransactionDetailsPage() {
                               </span>
                             </div>
                           )}
-                          
+
                           {totalCheques > 0 && (
                             <div className="flex justify-between items-center">
                               <span className="text-sm text-muted-foreground">Cheques:</span>
@@ -467,8 +507,8 @@ export default function TransactionDetailsPage() {
                       <div className="border-t pt-3 space-y-2">
                         <div className="text-sm font-semibold text-muted-foreground">Card Payments by Terminal</div>
                         <div className="bg-muted/50 rounded p-3 space-y-1">
-                          {Object.entries(breakdown.declaredCardAmounts || {}).map(([terminalId, amount]: [string, any]) => {
-                            const terminalInfo = (breakdown.declaredCardAmountsWithNames as any)?.[terminalId]
+                          {Object.entries(breakdown.declaredCardAmounts || {}).map(([terminalId, amount]) => {
+                            const terminalInfo = breakdown.declaredCardAmountsWithNames?.[terminalId]
                             const terminalName = terminalInfo?.terminalName || `Terminal ${terminalId}`
                             return (
                               <div key={terminalId} className="flex justify-between text-sm">
@@ -486,8 +526,8 @@ export default function TransactionDetailsPage() {
                       <div className="border-t pt-3 space-y-2">
                         <div className="text-sm font-semibold text-muted-foreground">Credit Sales by Customer</div>
                         <div className="bg-muted/50 rounded p-3 space-y-1">
-                          {Object.entries(breakdown.declaredCreditAmounts || {}).map(([customerId, amount]: [string, any]) => {
-                            const customerInfo = (breakdown.declaredCreditAmountsWithNames as any)?.[customerId]
+                          {Object.entries(breakdown.declaredCreditAmounts || {}).map(([customerId, amount]) => {
+                            const customerInfo = breakdown.declaredCreditAmountsWithNames?.[customerId]
                             const customerName = customerInfo?.customerName || `Customer ${customerId}`
                             return (
                               <div key={customerId} className="flex justify-between text-sm">
@@ -505,7 +545,7 @@ export default function TransactionDetailsPage() {
                       <div className="border-t pt-3 space-y-2">
                         <div className="text-sm font-semibold text-muted-foreground">Cheques Received</div>
                         <div className="bg-muted/50 rounded p-3 space-y-1">
-                          {breakdown.cheques.map((cheque: any, chqIdx: number) => (
+                          {breakdown.cheques.map((cheque, chqIdx) => (
                             <div key={chqIdx} className="flex justify-between text-sm">
                               <span className="text-muted-foreground">
                                 Cheque #{cheque.chequeNumber} from {cheque.receivedFrom}{cheque.bankName ? ` (${cheque.bankName})` : ''}:
@@ -530,8 +570,8 @@ export default function TransactionDetailsPage() {
                               </span>
                             </div>
                           )}
-                          
-                          {loans.map((loan: any, loanIdx: number) => (
+
+                          {loans.map((loan, loanIdx) => (
                             <div key={loanIdx} className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Loan to {loan.loanGivenToName || 'Pumper'}:</span>
                               <span className="font-mono text-orange-600 dark:text-orange-400">
@@ -539,8 +579,8 @@ export default function TransactionDetailsPage() {
                               </span>
                             </div>
                           ))}
-                          
-                          {otherExpenses.map((expense: any, expIdx: number) => (
+
+                          {otherExpenses.map((expense, expIdx) => (
                             <div key={expIdx} className="flex justify-between text-sm">
                               <span className="text-muted-foreground">{expense.description || 'Other Expense'}:</span>
                               <span className="font-mono text-orange-600 dark:text-orange-400">
@@ -557,7 +597,7 @@ export default function TransactionDetailsPage() {
                       <div className="border-t pt-3 space-y-2">
                         <div className="text-sm font-semibold text-muted-foreground text-blue-600 dark:text-blue-400">Bank Deposits</div>
                         <div className="bg-blue-500/10 dark:bg-blue-500/20 rounded p-3 space-y-1">
-                          {bankDeposits.map((deposit: any, depIdx: number) => (
+                          {bankDeposits.map((deposit, depIdx) => (
                             <div key={depIdx} className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Bank Deposit ({deposit.bankName || 'Bank'}):</span>
                               <span className="font-mono text-blue-600 dark:text-blue-400">
@@ -577,11 +617,10 @@ export default function TransactionDetailsPage() {
                           Rs. {breakdown.declaredAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                         <div className="font-semibold">Variance:</div>
-                        <div className={`font-mono text-right font-semibold ${
-                          breakdown.variance > 20 ? 'text-red-600 dark:text-red-400' : 
-                          breakdown.variance < -20 ? 'text-green-600 dark:text-green-400' : 
-                          'text-foreground'
-                        }`}>
+                        <div className={`font-mono text-right font-semibold ${breakdown.variance > 20 ? 'text-red-600 dark:text-red-400' :
+                          breakdown.variance < -20 ? 'text-green-600 dark:text-green-400' :
+                            'text-foreground'
+                          }`}>
                           {breakdown.variance >= 0 ? '+' : ''}Rs. {breakdown.variance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </div>
@@ -598,38 +637,37 @@ export default function TransactionDetailsPage() {
                   <div className="font-mono text-right font-semibold">
                     Rs. {totalCalculatedSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
-                  
+
                   <div className="font-semibold">Total Cash Collected:</div>
                   <div className="font-mono text-right text-green-600 dark:text-green-400">
                     Rs. {totalCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
-                  
+
                   <div className="font-semibold">Total Card Collected:</div>
                   <div className="font-mono text-right text-blue-600 dark:text-blue-400">
                     Rs. {totalCard.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
-                  
+
                   <div className="font-semibold">Total Credit:</div>
                   <div className="font-mono text-right text-purple-600 dark:text-purple-400">
                     Rs. {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
-                  
+
                   <div className="font-semibold">Total Cheques:</div>
                   <div className="font-mono text-right text-orange-600 dark:text-orange-400">
                     Rs. {totalCheque.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
-                  
+
                   <div className="font-bold text-base pt-2 border-t">Total Declared:</div>
                   <div className="font-mono text-right font-bold text-base pt-2 border-t">
                     Rs. {totalDeclared.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
-                  
+
                   <div className="font-bold text-base">Total Variance:</div>
-                  <div className={`font-mono text-right font-bold text-base ${
-                    totalVariance > 20 ? 'text-red-600 dark:text-red-400' : 
-                    totalVariance < -20 ? 'text-green-600 dark:text-green-400' : 
-                    'text-foreground'
-                  }`}>
+                  <div className={`font-mono text-right font-bold text-base ${totalVariance > 20 ? 'text-red-600 dark:text-red-400' :
+                    totalVariance < -20 ? 'text-green-600 dark:text-green-400' :
+                      'text-foreground'
+                    }`}>
                     {totalVariance >= 0 ? '+' : ''}Rs. {totalVariance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
@@ -662,11 +700,11 @@ export default function TransactionDetailsPage() {
                               {idx + 1}. {entry.terminal.name} ({entry.terminal.terminalNumber})
                               {entry.terminal.bank && ` • ${entry.terminal.bank.name}`}
                             </div>
-                            
+
                             <div className="grid grid-cols-2 gap-2 text-xs">
                               <div className="text-muted-foreground">Slip Numbers:</div>
                               <div className="font-mono text-right">{entry.startNumber} - {entry.endNumber}</div>
-                              
+
                               <div className="text-muted-foreground">Transaction Count:</div>
                               <div className="font-mono text-right">{entry.transactionCount}</div>
                             </div>
@@ -698,7 +736,7 @@ export default function TransactionDetailsPage() {
                                 </div>
                               )}
                             </div>
-                            
+
                             <div className="flex justify-between text-sm font-semibold pt-2 border-t">
                               <span>Terminal Total:</span>
                               <span className="font-mono">Rs. {terminalTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -841,11 +879,11 @@ export default function TransactionDetailsPage() {
                           {idx + 1}. {entry.terminal.name} ({entry.terminal.terminalNumber})
                           {entry.terminal.bank && ` • ${entry.terminal.bank.name}`}
                         </div>
-                        
+
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div className="text-muted-foreground">Slip Numbers:</div>
                           <div className="font-mono text-right">{entry.startNumber} - {entry.endNumber}</div>
-                          
+
                           <div className="text-muted-foreground">Transaction Count:</div>
                           <div className="font-mono text-right">{entry.transactionCount}</div>
                         </div>
@@ -876,14 +914,14 @@ export default function TransactionDetailsPage() {
                               <span className="font-mono">Rs. {entry.qrAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                           )}
-                          {entry.dialogTouchAmount > 0 && (
+                          {(entry.dialogTouchAmount || 0) > 0 && (
                             <div className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Dialog Touch:</span>
-                              <span className="font-mono">Rs. {entry.dialogTouchAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="font-mono">Rs. {(entry.dialogTouchAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                           )}
                         </div>
-                        
+
                         <div className="flex justify-between text-sm font-semibold pt-2 border-t">
                           <span>Terminal Total:</span>
                           <span className="font-mono">Rs. {terminalTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>

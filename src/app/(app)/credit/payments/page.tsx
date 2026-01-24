@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStation } from '@/contexts/StationContext'
+import { useToast } from '@/hooks/use-toast'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -26,16 +27,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { 
-  Users, 
-  DollarSign, 
-  Calendar, 
+import {
+  Users,
+  DollarSign,
+  Calendar,
   CreditCard,
   Banknote,
   Building,
   FileText,
-  AlertCircle, 
-  CheckCircle, 
+  AlertCircle,
+  CheckCircle,
   Plus,
   Clock,
   Eye
@@ -99,8 +100,7 @@ export default function CreditPaymentsPage() {
   const [banks, setBanks] = useState<Bank[]>([])
   const [recentPayments, setRecentPayments] = useState<CreditPayment[]>([])
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const { toast } = useToast()
 
   // Payment details modal
   const [selectedPayment, setSelectedPayment] = useState<CreditPayment | null>(null)
@@ -137,7 +137,11 @@ export default function CreditPaymentsPage() {
         setRecentPayments(paymentsData)
         setBanks(Array.isArray(banksData) ? banksData : [])
       } catch (err) {
-        setError('Failed to load initial data')
+        toast({
+          title: "Error",
+          description: "Failed to load initial data",
+          variant: "destructive"
+        })
       }
     }
 
@@ -146,39 +150,57 @@ export default function CreditPaymentsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!selectedCustomer) {
-      setError('Please select a customer')
+      toast({
+        title: "Error",
+        description: "Please select a customer",
+        variant: "destructive"
+      })
       return
     }
 
     if (amount <= 0) {
-      setError('Amount must be greater than 0')
+      toast({
+        title: "Error",
+        description: "Amount must be greater than 0",
+        variant: "destructive"
+      })
       return
     }
 
     // Check if customer has outstanding balance
     const customer = customers.find(c => c.id === selectedCustomer)
     if (customer && amount > customer.currentBalance) {
-      setError(`Payment amount exceeds outstanding balance of Rs. ${customer.currentBalance.toLocaleString()}`)
+      toast({
+        title: "Error",
+        description: `Payment amount exceeds outstanding balance of Rs. ${customer.currentBalance.toLocaleString()}`,
+        variant: "destructive"
+      })
       return
     }
 
     // Validate cheque number for cheque payments
     if (paymentMethod === 'CHEQUE' && !chequeNumber) {
-      setError('Cheque number is required for cheque payments')
+      toast({
+        title: "Error",
+        description: "Cheque number is required for cheque payments",
+        variant: "destructive"
+      })
       return
     }
 
     // Validate reference number for bank transfer
     if (paymentMethod === 'BANK_TRANSFER' && !referenceNumber) {
-      setError('Reference number is required for bank transfers')
+      toast({
+        title: "Error",
+        description: "Reference number is required for bank transfers",
+        variant: "destructive"
+      })
       return
     }
 
     setLoading(true)
-    setError('')
-    setSuccess('')
 
     try {
       const response = await fetch('/api/credit/payments', {
@@ -198,29 +220,29 @@ export default function CreditPaymentsPage() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        const errorMsg = errorData.details 
-          ? `${errorData.error}: ${errorData.details}` 
+        const errorMsg = errorData.details
+          ? `${errorData.error}: ${errorData.details}`
           : (errorData.error || 'Failed to record payment')
         console.error('Payment API Error:', errorData)
         throw new Error(errorMsg)
       }
 
       const newPayment = await response.json()
-      
+
       // Add to recent payments list
       setRecentPayments(prev => [newPayment, ...prev.slice(0, 9)])
-      
+
       // Update customer balance
-      setCustomers(prev => prev.map(c => 
-        c.id === selectedCustomer 
-          ? { 
-              ...c, 
-              currentBalance: c.currentBalance - amount, 
-              availableCredit: c.availableCredit + amount 
-            }
+      setCustomers(prev => prev.map(c =>
+        c.id === selectedCustomer
+          ? {
+            ...c,
+            currentBalance: c.currentBalance - amount,
+            availableCredit: c.availableCredit + amount
+          }
           : c
       ))
-      
+
       // Reset form
       setSelectedCustomer('')
       setAmount(0)
@@ -230,15 +252,19 @@ export default function CreditPaymentsPage() {
       setChequeNumber('')
       setSelectedBank('')
       setNotes('')
-      
-      setSuccess('Payment recorded successfully!')
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(''), 3000)
+
+      toast({
+        title: "Success",
+        description: "Payment recorded successfully!"
+      })
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to record payment')
       console.error('Payment error:', err)
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : 'Failed to record payment',
+        variant: "destructive"
+      })
     } finally {
       setLoading(false)
     }
@@ -379,21 +405,7 @@ export default function CreditPaymentsPage() {
     <div className="space-y-6 p-6">
       <h1 className="text-3xl font-bold text-foreground">Credit Payments</h1>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {success && (
-        <Alert>
-          <CheckCircle className="h-4 w-4" />
-          <AlertTitle>Success</AlertTitle>
-          <AlertDescription>{success}</AlertDescription>
-        </Alert>
-      )}
+      <h1 className="text-3xl font-bold text-foreground">Credit Payments</h1>
 
       <FormCard title="Record New Payment">
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -455,8 +467,8 @@ export default function CreditPaymentsPage() {
 
             <div>
               <Label htmlFor="paymentMethod">Payment Method *</Label>
-              <Select 
-                value={paymentMethod} 
+              <Select
+                value={paymentMethod}
                 onValueChange={(value: 'CASH' | 'CHEQUE' | 'BANK_TRANSFER') => setPaymentMethod(value)}
                 disabled={loading}
               >
@@ -494,7 +506,7 @@ export default function CreditPaymentsPage() {
                   onChange={(e) => setReferenceNumber(e.target.value)}
                   placeholder={
                     paymentMethod === 'BANK_TRANSFER' ? 'TRF123456789' :
-                    'REF123456789'
+                      'REF123456789'
                   }
                   disabled={loading}
                   required
@@ -610,7 +622,7 @@ export default function CreditPaymentsPage() {
               Complete information about this payment transaction
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedPayment && (
             <div className="space-y-4">
               {/* Customer Info */}

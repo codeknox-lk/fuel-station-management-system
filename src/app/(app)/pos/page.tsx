@@ -7,18 +7,19 @@ import { Button } from '@/components/ui/button'
 import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { 
-  CreditCard, 
-  AlertTriangle, 
-  TrendingUp, 
-  AlertCircle, 
-  Plus, 
+import {
+  CreditCard,
+  AlertTriangle,
+  TrendingUp,
+  AlertCircle,
+  Plus,
   BarChart3,
   FileText,
   Calculator,
   DollarSign,
   Clock
 } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
 
 interface POSTerminal {
   id: string
@@ -45,6 +46,10 @@ interface RecentActivity {
   timestamp: string
 }
 
+import { PosBatchWithDetails, PosMissingSlipWithDetails } from '@/types/db'
+
+// ... existing imports
+
 export default function POSPage() {
   const router = useRouter()
   const [terminals, setTerminals] = useState<POSTerminal[]>([])
@@ -66,31 +71,56 @@ export default function POSPage() {
       ])
 
       const terminalsData = await terminalsRes.json()
-      const batchesData = await batchesRes.json()
-      const slipsData = await slipsRes.json()
+      const batchesData: PosBatchWithDetails[] = await batchesRes.json()
+      const slipsData: PosMissingSlipWithDetails[] = await slipsRes.json()
 
       // Transform terminals data and calculate today's stats
       const today = new Date()
       today.setHours(0, 0, 0, 0)
-      
-      const transformedTerminals = terminalsData.map((terminal: any) => {
+
+      const transformedTerminals = terminalsData.map((terminal: POSTerminal) => {
         // Get today's batches for this terminal
-        const todayBatches = batchesData.filter((batch: any) => 
-          batch.terminalId === terminal.id &&
+        const todayBatches = batchesData.filter((batch) =>
+          batch.terminalEntries.some(entry => entry.terminalId === terminal.id) &&
           new Date(batch.createdAt) >= today
         )
-        const todayTransactions = todayBatches.reduce((sum: number, batch: any) => sum + batch.transactionCount, 0)
-        const todayAmount = todayBatches.reduce((sum: number, batch: any) => sum + batch.totalAmount, 0)
-        
+
+        const todayTransactions = todayBatches.reduce((sum, batch) => {
+          // Only count transactions for this specific terminal in the batch
+          const terminalEntry = batch.terminalEntries.find(e => e.terminalId === terminal.id)
+          return sum + (terminalEntry?.transactionCount || 0)
+        }, 0)
+
+        // Note: Total amount might be shared across batch, but usually batch is per terminal or multi-terminal.
+        // If batch is multi-terminal, we should calculate amount for this terminal only.
+        // Checking schema: PosBatchTerminalEntry has visaAmount, masterAmount etc. but totalAmount is on Batch.
+        // Let's calculate from entries if possible, or fall back to batch total if it's 1:1.
+
+        const todayAmount = todayBatches.reduce((sum, batch) => {
+          const terminalEntry = batch.terminalEntries.find(e => e.terminalId === terminal.id)
+          if (terminalEntry) {
+            // Sum of all payment types for this entry
+            return sum +
+              (terminalEntry.visaAmount || 0) +
+              (terminalEntry.masterAmount || 0) +
+              (terminalEntry.amexAmount || 0) +
+              (terminalEntry.qrAmount || 0) +
+              (terminalEntry.dialogTouchAmount || 0)
+          }
+          return sum
+        }, 0)
+
         // Get last batch date
-        const lastBatch = batchesData.find((batch: any) => batch.terminalId === terminal.id)
-        
+        const lastBatch = batchesData.find((batch) =>
+          batch.terminalEntries.some(e => e.terminalId === terminal.id)
+        )
+
         return {
           ...terminal,
           stationName: terminal.station?.name || `Station ${terminal.stationId}`,
           todayTransactions,
           todayAmount,
-          lastBatchDate: lastBatch?.createdAt
+          lastBatchDate: lastBatch?.createdAt ? new Date(lastBatch.createdAt).toISOString() : undefined
         }
       })
 
@@ -98,21 +128,28 @@ export default function POSPage() {
 
       // Combine recent activity
       const activity: RecentActivity[] = [
-        ...batchesData.map((batch: any) => ({
-          id: `batch-${batch.id}`,
-          type: 'BATCH' as const,
-          description: `Batch ${batch.startNumber}-${batch.endNumber} created`,
-          amount: batch.totalAmount,
-          status: batch.isReconciled ? 'RECONCILED' : 'PENDING',
-          timestamp: batch.createdAt
-        })),
-        ...slipsData.map((slip: any) => ({
+        ...batchesData.map((batch) => {
+          const entryCount = batch.terminalEntries.length
+          const description = entryCount > 1
+            ? `Batch ${batch.terminalEntries[0].startNumber}... (${entryCount} terminals)`
+            : `Batch ${batch.terminalEntries[0]?.startNumber}-${batch.terminalEntries[0]?.endNumber} created`
+
+          return {
+            id: `batch-${batch.id}`,
+            type: 'BATCH' as const,
+            description,
+            amount: batch.totalAmount,
+            status: batch.isReconciled ? 'RECONCILED' : 'PENDING',
+            timestamp: batch.createdAt.toString()
+          }
+        }),
+        ...slipsData.map((slip) => ({
           id: `slip-${slip.id}`,
           type: 'MISSING_SLIP' as const,
           description: `Missing slip reported - Rs. ${slip.amount.toLocaleString()}`,
           amount: slip.amount,
           status: 'PENDING',
-          timestamp: slip.timestamp
+          timestamp: new Date(slip.timestamp).toISOString()
         }))
       ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
@@ -153,7 +190,7 @@ export default function POSPage() {
   const getStatusColor = (isActive: boolean) => {
     return isActive ? 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300' : 'bg-muted text-foreground'
   }
-  
+
   const getStatusText = (isActive: boolean) => {
     return isActive ? 'ACTIVE' : 'INACTIVE'
   }
@@ -206,7 +243,7 @@ export default function POSPage() {
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          <span className="font-mono">{(value as number)?.toLocaleString() || 0}</span>
+          <span className="">{(value as number)?.toLocaleString() || 0}</span>
         </div>
       )
     },
@@ -216,7 +253,7 @@ export default function POSPage() {
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
           <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
-          <span className="font-mono font-semibold text-green-700">
+          <span className="font-semibold text-green-700">
             Rs. {(value as number)?.toLocaleString() || 0}
           </span>
         </div>
@@ -268,7 +305,7 @@ export default function POSPage() {
       title: 'Amount',
       render: (value: unknown) => (
         value ? (
-          <span className="font-mono text-sm">
+          <span className="text-sm">
             Rs. {(value as number).toLocaleString()}
           </span>
         ) : (
@@ -299,19 +336,19 @@ export default function POSPage() {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <FormCard className="p-4">
+        <Card className="p-4">
           <h3 className="text-lg font-semibold text-foreground">Active Terminals</h3>
           <p className="text-3xl font-bold text-green-600 dark:text-green-400">
             {stats.activeTerminals}/{stats.totalTerminals}
           </p>
-        </FormCard>
-        <FormCard className="p-4">
+        </Card>
+        <Card className="p-4">
           <h3 className="text-lg font-semibold text-foreground">Today&apos;s Transactions</h3>
           <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
             {stats.totalTransactions.toLocaleString()}
           </p>
-        </FormCard>
-        <FormCard className="p-4">
+        </Card>
+        <Card className="p-4">
           <h3 className="text-lg font-semibold text-foreground">Today&apos;s Amount</h3>
           <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
             Rs. {stats.totalAmount.toLocaleString()}
@@ -319,12 +356,12 @@ export default function POSPage() {
           <p className="text-sm text-muted-foreground">
             Avg: Rs. {stats.averageTransaction.toLocaleString()}
           </p>
-        </FormCard>
-        <FormCard className="p-4">
+        </Card>
+        <Card className="p-4">
           <h3 className="text-lg font-semibold text-foreground">Pending Issues</h3>
           <p className="text-3xl font-bold text-red-600 dark:text-red-400">{stats.pendingSlips}</p>
           <p className="text-sm text-muted-foreground">Missing slips</p>
-        </FormCard>
+        </Card>
       </div>
 
       {/* Quick Actions */}

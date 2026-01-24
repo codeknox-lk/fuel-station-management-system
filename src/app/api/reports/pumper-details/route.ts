@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     // Parse dates or use defaults (current business month)
     let dateStart: Date
     let dateEnd: Date
-    
+
     if (startDate && endDate) {
       dateStart = new Date(startDate)
       dateStart.setHours(0, 0, 0, 0)
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       // Default to current business month (7th to 6th)
       const now = new Date()
       const currentDay = now.getDate()
-      
+
       if (currentDay < 7) {
         dateStart = new Date(now.getFullYear(), now.getMonth() - 1, 7, 0, 0, 0, 0)
         dateEnd = new Date(now.getFullYear(), now.getMonth(), 6, 23, 59, 59, 999)
@@ -141,15 +141,24 @@ export async function GET(request: NextRequest) {
         const shift = shiftAssignments.find(a => a.shift.id === shiftId)?.shift
         if (!shift || !shift.declaredAmounts) continue
 
-        const declaredAmounts = shift.declaredAmounts as any
+        interface PumperBreakdown {
+          pumperName: string
+          totalSales?: number
+          variance?: number
+        }
+        interface DeclaredAmounts {
+          pumperBreakdown?: PumperBreakdown[]
+        }
+
+        const declaredAmounts = shift.declaredAmounts as unknown as DeclaredAmounts
         const pumperBreakdown = declaredAmounts.pumperBreakdown || []
-        const pumperData = pumperBreakdown.find((p: any) => p.pumperName === pumper.name)
+        const pumperData = pumperBreakdown.find(p => p.pumperName === pumper.name)
 
         if (pumperData) {
           totalSales += pumperData.totalSales || 0
           const variance = pumperData.variance || 0
           totalVariance += Math.abs(variance)
-          
+
           if (Math.abs(variance) > varianceThreshold) {
             shiftsWithVariance++
           }
@@ -160,7 +169,7 @@ export async function GET(request: NextRequest) {
       for (const assignment of pumperAssignments) {
         if (assignment.status === 'CLOSED' && assignment.endMeterReading && assignment.startMeterReading) {
           let litersSold = assignment.endMeterReading - assignment.startMeterReading
-          
+
           // Handle meter rollover
           if (litersSold < 0) {
             const METER_MAX = 99999
@@ -170,7 +179,7 @@ export async function GET(request: NextRequest) {
               continue
             }
           }
-          
+
           if (litersSold > 0) {
             totalLiters += litersSold
           }
@@ -178,8 +187,8 @@ export async function GET(request: NextRequest) {
       }
 
       // Calculate variance rate
-      const varianceRate = totalShifts > 0 
-        ? (shiftsWithVariance / totalShifts) * 100 
+      const varianceRate = totalShifts > 0
+        ? (shiftsWithVariance / totalShifts) * 100
         : 0
 
       // Determine performance rating
@@ -196,7 +205,7 @@ export async function GET(request: NextRequest) {
 
       // Get loans for this pumper
       const pumperLoans = loans.filter(l => l.pumperName === pumper.name)
-      const totalLoanBalance = pumperLoans.reduce((sum, loan) => sum + loan.balance, 0)
+      const totalLoanBalance = pumperLoans.reduce((sum, loan) => sum + (loan.amount - loan.paidAmount), 0)
       const totalMonthlyRental = pumperLoans.reduce((sum, loan) => sum + (loan.monthlyRental || 0), 0)
 
       // Calculate advance limit (50,000 - monthly rental)
@@ -224,7 +233,7 @@ export async function GET(request: NextRequest) {
       const fuelTypeBreakdown = new Map<string, { liters: number, shifts: number }>()
       for (const assignment of pumperAssignments) {
         if (assignment.status !== 'CLOSED' || !assignment.endMeterReading || !assignment.startMeterReading) continue
-        
+
         let litersSold = assignment.endMeterReading - assignment.startMeterReading
         if (litersSold < 0) {
           const METER_MAX = 99999
@@ -234,9 +243,9 @@ export async function GET(request: NextRequest) {
             continue
           }
         }
-        
+
         if (litersSold > 0 && assignment.nozzle?.tank?.fuel?.name) {
-          const fuelType = assignment.nozzle.tank.fuelType
+          const fuelType = assignment.nozzle.tank.fuel.category
           if (!fuelTypeBreakdown.has(fuelType)) {
             fuelTypeBreakdown.set(fuelType, { liters: 0, shifts: 0 })
           }
@@ -256,20 +265,20 @@ export async function GET(request: NextRequest) {
         baseSalary: pumper.baseSalary || 0,
         holidayAllowance: pumper.holidayAllowance || 0,
         epfNumber: 'N/A', // Not in schema
-        
+
         // Performance metrics
         totalShifts,
         totalSales: Math.round(totalSales),
         totalLiters: Math.round(totalLiters),
         averageSalesPerShift: totalShifts > 0 ? Math.round(totalSales / totalShifts) : 0,
         averageLitersPerShift: totalShifts > 0 ? Math.round(totalLiters / totalShifts) : 0,
-        
+
         // Variance metrics
         totalVariance: Math.round(totalVariance),
         shiftsWithVariance,
         varianceRate: Math.round(varianceRate * 100) / 100,
         performanceRating,
-        
+
         // Financial data
         totalLoanBalance,
         totalMonthlyRental,
@@ -278,7 +287,7 @@ export async function GET(request: NextRequest) {
         totalSalaryPaid,
         totalAdvances,
         totalLoanDeductions,
-        
+
         // Salary payments
         recentSalaryPayments: salaryPayments.slice(0, 5).map(payment => ({
           id: payment.id,
@@ -290,17 +299,17 @@ export async function GET(request: NextRequest) {
           loans: payment.loans,
           netSalary: payment.netSalary
         })),
-        
+
         // Loans
         activeLoans: pumperLoans.map(loan => ({
           id: loan.id,
           amount: loan.amount,
-          balance: loan.balance,
+          balance: loan.amount - loan.paidAmount,
           monthlyRental: loan.monthlyRental,
           createdAt: loan.createdAt,
-          description: loan.description
+          description: loan.reason
         })),
-        
+
         // Fuel type breakdown
         fuelTypeBreakdown: Array.from(fuelTypeBreakdown.entries()).map(([fuelType, data]) => ({
           fuelType,
@@ -319,8 +328,8 @@ export async function GET(request: NextRequest) {
       totalShifts: pumperDetails.reduce((sum, p) => sum + p.totalShifts, 0),
       totalSales: pumperDetails.reduce((sum, p) => sum + p.totalSales, 0),
       totalLiters: pumperDetails.reduce((sum, p) => sum + p.totalLiters, 0),
-      averageSalesPerPumper: pumpers.length > 0 
-        ? Math.round(pumperDetails.reduce((sum, p) => sum + p.totalSales, 0) / pumpers.length) 
+      averageSalesPerPumper: pumpers.length > 0
+        ? Math.round(pumperDetails.reduce((sum, p) => sum + p.totalSales, 0) / pumpers.length)
         : 0,
       excellentPerformers: pumperDetails.filter(p => p.performanceRating === 'EXCELLENT').length,
       goodPerformers: pumperDetails.filter(p => p.performanceRating === 'GOOD').length,
@@ -343,7 +352,7 @@ export async function GET(request: NextRequest) {
     console.error('[Pumper Report] ERROR:', error)
     console.error('[Pumper Report] Stack:', error instanceof Error ? error.stack : 'No stack trace')
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to fetch pumper details report',
         details: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined

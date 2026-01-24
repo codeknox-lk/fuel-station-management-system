@@ -8,7 +8,11 @@ export async function GET(request: NextRequest) {
     const pumpId = searchParams.get('pumpId')
     const tankId = searchParams.get('tankId')
 
-    const where: any = {}
+    interface NozzleWhereInput {
+      pumpId?: string
+      tankId?: string
+    }
+    const where: NozzleWhereInput = {}
     if (pumpId) {
       where.pumpId = pumpId
     }
@@ -46,7 +50,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Filter by stationId if provided (check through pump relation)
-    const filteredNozzles = stationId 
+    const filteredNozzles = stationId
       ? nozzles.filter(n => n.pump.stationId === stationId)
       : nozzles
 
@@ -59,10 +63,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    
+    interface NozzleBody {
+      pumpId?: string
+      tankId?: string
+      nozzleNumber?: string
+      isActive?: boolean
+    }
+    const body = await request.json() as NozzleBody
+
     const { pumpId, tankId, nozzleNumber, isActive } = body
-    
+
     // Validation
     if (!pumpId || !tankId || !nozzleNumber) {
       return NextResponse.json(
@@ -147,7 +157,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newNozzle, { status: 201 })
   } catch (error) {
     console.error('Error creating nozzle:', error)
-    
+
     // Handle unique constraint violations (duplicate nozzle number on same pump)
     if (error instanceof Error && (error.message.includes('Unique constraint') || error.message.includes('P2002'))) {
       return NextResponse.json(
@@ -155,7 +165,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     // Handle foreign key constraint violations
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
       return NextResponse.json(
@@ -163,7 +173,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

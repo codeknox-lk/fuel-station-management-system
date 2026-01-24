@@ -11,8 +11,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
-import { Briefcase, Plus, Edit, Trash2, Phone, Mail, Building2, User, DollarSign } from 'lucide-react'
+import { Briefcase, Plus, Edit, Trash2, Phone, Mail, Building2, DollarSign, ArrowLeft } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { useRouter } from 'next/navigation'
 
 interface OfficeStaff {
   id: string
@@ -39,6 +40,7 @@ interface OfficeStaff {
 }
 
 export default function OfficeStaffPage() {
+  const router = useRouter()
   const { selectedStation, stations } = useStation()
   const [officeStaff, setOfficeStaff] = useState<OfficeStaff[]>([])
   const [loading, setLoading] = useState(true)
@@ -76,14 +78,14 @@ export default function OfficeStaffPage() {
 
   const fetchOfficeStaff = async () => {
     if (!selectedStation) return
-    
+
     try {
       setLoading(true)
       const response = await fetch(`/api/office-staff?stationId=${selectedStation}`)
       if (!response.ok) throw new Error('Failed to fetch office staff')
       const data = await response.json()
       setOfficeStaff(data)
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Error",
         description: "Failed to fetch office staff",
@@ -98,9 +100,9 @@ export default function OfficeStaffPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (isSubmitting) return
-    
+
     // Ensure stationId is set from selectedStation
     if (!selectedStation) {
       toast({
@@ -110,28 +112,28 @@ export default function OfficeStaffPage() {
       })
       return
     }
-    
+
     setIsSubmitting(true)
-    
+
     try {
       const url = editingStaff ? `/api/office-staff/${editingStaff.id}` : '/api/office-staff'
       const method = editingStaff ? 'PUT' : 'POST'
-      
+
       // Always use current selectedStation for stationId
       const submitData = {
         ...formData,
         stationId: selectedStation, // Always use current selectedStation
         ...(editingStaff ? {} : { employeeId: undefined }) // Remove employeeId when creating (auto-generated)
       }
-      
+
       console.log('📤 Submitting office staff data:', submitData)
-      
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(submitData)
       })
-      
+
       console.log('📥 Response status:', response.status, response.statusText)
 
       if (!response.ok) {
@@ -142,7 +144,7 @@ export default function OfficeStaffPage() {
 
       await fetchOfficeStaff()
       handleCloseDialog()
-      
+
       toast({
         title: "Success",
         description: `Office staff ${editingStaff ? 'updated' : 'created'} successfully`
@@ -173,7 +175,7 @@ export default function OfficeStaffPage() {
 
       await fetchOfficeStaff()
       setDeletingStaffId(null)
-      
+
       toast({
         title: "Success",
         description: "Office staff deleted successfully"
@@ -190,18 +192,18 @@ export default function OfficeStaffPage() {
   const handleEdit = (staff: OfficeStaff) => {
     setEditingStaff(staff)
     setFormData({
-      name: staff.name,
+      name: staff.name || '',
       employeeId: staff.employeeId || '',
-      stationId: staff.stationId,
+      stationId: staff.stationId || '',
       role: staff.role,
       phone: staff.phone || '',
       email: staff.email || '',
       baseSalary: staff.baseSalary || 0,
-      specialAllowance: (staff as any).specialAllowance || 0,
-      otherAllowances: (staff as any).otherAllowances || 0,
-      medicalAllowance: (staff as any).medicalAllowance || 0,
-      holidayAllowance: (staff as any).holidayAllowance || 0,
-      fuelAllowance: (staff as any).fuelAllowance || 0,
+      specialAllowance: staff.specialAllowance || 0,
+      otherAllowances: staff.otherAllowances || 0,
+      medicalAllowance: staff.medicalAllowance || 0,
+      holidayAllowance: staff.holidayAllowance || 0,
+      fuelAllowance: staff.fuelAllowance || 0,
       hireDate: staff.hireDate ? new Date(staff.hireDate).toISOString().split('T')[0] : '',
       isActive: staff.isActive
     })
@@ -282,7 +284,7 @@ export default function OfficeStaffPage() {
       render: (value: unknown) => (
         <div className="flex items-center gap-1">
           <DollarSign className="h-4 w-4 text-green-600" />
-          <span className="font-mono">Rs. {(value as number).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span>Rs. {(value as number).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
       )
     },
@@ -341,14 +343,20 @@ export default function OfficeStaffPage() {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <Briefcase className="h-8 w-8 text-purple-600 dark:text-purple-400" />
-            Office Staff Management
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage office employees (Managers, Supervisors, Office Staff, Accountants, Cashiers)
-          </p>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => router.push('/settings')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+              <Briefcase className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+              Office Staff Management
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Manage office employees (Managers, Supervisors, Office Staff, Accountants, Cashiers)
+            </p>
+          </div>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
@@ -399,8 +407,8 @@ export default function OfficeStaffPage() {
                     onValueChange={(value) => {
                       const newRole = value as OfficeStaff['role']
                       // Reset fuel allowance if role changes from MANAGER
-                      setFormData({ 
-                        ...formData, 
+                      setFormData({
+                        ...formData,
                         role: newRole,
                         fuelAllowance: newRole === 'MANAGER' ? formData.fuelAllowance : 0
                       })
@@ -557,7 +565,7 @@ export default function OfficeStaffPage() {
           <div className="text-center py-8 text-muted-foreground">
             <Briefcase className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <p>No office staff found</p>
-            <p className="text-sm">Click "Add Office Staff" to create a new office staff member</p>
+            <p className="text-sm">Click &quot;Add Office Staff&quot; to create a new office staff member</p>
           </div>
         ) : (
           <DataTable

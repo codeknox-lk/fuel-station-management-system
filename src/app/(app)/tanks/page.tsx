@@ -25,12 +25,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { 
-  Fuel, 
-  Droplets, 
-  TrendingUp, 
-  AlertCircle, 
-  Plus, 
+import {
+  Fuel,
+  Droplets,
+  TrendingUp,
+  AlertCircle,
+  Plus,
   BarChart3,
   Truck,
   FileText,
@@ -41,6 +41,10 @@ import {
   Wrench
 } from 'lucide-react'
 
+import { TankWithDetails } from '@/types/db'
+
+// ... existing imports
+
 interface Fuel {
   id: string
   name: string
@@ -48,39 +52,68 @@ interface Fuel {
   code: string
 }
 
-interface Tank {
-  id: string
-  stationId: string
+// Extend our DB type with the calculated fields used in UI
+interface UITank extends TankWithDetails {
   stationName?: string
-  tankNumber: string
-  fuelId: string
-  fuel?: Fuel
-  capacity: number
-  currentStock: number
-  lastDipTime: string
-  lastDipReading: number
   fillPercentage: number
   status: 'NORMAL' | 'LOW' | 'CRITICAL'
+  lastDipTime: string
+  lastDipReading: number
+  currentStock: number
+}
+
+interface Pump {
+  id: string
+  pumpNumber: string
+  stationId: string
+}
+
+interface Nozzle {
+  id: string
+  nozzleNumber: string
+  pump: Pump
+}
+
+// Also define the Infrastructure type if possible, or keep as any for now but localized
+interface Infrastructure {
+  station: { id: string; name: string }
+  tanks: (TankWithDetails & { nozzles: Nozzle[] })[]
+  pumps: Pump[]
 }
 
 export default function TanksPage() {
   const router = useRouter()
   const { stations, selectedStation, getSelectedStation } = useStation()
-  const [tanks, setTanks] = useState<Tank[]>([])
+  const [tanks, setTanks] = useState<UITank[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  
-  
+
+
+  interface Dip {
+    id: string
+    reading: number
+    dipDate: string
+    recordedBy: string
+  }
+
+  interface Delivery {
+    id: string
+    quantity: number
+    supplier: string
+    invoiceNumber: string
+    deliveryDate: string
+  }
+
   // Tank details dialog state
-  const [selectedTank, setSelectedTank] = useState<Tank | null>(null)
+  const [selectedTank, setSelectedTank] = useState<UITank | null>(null)
   const [showTankDetails, setShowTankDetails] = useState(false)
-  const [tankDetails, setTankDetails] = useState<any>(null)
+  const [tankDetails, setTankDetails] = useState<UITank & { recentDips: Dip[]; recentDeliveries: Delivery[]; nozzles: Nozzle[] } | null>(null)
   const [detailsLoading, setDetailsLoading] = useState(false)
-  
+
   // Infrastructure tree state
   const [showInfrastructure, setShowInfrastructure] = useState(false)
-  const [infrastructure, setInfrastructure] = useState<any>(null)
+  const [infrastructure, setInfrastructure] = useState<Infrastructure | null>(null)
   const [infraLoading, setInfraLoading] = useState(false)
   const [expandedTanks, setExpandedTanks] = useState<Set<string>>(new Set())
 
@@ -91,19 +124,19 @@ export default function TanksPage() {
   const fetchTanks = async () => {
     try {
       setLoading(true)
-      
+
       // Build API URL based on station selection
       const currentStation = getSelectedStation()
-      const apiUrl = currentStation 
+      const apiUrl = currentStation
         ? `/api/tanks?type=tanks&stationId=${currentStation.id}`
         : '/api/tanks?type=tanks'
-      
+
       const response = await fetch(apiUrl)
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch tanks')
       }
-      
+
       const data = await response.json()
 
       // Check if data is an array
@@ -114,28 +147,27 @@ export default function TanksPage() {
       }
 
       // Transform the data to include calculated fields
-      const transformedTanks = data.map((tank: { id: string; stationId: string; tankNumber?: string; capacity: number; fuelId: string; fuel?: Fuel; currentLevel: number; station?: { name: string } }) => ({
-        id: tank.id,
-        stationId: tank.stationId,
+      // The API returns TankWithDetails structure (mostly)
+      const transformedTanks = data.map((tank: TankWithDetails & { station?: { name: string }; currentLevel?: number }) => ({
+        ...tank,
+        // Ensure calculated fields are present
         tankNumber: tank.tankNumber || 'TANK-1',
-        fuelId: tank.fuelId,
-        fuel: tank.fuel,
         capacity: tank.capacity,
-        currentStock: tank.currentLevel,
+        currentStock: tank.currentLevel || 0, // Handle potentially missing field mappings if API differs
         stationName: tank.station?.name || `Station ${tank.stationId}`,
-        fillPercentage: Math.round((tank.currentLevel / tank.capacity) * 100),
-        status: (tank.currentLevel / tank.capacity < 0.1 ? 'CRITICAL' : 
-                tank.currentLevel / tank.capacity < 0.25 ? 'LOW' : 'NORMAL') as 'NORMAL' | 'LOW' | 'CRITICAL',
+        fillPercentage: Math.round(((tank.currentLevel || 0) / tank.capacity) * 100),
+        status: ((tank.currentLevel || 0) / tank.capacity < 0.1 ? 'CRITICAL' :
+          (tank.currentLevel || 0) / tank.capacity < 0.25 ? 'LOW' : 'NORMAL') as 'NORMAL' | 'LOW' | 'CRITICAL',
         lastDipTime: new Date().toISOString(),
-        lastDipReading: tank.currentLevel
+        lastDipReading: tank.currentLevel || 0
       }))
 
       setTanks(transformedTanks)
 
       // Calculate stats by fuel type
       const fuelTypeStats: Record<string, { capacity: number; stock: number }> = {}
-      
-      transformedTanks.forEach((tank: Tank) => {
+
+      transformedTanks.forEach((tank: UITank) => {
         const fuelName = tank.fuel?.name || 'Unknown'
         if (!fuelTypeStats[fuelName]) {
           fuelTypeStats[fuelName] = { capacity: 0, stock: 0 }
@@ -147,8 +179,8 @@ export default function TanksPage() {
       setStats({
         totalTanks: transformedTanks.length,
         fuelTypes: fuelTypeStats,
-        criticalTanks: transformedTanks.filter((tank: Tank) => tank.status === 'CRITICAL').length,
-        lowTanks: transformedTanks.filter((tank: Tank) => tank.status === 'LOW').length
+        criticalTanks: transformedTanks.filter((tank: UITank) => tank.status === 'CRITICAL').length,
+        lowTanks: transformedTanks.filter((tank: UITank) => tank.status === 'LOW').length
       })
 
     } catch (err) {
@@ -182,10 +214,10 @@ export default function TanksPage() {
   }
 
   const getFillColor = (percentage: number) => {
-    if (percentage >= 75) return 'bg-green-500/10 dark:bg-green-500/200'
-    if (percentage >= 50) return 'bg-blue-500/10 dark:bg-blue-500/30'
-    if (percentage >= 25) return 'bg-yellow-500/10 dark:bg-yellow-500/200'
-    return 'bg-red-500/10 dark:bg-red-500/200'
+    if (percentage >= 75) return 'bg-green-500/60 dark:bg-green-500/70'
+    if (percentage >= 50) return 'bg-blue-500/60 dark:bg-blue-500/70'
+    if (percentage >= 25) return 'bg-yellow-500/60 dark:bg-yellow-500/70'
+    return 'bg-red-500/60 dark:bg-red-500/70'
   }
 
   const loadInfrastructure = async (stationId: string) => {
@@ -193,16 +225,16 @@ export default function TanksPage() {
     try {
       const response = await fetch(`/api/tanks/infrastructure?stationId=${stationId}`)
       const data = await response.json()
-      
+
       if (data.error) {
         throw new Error(data.error)
       }
-      
+
       setInfrastructure(data)
       setShowInfrastructure(true)
       // Expand all tanks by default
       if (data.tanks && Array.isArray(data.tanks)) {
-        setExpandedTanks(new Set(data.tanks.map((t: any) => t.id)))
+        setExpandedTanks(new Set(data.tanks.map((t: TankWithDetails) => t.id)))
       }
     } catch (err) {
       console.error('Failed to load infrastructure:', err)
@@ -224,11 +256,11 @@ export default function TanksPage() {
     })
   }
 
-  const handleTankClick = async (tank: Tank) => {
+  const handleTankClick = async (tank: UITank) => {
     setSelectedTank(tank)
     setShowTankDetails(true)
     setDetailsLoading(true)
-    
+
     try {
       // Fetch detailed tank information
       const [tankRes, dipsRes, deliveriesRes] = await Promise.all([
@@ -236,11 +268,11 @@ export default function TanksPage() {
         fetch(`/api/tanks/dips?tankId=${tank.id}&limit=5`),
         fetch(`/api/deliveries?tankId=${tank.id}&limit=5`)
       ])
-      
+
       const tankData = await tankRes.json()
       const dipsData = await dipsRes.json()
       const deliveriesData = await deliveriesRes.json()
-      
+
       setTankDetails({
         ...tankData,
         recentDips: dipsData || [],
@@ -255,9 +287,9 @@ export default function TanksPage() {
     }
   }
 
-  const columns: Column<Tank>[] = [
+  const columns: Column<UITank>[] = [
     {
-      key: 'stationName' as keyof Tank,
+      key: 'stationName' as keyof UITank,
       title: 'Station',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
@@ -267,9 +299,9 @@ export default function TanksPage() {
       )
     },
     {
-      key: 'tankNumber' as keyof Tank,
+      key: 'tankNumber' as keyof UITank,
       title: 'Tank',
-      render: (value: unknown, row: Tank) => (
+      render: (value: unknown, row: UITank) => (
         <div className="flex items-center gap-2">
           <span className="font-semibold">Tank {value as string}</span>
           <Badge variant="outline">{row.fuel?.icon} {row.fuel?.name || 'Unknown'}</Badge>
@@ -277,35 +309,35 @@ export default function TanksPage() {
       )
     },
     {
-      key: 'capacity' as keyof Tank,
+      key: 'capacity' as keyof UITank,
       title: 'Capacity (L)',
       render: (value: unknown) => (
-        <span className="font-mono">
+        <span>
           {(value as number)?.toLocaleString() || 0}L
         </span>
       )
     },
     {
-      key: 'currentStock' as keyof Tank,
+      key: 'currentStock' as keyof UITank,
       title: 'Current Stock (L)',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
           <Droplets className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          <span className="font-mono font-semibold">
+          <span className="font-semibold">
             {(value as number)?.toLocaleString() || 0}L
           </span>
         </div>
       )
     },
     {
-      key: 'fillPercentage' as keyof Tank,
+      key: 'fillPercentage' as keyof UITank,
       title: 'Fill Level',
-      render: (value: unknown, row: Tank) => {
+      render: (value: unknown, row: UITank) => {
         const percentage = value as number
         return (
           <div className="flex items-center gap-2">
             <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-              <div 
+              <div
                 className={`h-full ${getFillColor(percentage)} transition-all duration-300`}
                 style={{ width: `${Math.min(percentage, 100)}%` }}
               />
@@ -316,7 +348,7 @@ export default function TanksPage() {
       }
     },
     {
-      key: 'status' as keyof Tank,
+      key: 'status' as keyof UITank,
       title: 'Status',
       render: (value: unknown) => (
         <Badge className={getStatusColor(value as string)}>
@@ -325,7 +357,7 @@ export default function TanksPage() {
       )
     },
     {
-      key: 'lastDipTime' as keyof Tank,
+      key: 'lastDipTime' as keyof UITank,
       title: 'Last Dip',
       render: (value: unknown) => (
         <span className="text-sm text-muted-foreground">
@@ -349,13 +381,11 @@ export default function TanksPage() {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <FormCard className="p-4">
-          <h3 className="text-lg font-semibold text-foreground">Total Tanks</h3>
+        <FormCard className="p-4" title="Total Tanks">
           <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">{stats.totalTanks}</p>
         </FormCard>
         {Object.entries(stats.fuelTypes).map(([fuelName, data]) => (
-          <FormCard key={fuelName} className="p-4">
-            <h3 className="text-lg font-semibold text-foreground">{fuelName}</h3>
+          <FormCard key={fuelName} className="p-4" title={fuelName}>
             <p className={`text-3xl font-bold ${getFuelTypeColor(fuelName)}`}>
               {data.capacity.toLocaleString()}L
             </p>
@@ -377,10 +407,7 @@ export default function TanksPage() {
           <Truck className="mr-2 h-4 w-4" />
           Record Delivery
         </Button>
-        <Button variant="outline" onClick={() => router.push('/tanks/report')}>
-          <BarChart3 className="mr-2 h-4 w-4" />
-          Variance Report
-        </Button>
+
         <Button variant="outline" onClick={() => router.push('/settings/tanks')}>
           <Network className="mr-2 h-4 w-4" />
           Manage Tanks & Infrastructure
@@ -389,12 +416,11 @@ export default function TanksPage() {
 
       {/* Infrastructure Tree Selector */}
       {!showInfrastructure && (
-        <FormCard className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold">View Infrastructure Tree</h3>
-              <p className="text-sm text-muted-foreground">See all tanks, pumps, and nozzles for a station</p>
-            </div>
+        <FormCard
+          className="p-6"
+          title="View Infrastructure Tree"
+          description="See all tanks, pumps, and nozzles for a station"
+          actions={
             <Select onValueChange={(value) => loadInfrastructure(value)} disabled={infraLoading}>
               <SelectTrigger className="w-[250px]">
                 <SelectValue placeholder="Select station to view" />
@@ -407,7 +433,9 @@ export default function TanksPage() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          }
+        >
+          <></>
         </FormCard>
       )}
 
@@ -423,9 +451,9 @@ export default function TanksPage() {
                   Tanks ({infrastructure.tanks.length})
                 </h4>
                 <div className="space-y-2 border-l-2 border-border pl-4">
-                  {infrastructure.tanks.map((tank: any) => {
+                  {infrastructure.tanks.map((tank) => {
                     const isExpanded = expandedTanks.has(tank.id)
-                    const fillPercentage = Math.round((tank.currentLevel / tank.capacity) * 100)
+                    const fillPercentage = Math.round(((tank.currentLevel || 0) / tank.capacity) * 100)
                     return (
                       <div key={tank.id} className="space-y-1">
                         <button
@@ -448,13 +476,10 @@ export default function TanksPage() {
                         </button>
                         {isExpanded && tank.nozzles.length > 0 && (
                           <div className="ml-8 space-y-1 border-l-2 border-blue-500/20 dark:border-blue-500/30 pl-4">
-                            {tank.nozzles.map((nozzle: any) => (
+                            {tank.nozzles.map((nozzle) => (
                               <div key={nozzle.id} className="flex items-center gap-2 text-sm text-muted-foreground py-1">
                                 <Droplets className="h-3 w-3 text-green-600 dark:text-green-400" />
-                                <span className="font-medium">
-                                  <Wrench className="h-3 w-3 text-blue-600 dark:text-blue-400 inline mr-1" />
-                                  {nozzle.pump.pumpNumber} → Nozzle {nozzle.nozzleNumber}
-                                </span>
+                                Nozzle {nozzle.nozzleNumber}
                               </div>
                             ))}
                           </div>
@@ -475,8 +500,8 @@ export default function TanksPage() {
               <div className="text-center text-muted-foreground py-8">
                 <Network className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
                 <p>No infrastructure found for this station.</p>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="mt-4"
                   onClick={() => router.push('/settings/tanks')}
                 >
@@ -565,8 +590,8 @@ export default function TanksPage() {
                     {tankDetails.currentLevel?.toLocaleString() || 0}L
                   </div>
                   <div className="text-sm text-muted-foreground mt-1">
-                    {tankDetails.capacity ? 
-                      `${Math.round((tankDetails.currentLevel / tankDetails.capacity) * 100)}% full` : 
+                    {tankDetails.capacity ?
+                      `${Math.round((tankDetails.currentLevel / tankDetails.capacity) * 100)}% full` :
                       'N/A'}
                   </div>
                 </div>
@@ -582,7 +607,7 @@ export default function TanksPage() {
                     </span>
                   </div>
                   <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className={`h-full ${getFillColor(Math.round((tankDetails.currentLevel / tankDetails.capacity) * 100))} transition-all duration-300`}
                       style={{ width: `${Math.min((tankDetails.currentLevel / tankDetails.capacity) * 100, 100)}%` }}
                     />
@@ -602,10 +627,10 @@ export default function TanksPage() {
                     Connected Nozzles ({tankDetails.nozzles.length})
                   </Label>
                   <div className="space-y-2">
-                    {tankDetails.nozzles.map((nozzle: any) => (
+                    {tankDetails.nozzles.map((nozzle) => (
                       <div key={nozzle.id} className="flex items-center gap-2 text-sm p-2 bg-muted rounded">
                         <Wrench className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                        <span className="font-medium">Pump {nozzle.pump?.pumpNumber || 'N/A'}</span>
+                        <span className="font-medium">Nozzle {nozzle.nozzleNumber || 'N/A'}</span>
                         <span>→</span>
                         <span>Nozzle {nozzle.nozzleNumber || 'N/A'}</span>
                       </div>
@@ -622,7 +647,7 @@ export default function TanksPage() {
                     Recent Dips ({tankDetails.recentDips.length})
                   </Label>
                   <div className="space-y-2">
-                    {tankDetails.recentDips.map((dip: any) => (
+                    {tankDetails.recentDips.map((dip) => (
                       <div key={dip.id} className="flex items-center justify-between text-sm p-2 bg-muted rounded">
                         <div>
                           <div className="font-medium">{dip.reading?.toLocaleString() || 0}L</div>
@@ -645,7 +670,7 @@ export default function TanksPage() {
                     Recent Deliveries ({tankDetails.recentDeliveries.length})
                   </Label>
                   <div className="space-y-2">
-                    {tankDetails.recentDeliveries.map((delivery: any) => (
+                    {tankDetails.recentDeliveries.map((delivery) => (
                       <div key={delivery.id} className="flex items-center justify-between text-sm p-2 bg-muted rounded">
                         <div>
                           <div className="font-medium text-green-600 dark:text-green-400">

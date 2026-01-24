@@ -26,14 +26,18 @@ export async function GET(request: NextRequest) {
           }
         }
       })
-      
+
       if (!cheque) {
         return NextResponse.json({ error: 'Cheque not found' }, { status: 404 })
       }
       return NextResponse.json(cheque)
     }
 
-    const where: any = {}
+    interface ChequeWhereInput {
+      stationId?: string
+      status?: any
+    }
+    const where: ChequeWhereInput = {}
     if (stationId) {
       where.stationId = stationId
     }
@@ -69,10 +73,19 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    
+    interface ChequeBody {
+      stationId?: string
+      chequeNumber?: string
+      amount?: string | number
+      bankId?: string
+      receivedFrom?: string
+      receivedDate?: string | Date
+      notes?: string
+    }
+    const body = await request.json() as ChequeBody
+
     const { stationId, chequeNumber, amount, bankId, receivedFrom, receivedDate, notes } = body
-    
+
     if (!stationId || !chequeNumber || !amount || !bankId || !receivedFrom || !receivedDate) {
       return NextResponse.json(
         { error: 'Station ID, cheque number, amount, bank ID, received from, and received date are required' },
@@ -84,7 +97,7 @@ export async function POST(request: NextRequest) {
       data: {
         stationId,
         chequeNumber,
-        amount: parseFloat(amount),
+        amount: parseFloat(String(amount)),
         bankId,
         receivedFrom,
         receivedDate: new Date(receivedDate),
@@ -110,7 +123,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newCheque, { status: 201 })
   } catch (error) {
     console.error('Error creating cheque:', error)
-    
+
     // Handle unique constraint violations
     if (error instanceof Error && error.message.includes('Unique constraint')) {
       return NextResponse.json(
@@ -118,7 +131,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     // Handle foreign key constraint violations
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
       return NextResponse.json(
@@ -126,7 +139,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

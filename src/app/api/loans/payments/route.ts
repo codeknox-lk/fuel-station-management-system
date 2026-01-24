@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
@@ -8,7 +9,7 @@ export async function GET(request: NextRequest) {
     const loanId = searchParams.get('loanId')
     const loanType = searchParams.get('loanType') // 'PUMPER' or 'EXTERNAL'
 
-    const where: any = {
+    const where: Prisma.SafeTransactionWhereInput = {
       type: 'LOAN_REPAID',
       loanId: { not: null }
     }

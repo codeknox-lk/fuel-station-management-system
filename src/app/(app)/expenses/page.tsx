@@ -21,14 +21,14 @@ import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { FileUploadStub } from '@/components/FileUploadStub'
-import { 
-  Building2, 
-  DollarSign, 
-  Calendar, 
-  FileText, 
+import {
+  Building2,
+  DollarSign,
+  Calendar,
+  FileText,
   Camera,
-  AlertCircle, 
-  CheckCircle, 
+  AlertCircle,
+  CheckCircle,
   Plus,
   Clock,
   Shield,
@@ -86,7 +86,7 @@ export default function ExpensesPage() {
   // Form state
   const { selectedStation } = useStation()
   const [category, setCategory] = useState('')
-  const [amount, setAmount] = useState('')
+  const [amount, setAmount] = useState<number | undefined>(undefined)
   const [fromSafe, setFromSafe] = useState(false)
   const [approvedBy, setApprovedBy] = useState('')
   const [expenseDate, setExpenseDate] = useState<Date>(new Date())
@@ -107,7 +107,7 @@ export default function ExpensesPage() {
 
         setStations(stationsData)
         setRecentExpenses(expensesData)
-      } catch (err) {
+      } catch (_err) {
         setError('Failed to load initial data')
       }
     }
@@ -117,17 +117,17 @@ export default function ExpensesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!selectedStation || !category || !amount || !approvedBy) {
       setError('Please fill in all required fields')
       return
     }
 
-    const amountValue = parseFloat(amount)
-    if (amountValue <= 0) {
+    if (!amount || amount <= 0) {
       setError('Amount must be greater than 0')
       return
     }
+
 
     setLoading(true)
     setError('')
@@ -140,7 +140,7 @@ export default function ExpensesPage() {
         body: JSON.stringify({
           stationId: selectedStation,
           category,
-          amount: amountValue,
+          amount: amount,
           fromSafe,
           approvedBy,
           expenseDate: expenseDate.toISOString(),
@@ -155,26 +155,26 @@ export default function ExpensesPage() {
       }
 
       const newExpense = await response.json()
-      
+
       // Add to recent expenses list
       setRecentExpenses(prev => [newExpense, ...prev.slice(0, 9)])
-      
+
       // Reset form
-      setSelectedStation('')
+      // setSelectedStation('') - handled by context/read-only in this current logic
       setCategory('')
-      setAmount('')
+      setAmount(undefined)
       setFromSafe(false)
       setApprovedBy('')
       setExpenseDate(new Date())
       setDescription('')
       setProofFile(null)
-      
+
       setSuccess('Expense recorded successfully!')
-      
+
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000)
 
-    } catch (err) {
+    } catch (_err) {
       setError('Failed to record expense')
     } finally {
       setLoading(false)
@@ -333,7 +333,7 @@ export default function ExpensesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="station">Station *</Label>
-              <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
+              <Select value={selectedStation} onValueChange={() => { }} disabled={true}>
                 <SelectTrigger id="station">
                   <SelectValue placeholder="Select a station" />
                 </SelectTrigger>
@@ -388,7 +388,7 @@ export default function ExpensesPage() {
               <Label htmlFor="expenseDate">Expense Date *</Label>
               <DateTimePicker
                 value={expenseDate}
-                onChange={setExpenseDate}
+                onChange={(date) => date && setExpenseDate(date)}
                 disabled={loading}
               />
             </div>
@@ -439,7 +439,7 @@ export default function ExpensesPage() {
             <Label>Proof/Receipt</Label>
             <FileUploadStub
               onFileSelect={setProofFile}
-              accept="image/*,.pdf"
+              acceptedTypes={["image/*", ".pdf"]}
               placeholder="Upload receipt or proof of expense"
             />
             <p className="text-xs text-muted-foreground mt-1">

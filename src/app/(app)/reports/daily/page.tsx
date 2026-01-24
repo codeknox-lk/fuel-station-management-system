@@ -16,14 +16,14 @@ import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { 
-  Building2, 
-  DollarSign, 
-  Calendar, 
-  TrendingUp, 
-  TrendingDown, 
+import {
+  Building2,
+  DollarSign,
+  Calendar,
+  TrendingUp,
+  TrendingDown,
   AlertTriangle,
-  AlertCircle, 
+  AlertCircle,
   Download,
   FileText,
   Fuel,
@@ -41,7 +41,7 @@ import {
   ArrowDown,
   CheckCircle
 } from 'lucide-react'
-import { exportDailyReportPDF, exportDailyReportExcel } from '@/lib/exportUtils'
+import { exportDailyReportPDF, exportDailyReportExcel, DailyReportData } from '@/lib/exportUtils'
 
 interface Station {
   id: string
@@ -91,7 +91,7 @@ interface DailyReport {
   date: string
   stationId: string
   stationName: string
-  
+
   // Sales breakdown by fuel type
   petrolSales: number
   dieselSales: number
@@ -100,31 +100,31 @@ interface DailyReport {
   canSales: number
   totalFuelSales: number
   totalSales: number
-  
+
   // Tender breakdown
   cashAmount: number
   cardAmount: number
   creditAmount: number
   chequeAmount: number
-  
+
   // POS Terminal breakdown
   posTerminals: POSTerminalBreakdown[]
   totalPOSAmount: number
-  
+
   // Credit customer breakdown
   creditCustomers: CreditCustomerBreakdown[]
   totalCreditSales: number
-  
+
   // Cheque breakdown
   cheques: ChequeBreakdown[]
   totalChequeAmount: number
-  
+
   // Financial summary
   totalExpenses: number
   totalDeposits: number
   totalLoans: number
   netProfit: number
-  
+
   // Variance and exceptions
   totalVariance: number
   variancePercentage: number
@@ -137,7 +137,7 @@ interface DailyReport {
     reportedBy: string
     status: 'PENDING' | 'RESOLVED' | 'WRITTEN_OFF'
   }>
-  
+
   // Additional metrics
   shiftCount: number
   transactionCount: number
@@ -186,7 +186,7 @@ export default function DailyReportsPage() {
       // Call the API to get real daily report data
       const url = `/api/reports/daily-comprehensive?stationId=${selectedStation}&date=${selectedDate}`
       console.log('[Frontend] Fetching daily report from:', url)
-      
+
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -194,11 +194,11 @@ export default function DailyReportsPage() {
         },
         cache: 'no-store'
       })
-      
+
       console.log('[Frontend] Response status:', response.status, response.statusText)
-      
+
       if (!response.ok) {
-        let errorData: any = {}
+        let errorData: Record<string, unknown> = {}
         try {
           const text = await response.text()
           if (text) {
@@ -215,7 +215,8 @@ export default function DailyReportsPage() {
           errorData = { error: `HTTP ${response.status}: ${response.statusText}`, details: 'Failed to parse error response' }
         }
         console.error('[Frontend] API error response:', errorData)
-        const errorMessage = errorData.message || errorData.error || errorData.details || 'Unknown error'
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const errorMessage = (errorData as any).message || (errorData as any).error || (errorData as any).details || 'Unknown error'
         throw new Error(`Failed to fetch daily report: ${response.status} ${response.statusText}. ${errorMessage}`)
       }
 
@@ -234,12 +235,12 @@ export default function DailyReportsPage() {
         totalExpenses: reportData.totalExpenses
       })
       console.log('[Frontend] Full report data:', reportData)
-      
+
       // Validate required fields and transform if needed
       if (!reportData || typeof reportData !== 'object') {
         throw new Error('Invalid response format from API')
       }
-      
+
       // Use API response directly (it matches the interface)
       setDailyReport(reportData as DailyReport)
 
@@ -256,12 +257,25 @@ export default function DailyReportsPage() {
       alert('Please select a station and generate a report first')
       return
     }
-    
+
     const station = stations.find(s => s.id === selectedStation)
     const stationName = station?.name || 'Unknown Station'
     const dateStr = selectedDate
-    
-    exportDailyReportPDF(dailyReport as any, stationName, dateStr)
+
+    const exportData: DailyReportData = {
+      salesBreakdown: {
+        petrol92: { litres: 0, amount: dailyReport.petrolSales },
+        petrol95: { litres: 0, amount: 0 },
+        diesel: { litres: 0, amount: dailyReport.dieselSales },
+        superDiesel: { litres: 0, amount: dailyReport.superDieselSales },
+      },
+      totalSales: dailyReport.totalSales,
+      totalExpenses: dailyReport.totalExpenses,
+      netProfit: dailyReport.netProfit,
+      variancePercentage: dailyReport.variancePercentage
+    }
+
+    exportDailyReportPDF(exportData, stationName, dateStr)
   }
 
   const exportToExcel = () => {
@@ -269,12 +283,25 @@ export default function DailyReportsPage() {
       alert('Please select a station and generate a report first')
       return
     }
-    
+
     const station = stations.find(s => s.id === selectedStation)
     const stationName = station?.name || 'Unknown Station'
     const dateStr = selectedDate
-    
-    exportDailyReportExcel(dailyReport as any, stationName, dateStr)
+
+    const exportData: DailyReportData = {
+      salesBreakdown: {
+        petrol92: { litres: 0, amount: dailyReport.petrolSales },
+        petrol95: { litres: 0, amount: 0 },
+        diesel: { litres: 0, amount: dailyReport.dieselSales },
+        superDiesel: { litres: 0, amount: dailyReport.superDieselSales },
+      },
+      totalSales: dailyReport.totalSales,
+      totalExpenses: dailyReport.totalExpenses,
+      netProfit: dailyReport.netProfit,
+      variancePercentage: dailyReport.variancePercentage
+    }
+
+    exportDailyReportExcel(exportData, stationName, dateStr)
   }
 
   const getVarianceColor = (percentage: number) => {
@@ -319,7 +346,7 @@ export default function DailyReportsPage() {
       key: 'visaAmount' as keyof POSTerminalBreakdown,
       title: 'Visa',
       render: (value: unknown) => (
-        <span className="font-mono text-sm text-blue-600">
+        <span className="text-sm text-blue-600">
           Rs. {(value as number).toLocaleString()}
         </span>
       )
@@ -328,7 +355,7 @@ export default function DailyReportsPage() {
       key: 'mastercardAmount' as keyof POSTerminalBreakdown,
       title: 'Mastercard',
       render: (value: unknown) => (
-        <span className="font-mono text-sm text-red-600">
+        <span className="text-sm text-red-600">
           Rs. {(value as number).toLocaleString()}
         </span>
       )
@@ -337,7 +364,7 @@ export default function DailyReportsPage() {
       key: 'amexAmount' as keyof POSTerminalBreakdown,
       title: 'Amex',
       render: (value: unknown) => (
-        <span className="font-mono text-sm text-green-600">
+        <span className="text-sm text-green-600">
           Rs. {(value as number).toLocaleString()}
         </span>
       )
@@ -346,7 +373,7 @@ export default function DailyReportsPage() {
       key: 'qrAmount' as keyof POSTerminalBreakdown,
       title: 'QR',
       render: (value: unknown) => (
-        <span className="font-mono text-sm text-purple-600">
+        <span className="text-sm text-purple-600">
           Rs. {(value as number).toLocaleString()}
         </span>
       )
@@ -355,7 +382,7 @@ export default function DailyReportsPage() {
       key: 'dialogTouchAmount' as keyof POSTerminalBreakdown,
       title: 'Dialog Touch',
       render: (value: unknown) => (
-        <span className="font-mono text-sm text-orange-600">
+        <span className="text-sm text-orange-600">
           Rs. {(value as number).toLocaleString()}
         </span>
       )
@@ -364,7 +391,7 @@ export default function DailyReportsPage() {
       key: 'totalAmount' as keyof POSTerminalBreakdown,
       title: 'Total',
       render: (value: unknown) => (
-        <span className="font-mono font-bold">
+        <span className="font-bold">
           Rs. {(value as number).toLocaleString()}
         </span>
       )
@@ -406,7 +433,7 @@ export default function DailyReportsPage() {
       key: 'totalSales' as keyof CreditCustomerBreakdown,
       title: 'Total Sales',
       render: (value: unknown) => (
-        <span className="font-mono font-semibold text-green-600">
+        <span className="font-semibold text-green-600">
           Rs. {(value as number).toLocaleString()}
         </span>
       )
@@ -415,7 +442,7 @@ export default function DailyReportsPage() {
       key: 'averageTransaction' as keyof CreditCustomerBreakdown,
       title: 'Avg Transaction',
       render: (value: unknown) => (
-        <span className="font-mono text-sm">
+        <span className="text-sm">
           Rs. {(value as number).toLocaleString()}
         </span>
       )
@@ -424,7 +451,7 @@ export default function DailyReportsPage() {
       key: 'creditLimit' as keyof CreditCustomerBreakdown,
       title: 'Credit Limit',
       render: (value: unknown) => (
-        <span className="font-mono text-sm text-muted-foreground">
+        <span className="text-sm text-muted-foreground">
           Rs. {(value as number).toLocaleString()}
         </span>
       )
@@ -436,7 +463,7 @@ export default function DailyReportsPage() {
         const usagePercent = (row.currentBalance / row.creditLimit) * 100
         return (
           <div>
-            <span className="font-mono font-semibold">
+            <span className="font-semibold">
               Rs. {(value as number).toLocaleString()}
             </span>
             <div className="text-xs text-muted-foreground">
@@ -450,7 +477,7 @@ export default function DailyReportsPage() {
       key: 'paymentReceived' as keyof CreditCustomerBreakdown,
       title: 'Payment Received',
       render: (value: unknown) => (
-        <span className="font-mono font-semibold text-blue-600">
+        <span className="font-semibold text-blue-600">
           Rs. {(value as number).toLocaleString()}
         </span>
       )
@@ -463,7 +490,7 @@ export default function DailyReportsPage() {
       key: 'chequeNumber' as keyof ChequeBreakdown,
       title: 'Cheque Number',
       render: (value: unknown) => (
-        <span className="font-mono font-medium">{value as string}</span>
+        <span className="font-medium">{value as string}</span>
       )
     },
     {
@@ -477,7 +504,7 @@ export default function DailyReportsPage() {
       key: 'amount' as keyof ChequeBreakdown,
       title: 'Amount',
       render: (value: unknown) => (
-        <span className="font-mono font-semibold text-green-600">
+        <span className="font-semibold text-green-600">
           Rs. {(value as number).toLocaleString()}
         </span>
       )
@@ -520,7 +547,7 @@ export default function DailyReportsPage() {
       key: 'time' as keyof DailyReport['missingSlips'][0],
       title: 'Time',
       render: (value: unknown) => (
-        <span className="font-mono text-sm">{value as string}</span>
+        <span className="text-sm">{value as string}</span>
       )
     },
     {
@@ -537,7 +564,7 @@ export default function DailyReportsPage() {
       key: 'amount' as keyof DailyReport['missingSlips'][0],
       title: 'Amount',
       render: (value: unknown) => (
-        <span className="font-mono font-semibold text-red-600 dark:text-red-400">
+        <span className="font-semibold text-red-600 dark:text-red-400">
           Rs. {(value as number)?.toLocaleString() || 0}
         </span>
       )
@@ -546,7 +573,7 @@ export default function DailyReportsPage() {
       key: 'lastFourDigits' as keyof DailyReport['missingSlips'][0],
       title: 'Card Digits',
       render: (value: unknown) => (
-        <span className="font-mono text-sm">****{value as string}</span>
+        <span className="text-sm">****{value as string}</span>
       )
     },
     {
@@ -651,11 +678,11 @@ export default function DailyReportsPage() {
                     Daily Sales Report
                   </CardTitle>
                   <CardDescription className="mt-2 text-base">
-                    {dailyReport.stationName} • {new Date(dailyReport.date).toLocaleDateString('en-US', { 
-                      weekday: 'long', 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
+                    {dailyReport.stationName} • {new Date(dailyReport.date).toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
                     })}
                   </CardDescription>
                 </div>
@@ -881,7 +908,7 @@ export default function DailyReportsPage() {
                 searchPlaceholder="Search terminals..."
                 pagination={false}
               />
-              
+
               {/* POS Summary */}
               <div className="mt-4 pt-4 border-t">
                 <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
@@ -943,7 +970,7 @@ export default function DailyReportsPage() {
                 searchPlaceholder="Search customers..."
                 pagination={false}
               />
-              
+
               {/* Credit Summary */}
               <div className="mt-4 pt-4 border-t">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -993,7 +1020,7 @@ export default function DailyReportsPage() {
                 searchPlaceholder="Search cheques..."
                 pagination={false}
               />
-              
+
               {/* Cheque Summary */}
               <div className="mt-4 pt-4 border-t">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1161,7 +1188,7 @@ export default function DailyReportsPage() {
                   <div className="mt-4 pt-4 border-t">
                     <div className="flex items-center justify-between p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
                       <span className="font-medium">Total Missing Slip Amount:</span>
-                      <span className="font-mono font-bold text-yellow-600 text-lg">
+                      <span className="font-bold text-yellow-600 text-lg">
                         Rs. {dailyReport.missingSlips.reduce((sum, s) => sum + s.amount, 0).toLocaleString()}
                       </span>
                     </div>
@@ -1182,7 +1209,7 @@ export default function DailyReportsPage() {
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>High Variance Detected</AlertTitle>
               <AlertDescription>
-                Daily variance of {dailyReport.variancePercentage.toFixed(2)}% exceeds acceptable limits (±1.0%). 
+                Daily variance of {dailyReport.variancePercentage.toFixed(2)}% exceeds acceptable limits (±1.0%).
                 Please review transactions and investigate discrepancies immediately.
               </AlertDescription>
             </Alert>

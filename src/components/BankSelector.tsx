@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { 
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -130,9 +130,7 @@ export function BankSelector({
                   <div className="flex items-center gap-2">
                     <Building2 className="h-4 w-4" />
                     <span>{selectedBank.name}</span>
-                    <span className={`px-2 py-1 rounded text-xs ${selectedBank.color}`}>
-                      {selectedBank.code}
-                    </span>
+
                   </div>
                 )}
               </SelectValue>
@@ -159,7 +157,7 @@ export function BankSelector({
               )}
             </SelectContent>
           </Select>
-          
+
           {showAddButton && (
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>

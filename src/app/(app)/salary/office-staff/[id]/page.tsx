@@ -6,8 +6,8 @@ import { useStation } from '@/contexts/StationContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-  DollarSign, 
+import {
+  DollarSign,
   Briefcase,
   ArrowLeft,
   Download,
@@ -63,13 +63,13 @@ export default function OfficeStaffSalaryDetailsPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { selectedStation } = useStation()
-  
+
   // Extract values immediately using useMemo to avoid Next.js 15 enumeration issues
   const staffId = useMemo(() => (params?.id as string) || '', [params])
   const month = useMemo(() => searchParams?.get('month') || '', [searchParams])
   const staffName = useMemo(() => searchParams?.get('staffName') || 'Unknown', [searchParams])
   const employeeId = useMemo(() => searchParams?.get('employeeId') || '', [searchParams])
-  
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -87,19 +87,19 @@ export default function OfficeStaffSalaryDetailsPage() {
     try {
       setLoading(true)
       setError('')
-      
+
       const res = await fetch(`/api/office-staff/salary?stationId=${selectedStation}&month=${month}`)
-      
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
         throw new Error(errorData.error || 'Failed to fetch salary data')
       }
 
       const data = await res.json()
-      
+
       // Find the specific office staff member
       const staffData = data.salaryData?.find((s: OfficeStaffSalaryData) => s.id === staffId)
-      
+
       // If not found, create empty data structure
       if (!staffData) {
         setSalaryData({
@@ -108,14 +108,26 @@ export default function OfficeStaffSalaryDetailsPage() {
           employeeId: employeeId || null,
           role: '',
           baseSalary: 0,
+
+          // OfficeStaffSalaryData properties:
+          specialAllowance: 0,
+          otherAllowances: 0,
+          medicalAllowance: 0,
+          holidayAllowance: 0,
+          fuelAllowance: 0,
+          totalAllowances: 0,
           advances: 0,
           loans: 0,
-          deductions: 0,
+          absentDays: 0,
+          absentDeduction: 0,
+          epf: 0,
+          totalDeductions: 0,
+          grossSalary: 0,
           netSalary: 0
         })
         return
       }
-      
+
       setSalaryData(staffData)
     } catch (err) {
       console.error('Error fetching office staff salary data:', err)

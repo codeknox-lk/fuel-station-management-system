@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
@@ -8,18 +9,18 @@ export async function GET(request: NextRequest) {
     const fuelId = searchParams.get('fuelId')
 
     const now = new Date()
-    
+
     // Build where clause
-    const where: any = {
+    const where: Prisma.PriceWhereInput = {
       effectiveDate: { gt: now },
       isActive: true
     }
-    
+
     if (stationId) {
       where.stationId = stationId
     }
-    if (fuelType) {
-      where.fuelType = fuelType
+    if (fuelId) {
+      where.fuelId = fuelId
     }
 
     // Get scheduled prices (future prices)
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Get current active prices
-    const currentPricesWhere: any = {
+    const currentPricesWhere: Prisma.PriceWhereInput = {
       effectiveDate: { lte: now },
       isActive: true
     }
@@ -60,20 +61,31 @@ export async function GET(request: NextRequest) {
     })
 
     // Group by station, fuel ID and get the next price for each
-    const nextPrices: any[] = []
+    interface PriceChange {
+      stationId: string
+      stationName: string
+      fuelId: string
+      fuelName: string
+      currentPrice: number | null
+      nextPrice: number
+      effectiveDate: Date
+      changeAmount: number | null
+      changePercent: number | null
+    }
+    const nextPrices: PriceChange[] = []
     const processedKeys = new Set<string>()
 
     for (const scheduledPrice of scheduledPrices) {
       const key = `${scheduledPrice.stationId}-${scheduledPrice.fuelId}`
-      
+
       if (processedKeys.has(key)) {
         continue
       }
       processedKeys.add(key)
 
       // Find current price for this station and fuel ID
-      const currentPrice = currentPrices.find(p => 
-        p.stationId === scheduledPrice.stationId && 
+      const currentPrice = currentPrices.find(p =>
+        p.stationId === scheduledPrice.stationId &&
         p.fuelId === scheduledPrice.fuelId
       )
 

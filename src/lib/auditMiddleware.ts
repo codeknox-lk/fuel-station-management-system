@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db'
 export interface AuditContext {
   userId: string
   userName: string
-  userRole: 'OWNER' | 'MANAGER' | 'ACCOUNTS'
+  userRole: 'DEVELOPER' | 'OWNER' | 'MANAGER' | 'ACCOUNTS'
   action: 'CREATE' | 'UPDATE' | 'DELETE' | 'VIEW'
   entity: string
   entityId?: string
@@ -21,20 +21,20 @@ export async function auditLog(context: AuditContext, request: NextRequest): Pro
   try {
     // Get client IP
     const forwarded = request.headers.get('x-forwarded-for')
-    const ip = forwarded ? forwarded.split(',')[0] : request.ip || 'unknown'
-    
+    const ip = forwarded ? forwarded.split(',')[0] : 'unknown' // request.ip might not be available in types
+
     // Get user info from context or headers
     const userIdHeader = request.headers.get('x-user-id') || context.userId
     const userNameHeader = request.headers.get('x-user-name') || context.userName
     const userRoleHeader = request.headers.get('x-user-role') || context.userRole
-    
+
     // Verify user exists in database
     let validUserId = userIdHeader
     try {
       const user = await prisma.user.findUnique({
         where: { id: userIdHeader }
       })
-      
+
       if (!user) {
         // Try to find by username
         const userByUsername = await prisma.user.findFirst({
@@ -47,13 +47,13 @@ export async function auditLog(context: AuditContext, request: NextRequest): Pro
     } catch (userCheckError) {
       // Continue with original userId - Prisma will handle FK constraint
     }
-    
+
     // Create audit log entry using Prisma
     await prisma.auditLog.create({
       data: {
         userId: validUserId,
         userName: userNameHeader,
-        userRole: userRoleHeader as 'OWNER' | 'MANAGER' | 'ACCOUNTS',
+        userRole: userRoleHeader as 'DEVELOPER' | 'OWNER' | 'MANAGER' | 'ACCOUNTS',
         action: context.action,
         entity: context.entity,
         entityId: context.entityId || null,
@@ -74,12 +74,12 @@ export async function auditLog(context: AuditContext, request: NextRequest): Pro
  * Helper function to extract user context from request headers
  * In a real app, this would decode JWT tokens
  */
-export function getUserContext(request: NextRequest): { userId: string; userName: string; userRole: 'OWNER' | 'MANAGER' | 'ACCOUNTS' } {
+export function getUserContext(request: NextRequest): { userId: string; userName: string; userRole: 'DEVELOPER' | 'OWNER' | 'MANAGER' | 'ACCOUNTS' } {
   // Mock user context - in real app, extract from JWT
   return {
     userId: request.headers.get('x-user-id') || 'user-1',
     userName: request.headers.get('x-user-name') || 'System User',
-    userRole: (request.headers.get('x-user-role') as 'OWNER' | 'MANAGER' | 'ACCOUNTS') || 'MANAGER'
+    userRole: (request.headers.get('x-user-role') as 'DEVELOPER' | 'OWNER' | 'MANAGER' | 'ACCOUNTS') || 'MANAGER'
   }
 }
 
@@ -88,7 +88,7 @@ export function getUserContext(request: NextRequest): { userId: string; userName
  */
 export const auditOperations = {
   // Station operations
-  stationCreated: (request: NextRequest, stationId: string, stationName: string) => 
+  stationCreated: (request: NextRequest, stationId: string, stationName: string) =>
     auditLog({
       ...getUserContext(request),
       action: 'CREATE',
@@ -99,7 +99,7 @@ export const auditOperations = {
       stationName
     }, request),
 
-  stationUpdated: (request: NextRequest, stationId: string, stationName: string, changes: string) => 
+  stationUpdated: (request: NextRequest, stationId: string, stationName: string, changes: string) =>
     auditLog({
       ...getUserContext(request),
       action: 'UPDATE',
@@ -110,7 +110,7 @@ export const auditOperations = {
       stationName
     }, request),
 
-  stationDeleted: (request: NextRequest, stationId: string, stationName: string) => 
+  stationDeleted: (request: NextRequest, stationId: string, stationName: string) =>
     auditLog({
       ...getUserContext(request),
       action: 'DELETE',
@@ -122,7 +122,7 @@ export const auditOperations = {
     }, request),
 
   // Shift operations
-  shiftOpened: (request: NextRequest, shiftId: string, stationId: string, stationName: string) => 
+  shiftOpened: (request: NextRequest, shiftId: string, stationId: string, stationName: string) =>
     auditLog({
       ...getUserContext(request),
       action: 'CREATE',
@@ -133,7 +133,7 @@ export const auditOperations = {
       stationName
     }, request),
 
-  shiftClosed: (request: NextRequest, shiftId: string, stationId: string, stationName: string, totalSales: number) => 
+  shiftClosed: (request: NextRequest, shiftId: string, stationId: string, stationName: string, totalSales: number) =>
     auditLog({
       ...getUserContext(request),
       action: 'UPDATE',
@@ -145,7 +145,7 @@ export const auditOperations = {
     }, request),
 
   // Price operations
-  priceUpdated: (request: NextRequest, priceId: string, fuelName: string, newPrice: number, stationId?: string) => 
+  priceUpdated: (request: NextRequest, priceId: string, fuelName: string, newPrice: number, stationId?: string) =>
     auditLog({
       ...getUserContext(request),
       action: 'UPDATE',
@@ -156,7 +156,7 @@ export const auditOperations = {
     }, request),
 
   // Tank operations
-  tankDipRecorded: (request: NextRequest, tankId: string, dipLitres: number, stationId: string, stationName: string) => 
+  tankDipRecorded: (request: NextRequest, tankId: string, dipLitres: number, stationId: string, stationName: string) =>
     auditLog({
       ...getUserContext(request),
       action: 'CREATE',
@@ -167,7 +167,7 @@ export const auditOperations = {
       stationName
     }, request),
 
-  deliveryRecorded: (request: NextRequest, deliveryId: string, tankId: string, quantity: number, stationId: string) => 
+  deliveryRecorded: (request: NextRequest, deliveryId: string, tankId: string, quantity: number, stationId: string) =>
     auditLog({
       ...getUserContext(request),
       action: 'CREATE',
@@ -178,7 +178,7 @@ export const auditOperations = {
     }, request),
 
   // Credit operations
-  creditCustomerCreated: (request: NextRequest, customerId: string, customerName: string) => 
+  creditCustomerCreated: (request: NextRequest, customerId: string, customerName: string) =>
     auditLog({
       ...getUserContext(request),
       action: 'CREATE',
@@ -187,7 +187,7 @@ export const auditOperations = {
       details: `Created credit customer: ${customerName}`
     }, request),
 
-  creditSaleRecorded: (request: NextRequest, saleId: string, customerId: string, amount: number, stationId: string) => 
+  creditSaleRecorded: (request: NextRequest, saleId: string, customerId: string, amount: number, stationId: string) =>
     auditLog({
       ...getUserContext(request),
       action: 'CREATE',
@@ -198,7 +198,7 @@ export const auditOperations = {
     }, request),
 
   // Financial operations
-  expenseRecorded: (request: NextRequest, expenseId: string, amount: number, category: string, stationId: string) => 
+  expenseRecorded: (request: NextRequest, expenseId: string, amount: number, category: string, stationId: string) =>
     auditLog({
       ...getUserContext(request),
       action: 'CREATE',
@@ -208,7 +208,7 @@ export const auditOperations = {
       stationId
     }, request),
 
-  depositRecorded: (request: NextRequest, depositId: string, amount: number, bankAccount: string, stationId: string) => 
+  depositRecorded: (request: NextRequest, depositId: string, amount: number, bankAccount: string, stationId: string) =>
     auditLog({
       ...getUserContext(request),
       action: 'CREATE',
@@ -219,7 +219,7 @@ export const auditOperations = {
     }, request),
 
   // User operations
-  userCreated: (request: NextRequest, userId: string, userName: string, userRole: string) => 
+  userCreated: (request: NextRequest, userId: string, userName: string, userRole: string) =>
     auditLog({
       ...getUserContext(request),
       action: 'CREATE',
@@ -228,7 +228,7 @@ export const auditOperations = {
       details: `Created user: ${userName} with role ${userRole}`
     }, request),
 
-  userUpdated: (request: NextRequest, userId: string, userName: string, changes: string) => 
+  userUpdated: (request: NextRequest, userId: string, userName: string, changes: string) =>
     auditLog({
       ...getUserContext(request),
       action: 'UPDATE',
@@ -238,7 +238,7 @@ export const auditOperations = {
     }, request),
 
   // Settings operations
-  settingsUpdated: (request: NextRequest, settingType: string, details: string) => 
+  settingsUpdated: (request: NextRequest, settingType: string, details: string) =>
     auditLog({
       ...getUserContext(request),
       action: 'UPDATE',

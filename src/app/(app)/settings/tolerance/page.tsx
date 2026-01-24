@@ -8,10 +8,11 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Gauge, Save, RotateCcw, AlertTriangle, CheckCircle, Info, Calculator } from 'lucide-react'
+import { Gauge, Save, RotateCcw, AlertTriangle, CheckCircle, Info, Calculator, ArrowLeft } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { NumberInput } from '@/components/inputs/NumberInput'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
+import { useRouter } from 'next/navigation'
 
 interface ToleranceConfig {
   id: string
@@ -32,6 +33,7 @@ interface ToleranceExample {
 }
 
 export default function TolerancePage() {
+  const router = useRouter()
   const [config, setConfig] = useState<ToleranceConfig | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -79,7 +81,7 @@ export default function TolerancePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    
+
     try {
       const response = await fetch('/api/settings/tolerance', {
         method: 'POST',
@@ -124,11 +126,11 @@ export default function TolerancePage() {
 
   const calculateExamples = () => {
     const salesAmounts = [1000, 5000, 10000, 25000, 50000, 100000]
-    
+
     const newExamples = salesAmounts.map(salesAmount => {
       const flatAmount = formData.flatAmountTolerance
       const finalTolerance = flatAmount // Always flat amount
-      
+
       return {
         salesAmount,
         percentageAmount: 0, // Not used
@@ -137,7 +139,7 @@ export default function TolerancePage() {
         classification: 'within' as 'within' | 'exceeded'
       }
     })
-    
+
     setExamples(newExamples)
   }
 
@@ -157,11 +159,17 @@ export default function TolerancePage() {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Tolerance Configuration</h1>
-          <p className="text-muted-foreground mt-2">
-            Configure variance tolerance levels and thresholds for sales reconciliation
-          </p>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => router.push('/settings')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Tolerance Configuration</h1>
+            <p className="text-muted-foreground mt-2">
+              Configure variance tolerance levels and thresholds for sales reconciliation
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Gauge className="h-6 w-6 text-muted-foreground" />
@@ -211,8 +219,8 @@ export default function TolerancePage() {
               <Alert className="border-blue-500/20 dark:border-blue-500/30 bg-blue-500/10 dark:bg-blue-500/20">
                 <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 <AlertDescription className="text-blue-700 dark:text-blue-300">
-                  <strong>Note:</strong> The system now uses a flat tolerance amount only. 
-                  Percentage tolerance is no longer used. Any variance within Rs. {formData.flatAmountTolerance.toLocaleString()} 
+                  <strong>Note:</strong> The system now uses a flat tolerance amount only.
+                  Percentage tolerance is no longer used. Any variance within Rs. {formData.flatAmountTolerance.toLocaleString()}
                   is considered normal.
                 </AlertDescription>
               </Alert>
@@ -235,7 +243,7 @@ export default function TolerancePage() {
                 <Calculator className="h-4 w-4" />
                 Tolerance Formula
               </h4>
-              <div className="font-mono text-sm text-foreground bg-card p-3 rounded border">
+              <div className="text-sm text-foreground bg-card p-3 rounded border">
                 Tolerance = Rs. {formData.flatAmountTolerance.toFixed(2)}
                 <br />
                 <span className="text-xs text-muted-foreground mt-2 block">
@@ -245,17 +253,17 @@ export default function TolerancePage() {
             </div>
 
             <div className="flex justify-end gap-3 pt-4">
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={handleReset}
                 disabled={!hasChanges}
               >
                 <RotateCcw className="mr-2 h-4 w-4" />
                 Reset
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={saving || !hasChanges}
               >
                 <Save className="mr-2 h-4 w-4" />
@@ -279,7 +287,7 @@ export default function TolerancePage() {
                     Within Tolerance
                   </Badge>
                 </div>
-                
+
                 <div className="text-sm text-muted-foreground">
                   <div className="font-medium text-foreground mb-1">Tolerance Amount:</div>
                   <div className="text-lg font-bold text-green-600 dark:text-green-400">
@@ -312,7 +320,7 @@ export default function TolerancePage() {
                 <li>• Apply to variance classification</li>
               </ul>
             </div>
-            
+
             <div>
               <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -325,7 +333,7 @@ export default function TolerancePage() {
                 <li>• Daily summary reports</li>
               </ul>
             </div>
-            
+
             <div>
               <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />

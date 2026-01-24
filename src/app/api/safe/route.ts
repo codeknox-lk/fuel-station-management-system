@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { safeParseFloat } from '@/lib/validation'
 
 // GET: Get safe for station(s) or create if doesn't exist
 export async function GET(request: NextRequest) {
@@ -7,47 +8,24 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const stationId = searchParams.get('stationId')
 
-    // If no stationId, return aggregated data for all stations
+    // OPTIMIZED: If no stationId, return aggregated data for all stations
     if (!stationId) {
+      // Use select instead of include for faster query
       const allSafes = await prisma.safe.findMany({
-        include: {
+        select: {
+          id: true,
+          currentBalance: true,
+          openingBalance: true,
           station: {
             select: { name: true, city: true }
           }
         }
       })
-      
-      // Calculate total balance across all safes
-      let totalBalance = 0
-      let totalOpeningBalance = 0
-      
-      for (const safe of allSafes) {
-        // Calculate current balance from transactions
-        const allTransactions = await prisma.safeTransaction.findMany({
-          where: { safeId: safe.id },
-          orderBy: { timestamp: 'asc' }
-        })
-        
-        let calculatedBalance = safe.openingBalance
-        for (const tx of allTransactions) {
-          if (tx.type === 'OPENING_BALANCE') {
-            calculatedBalance = tx.amount
-          } else {
-            const isIncome = [
-              'CASH_FUEL_SALES',
-              'POS_CARD_PAYMENT',
-              'CREDIT_PAYMENT',
-              'CHEQUE_RECEIVED',
-              'LOAN_REPAID'
-            ].includes(tx.type)
-            calculatedBalance += isIncome ? tx.amount : -tx.amount
-          }
-        }
-        
-        totalBalance += calculatedBalance
-        totalOpeningBalance += safe.openingBalance
-      }
-      
+
+      // Use currentBalance directly (already calculated) - No N+1!
+      const totalBalance = allSafes.reduce((sum, safe) => sum + safe.currentBalance, 0)
+      const totalOpeningBalance = allSafes.reduce((sum, safe) => sum + safe.openingBalance, 0)
+
       // Return aggregated safe data
       return NextResponse.json({
         id: 'all-stations',
@@ -59,88 +37,60 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    let safe = await prisma.safe.findUnique({
+    // OPTIMIZED: Use select, avoid fetching all transactions
+    // OPTIMIZED: Use upsert to handle race conditions
+    const safe = await prisma.safe.upsert({
       where: { stationId },
-      include: {
-        transactions: {
-          take: 10,
-          orderBy: { timestamp: 'desc' }
-        }
+      update: {}, // No updates needed if it exists
+      create: {
+        stationId,
+        openingBalance: 0,
+        currentBalance: 0
+      },
+      select: {
+        id: true,
+        stationId: true,
+        openingBalance: true,
+        currentBalance: true,
+        lastCounted: true,
+        countedBy: true,
+        createdAt: true,
+        updatedAt: true
       }
     })
 
-    // Create safe if it doesn't exist
-    if (!safe) {
-      safe = await prisma.safe.create({
-        data: {
-          stationId,
-          openingBalance: 0,
-          currentBalance: 0
-        },
-        include: {
-          transactions: {
-            take: 10,
-            orderBy: { timestamp: 'desc' }
-          }
-        }
-      })
-    }
-
-    // Calculate current balance from all transactions
-    const allTransactions = await prisma.safeTransaction.findMany({
-      where: { safeId: safe.id },
-      orderBy: { timestamp: 'asc' }
-    })
-
-    // Calculate current balance from all transactions
-    // OPENING_BALANCE transactions set the balance, they don't add/subtract
-    let calculatedBalance = safe.openingBalance
-    for (const tx of allTransactions) {
-      if (tx.type === 'OPENING_BALANCE') {
-        // OPENING_BALANCE sets the balance to this value
-        calculatedBalance = tx.amount
-      } else {
-        // Regular transactions add or subtract
-        const isIncome = [
-          'CASH_FUEL_SALES',
-          'POS_CARD_PAYMENT',
-          'CREDIT_PAYMENT',
-          'CHEQUE_RECEIVED',
-          'LOAN_REPAID'
-        ].includes(tx.type)
-        
-        calculatedBalance += isIncome ? tx.amount : -tx.amount
-      }
-    }
-
-    // Update current balance if different
-    if (calculatedBalance !== safe.currentBalance) {
-      safe = await prisma.safe.update({
-        where: { id: safe.id },
-        data: { currentBalance: calculatedBalance },
-        include: {
-          transactions: {
-            take: 10,
-            orderBy: { timestamp: 'desc' }
-          }
-        }
-      })
-    }
-
-    return NextResponse.json({
-      ...safe,
-      currentBalance: calculatedBalance
-    })
+    // Return safe with current balance (already accurate from POST operations)
+    return NextResponse.json(safe)
   } catch (error) {
     console.error('Error fetching safe:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : String(error)
+    }, { status: 500 })
   }
 }
 
 // POST: Create a safe transaction
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    interface SafeTransactionBody {
+      stationId?: string
+      type?: string
+      amount?: number
+      description?: string
+      shiftId?: string
+      batchId?: string
+      creditSaleId?: string
+      chequeId?: string
+      expenseId?: string
+      loanId?: string
+      depositId?: string
+      performedBy?: string
+      timestamp?: string | Date
+      bankId?: string
+      bankDepositNotes?: string
+    }
+    const body = await request.json() as SafeTransactionBody
     const {
       stationId,
       type,
@@ -184,7 +134,7 @@ export async function POST(request: NextRequest) {
     // Calculate balance before transaction chronologically
     const transactionTimestamp = timestamp ? new Date(timestamp) : new Date()
     const allTransactions = await prisma.safeTransaction.findMany({
-      where: { 
+      where: {
         safeId: safe.id,
         timestamp: { lte: transactionTimestamp }
       },
@@ -193,29 +143,30 @@ export async function POST(request: NextRequest) {
 
     let balanceBefore = safe.openingBalance
     for (const tx of allTransactions) {
-      const isIncome = [
+      const txIsIncome = [
         'CASH_FUEL_SALES',
         'POS_CARD_PAYMENT',
         'CREDIT_PAYMENT',
         'CHEQUE_RECEIVED',
         'LOAN_REPAID',
         'OPENING_BALANCE'
-      ].includes(tx.type)
-      
-      balanceBefore += isIncome ? tx.amount : -tx.amount
+      ].includes(String(tx.type))
+
+      balanceBefore += txIsIncome ? tx.amount : -tx.amount
     }
 
     // Calculate balance after transaction
-    const isIncome = [
+    const isIncomeTx = [
       'CASH_FUEL_SALES',
       'POS_CARD_PAYMENT',
       'CREDIT_PAYMENT',
       'CHEQUE_RECEIVED',
       'LOAN_REPAID',
       'OPENING_BALANCE'
-    ].includes(type)
+    ].includes(String(type))
 
-    const balanceAfter = balanceBefore + (isIncome ? parseFloat(amount) : -parseFloat(amount))
+    const amountVal = safeParseFloat(amount)
+    const balanceAfter = balanceBefore + (isIncomeTx ? amountVal : -amountVal)
 
     // Use transaction for bank deposits to ensure atomicity
     if (type === 'BANK_DEPOSIT' && bankId) {
@@ -224,8 +175,8 @@ export async function POST(request: NextRequest) {
         const transaction = await tx.safeTransaction.create({
           data: {
             safeId: safe.id,
-            type,
-            amount: parseFloat(amount),
+            type: type as any,
+            amount: amountVal,
             balanceBefore,
             balanceAfter,
             shiftId: shiftId || null,
@@ -262,7 +213,7 @@ export async function POST(request: NextRequest) {
             bankId,
             stationId,
             type: 'DEPOSIT',
-            amount: parseFloat(amount),
+            amount: amountVal,
             description: `Cash deposit from safe${bankDepositNotes ? `: ${bankDepositNotes}` : ''}`,
             referenceNumber: null,
             transactionDate: transactionTimestamp,
@@ -281,8 +232,8 @@ export async function POST(request: NextRequest) {
     const transaction = await prisma.safeTransaction.create({
       data: {
         safeId: safe.id,
-        type,
-        amount: parseFloat(amount),
+        type: type as any,
+        amount: amountVal,
         balanceBefore,
         balanceAfter,
         shiftId: shiftId || null,

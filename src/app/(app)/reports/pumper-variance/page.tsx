@@ -18,20 +18,20 @@ import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
   ResponsiveContainer
 } from 'recharts'
-import { 
-  Building2, 
+import {
+  Building2,
   User,
   TrendingUp,
   TrendingDown,
   DollarSign,
-  AlertCircle, 
+  AlertCircle,
   Calculator,
   AlertTriangle,
   CheckCircle,
@@ -50,24 +50,24 @@ interface PumperVariance {
   pumperId: string
   pumperName: string
   nozzleAssignments: string[]
-  
+
   // Monthly statistics
   totalShifts: number
   shiftsWithVariance: number
   varianceCount: number
-  
+
   // Financial impact
   totalVarianceAmount: number
   averageVariancePerShift: number
   maxSingleVariance: number
-  
+
   // Performance metrics
   varianceRate: number // percentage of shifts with variance
   performanceRating: 'EXCELLENT' | 'GOOD' | 'NEEDS_IMPROVEMENT' | 'CRITICAL'
-  
+
   // Trend data for sparkline (last 30 days)
   dailyVariances: { day: number; variance: number }[]
-  
+
   // Additional details
   lastVarianceDate?: string
   consecutiveDaysWithoutVariance: number
@@ -97,10 +97,10 @@ const Sparkline = ({ data }: { data: { day: number; variance: number }[] }) => (
   <div className="w-24 h-8">
     <ResponsiveContainer width="100%" height="100%">
       <LineChart data={data}>
-        <Line 
-          type="monotone" 
-          dataKey="variance" 
-          stroke="#3b82f6" 
+        <Line
+          type="monotone"
+          dataKey="variance"
+          stroke="#3b82f6"
           strokeWidth={1}
           dot={false}
         />
@@ -150,7 +150,7 @@ export default function PumperVariancePage() {
       // Call API endpoint to get real pumper variance data
       const monthStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`
       const url = `/api/reports/pumper-variance?stationId=${selectedStation}&month=${monthStr}`
-      
+
       const response = await fetch(url, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
@@ -164,18 +164,36 @@ export default function PumperVariancePage() {
 
       const reportData = await response.json()
       const station = stations.find(s => s.id === selectedStation)
-      
+
       // Transform API data to match frontend interface
-      const pumperVariances: PumperVariance[] = (reportData.pumperVariances || []).map((pumper: any) => {
+      interface ApiDailyVariance {
+        day?: number
+        variance?: number
+      }
+
+      interface ApiPumperVariance {
+        pumperId: string
+        pumperName: string
+        dailyVariances?: ApiDailyVariance[]
+        totalShifts: number
+        shiftsWithVariance: number
+        varianceCount: number
+        totalVarianceAmount: number
+        maxSingleVariance?: number
+        varianceRate: number
+        performanceRating: 'EXCELLENT' | 'GOOD' | 'NEEDS_IMPROVEMENT' | 'CRITICAL'
+      }
+
+      const pumperVariances: PumperVariance[] = (reportData.pumperVariances || []).map((pumper: ApiPumperVariance) => {
         // Transform daily variances from API (which uses day of month) to match expected format
-        const dailyVariances = (pumper.dailyVariances || []).map((dv: any) => ({
+        const dailyVariances = (pumper.dailyVariances || []).map((dv) => ({
           day: dv.day || 1,
           variance: dv.variance || 0
         }))
 
         // Calculate additional fields
-        const averageVariancePerShift = pumper.varianceCount > 0 
-          ? pumper.totalVarianceAmount / pumper.varianceCount 
+        const averageVariancePerShift = pumper.varianceCount > 0
+          ? pumper.totalVarianceAmount / pumper.varianceCount
           : 0
 
         // Estimate total due amount (70% of total variance - this would need to be calculated from actual advance/loan records)
@@ -262,7 +280,7 @@ export default function PumperVariancePage() {
       key: 'totalShifts' as keyof PumperVariance,
       title: 'Total Shifts',
       render: (value: unknown) => (
-        <span className="font-mono text-sm">{value as number}</span>
+        <span className="text-sm">{value as number}</span>
       )
     },
     {
@@ -270,7 +288,7 @@ export default function PumperVariancePage() {
       title: 'Variance Count',
       render: (value: unknown, row: PumperVariance) => (
         <div className="text-center">
-          <div className="font-mono font-semibold text-red-600 dark:text-red-400">
+          <div className="font-semibold text-red-600 dark:text-red-400">
             {value as number}
           </div>
           <div className="text-xs text-muted-foreground">
@@ -283,7 +301,7 @@ export default function PumperVariancePage() {
       key: 'totalVarianceAmount' as keyof PumperVariance,
       title: 'Total Variance',
       render: (value: unknown) => (
-        <span className="font-mono font-semibold text-red-600 dark:text-red-400">
+        <span className="font-semibold text-red-600 dark:text-red-400">
           Rs. {(value as number)?.toLocaleString() || 0}
         </span>
       )
@@ -292,7 +310,7 @@ export default function PumperVariancePage() {
       key: 'totalDueAmount' as keyof PumperVariance,
       title: 'Amount Due',
       render: (value: unknown) => (
-        <span className="font-mono font-semibold text-orange-600 dark:text-orange-400">
+        <span className="font-semibold text-orange-600 dark:text-orange-400">
           Rs. {(value as number)?.toLocaleString() || 0}
         </span>
       )
@@ -301,7 +319,7 @@ export default function PumperVariancePage() {
       key: 'maxSingleVariance' as keyof PumperVariance,
       title: 'Max Shortage',
       render: (value: unknown) => (
-        <span className="font-mono font-semibold text-red-700">
+        <span className="font-semibold text-red-700">
           Rs. {(value as number)?.toLocaleString() || 0}
         </span>
       )
@@ -311,7 +329,7 @@ export default function PumperVariancePage() {
       title: 'Variance Rate',
       render: (value: unknown) => (
         <div className="text-center">
-          <div className={`font-mono font-semibold ${getVarianceRateColor(value as number)}`}>
+          <div className={`font-semibold ${getVarianceRateColor(value as number)}`}>
             {(value as number)?.toFixed(1) || 0}%
           </div>
         </div>
@@ -570,7 +588,7 @@ export default function PumperVariancePage() {
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Critical Performance Alert</AlertTitle>
               <AlertDescription>
-                {criticalPumpers} pumper{criticalPumpers > 1 ? 's have' : ' has'} critical variance rates exceeding 30%. 
+                {criticalPumpers} pumper{criticalPumpers > 1 ? 's have' : ' has'} critical variance rates exceeding 30%.
                 Immediate training and monitoring required to reduce losses.
               </AlertDescription>
             </Alert>
@@ -581,7 +599,7 @@ export default function PumperVariancePage() {
               <DollarSign className="h-4 w-4" />
               <AlertTitle>High Recovery Amount</AlertTitle>
               <AlertDescription>
-                Total amount due from pumpers is Rs. {totalDueAmount.toLocaleString()}. 
+                Total amount due from pumpers is Rs. {totalDueAmount.toLocaleString()}.
                 Consider implementing stricter controls and recovery procedures.
               </AlertDescription>
             </Alert>

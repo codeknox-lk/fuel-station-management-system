@@ -24,8 +24,16 @@ model User {
   stationId String?
   station   Station? @relation(fields: [stationId], references: [id])
   isActive  Boolean  @default(true)
+  lastLogin DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Security
+  isFirstLogin   Boolean   @default(true)
+  mfaSecret      String?
+  mfaEnabled     Boolean   @default(false)
+  failedAttempts Int       @default(0)
+  lockoutUntil   DateTime?
 
   // Relations
   auditLogs AuditLog[]
@@ -36,19 +44,23 @@ model User {
 }
 
 enum UserRole {
-  OWNER
+  DEVELOPER  // Full system access including stations
+  OWNER      // All access except add/delete stations
   MANAGER
   ACCOUNTS
 }
 
 model Station {
-  id        String   @id @default(uuid())
-  name      String
-  address   String
-  city      String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(uuid())
+  name         String
+  address      String
+  city         String
+  phone        String?
+  email        String?
+  openingHours String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Relations
   users                     User[]
@@ -112,6 +124,8 @@ model Shift {
   @@index([stationId])
   @@index([status])
   @@index([startTime])
+  @@index([stationId, status]) // Composite index for filtered queries
+  @@index([status, createdAt]) // For recent shift queries
 }
 
 enum ShiftStatus {
@@ -120,15 +134,19 @@ enum ShiftStatus {
 }
 
 model ShiftTemplate {
-  id        String   @id @default(uuid())
-  stationId String
-  station   Station  @relation(fields: [stationId], references: [id])
-  name      String
-  startTime String // e.g., "06:00"
-  endTime   String // e.g., "14:00"
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(uuid())
+  stationId      String
+  station        Station  @relation(fields: [stationId], references: [id])
+  name           String
+  startTime      String // e.g., "06:00"
+  endTime        String // e.g., "14:00"
+  breakDuration  Int      @default(0) // minutes
+  breakStartTime String?
+  description    String?
+  icon           String?  @default("sun") // "sun", "coffee", or "moon"
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   shifts Shift[]
 
@@ -153,6 +171,7 @@ model ShiftAssignment {
   @@index([shiftId])
   @@index([nozzleId])
   @@index([status])
+  @@index([shiftId, status]) // For filtered shift assignment queries
 }
 
 enum AssignmentStatus {
@@ -185,6 +204,8 @@ model Tank {
   @@unique([stationId, tankNumber])
   @@index([stationId])
   @@index([fuelId])
+  @@index([stationId, isActive]) // For active tank queries
+  @@index([currentLevel]) // For low stock alerts
 }
 
 model Fuel {
@@ -221,6 +242,7 @@ model Pump {
 
   @@unique([stationId, pumpNumber])
   @@index([stationId])
+  @@index([stationId, isActive]) // For active pump queries
 }
 
 model Nozzle {
@@ -241,6 +263,7 @@ model Nozzle {
 
   @@unique([pumpId, nozzleNumber])
   @@index([tankId])
+  @@index([pumpId, isActive]) // For active nozzle queries
 }
 
 model TankDip {
@@ -381,6 +404,8 @@ model LoanPumper {
   @@index([stationId])
   @@index([status])
   @@index([dueDate])
+  @@index([stationId, status]) // For filtered loan queries
+  @@index([status, createdAt]) // For salary calculations
 }
 
 model LoanOfficeStaff {
@@ -643,6 +668,8 @@ model SafeTransaction {
   @@index([safeId])
   @@index([type])
   @@index([timestamp])
+  @@index([safeId, timestamp]) // For ordered transaction queries
+  @@index([shiftId]) // For shift-related queries
 }
 
 enum SafeTransactionType {
@@ -687,9 +714,15 @@ model Price {
 
 model Bank {
   id            String   @id @default(uuid())
+  code          String?
   name          String
   branch        String?
   accountNumber String?
+  accountName   String?
+  swiftCode     String?
+  contactPerson String?
+  phone         String?
+  email         String?
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -699,6 +732,8 @@ model Bank {
   posTerminals     PosTerminal[]
   creditPayments   CreditPayment[]
   bankTransactions BankTransaction[] // Manual adjustments/expenses
+
+  @@index([isActive]) // For active bank queries
 }
 
 model BankTransaction {
@@ -758,6 +793,7 @@ model Pumper {
   @@index([stationId])
   @@index([status])
   @@index([isActive])
+  @@index([stationId, isActive]) // For active pumper queries
 }
 
 enum PumperStatus {
@@ -1007,6 +1043,12 @@ enum AuditAction {
   UPDATE
   DELETE
   VIEW
+  LOGIN
+  LOGOUT
+  OPEN
+  CLOSE
+  APPROVE
+  REJECT
 }
 
 // ============================================
@@ -1034,6 +1076,8 @@ model Notification {
   @@index([priority])
   @@index([category])
   @@index([createdAt])
+  @@index([stationId, isRead]) // Composite index for filtered queries
+  @@index([isRead, createdAt]) // For unread notifications sorted by date
 }
 
 enum NotificationType {

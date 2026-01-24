@@ -21,23 +21,23 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
   ResponsiveContainer,
   BarChart,
   Bar
 } from 'recharts'
-import { 
-  DollarSign, 
-  CreditCard, 
-  Building, 
-  FileText, 
+import {
+  DollarSign,
+  CreditCard,
+  Building,
+  FileText,
   ArrowLeft,
   RefreshCw,
   Download,
@@ -102,11 +102,7 @@ interface POSSalesReport {
     qr: number
     dialogTouch: number
   }>
-  dailyBreakdown: Array<{
-    date: string
-    totalAmount: number
-    transactionCount: number
-  }>
+
   missingSlips: Array<{
     id: string
     terminalName: string
@@ -160,13 +156,13 @@ export default function POSSalesReportPage() {
     const station = stations.find(s => s.id === selectedStation)
     const stationName = station?.name || 'All Stations'
     const monthLabel = `${selectedYear}-${selectedMonth}`
-    
+
     const exportData = {
       summary: reportData.summary,
       bankBreakdown: reportData.bankBreakdown,
       terminalBreakdown: reportData.terminalBreakdown
     }
-    
+
     exportPOSSalesReportPDF(exportData, stationName, monthLabel)
   }
 
@@ -175,13 +171,13 @@ export default function POSSalesReportPage() {
     const station = stations.find(s => s.id === selectedStation)
     const stationName = station?.name || 'All Stations'
     const monthLabel = `${selectedYear}-${selectedMonth}`
-    
+
     const exportData = {
       summary: reportData.summary,
       bankBreakdown: reportData.bankBreakdown,
       terminalBreakdown: reportData.terminalBreakdown
     }
-    
+
     exportPOSSalesReportExcel(exportData, stationName, monthLabel)
   }
 
@@ -390,19 +386,24 @@ export default function POSSalesReportPage() {
           >
             <div className="w-full h-96 mt-4">
               <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={(() => {
-          // Merge all bank data into single data points per date
-          return reportData.dailyBreakdown.map(day => {
-            const dataPoint: any = { date: day.date, totalAmount: day.totalAmount }
-            reportData.dailyByBank.forEach(bank => {
-              const bankDay = bank.dailySales.find(s => s.date === day.date)
-              dataPoint[bank.bankName] = bankDay?.amount || 0
-            })
-            return dataPoint
-          })
-        })()}>
+                <LineChart data={(() => {
+                  // Merge all bank data into single data points per date
+                  interface ChartDataPoint {
+                    date: string
+                    totalAmount: number
+                    [key: string]: string | number
+                  }
+                  return reportData.dailyBreakdown.map(day => {
+                    const dataPoint: ChartDataPoint = { date: day.date, totalAmount: day.totalAmount }
+                    reportData.dailyByBank.forEach(bank => {
+                      const bankDay = bank.dailySales.find(s => s.date === day.date)
+                      dataPoint[bank.bankName] = bankDay?.amount || 0
+                    })
+                    return dataPoint
+                  })
+                })()}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
+                  <XAxis
                     dataKey="date"
                     tickFormatter={(value) => {
                       const d = new Date(value)
@@ -411,7 +412,7 @@ export default function POSSalesReportPage() {
                     tick={{ fontSize: 10 }}
                   />
                   <YAxis tickFormatter={(value) => `Rs. ${(value / 1000).toFixed(0)}k`} />
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value: number) => `Rs. ${value.toLocaleString()}`}
                     labelFormatter={(date) => new Date(date).toLocaleDateString()}
                   />
@@ -421,11 +422,11 @@ export default function POSSalesReportPage() {
                     // Generate different colors for each bank
                     const colors = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899']
                     const color = colors[index % colors.length]
-                    
+
                     return (
-                      <Line 
+                      <Line
                         key={bank.bankId}
-                        type="monotone" 
+                        type="monotone"
                         dataKey={bank.bankName}
                         stroke={color}
                         strokeWidth={3}
@@ -441,8 +442,8 @@ export default function POSSalesReportPage() {
           </FormCard>
 
           {/* Daily Sales View with Dropdown */}
-          <FormCard 
-            title="Daily Sales Breakdown" 
+          <FormCard
+            title="Daily Sales Breakdown"
             description="View daily sales by bank or POS machine"
           >
             <div className="mb-4">
@@ -491,7 +492,7 @@ export default function POSSalesReportPage() {
                         reportData.dailyByBank.map(bank => {
                           const bankDay = bank.dailySales.find(s => s.date === day.date)
                           return (
-                            <td key={bank.bankId} className="text-right p-3 font-mono text-sm">
+                            <td key={bank.bankId} className="text-right p-3 text-sm">
                               Rs. {(bankDay?.amount || 0).toLocaleString()}
                             </td>
                           )
@@ -500,13 +501,13 @@ export default function POSSalesReportPage() {
                         reportData.dailyByTerminal.map(terminal => {
                           const terminalDay = terminal.dailySales.find(s => s.date === day.date)
                           return (
-                            <td key={terminal.terminalId} className="text-right p-3 font-mono text-sm">
+                            <td key={terminal.terminalId} className="text-right p-3 text-sm">
                               Rs. {(terminalDay?.amount || 0).toLocaleString()}
                             </td>
                           )
                         })
                       )}
-                      <td className="text-right p-3 font-mono font-bold text-purple-600 bg-purple-50 dark:bg-purple-900/20">
+                      <td className="text-right p-3 font-bold text-purple-600 bg-purple-50 dark:bg-purple-900/20">
                         Rs. {day.totalAmount.toLocaleString()}
                       </td>
                     </tr>
@@ -545,15 +546,15 @@ export default function POSSalesReportPage() {
                     reportData.terminalBreakdown.map((terminal, index) => (
                       <tr key={terminal.terminalId} className={index % 2 === 0 ? 'bg-muted/50' : ''}>
                         <td className="p-3 font-bold text-purple-600">{terminal.terminalName}</td>
-                        <td className="p-3 font-mono text-sm bg-gray-100 dark:bg-gray-800">{terminal.terminalNumber}</td>
+                        <td className="p-3 text-sm bg-gray-100 dark:bg-gray-800">{terminal.terminalNumber}</td>
                         <td className="p-3 text-sm">{terminal.bankName}</td>
                         <td className="text-right p-3 font-semibold">{terminal.transactionCount}</td>
-                        <td className="text-right p-3 font-mono text-sm text-blue-600">Rs. {terminal.visa.toLocaleString()}</td>
-                        <td className="text-right p-3 font-mono text-sm text-purple-600">Rs. {terminal.master.toLocaleString()}</td>
-                        <td className="text-right p-3 font-mono text-sm text-green-600">Rs. {terminal.amex.toLocaleString()}</td>
-                        <td className="text-right p-3 font-mono text-sm text-orange-600">Rs. {terminal.qr.toLocaleString()}</td>
-                        <td className="text-right p-3 font-mono text-sm text-red-600">Rs. {terminal.dialogTouch.toLocaleString()}</td>
-                        <td className="text-right p-3 font-mono font-bold text-lg text-purple-600 bg-purple-50 dark:bg-purple-900/20">
+                        <td className="text-right p-3 text-sm text-blue-600">Rs. {terminal.visa.toLocaleString()}</td>
+                        <td className="text-right p-3 text-sm text-purple-600">Rs. {terminal.master.toLocaleString()}</td>
+                        <td className="text-right p-3 text-sm text-green-600">Rs. {terminal.amex.toLocaleString()}</td>
+                        <td className="text-right p-3 text-sm text-orange-600">Rs. {terminal.qr.toLocaleString()}</td>
+                        <td className="text-right p-3 text-sm text-red-600">Rs. {terminal.dialogTouch.toLocaleString()}</td>
+                        <td className="text-right p-3 font-bold text-lg text-purple-600 bg-purple-50 dark:bg-purple-900/20">
                           Rs. {terminal.totalAmount.toLocaleString()}
                         </td>
                       </tr>
@@ -585,12 +586,12 @@ export default function POSSalesReportPage() {
                     <tr key={index} className={index % 2 === 0 ? 'bg-muted/50' : ''}>
                       <td className="p-3 font-medium">{bank.bankName}</td>
                       <td className="text-right p-3">{bank.transactionCount}</td>
-                      <td className="text-right p-3 font-mono text-sm">Rs. {bank.visa.toLocaleString()}</td>
-                      <td className="text-right p-3 font-mono text-sm">Rs. {bank.master.toLocaleString()}</td>
-                      <td className="text-right p-3 font-mono text-sm">Rs. {bank.amex.toLocaleString()}</td>
-                      <td className="text-right p-3 font-mono text-sm">Rs. {bank.qr.toLocaleString()}</td>
-                      <td className="text-right p-3 font-mono text-sm">Rs. {bank.dialogTouch.toLocaleString()}</td>
-                      <td className="text-right p-3 font-mono font-semibold text-purple-600">
+                      <td className="text-right p-3 text-sm">Rs. {bank.visa.toLocaleString()}</td>
+                      <td className="text-right p-3 text-sm">Rs. {bank.master.toLocaleString()}</td>
+                      <td className="text-right p-3 text-sm">Rs. {bank.amex.toLocaleString()}</td>
+                      <td className="text-right p-3 text-sm">Rs. {bank.qr.toLocaleString()}</td>
+                      <td className="text-right p-3 text-sm">Rs. {bank.dialogTouch.toLocaleString()}</td>
+                      <td className="text-right p-3 font-semibold text-purple-600">
                         Rs. {bank.totalAmount.toLocaleString()}
                       </td>
                     </tr>
@@ -619,8 +620,8 @@ export default function POSSalesReportPage() {
                     {reportData.missingSlips.map((slip) => (
                       <tr key={slip.id} className="border-b">
                         <td className="p-3">{slip.terminalName}</td>
-                        <td className="p-3 font-mono">****{slip.lastFourDigits}</td>
-                        <td className="text-right p-3 font-mono">Rs. {slip.amount.toLocaleString()}</td>
+                        <td className="p-3">****{slip.lastFourDigits}</td>
+                        <td className="text-right p-3">Rs. {slip.amount.toLocaleString()}</td>
                         <td className="p-3">{new Date(slip.timestamp).toLocaleString()}</td>
                         <td className="p-3">{slip.reportedBy}</td>
                       </tr>

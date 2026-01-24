@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    
+
     const customer = await prisma.creditCustomer.findUnique({
       where: { id },
       include: {
@@ -21,11 +21,11 @@ export async function GET(
         }
       }
     })
-    
+
     if (!customer) {
       return NextResponse.json({ error: 'Credit customer not found' }, { status: 404 })
     }
-    
+
     return NextResponse.json(customer)
   } catch (error) {
     console.error('Error fetching credit customer:', error)
@@ -40,9 +40,9 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    
-    const { name, company, address, phone, email, creditLimit, status } = body
-    
+
+    const { name, nicOrBrn, company, address, phone, email, creditLimit, status } = body
+
     // Validate required fields
     if (!name || !phone) {
       return NextResponse.json(
@@ -51,11 +51,18 @@ export async function PUT(
       )
     }
 
+    if (!nicOrBrn) {
+      return NextResponse.json(
+        { error: 'NIC or BRN is required' },
+        { status: 400 }
+      )
+    }
+
     // Check if customer exists
     const existingCustomer = await prisma.creditCustomer.findUnique({
       where: { id }
     })
-    
+
     if (!existingCustomer) {
       return NextResponse.json(
         { error: 'Credit customer not found' },
@@ -72,7 +79,7 @@ export async function PUT(
         address: address || '',
         phone,
         email: email || null,
-        creditLimit: creditLimit || 0,
+        creditLimit: creditLimit !== undefined ? parseFloat(creditLimit) : undefined,
         isActive: status === 'ACTIVE' || status === undefined ? true : false
       }
     })
@@ -80,7 +87,7 @@ export async function PUT(
     return NextResponse.json(updatedCustomer)
   } catch (error) {
     console.error('Error updating credit customer:', error)
-    
+
     // Handle unique constraint violations
     if (error instanceof Error && error.message.includes('Unique constraint')) {
       return NextResponse.json(
@@ -88,7 +95,7 @@ export async function PUT(
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -99,12 +106,12 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    
+
     // Check if customer exists
     const existingCustomer = await prisma.creditCustomer.findUnique({
       where: { id }
     })
-    
+
     if (!existingCustomer) {
       return NextResponse.json(
         { error: 'Credit customer not found' },
@@ -116,11 +123,11 @@ export async function DELETE(
     const salesCount = await prisma.creditSale.count({
       where: { customerId: id }
     })
-    
+
     const paymentsCount = await prisma.creditPayment.count({
       where: { customerId: id }
     })
-    
+
     if (salesCount > 0 || paymentsCount > 0) {
       return NextResponse.json(
         { error: 'Cannot delete customer with existing credit sales or payments' },

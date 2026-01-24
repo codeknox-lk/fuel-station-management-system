@@ -24,24 +24,22 @@ import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  BarChart,
-  Bar
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
 } from 'recharts'
-import { 
-  Building2, 
-  Calendar, 
+import {
+  Building2,
+  Calendar,
   TrendingUp,
   TrendingDown,
   DollarSign,
-  AlertCircle, 
+  AlertCircle,
   Calculator,
   Download,
   FileText,
@@ -78,25 +76,47 @@ interface MonthlyProfitReport {
   year: number
   stationId: string
   stationName: string
-  
+
   // Summary
   totalRevenue: number
   totalExpenses: number
   totalProfit: number
   averageMargin: number
-  
+
   // Daily data for chart
   dailyData: ProfitData[]
-  
+
   // Breakdown
   revenueBreakdown: ProfitBreakdown[]
   expenseBreakdown: ProfitBreakdown[]
-  
+
   // Comparisons
   previousMonthProfit: number
   profitGrowth: number
   bestDay: ProfitData
   worstDay: ProfitData
+}
+
+interface BreakdownItem {
+  category: string
+  amount: number
+  percentage: number
+}
+
+interface ProfitReportResponse {
+  dailyData: ProfitData[]
+  breakdown: {
+    revenue: BreakdownItem[]
+    expenses: BreakdownItem[]
+  }
+  summary: {
+    totalRevenue: number
+    totalExpenses: number
+    totalProfit: number
+    averageMargin: number
+    bestDay?: ProfitData
+    worstDay?: ProfitData
+  }
 }
 
 const months = [
@@ -137,7 +157,7 @@ export default function ProfitReportsPage() {
         const response = await fetch('/api/stations?active=true')
         const stationsData = await response.json()
         setStations(stationsData)
-      } catch (err) {
+      } catch (_err) {
         setError('Failed to load stations')
       }
     }
@@ -157,9 +177,8 @@ export default function ProfitReportsPage() {
     try {
       // Get business month date range (7th to 6th)
       const businessMonth = getBusinessMonth(parseInt(selectedMonth), parseInt(selectedYear))
-      const monthStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`
       const url = `/api/reports/profit?stationId=${selectedStation}&month=${selectedMonth}&year=${selectedYear}&startDate=${businessMonth.startDate.toISOString()}&endDate=${businessMonth.endDate.toISOString()}`
-      
+
       const response = await fetch(url, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
@@ -168,20 +187,19 @@ export default function ProfitReportsPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || `Failed to fetch profit report: ${response.status}`)
+        throw new Error((errorData as { error?: string }).error || `Failed to fetch profit report: ${response.status}`)
       }
 
-      const reportData = await response.json()
-      
+      const reportData = await response.json() as ProfitReportResponse
+
       const station = stations.find(s => s.id === selectedStation)
       const monthName = businessMonth.label
-      const dateRange = formatBusinessMonthRange(businessMonth)
 
       // Transform API data to match frontend interface
       const dailyData: ProfitData[] = reportData.dailyData || []
-      
+
       // Transform breakdown data
-      const revenueBreakdown: ProfitBreakdown[] = (reportData.breakdown?.revenue || []).map((item: any) => ({
+      const revenueBreakdown: ProfitBreakdown[] = (reportData.breakdown?.revenue || []).map((item: BreakdownItem) => ({
         category: item.category,
         amount: item.amount,
         percentage: item.percentage,
@@ -189,7 +207,7 @@ export default function ProfitReportsPage() {
         previousMonth: 0 // Would need to fetch previous month for comparison
       }))
 
-      const expenseBreakdown: ProfitBreakdown[] = (reportData.breakdown?.expenses || []).map((item: any) => ({
+      const expenseBreakdown: ProfitBreakdown[] = (reportData.breakdown?.expenses || []).map((item: BreakdownItem) => ({
         category: item.category,
         amount: item.amount,
         percentage: item.percentage,
@@ -202,52 +220,6 @@ export default function ProfitReportsPage() {
       const totalExpenses = reportData.summary?.totalExpenses || 0
       const totalProfit = reportData.summary?.totalProfit || 0
       const averageMargin = reportData.summary?.averageMargin || 0
-
-      // Legacy expense breakdown format (keeping for compatibility)
-      const expenseBreakdownOld: ProfitBreakdown[] = [
-        {
-          category: 'Staff Salaries',
-          amount: totalExpenses * 0.35,
-          percentage: 35,
-          trend: 'UP',
-          previousMonth: totalExpenses * 0.33
-        },
-        {
-          category: 'Utilities',
-          amount: totalExpenses * 0.20,
-          percentage: 20,
-          trend: 'STABLE',
-          previousMonth: totalExpenses * 0.21
-        },
-        {
-          category: 'Maintenance',
-          amount: totalExpenses * 0.15,
-          percentage: 15,
-          trend: 'DOWN',
-          previousMonth: totalExpenses * 0.18
-        },
-        {
-          category: 'Transport',
-          amount: totalExpenses * 0.12,
-          percentage: 12,
-          trend: 'UP',
-          previousMonth: totalExpenses * 0.10
-        },
-        {
-          category: 'Insurance',
-          amount: totalExpenses * 0.08,
-          percentage: 8,
-          trend: 'STABLE',
-          previousMonth: totalExpenses * 0.08
-        },
-        {
-          category: 'Other',
-          amount: totalExpenses * 0.10,
-          percentage: 10,
-          trend: 'DOWN',
-          previousMonth: totalExpenses * 0.10
-        }
-      ]
 
       // Use best and worst days from API (which excludes today)
       const bestDay = reportData.summary.bestDay || dailyData[0] || { day: 0, date: '', profit: 0, revenue: 0, expenses: 0, margin: 0 }
@@ -280,7 +252,7 @@ export default function ProfitReportsPage() {
 
       setProfitReport(report)
 
-    } catch (err) {
+    } catch (_err) {
       setError('Failed to generate profit report')
     } finally {
       setLoading(false)
@@ -292,11 +264,11 @@ export default function ProfitReportsPage() {
       alert('Please select a station and generate a report first')
       return
     }
-    
+
     const station = stations.find(s => s.id === selectedStation)
     const stationName = station?.name || 'Unknown Station'
     const monthStr = `${selectedYear}-${selectedMonth}`
-    
+
     exportProfitReportPDF(profitReport, stationName, monthStr)
   }
 
@@ -333,7 +305,7 @@ export default function ProfitReportsPage() {
       key: 'amount' as keyof ProfitBreakdown,
       title: 'Amount',
       render: (value: unknown) => (
-        <span className="font-mono font-semibold text-green-600 dark:text-green-400">
+        <span className="font-semibold text-green-600 dark:text-green-400">
           Rs. {Math.floor(value as number).toLocaleString()}
         </span>
       )
@@ -342,7 +314,7 @@ export default function ProfitReportsPage() {
       key: 'percentage' as keyof ProfitBreakdown,
       title: 'Percentage',
       render: (value: unknown) => (
-        <span className="font-mono">{value as number}%</span>
+        <span className="">{value as number}%</span>
       )
     },
     {
@@ -371,7 +343,7 @@ export default function ProfitReportsPage() {
       key: 'amount' as keyof ProfitBreakdown,
       title: 'Amount',
       render: (value: unknown) => (
-        <span className="font-mono font-semibold text-red-600 dark:text-red-400">
+        <span className="font-semibold text-red-600 dark:text-red-400">
           Rs. {Math.floor(value as number).toLocaleString()}
         </span>
       )
@@ -380,7 +352,7 @@ export default function ProfitReportsPage() {
       key: 'percentage' as keyof ProfitBreakdown,
       title: 'Percentage',
       render: (value: unknown) => (
-        <span className="font-mono">{value as number}%</span>
+        <span className="">{value as number}%</span>
       )
     },
     {
@@ -571,21 +543,21 @@ export default function ProfitReportsPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={profitReport.dailyData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="date" 
+                    <XAxis
+                      dataKey="date"
                       tick={{ fontSize: 10 }}
                       tickFormatter={(value) => {
                         const d = new Date(value)
                         return `${d.getDate()}/${d.getMonth() + 1}`
                       }}
                     />
-                    <YAxis 
+                    <YAxis
                       tick={{ fontSize: 12 }}
                       tickFormatter={(value) => `Rs. ${(value / 1000).toFixed(0)}K`}
                     />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value: number, name: string) => [
-                        `Rs. ${value.toLocaleString()}`, 
+                        `Rs. ${value.toLocaleString()}`,
                         name === 'profit' ? 'Profit' : name === 'revenue' ? 'Revenue' : 'Expenses'
                       ]}
                       labelFormatter={(date) => {
@@ -593,24 +565,24 @@ export default function ProfitReportsPage() {
                         return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
                       }}
                     />
-                    <Line 
-                      type="monotone" 
-                      dataKey="revenue" 
-                      stroke="#10b981" 
+                    <Line
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#10b981"
                       strokeWidth={2}
                       name="revenue"
                     />
-                    <Line 
-                      type="monotone" 
-                      dataKey="expenses" 
-                      stroke="#ef4444" 
+                    <Line
+                      type="monotone"
+                      dataKey="expenses"
+                      stroke="#ef4444"
                       strokeWidth={2}
                       name="expenses"
                     />
-                    <Line 
-                      type="monotone" 
-                      dataKey="profit" 
-                      stroke="#3b82f6" 
+                    <Line
+                      type="monotone"
+                      dataKey="profit"
+                      stroke="#3b82f6"
                       strokeWidth={3}
                       name="profit"
                     />
@@ -634,19 +606,19 @@ export default function ProfitReportsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span>Revenue:</span>
-                    <span className="font-mono text-green-600 dark:text-green-400">Rs. {profitReport.bestDay.revenue.toLocaleString()}</span>
+                    <span className="text-green-600 dark:text-green-400">Rs. {profitReport.bestDay.revenue.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Expenses:</span>
-                    <span className="font-mono text-red-600 dark:text-red-400">Rs. {profitReport.bestDay.expenses.toLocaleString()}</span>
+                    <span className="text-red-600 dark:text-red-400">Rs. {profitReport.bestDay.expenses.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between border-t pt-2">
                     <span className="font-semibold">Profit:</span>
-                    <span className="font-mono font-bold text-blue-600 dark:text-blue-400">Rs. {profitReport.bestDay.profit.toLocaleString()}</span>
+                    <span className="font-bold text-blue-600 dark:text-blue-400">Rs. {profitReport.bestDay.profit.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Margin:</span>
-                    <span className="font-mono">{profitReport.bestDay.margin.toFixed(1)}%</span>
+                    <span className="">{profitReport.bestDay.margin.toFixed(1)}%</span>
                   </div>
                 </div>
               </CardContent>
@@ -664,19 +636,19 @@ export default function ProfitReportsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span>Revenue:</span>
-                    <span className="font-mono text-green-600 dark:text-green-400">Rs. {profitReport.worstDay.revenue.toLocaleString()}</span>
+                    <span className="text-green-600 dark:text-green-400">Rs. {profitReport.worstDay.revenue.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Expenses:</span>
-                    <span className="font-mono text-red-600 dark:text-red-400">Rs. {profitReport.worstDay.expenses.toLocaleString()}</span>
+                    <span className="text-red-600 dark:text-red-400">Rs. {profitReport.worstDay.expenses.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between border-t pt-2">
                     <span className="font-semibold">Profit:</span>
-                    <span className="font-mono font-bold text-blue-600 dark:text-blue-400">Rs. {profitReport.worstDay.profit.toLocaleString()}</span>
+                    <span className="font-bold text-blue-600 dark:text-blue-400">Rs. {profitReport.worstDay.profit.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Margin:</span>
-                    <span className="font-mono">{profitReport.worstDay.margin.toFixed(1)}%</span>
+                    <span className="">{profitReport.worstDay.margin.toFixed(1)}%</span>
                   </div>
                 </div>
               </CardContent>

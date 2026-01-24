@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const stationId = searchParams.get('stationId')
     const dateStr = searchParams.get('date') || new Date().toISOString().split('T')[0]
-    
+
     if (!stationId) {
       return NextResponse.json({ error: 'Station ID is required', message: 'Station ID is required', details: 'Station ID parameter is missing' }, { status: 400 })
     }
@@ -16,17 +16,17 @@ export async function GET(request: NextRequest) {
     try {
       date = new Date(dateStr)
       if (isNaN(date.getTime())) {
-        return NextResponse.json({ 
-          error: 'Invalid date format', 
-          message: 'Invalid date format', 
-          details: `Date "${dateStr}" is not a valid date` 
+        return NextResponse.json({
+          error: 'Invalid date format',
+          message: 'Invalid date format',
+          details: `Date "${dateStr}" is not a valid date`
         }, { status: 400 })
       }
     } catch (dateError) {
-      return NextResponse.json({ 
-        error: 'Invalid date format', 
-        message: 'Invalid date format', 
-        details: dateError instanceof Error ? dateError.message : 'Unknown date parsing error' 
+      return NextResponse.json({
+        error: 'Invalid date format',
+        message: 'Invalid date format',
+        details: dateError instanceof Error ? dateError.message : 'Unknown date parsing error'
       }, { status: 400 })
     }
 
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
       const totalAssignments = allShifts.reduce((sum, s) => sum + s.assignments.length, 0)
       const filteredAssignments = shifts.reduce((sum, s) => sum + s.assignments.length, 0)
       console.log(`[Daily Report API] Found ${shifts.length} shifts for the day (${filteredAssignments} filtered assignments out of ${totalAssignments} total)`)
-      
+
       // Log details about each shift for debugging
       shifts.forEach((shift, idx) => {
         console.log(`[Daily Report API] Shift ${idx + 1}: id=${shift.id}, status=${shift.status}, assignments=${shift.assignments.length}`)
@@ -136,10 +136,10 @@ export async function GET(request: NextRequest) {
       })
     } catch (shiftsError) {
       console.error('[Daily Report API] Error fetching shifts:', shiftsError)
-      
+
       let errorMessage = 'Unknown error'
       let errorDetails = 'Unknown error'
-      
+
       if (shiftsError instanceof Error) {
         errorMessage = shiftsError.message
         errorDetails = shiftsError.toString()
@@ -176,26 +176,26 @@ export async function GET(request: NextRequest) {
     let totalLiters = 0
 
     console.log(`[Daily Report API] Processing ${shifts.length} shifts for sales calculation`)
-    
+
     for (const shift of shifts) {
       if (!shift.assignments || !Array.isArray(shift.assignments)) {
         console.log(`[Daily Report API] Shift ${shift.id} has no assignments or assignments is not an array`)
         continue
       }
-      
+
       console.log(`[Daily Report API] Processing shift ${shift.id} with ${shift.assignments.length} assignments`)
-      
+
       for (const assignment of shift.assignments) {
         if (!assignment.endMeterReading || !assignment.startMeterReading) {
           console.log(`[Daily Report API] Assignment ${assignment.id} missing meter readings: start=${assignment.startMeterReading}, end=${assignment.endMeterReading}`)
           continue
         }
-        
+
         if (!assignment.nozzle || !assignment.nozzle.tank) {
           console.log(`[Daily Report API] Assignment ${assignment.id} missing nozzle or tank: nozzle=${!!assignment.nozzle}, tank=${!!(assignment.nozzle?.tank)}`)
           continue
         }
-        
+
         // Handle meter rollover
         let litersSold = assignment.endMeterReading - assignment.startMeterReading
         if (litersSold < 0) {
@@ -209,41 +209,42 @@ export async function GET(request: NextRequest) {
             continue
           }
         }
-        
+
         if (litersSold <= 0) {
           console.log(`[Daily Report API] Assignment ${assignment.id} has invalid liters sold: ${litersSold}`)
           continue
         }
 
         const fuelId = assignment.nozzle.tank.fuelId
+        const fuelType = assignment.nozzle.tank.fuel?.code
         if (!fuelType) {
           console.log(`[Daily Report API] Assignment ${assignment.id} has no fuel type`)
           continue
         }
-        
+
         try {
           const price = await prisma.price.findFirst({
             where: {
-              fuelType,
+              fuelId,
               stationId,
               effectiveDate: { lte: shift.endTime || shift.startTime },
               isActive: true
             },
             orderBy: { effectiveDate: 'desc' }
           })
-          
+
           const pricePerLiter = price ? price.price : 0
           if (pricePerLiter === 0) {
             console.log(`[Daily Report API] No price found for fuelType ${fuelType} at station ${stationId}`)
           }
-          
+
           const salesAmount = litersSold * pricePerLiter
-          
+
           const current = salesByFuelType.get(fuelType) || 0
           salesByFuelType.set(fuelType, current + salesAmount)
           totalSales += salesAmount
           totalLiters += litersSold
-          
+
           console.log(`[Daily Report API] Assignment ${assignment.id}: ${litersSold}L ${fuelType} @ Rs.${pricePerLiter}/L = Rs.${salesAmount}`)
         } catch (priceError) {
           console.error(`[Daily Report API] Error fetching price for fuelType ${fuelType}:`, priceError)
@@ -269,8 +270,16 @@ export async function GET(request: NextRequest) {
     let creditAmount = 0
     let chequeAmount = 0
 
+    interface DeclaredAmounts {
+      transactionCount?: number
+      cash?: number
+      card?: number
+      credit?: number
+      cheque?: number
+    }
+
     for (const shift of shifts) {
-      const declared = (shift.declaredAmounts as any) || {}
+      const declared = (shift.declaredAmounts as unknown as DeclaredAmounts) || {}
       cashAmount += declared.cash || 0
       cardAmount += declared.card || 0
       creditAmount += declared.credit || 0
@@ -280,8 +289,24 @@ export async function GET(request: NextRequest) {
     // Get shift IDs for related queries
     const shiftIds = shifts.map(s => s.id)
 
+    interface PosBatchType {
+      terminalEntries: {
+        terminal: {
+          id: string
+          name: string
+          terminalNumber: string
+          bank?: { name: string } | null
+        }
+        transactionCount: number
+        visaAmount: number
+        masterAmount: number
+        amexAmount: number
+        qrAmount: number
+        dialogTouchAmount?: number
+      }[]
+    }
     // Get POS batches and terminals
-    let posBatches: any[] = []
+    let posBatches: PosBatchType[] = []
     if (shiftIds.length > 0) {
       try {
         posBatches = await prisma.posBatch.findMany({
@@ -309,13 +334,28 @@ export async function GET(request: NextRequest) {
     }
 
     // Build POS terminal breakdown
-    const posTerminalsMap = new Map<string, any>()
+    interface PosTerminalSummary {
+      terminalId: string
+      terminalName: string
+      terminalNumber: string
+      bankName: string
+      totalAmount: number
+      transactionCount: number
+      visaAmount: number
+      mastercardAmount: number
+      amexAmount: number
+      qrAmount: number
+      dialogTouchAmount: number
+      missingSlips: number
+      missingSlipAmount: number
+    }
+    const posTerminalsMap = new Map<string, PosTerminalSummary>()
     for (const batch of posBatches) {
       if (!batch.terminalEntries || !Array.isArray(batch.terminalEntries)) continue
-      
+
       for (const entry of batch.terminalEntries) {
         if (!entry.terminal || !entry.terminal.id) continue
-        
+
         const terminalId = entry.terminal.id
         if (!posTerminalsMap.has(terminalId)) {
           posTerminalsMap.set(terminalId, {
@@ -348,8 +388,18 @@ export async function GET(request: NextRequest) {
     const posTerminals = Array.from(posTerminalsMap.values())
     const totalPOSAmount = posTerminals.reduce((sum, t) => sum + t.totalAmount, 0)
 
+    interface CreditSaleType {
+      customerId: string
+      amount: number
+      customer: {
+        id: string
+        name: string
+        creditLimit: number
+        currentBalance: number
+      }
+    }
     // Get credit customers and sales
-    let creditSales: any[] = []
+    let creditSales: CreditSaleType[] = []
     if (shiftIds.length > 0) {
       try {
         creditSales = await prisma.creditSale.findMany({
@@ -369,7 +419,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const creditCustomersMap = new Map<string, any>()
+    interface CreditCustomerSummary {
+      customerId: string
+      customerName: string
+      totalSales: number
+      transactionCount: number
+      creditLimit: number
+      currentBalance: number
+      paymentReceived: number
+    }
+    const creditCustomersMap = new Map<string, CreditCustomerSummary>()
     for (const sale of creditSales) {
       const customerId = sale.customerId
       if (!creditCustomersMap.has(customerId)) {
@@ -388,9 +447,13 @@ export async function GET(request: NextRequest) {
       customer.transactionCount += 1
     }
 
+    interface CreditPaymentType {
+      customerId: string
+      amount: number
+    }
     // Get credit payments for the day
     // First get all credit payments for the day, then filter by checking if customer has sales in our shifts
-    let creditPayments: any[] = []
+    let creditPayments: CreditPaymentType[] = []
     try {
       // Get all credit payments for the day
       const allCreditPayments = await prisma.creditPayment.findMany({
@@ -418,7 +481,7 @@ export async function GET(request: NextRequest) {
 
       // Filter to only include payments where customer has sales in our shifts
       if (shiftIds.length > 0) {
-        creditPayments = allCreditPayments.filter(payment => 
+        creditPayments = allCreditPayments.filter(payment =>
           payment.customer.creditSales && payment.customer.creditSales.length > 0
         )
       } else {
@@ -448,8 +511,18 @@ export async function GET(request: NextRequest) {
     }))
     const totalCreditSales = creditCustomers.reduce((sum, c) => sum + c.totalSales, 0)
 
+    interface ChequeType {
+      id: string
+      chequeNumber?: string
+      amount: number
+      receivedFrom?: string
+      receivedDate?: Date
+      status: string
+      bank?: { name: string } | null
+      bankBranch?: string
+    }
     // Get cheques
-    let cheques: any[] = []
+    let cheques: ChequeType[] = []
     try {
       cheques = await prisma.cheque.findMany({
         where: {
@@ -481,7 +554,7 @@ export async function GET(request: NextRequest) {
     const totalChequeAmount = chequeBreakdown.reduce((sum, c) => sum + c.amount, 0)
 
     // Get expenses
-    let expenses: any[] = []
+    let expenses: { amount: number }[] = []
     try {
       expenses = await prisma.expense.findMany({
         where: {
@@ -499,7 +572,7 @@ export async function GET(request: NextRequest) {
     const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0)
 
     // Get deposits
-    let deposits: any[] = []
+    let deposits: { amount: number }[] = []
     try {
       deposits = await prisma.deposit.findMany({
         where: {
@@ -517,7 +590,7 @@ export async function GET(request: NextRequest) {
     const totalDeposits = deposits.reduce((sum, deposit) => sum + deposit.amount, 0)
 
     // Get loans given
-    let loans: any[] = []
+    let loans: { amount: number }[] = []
     try {
       loans = await prisma.loanExternal.findMany({
         where: {
@@ -540,12 +613,12 @@ export async function GET(request: NextRequest) {
     const variancePercentage = totalSales > 0 ? (totalVariance / totalSales) * 100 : 0
 
     // Get missing slips (POS batches without all slips) - placeholder for now
-    const missingSlips: any[] = []
+    const missingSlips: unknown[] = []
 
     // Calculate metrics
     const shiftCount = shifts.length
     const transactionCount = shifts.reduce((sum, shift) => {
-      const declared = (shift.declaredAmounts as any) || {}
+      const declared = (shift.declaredAmounts as unknown as DeclaredAmounts) || {}
       return sum + (declared.transactionCount || shift.assignments.length)
     }, 0)
     const averageTransaction = transactionCount > 0 ? totalSales / transactionCount : 0
@@ -610,7 +683,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(report)
   } catch (error) {
     console.error('[Daily Report API] Error generating comprehensive daily report:', error)
-    
+
     let errorMessage = 'Unknown error'
     let errorDetails = ''
     let errorStack: string | undefined = undefined

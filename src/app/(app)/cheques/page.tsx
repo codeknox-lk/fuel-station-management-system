@@ -19,14 +19,14 @@ import { MoneyInput } from '@/components/inputs/MoneyInput'
 import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { 
-  Building2, 
-  DollarSign, 
-  Calendar, 
+import {
+  Building2,
+  DollarSign,
+  Calendar,
   Building,
   FileText,
-  AlertCircle, 
-  CheckCircle, 
+  AlertCircle,
+  CheckCircle,
   Plus,
   Clock,
   XCircle,
@@ -85,7 +85,7 @@ export default function ChequesPage() {
   const [success, setSuccess] = useState('')
 
   // Form state
-  const { selectedStation } = useStation()
+  const { selectedStation, setSelectedStation } = useStation()
   const [chequeNumber, setChequeNumber] = useState('')
   const [bankName, setBankName] = useState('')
   const [amount, setAmount] = useState(0)
@@ -108,7 +108,7 @@ export default function ChequesPage() {
 
         setStations(stationsData)
         setRecentCheques(chequesData)
-      } catch (err) {
+      } catch (_err) {
         setError('Failed to load initial data')
       }
     }
@@ -118,7 +118,7 @@ export default function ChequesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!selectedStation || !chequeNumber || !bankName || !amount) {
       setError('Please fill in all required fields')
       return
@@ -161,10 +161,10 @@ export default function ChequesPage() {
       }
 
       const newCheque = await response.json()
-      
+
       // Add to recent cheques list
       setRecentCheques(prev => [newCheque, ...prev.slice(0, 9)])
-      
+
       // Reset form
       setSelectedStation('')
       setChequeNumber('')
@@ -174,13 +174,13 @@ export default function ChequesPage() {
       setDepositReference('')
       setReceivedDate(new Date())
       setNotes('')
-      
+
       setSuccess('Cheque recorded successfully!')
-      
+
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000)
 
-    } catch (err) {
+    } catch (_err) {
       setError('Failed to record cheque')
     } finally {
       setLoading(false)

@@ -20,13 +20,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
-import { 
-  Shield, 
-  Calendar, 
-  TrendingUp, 
-  TrendingDown, 
-  AlertCircle, 
-  CheckCircle, 
+import {
+  Shield,
+  Calendar,
+  TrendingUp,
+  TrendingDown,
+  AlertCircle,
+  CheckCircle,
   Building2,
   DollarSign,
   Calculator,
@@ -48,27 +48,27 @@ interface SafeSummary {
   stationName: string
   date: string
   openingBalance: number
-  
+
   // Inflows
   cashSales: number
   creditPayments: number
   loanReceipts: number
   otherInflows: number
   totalInflows: number
-  
+
   // Outflows
   expenses: number
   loanPayments: number
   deposits: number
   otherOutflows: number
   totalOutflows: number
-  
+
   // Calculated
   expectedBalance: number
   actualBalance: number
   variance: number
   isBalanced: boolean
-  
+
   // Details for expanders
   inflowDetails: InflowDetail[]
   outflowDetails: OutflowDetail[]
@@ -100,7 +100,7 @@ export default function SafeSummaryPage() {
   const [error, setError] = useState('')
 
   // Form state
-  const { selectedStation } = useStation()
+  const { selectedStation, setSelectedStation } = useStation()
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
 
   // Expander state
@@ -134,13 +134,13 @@ export default function SafeSummaryPage() {
     try {
       // Call the API endpoint to get real safe summary data
       const response = await fetch(`/api/safe/summary?stationId=${selectedStation}&date=${selectedDate}`)
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch safe summary')
       }
 
       const apiData = await response.json()
-      
+
       // Transform API response to match frontend interface
       const summary: SafeSummary = {
         stationId: apiData.stationId || selectedStation,
@@ -278,12 +278,11 @@ export default function SafeSummaryPage() {
                   <div className="text-sm text-muted-foreground">Actual Balance</div>
                 </div>
                 <div className="text-center">
-                  <Badge 
-                    className={`text-lg py-2 px-4 ${
-                      safeSummary.isBalanced 
-                        ? 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300' 
+                  <Badge
+                    className={`text-lg py-2 px-4 ${safeSummary.isBalanced
+                        ? 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
                         : 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
-                    }`}
+                      }`}
                   >
                     {safeSummary.isBalanced ? (
                       <>
@@ -471,8 +470,8 @@ export default function SafeSummaryPage() {
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Action Required</AlertTitle>
               <AlertDescription>
-                The safe is not balanced. Variance of Rs. {Math.abs(safeSummary.variance).toLocaleString()} 
-                {safeSummary.variance > 0 ? ' excess' : ' shortage'} detected. 
+                The safe is not balanced. Variance of Rs. {Math.abs(safeSummary.variance).toLocaleString()}
+                {safeSummary.variance > 0 ? ' excess' : ' shortage'} detected.
                 Please verify all transactions and investigate the discrepancy.
               </AlertDescription>
             </Alert>

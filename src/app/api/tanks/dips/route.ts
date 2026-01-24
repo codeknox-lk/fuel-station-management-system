@@ -31,14 +31,21 @@ export async function GET(request: NextRequest) {
           }
         }
       })
-      
+
       if (!dip) {
         return NextResponse.json({ error: 'Tank dip not found' }, { status: 404 })
       }
       return NextResponse.json(dip)
     }
 
-    const where: any = {}
+    interface TankDipWhereInput {
+      tankId?: string
+      dipDate?: {
+        gte: Date
+        lte: Date
+      }
+    }
+    const where: TankDipWhereInput = {}
     if (tankId) {
       where.tankId = tankId
     }
@@ -83,7 +90,7 @@ export async function GET(request: NextRequest) {
         changeFromPrevious !== null && index < dips.length - 1 && dips[index + 1].reading > 0
           ? (changeFromPrevious / dips[index + 1].reading) * 100
           : null
-      
+
       // Estimated variance using current tank level as proxy for book stock
       const estimatedBookStock = dip.tank?.currentLevel || null
       const variance = estimatedBookStock !== null
@@ -92,7 +99,7 @@ export async function GET(request: NextRequest) {
       const variancePercentage = variance !== null && estimatedBookStock !== null && estimatedBookStock > 0
         ? (Math.abs(variance) / estimatedBookStock) * 100
         : null
-      
+
       return {
         ...dip,
         tankNumber: dip.tank?.tankNumber || null,
@@ -115,10 +122,18 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    
+    interface TankDipBody {
+      stationId?: string
+      tankId?: string
+      reading?: number | string
+      recordedBy?: string
+      dipDate?: string | Date
+      notes?: string
+    }
+    const body = await request.json() as TankDipBody
+
     const { stationId, tankId, reading, recordedBy, dipDate, notes } = body
-    
+
     if (!stationId || !tankId || reading === undefined || !recordedBy || !dipDate) {
       return NextResponse.json(
         { error: 'Station ID, tank ID, reading, recorded by, and dip date are required' },
@@ -138,7 +153,7 @@ export async function POST(request: NextRequest) {
       data: {
         stationId,
         tankId,
-        reading: parseFloat(reading),
+        reading: parseFloat(String(reading)),
         recordedBy,
         dipDate: new Date(dipDate),
         notes: notes || null
@@ -164,13 +179,13 @@ export async function POST(request: NextRequest) {
 
     // Audit logging
     if (tank && tank.station) {
-      await auditOperations.tankDipRecorded(request, tankId, reading, tank.station.id, tank.station.name)
+      await auditOperations.tankDipRecorded(request, tankId, Number(reading), tank.station.id, tank.station.name)
     }
 
     return NextResponse.json(newDip, { status: 201 })
   } catch (error) {
     console.error('Error creating tank dip:', error)
-    
+
     // Handle foreign key constraint violations
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
       return NextResponse.json(
@@ -178,7 +193,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -18,10 +18,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { DataTable, Column } from '@/components/ui/DataTable'
-import { 
-  Settings, 
-  Plus, 
-  AlertCircle, 
+import {
+  Settings,
+  Plus,
+  AlertCircle,
   CheckCircle,
   Fuel,
   Droplets,
@@ -40,13 +40,14 @@ interface Nozzle {
   id: string
   nozzleNumber: string
   pump: { pumpNumber: string }
-  tank: { fuelType: string }
+  tank: { fuel?: { name: string }; fuelType?: string }
   isActive: boolean
 }
 
 interface Tank {
   id: string
-  fuelName: string
+  fuelName?: string
+  fuel?: { name: string; icon?: string }
   capacity: number
   currentLevel: number
 }
@@ -54,17 +55,17 @@ interface Tank {
 export default function InfrastructureSetupPage() {
   const router = useRouter()
   const { stations } = useStation()
-  
+
   // Common state
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [selectedStation, setSelectedStation] = useState('')
-  
+
   // Pump state
   const [pumps, setPumps] = useState<Pump[]>([])
   const [pumpNumber, setPumpNumber] = useState('')
   const [pumpLoading, setPumpLoading] = useState(false)
-  
+
   // Nozzle state
   const [nozzles, setNozzles] = useState<Nozzle[]>([])
   const [tanks, setTanks] = useState<Tank[]>([])
@@ -72,7 +73,7 @@ export default function InfrastructureSetupPage() {
   const [selectedTank, setSelectedTank] = useState('')
   const [nozzleNumber, setNozzleNumber] = useState('')
   const [nozzleLoading, setNozzleLoading] = useState(false)
-  
+
   // Load pumps and nozzles when station changes
   useEffect(() => {
     if (selectedStation) {
@@ -118,7 +119,7 @@ export default function InfrastructureSetupPage() {
 
   const handleCreatePump = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!selectedStation || !pumpNumber) {
       setError('Please fill in all required fields')
       return
@@ -157,7 +158,7 @@ export default function InfrastructureSetupPage() {
 
   const handleCreateNozzle = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!selectedStation || !selectedPump || !selectedTank || !nozzleNumber) {
       setError('Please fill in all required fields')
       return
@@ -254,12 +255,15 @@ export default function InfrastructureSetupPage() {
     {
       key: 'tank' as keyof Nozzle,
       title: 'Tank / Fuel Type',
-      render: (value: unknown) => (
-        <div className="flex items-center gap-2">
-          <Fuel className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-          <Badge variant="outline">{(value as { fuel?: { name: string } }).fuel?.name || 'Unknown'}</Badge>
-        </div>
-      )
+      render: (value: unknown) => {
+        const tank = value as { fuel?: { name: string }; fuelType?: string }
+        return (
+          <div className="flex items-center gap-2">
+            <Fuel className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+            <Badge variant="outline">{tank.fuel?.name || tank.fuelType || 'Unknown'}</Badge>
+          </div>
+        )
+      }
     },
     {
       key: 'isActive' as keyof Nozzle,
@@ -302,7 +306,7 @@ export default function InfrastructureSetupPage() {
       )}
 
       {/* Station Selection */}
-      <FormCard className="p-4">
+      <FormCard title="Select Station" className="p-4">
         <div>
           <Label htmlFor="infra-station">Select Station</Label>
           <Select value={selectedStation} onValueChange={setSelectedStation}>
@@ -401,7 +405,7 @@ export default function InfrastructureSetupPage() {
                           <SelectItem key={tank.id} value={tank.id}>
                             <div className="flex items-center gap-2">
                               <Fuel className="h-4 w-4" />
-                              <span>{tank.fuelType.replace(/_/g, ' ')}</span>
+                              <span>{tank.fuel?.name || tank.fuelName || 'Unknown'}</span>
                               <span className="text-xs text-muted-foreground">
                                 ({tank.capacity.toLocaleString()}L)
                               </span>

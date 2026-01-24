@@ -6,11 +6,11 @@ import { useStation } from '@/contexts/StationContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-  DollarSign, 
-  Clock, 
-  TrendingUp, 
-  User, 
+import {
+  DollarSign,
+  Clock,
+  TrendingUp,
+  User,
   Calendar,
   ArrowLeft,
   Download,
@@ -81,19 +81,29 @@ export default function PumperSalaryDetailsPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { selectedStation } = useStation()
-  
+
   // Extract values immediately using useMemo to avoid Next.js 15 enumeration issues
   const pumperId = useMemo(() => (params?.pumperId as string) || '', [params])
   const month = useMemo(() => searchParams?.get('month') || '', [searchParams])
   const pumperName = useMemo(() => searchParams?.get('pumperName') || 'Unknown', [searchParams])
-  
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [salaryData, setSalaryData] = useState<SalaryData | null>(null)
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
   const [loanRepayDialogOpen, setLoanRepayDialogOpen] = useState(false)
-  const [paymentHistory, setPaymentHistory] = useState<any[]>([])
+  interface PaymentHistoryItem {
+    id: string
+    paymentDate: string
+    paymentMethod: string
+    paymentReference?: string
+    notes?: string
+    status: string
+    netSalary: number
+    paidBy: string
+  }
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([])
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
   const [paymentForm, setPaymentForm] = useState({
     paymentMethod: 'CASH' as 'CASH' | 'CHEQUE' | 'BANK_TRANSFER',
@@ -143,7 +153,7 @@ export default function PumperSalaryDetailsPage() {
       setLoading(true)
       setError('')
       const username = typeof window !== 'undefined' ? localStorage.getItem('username') || 'System User' : 'System User'
-      
+
       const response = await fetch('/api/salary/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -169,7 +179,7 @@ export default function PumperSalaryDetailsPage() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         const errorMessage = errorData.error || 'Failed to record payment'
-        
+
         // Handle "already paid" case gracefully
         if (errorMessage.includes('already recorded and paid')) {
           await fetchPaymentHistory() // Refresh to get the existing payment
@@ -178,7 +188,7 @@ export default function PumperSalaryDetailsPage() {
           setError('Payment has already been recorded for this month.')
           return
         }
-        
+
         throw new Error(errorMessage)
       }
 
@@ -195,7 +205,7 @@ export default function PumperSalaryDetailsPage() {
       console.error('Error marking salary as paid:', err)
       const errorMessage = err instanceof Error ? err.message : 'Failed to record payment'
       setError(errorMessage)
-      
+
       // If it's an "already paid" error, refresh payment history
       if (errorMessage.includes('already') || errorMessage.includes('recorded')) {
         await fetchPaymentHistory()
@@ -212,25 +222,25 @@ export default function PumperSalaryDetailsPage() {
     try {
       setLoading(true)
       setError('')
-      
+
       const res = await fetch(`/api/salary?stationId=${selectedStation}&month=${month}&pumperId=${pumperId}`)
-      
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
         throw new Error(errorData.error || 'Failed to fetch salary data')
       }
 
       const data = await res.json()
-      
+
       // If pumperId is specified, the API should return data for that pumper
       // If not found in array, check if it's an empty result
       let pumperData = data.salaryData?.find((p: SalaryData) => p.pumperId === pumperId)
-      
+
       // If not found and salaryData exists, it might be the first (and only) item
       if (!pumperData && data.salaryData && data.salaryData.length > 0) {
         pumperData = data.salaryData[0]
       }
-      
+
       // If still not found, create empty data structure
       if (!pumperData) {
         pumperData = {
@@ -249,7 +259,7 @@ export default function PumperSalaryDetailsPage() {
           shiftDetails: []
         }
       }
-      
+
       setSalaryData(pumperData)
     } catch (err) {
       console.error('Error fetching salary data:', err)
@@ -332,8 +342,8 @@ export default function PumperSalaryDetailsPage() {
             }
           }}>
             <DialogTrigger asChild>
-              <Button 
-                variant="default" 
+              <Button
+                variant="default"
                 disabled={!salaryData || salaryData.netSalary <= 0 || hasPaidPayment || isProcessingPayment}
               >
                 <CheckCircle className="h-4 w-4 mr-2" />
@@ -341,7 +351,7 @@ export default function PumperSalaryDetailsPage() {
               </Button>
             </DialogTrigger>
             <DialogContent>
-                <DialogHeader>
+              <DialogHeader>
                 <DialogTitle>Record Salary Payment</DialogTitle>
                 <DialogDescription>
                   Record that salary has been paid to {salaryData?.pumperName}
@@ -408,8 +418,8 @@ export default function PumperSalaryDetailsPage() {
                   />
                 </div>
                 <div className="flex justify-end gap-2 pt-4">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => {
                       setPaymentDialogOpen(false)
                       setError('')
@@ -419,8 +429,8 @@ export default function PumperSalaryDetailsPage() {
                     {hasPaidPayment ? 'Close' : 'Cancel'}
                   </Button>
                   {!hasPaidPayment && (
-                    <Button 
-                      onClick={handleMarkAsPaid} 
+                    <Button
+                      onClick={handleMarkAsPaid}
                       disabled={loading || isProcessingPayment || hasPaidPayment}
                     >
                       {isProcessingPayment ? 'Processing...' : 'Record Payment'}
@@ -489,9 +499,9 @@ export default function PumperSalaryDetailsPage() {
             <div className="text-2xl font-bold">
               {salaryData.daysWorked || 0} days
             </div>
-              <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               {salaryData.shiftCount} shifts
-              </p>
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -520,27 +530,27 @@ export default function PumperSalaryDetailsPage() {
             {salaryData.epf && salaryData.epf > 0 && (
               <div className="flex justify-between items-center p-3 bg-card rounded-lg border">
                 <span className="text-sm font-medium">EPF (8%):</span>
-                <span className="font-mono font-semibold text-red-600 text-lg">
+                <span className="font-semibold text-red-600 text-lg">
                   -Rs. {salaryData.epf.toLocaleString()}
                 </span>
               </div>
             )}
             <div className="flex justify-between items-center p-3 bg-card rounded-lg border">
               <span className="text-sm font-medium">Advances Taken:</span>
-              <span className="font-mono font-semibold text-red-600 text-lg">
+              <span className="font-semibold text-red-600 text-lg">
                 -Rs. {salaryData.totalAdvances.toLocaleString()}
               </span>
             </div>
             <div className="flex justify-between items-center p-3 bg-card rounded-lg border">
               <span className="text-sm font-medium">Loans:</span>
-              <span className="font-mono font-semibold text-red-600 text-lg">
+              <span className="font-semibold text-red-600 text-lg">
                 -Rs. {salaryData.totalLoans.toLocaleString()}
               </span>
             </div>
             {salaryData.varianceDeduct > 0 && (
               <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-red-500/30">
                 <span className="text-sm font-medium">Variance Deductions:</span>
-                <span className="font-mono font-semibold text-red-600 text-lg">
+                <span className="font-semibold text-red-600 text-lg">
                   -Rs. {salaryData.varianceDeduct.toLocaleString()}
                 </span>
               </div>
@@ -548,7 +558,7 @@ export default function PumperSalaryDetailsPage() {
             <div className="pt-2 border-t">
               <div className="flex justify-between items-center">
                 <span className="font-semibold">Total Deductions:</span>
-                <span className="font-mono font-bold text-red-600 text-xl">
+                <span className="font-bold text-red-600 text-xl">
                   -Rs. {((salaryData.epf || 0) + salaryData.totalAdvances + salaryData.totalLoans + salaryData.varianceDeduct).toLocaleString()}
                 </span>
               </div>
@@ -565,7 +575,7 @@ export default function PumperSalaryDetailsPage() {
             {salaryData.holidayAllowance !== undefined && salaryData.holidayAllowance > 0 && (
               <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-green-500/30">
                 <span className="text-sm font-medium">Holiday Allowance:</span>
-                <span className="font-mono font-semibold text-green-600 text-lg">
+                <span className="font-semibold text-green-600 text-lg">
                   +Rs. {salaryData.holidayAllowance.toLocaleString()}
                 </span>
                 {salaryData.restDaysTaken !== undefined && salaryData.restDaysTaken > 0 && (
@@ -578,7 +588,7 @@ export default function PumperSalaryDetailsPage() {
             {salaryData.totalOvertimeAmount && salaryData.totalOvertimeAmount > 0 && (
               <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-green-500/30">
                 <span className="text-sm font-medium">Overtime:</span>
-                <span className="font-mono font-semibold text-green-600 text-lg">
+                <span className="font-semibold text-green-600 text-lg">
                   +Rs. {salaryData.totalOvertimeAmount.toLocaleString()}
                 </span>
                 {salaryData.totalOvertimeHours && (
@@ -591,7 +601,7 @@ export default function PumperSalaryDetailsPage() {
             {salaryData.commission !== undefined && salaryData.commission > 0 && (
               <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-green-500/30">
                 <span className="text-sm font-medium">Commission:</span>
-                <span className="font-mono font-semibold text-green-600 text-lg">
+                <span className="font-semibold text-green-600 text-lg">
                   +Rs. {salaryData.commission.toLocaleString()}
                 </span>
               </div>
@@ -599,7 +609,7 @@ export default function PumperSalaryDetailsPage() {
             {salaryData.varianceAdd > 0 && (
               <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-green-500/30">
                 <span className="text-sm font-medium">Variance Bonuses:</span>
-                <span className="font-mono font-semibold text-green-600 text-lg">
+                <span className="font-semibold text-green-600 text-lg">
                   +Rs. {salaryData.varianceAdd.toLocaleString()}
                 </span>
               </div>
@@ -607,7 +617,7 @@ export default function PumperSalaryDetailsPage() {
             <div className="pt-2 border-t">
               <div className="flex justify-between items-center">
                 <span className="font-semibold">Total Additions:</span>
-                <span className="font-mono font-bold text-green-600 text-xl">
+                <span className="font-bold text-green-600 text-xl">
                   +Rs. {((salaryData.holidayAllowance || 0) + (salaryData.totalOvertimeAmount || 0) + (salaryData.commission || 0) + salaryData.varianceAdd).toLocaleString()}
                 </span>
               </div>
@@ -626,19 +636,19 @@ export default function PumperSalaryDetailsPage() {
           <div className="space-y-4">
             <div className="flex justify-between items-center p-4 bg-card rounded-lg border">
               <span className="text-lg font-medium">Base Salary:</span>
-              <span className="font-mono font-semibold text-lg">
+              <span className="font-semibold text-lg">
                 Rs. {salaryData.baseSalary.toLocaleString()}
               </span>
             </div>
             <div className="flex justify-between items-center p-4 bg-card rounded-lg border border-green-500/30">
               <span className="text-lg font-medium">Additions:</span>
-              <span className="font-mono font-semibold text-green-600 text-lg">
+              <span className="font-semibold text-green-600 text-lg">
                 +Rs. {((salaryData.holidayAllowance || 0) + (salaryData.totalOvertimeAmount || 0) + (salaryData.commission || 0) + salaryData.varianceAdd).toLocaleString()}
               </span>
             </div>
             <div className="flex justify-between items-center p-4 bg-card rounded-lg border border-red-500/30">
               <span className="text-lg font-medium">Deductions:</span>
-              <span className="font-mono font-semibold text-red-600 text-lg">
+              <span className="font-semibold text-red-600 text-lg">
                 -Rs. {((salaryData.epf || 0) + salaryData.totalAdvances + salaryData.totalLoans + salaryData.varianceDeduct).toLocaleString()}
               </span>
             </div>
@@ -675,14 +685,14 @@ export default function PumperSalaryDetailsPage() {
                       </div>
                       <div>
                         <div className="font-semibold text-lg">
-                          {new Date(shift.date).toLocaleDateString('en-US', { 
-                            weekday: 'long', 
-                            year: 'numeric', 
-                            month: 'long', 
-                            day: 'numeric' 
+                          {new Date(shift.date).toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
                           })}
                         </div>
-                        <Link 
+                        <Link
                           href={`/shifts/${shift.shiftId}`}
                           className="text-sm text-primary hover:underline"
                         >
@@ -700,14 +710,14 @@ export default function PumperSalaryDetailsPage() {
                       )}
                     </Badge>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                     {shift.overtimeAmount && shift.overtimeAmount > 0 && (
                       <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
                         <div className="text-xs text-muted-foreground mb-1">Overtime</div>
                         <div className="flex items-center gap-1">
                           <Clock className="h-4 w-4 text-blue-600" />
-                          <span className="font-mono font-semibold text-blue-600 text-lg">
+                          <span className="font-semibold text-blue-600 text-lg">
                             Rs. {shift.overtimeAmount.toLocaleString()}
                           </span>
                         </div>
@@ -720,7 +730,7 @@ export default function PumperSalaryDetailsPage() {
                       <div className="text-xs text-muted-foreground mb-1">Sales</div>
                       <div className="flex items-center gap-1">
                         <TrendingUp className="h-4 w-4 text-green-600" />
-                        <span className="font-mono font-semibold text-green-600 text-lg">
+                        <span className="font-semibold text-green-600 text-lg">
                           Rs. {shift.sales.toLocaleString()}
                         </span>
                       </div>
@@ -728,27 +738,26 @@ export default function PumperSalaryDetailsPage() {
                         Commission: Rs. {Math.floor(shift.sales / 1000).toLocaleString()}
                       </div>
                     </div>
-                    
+
                     <div className="p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
                       <div className="text-xs text-muted-foreground mb-1">Advance Taken</div>
-                      <span className="font-mono font-semibold text-orange-600 text-lg">
+                      <span className="font-semibold text-orange-600 text-lg">
                         Rs. {shift.advance.toLocaleString()}
                       </span>
                     </div>
-                    
-                    <div className={`p-3 rounded-lg border ${
-                      shift.varianceStatus === 'ADD_TO_SALARY' 
-                        ? 'bg-green-500/10 border-green-500/20' 
-                        : shift.varianceStatus === 'DEDUCT_FROM_SALARY'
+
+                    <div className={`p-3 rounded-lg border ${shift.varianceStatus === 'ADD_TO_SALARY'
+                      ? 'bg-green-500/10 border-green-500/20'
+                      : shift.varianceStatus === 'DEDUCT_FROM_SALARY'
                         ? 'bg-red-500/10 border-red-500/20'
                         : 'bg-muted border-border'
-                    }`}>
+                      }`}>
                       <div className="text-xs text-muted-foreground mb-1">Variance</div>
                       <div className="flex items-center gap-1">
                         {shift.varianceStatus === 'ADD_TO_SALARY' && (
                           <>
                             <CheckCircle className="h-4 w-4 text-green-600" />
-                            <span className="font-mono font-semibold text-green-600 text-lg">
+                            <span className="font-semibold text-green-600 text-lg">
                               +Rs. {Math.abs(shift.variance).toLocaleString()}
                             </span>
                           </>
@@ -756,7 +765,7 @@ export default function PumperSalaryDetailsPage() {
                         {shift.varianceStatus === 'DEDUCT_FROM_SALARY' && (
                           <>
                             <XCircle className="h-4 w-4 text-red-600" />
-                            <span className="font-mono font-semibold text-red-600 text-lg">
+                            <span className="font-semibold text-red-600 text-lg">
                               -Rs. {shift.variance.toLocaleString()}
                             </span>
                           </>
@@ -766,10 +775,10 @@ export default function PumperSalaryDetailsPage() {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
                       <div className="text-xs text-muted-foreground mb-1">Shift Impact</div>
-                      <span className="font-mono font-semibold text-blue-600 text-lg">
+                      <span className="font-semibold text-blue-600 text-lg">
                         {(() => {
                           // Calculate net impact: variance adjustment + advance deduction
                           let impact = -shift.advance // Advance is always deducted
@@ -779,7 +788,7 @@ export default function PumperSalaryDetailsPage() {
                             impact -= Math.abs(shift.variance) // Deduct variance penalty
                           }
                           // impact is negative = deduction, positive = addition
-                          return impact >= 0 
+                          return impact >= 0
                             ? `+Rs. ${impact.toLocaleString()}`
                             : `-Rs. ${Math.abs(impact).toLocaleString()}`
                         })()}
@@ -820,7 +829,7 @@ export default function PumperSalaryDetailsPage() {
             <div className="text-center py-8 text-muted-foreground">
               <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <p>No payment records found for this month</p>
-              <p className="text-sm mt-2">Click "Mark as Paid" above to record a payment</p>
+              <p className="text-sm mt-2">Click &quot;Mark as Paid&quot; above to record a payment</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -848,8 +857,8 @@ export default function PumperSalaryDetailsPage() {
                           payment.status === 'PAID'
                             ? 'bg-green-500/20 text-green-600'
                             : payment.status === 'PARTIAL'
-                            ? 'bg-yellow-500/20 text-yellow-600'
-                            : 'bg-muted'
+                              ? 'bg-yellow-500/20 text-yellow-600'
+                              : 'bg-muted'
                         }
                       >
                         {payment.status}
@@ -870,43 +879,43 @@ export default function PumperSalaryDetailsPage() {
       </Card>
 
       {/* Loan Management Section */}
-        <Card className="border-orange-500/20 bg-orange-500/5">
-          <CardHeader>
-            <CardTitle className="text-xl flex items-center gap-2 text-orange-600">
-              <CreditCard className="h-5 w-5" />
-              Outstanding Loans
-            </CardTitle>
-            <CardDescription>
-              {salaryData.totalLoanAmount && salaryData.totalLoanAmount > 0 ? (
-                <div className="space-y-1">
-                  <div>Total loan amount: Rs. {salaryData.totalLoanAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                  {salaryData.totalLoans > 0 && (
-                    <div>Total monthly rental deduction: Rs. {salaryData.totalLoans.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                  )}
-                </div>
-              ) : salaryData.totalLoans > 0 ? (
-                `Total monthly rental deduction: Rs. ${salaryData.totalLoans.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-              ) : (
-                'No active loans with monthly rental deduction'
-              )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
+      <Card className="border-orange-500/20 bg-orange-500/5">
+        <CardHeader>
+          <CardTitle className="text-xl flex items-center gap-2 text-orange-600">
+            <CreditCard className="h-5 w-5" />
+            Outstanding Loans
+          </CardTitle>
+          <CardDescription>
+            {salaryData.totalLoanAmount && salaryData.totalLoanAmount > 0 ? (
+              <div className="space-y-1">
+                <div>Total loan amount: Rs. {salaryData.totalLoanAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                {salaryData.totalLoans > 0 && (
+                  <div>Total monthly rental deduction: Rs. {salaryData.totalLoans.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                )}
+              </div>
+            ) : salaryData.totalLoans > 0 ? (
+              `Total monthly rental deduction: Rs. ${salaryData.totalLoans.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            ) : (
+              'No active loans with monthly rental deduction'
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
               Loans are automatically deducted from salary each month based on monthly rental amount. You can update the monthly rental below.
-              </p>
-              <Button
-                variant="outline"
-                className="w-full"
+            </p>
+            <Button
+              variant="outline"
+              className="w-full"
               onClick={() => router.push(`/salary/${pumperId}/loans?pumperName=${encodeURIComponent(pumperName)}`)}
-              >
-                <CreditCard className="h-4 w-4 mr-2" />
-                Manage Loans
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            >
+              <CreditCard className="h-4 w-4 mr-2" />
+              Manage Loans
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

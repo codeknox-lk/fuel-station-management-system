@@ -7,11 +7,18 @@ import { useStation } from '@/contexts/StationContext'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { FormCard } from '@/components/ui/FormCard'
-import { 
+import {
   Fuel, CreditCard, DollarSign, TrendingUp, TrendingDown,
   AlertTriangle, Clock, Activity, FileText, Wallet, Users,
   Droplet, Building2, ArrowRight, CheckCircle2, Package, Zap
 } from 'lucide-react'
+
+interface FuelStock {
+  name: string
+  stock: number
+  capacity: number
+  percentage: number
+}
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -30,7 +37,7 @@ export default function DashboardPage() {
     criticalAlerts: 0,
     pendingDeliveries: 0
   })
-  const [fuelStock, setFuelStock] = useState<any[]>([])
+  const [fuelStock, setFuelStock] = useState<FuelStock[]>([])
   const [recentActivity, setRecentActivity] = useState<any[]>([])
   const [alerts, setAlerts] = useState<any[]>([])
 
@@ -41,12 +48,32 @@ export default function DashboardPage() {
   const loadDashboardData = async () => {
     setLoading(true)
     try {
-      await Promise.all([
-        loadStats(),
-        loadFuelStock(),
-        loadRecentActivity(),
-        loadAlerts()
-      ])
+      // Single optimized API call instead of 4 separate calls
+      const params = selectedStation && selectedStation !== 'all' ? `?stationId=${selectedStation}` : ''
+      const response = await fetch(`/api/dashboard/summary${params}`)
+
+      if (response.ok) {
+        const data = await response.json()
+
+        // Update all state from single response
+        setStats({
+          todaySales: data.stats.todaySales || 0,
+          todayTransactions: data.stats.todayTransactions || 0,
+          activeShifts: data.stats.activeShifts || 0,
+          activeShiftDetails: data.stats.activeShiftDetails || [],
+          safeBalance: data.stats.safeBalance || 0,
+          creditOutstanding: data.stats.creditOutstanding || 0,
+          todayPOSSales: 0,
+          totalTanks: data.stats.totalTanks || 0,
+          lowStockTanks: data.stats.lowStockTanks || 0,
+          criticalAlerts: data.stats.criticalAlerts || 0,
+          pendingDeliveries: data.stats.pendingDeliveries || 0
+        })
+
+        setFuelStock(data.fuelStock || [])
+        setAlerts(data.alerts || [])
+        setRecentActivity(data.recentActivity || [])
+      }
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
     } finally {
@@ -54,124 +81,7 @@ export default function DashboardPage() {
     }
   }
 
-  const loadStats = async () => {
-    try {
-      const params = selectedStation && selectedStation !== 'all' ? `?stationId=${selectedStation}` : ''
-      
-      const [shiftsRes, safeRes, tanksRes] = await Promise.all([
-        fetch(`/api/shifts${params}`),
-        fetch(`/api/safe/summary${params}`),
-        fetch(`/api/tanks${params}`)
-      ])
-
-      if (shiftsRes.ok) {
-        const shiftsData = await shiftsRes.json()
-        const shifts = Array.isArray(shiftsData) ? shiftsData : shiftsData.shifts || []
-        const activeShiftsList = shifts.filter((s: any) => s.status === 'OPEN')
-        const activeShifts = activeShiftsList.length
-        
-        const today = new Date().toDateString()
-        const todayShifts = shifts.filter((s: any) => 
-          s.status === 'CLOSED' && new Date(s.startTime).toDateString() === today
-        )
-        const todaySales = todayShifts.reduce((sum: number, s: any) => sum + (s.statistics?.totalSales || 0), 0)
-        const todayTransactions = todayShifts.reduce((sum: number, s: any) => sum + (s.statistics?.totalTransactions || 0), 0)
-
-        setStats(prev => ({ 
-          ...prev, 
-          todaySales, 
-          todayTransactions, 
-          activeShifts,
-          activeShiftDetails: activeShiftsList 
-        }))
-      }
-
-      if (safeRes.ok) {
-        const safeData = await safeRes.json()
-        setStats(prev => ({ 
-          ...prev, 
-          safeBalance: safeData.physicalCash || 0,
-          creditOutstanding: safeData.outstandingCredit || 0
-        }))
-      }
-
-      if (tanksRes.ok) {
-        const tanks = await tanksRes.json()
-        const totalTanks = tanks.length
-        const lowStockTanks = tanks.filter((t: any) => 
-          (t.currentLevel / t.capacity) < 0.2
-        ).length
-        const criticalTanks = tanks.filter((t: any) => 
-          (t.currentLevel / t.capacity) < 0.1
-        ).length
-        const criticalAlerts = criticalTanks + (lowStockTanks > 0 ? 1 : 0)
-        setStats(prev => ({ ...prev, totalTanks, lowStockTanks, criticalAlerts }))
-      }
-    } catch (error) {
-      console.error('Failed to load stats:', error)
-    }
-  }
-
-  const loadFuelStock = async () => {
-    try {
-      const params = selectedStation && selectedStation !== 'all' ? `?stationId=${selectedStation}` : ''
-      const res = await fetch(`/api/tanks${params}`)
-      
-      if (res.ok) {
-        const tanks = await res.json()
-        const stockByFuel = new Map<string, {capacity: number, stock: number}>()
-        
-        tanks.forEach((tank: any) => {
-          const fuelName = tank.fuel?.name || 'Unknown'
-          const current = stockByFuel.get(fuelName) || { capacity: 0, stock: 0 }
-          stockByFuel.set(fuelName, {
-            capacity: current.capacity + tank.capacity,
-            stock: current.stock + tank.currentLevel
-          })
-        })
-
-        const fuelData = Array.from(stockByFuel.entries()).map(([fuelName, data]) => ({
-          name: fuelName,
-          capacity: data.capacity,
-          stock: data.stock,
-          percentage: (data.stock / data.capacity) * 100
-        }))
-
-        setFuelStock(fuelData)
-      }
-    } catch (error) {
-      console.error('Failed to load fuel stock:', error)
-    }
-  }
-
-  const loadRecentActivity = async () => {
-    try {
-      const params = selectedStation && selectedStation !== 'all' ? `&stationId=${selectedStation}` : ''
-      const res = await fetch(`/api/audit-log?recent=true&limit=10${params}`)
-      if (res.ok) {
-        const activities = await res.json()
-        setRecentActivity(activities)
-      }
-    } catch (error) {
-      console.error('Failed to load recent activity:', error)
-    }
-  }
-
-  const loadAlerts = async () => {
-    try {
-      const params = selectedStation && selectedStation !== 'all' ? `?stationId=${selectedStation}` : ''
-      const res = await fetch(`/api/notifications${params}`)
-      if (res.ok) {
-        const notifs = await res.json()
-        // Handle both array and object responses
-        const notifsArray = Array.isArray(notifs) ? notifs : (notifs.notifications || [])
-        setAlerts(notifsArray.slice(0, 5))
-      }
-    } catch (error) {
-      console.error('Failed to load alerts:', error)
-      setAlerts([]) // Set empty array on error
-    }
-  }
+  // Removed old separate loading functions - now using unified /api/dashboard/summary endpoint
 
   return (
     <div className="space-y-6 p-6">
@@ -285,10 +195,9 @@ export default function DashboardPage() {
                 </div>
                 <div className="w-full bg-muted rounded-full h-2">
                   <div
-                    className={`h-2 rounded-full transition-all ${
-                      fuel.percentage < 20 ? 'bg-red-500' :
+                    className={`h-2 rounded-full transition-all ${fuel.percentage < 20 ? 'bg-red-500' :
                       fuel.percentage < 50 ? 'bg-yellow-500' : 'bg-green-500'
-                    }`}
+                      }`}
                     style={{ width: `${Math.min(fuel.percentage, 100)}%` }}
                   />
                 </div>
@@ -331,9 +240,9 @@ export default function DashboardPage() {
       {/* Quick Actions */}
       <FormCard title="Quick Actions" description="Common operations">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <Button 
-            variant="outline" 
-            className="h-24 flex flex-col gap-2 hover:bg-green-50 hover:border-green-300 dark:hover:bg-green-950" 
+          <Button
+            variant="outline"
+            className="h-24 flex flex-col gap-2 hover:bg-green-50 hover:border-green-300 dark:hover:bg-green-950"
             onClick={(e) => {
               e.preventDefault()
               router.push('/shifts/open')
@@ -342,9 +251,9 @@ export default function DashboardPage() {
             <Clock className="h-6 w-6 text-green-600" />
             <span className="text-sm font-medium">Start Shift</span>
           </Button>
-          <Button 
-            variant="outline" 
-            className="h-24 flex flex-col gap-2 hover:bg-blue-50 hover:border-blue-300 dark:hover:bg-blue-950" 
+          <Button
+            variant="outline"
+            className="h-24 flex flex-col gap-2 hover:bg-blue-50 hover:border-blue-300 dark:hover:bg-blue-950"
             onClick={(e) => {
               e.preventDefault()
               router.push('/shifts/close')
@@ -353,9 +262,9 @@ export default function DashboardPage() {
             <CheckCircle2 className="h-6 w-6 text-blue-600" />
             <span className="text-sm font-medium">Close Shift</span>
           </Button>
-          <Button 
-            variant="outline" 
-            className="h-24 flex flex-col gap-2 hover:bg-purple-50 hover:border-purple-300 dark:hover:bg-purple-950" 
+          <Button
+            variant="outline"
+            className="h-24 flex flex-col gap-2 hover:bg-purple-50 hover:border-purple-300 dark:hover:bg-purple-950"
             onClick={(e) => {
               e.preventDefault()
               router.push('/banks')
@@ -364,9 +273,9 @@ export default function DashboardPage() {
             <CreditCard className="h-6 w-6 text-purple-600" />
             <span className="text-sm font-medium">Banks</span>
           </Button>
-          <Button 
-            variant="outline" 
-            className="h-24 flex flex-col gap-2 hover:bg-orange-50 hover:border-orange-300 dark:hover:bg-orange-950" 
+          <Button
+            variant="outline"
+            className="h-24 flex flex-col gap-2 hover:bg-orange-50 hover:border-orange-300 dark:hover:bg-orange-950"
             onClick={(e) => {
               e.preventDefault()
               router.push('/tanks/deliveries')
@@ -375,9 +284,9 @@ export default function DashboardPage() {
             <Package className="h-6 w-6 text-orange-600" />
             <span className="text-sm font-medium">Add Delivery</span>
           </Button>
-          <Button 
-            variant="outline" 
-            className="h-24 flex flex-col gap-2 hover:bg-yellow-50 hover:border-yellow-300 dark:hover:bg-yellow-950" 
+          <Button
+            variant="outline"
+            className="h-24 flex flex-col gap-2 hover:bg-yellow-50 hover:border-yellow-300 dark:hover:bg-yellow-950"
             onClick={(e) => {
               e.preventDefault()
               router.push('/safe')
@@ -386,9 +295,9 @@ export default function DashboardPage() {
             <Wallet className="h-6 w-6 text-yellow-600" />
             <span className="text-sm font-medium">Safe</span>
           </Button>
-          <Button 
-            variant="outline" 
-            className="h-24 flex flex-col gap-2 hover:bg-indigo-50 hover:border-indigo-300 dark:hover:bg-indigo-950" 
+          <Button
+            variant="outline"
+            className="h-24 flex flex-col gap-2 hover:bg-indigo-50 hover:border-indigo-300 dark:hover:bg-indigo-950"
             onClick={(e) => {
               e.preventDefault()
               router.push('/reports')
@@ -403,23 +312,40 @@ export default function DashboardPage() {
       {/* Recent Activity */}
       <FormCard title="Recent Activity" description="Latest system activities">
         <div className="space-y-2">
-          {recentActivity.slice(0, 8).map((activity, idx) => (
-            <div key={idx} className="flex items-center justify-between p-2 border rounded">
-              <div className="flex items-center gap-3">
-                <Activity className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium">{activity.action} - {activity.entity}</p>
-                  <p className="text-xs text-muted-foreground">{activity.userName}</p>
+          {recentActivity
+            .filter(activity => {
+              // Get current user role from localStorage
+              const userRole = typeof window !== 'undefined' ? localStorage.getItem('userRole') : null
+              // Hide developer activities from non-developers
+              if (activity.userRole === 'DEVELOPER' && userRole !== 'DEVELOPER') {
+                return false
+              }
+              return true
+            })
+            .slice(0, 8)
+            .map((activity, idx) => (
+              <div key={idx} className="flex items-center justify-between p-2 border rounded">
+                <div className="flex items-center gap-3">
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">{activity.action} - {activity.entity}</p>
+                    <p className="text-xs text-muted-foreground">{activity.userName}</p>
+                  </div>
                 </div>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(activity.timestamp).toLocaleTimeString()}
+                </span>
               </div>
-              <span className="text-xs text-muted-foreground">
-                {new Date(activity.timestamp).toLocaleTimeString()}
-              </span>
-            </div>
-          ))}
-          {recentActivity.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">No recent activity</p>
-          )}
+            ))}
+          {recentActivity.filter(activity => {
+            const userRole = typeof window !== 'undefined' ? localStorage.getItem('userRole') : null
+            if (activity.userRole === 'DEVELOPER' && userRole !== 'DEVELOPER') {
+              return false
+            }
+            return true
+          }).length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">No recent activity</p>
+            )}
         </div>
       </FormCard>
     </div>

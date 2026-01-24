@@ -34,33 +34,27 @@ export async function GET(request: NextRequest) {
       // Enrich transaction with related data (same logic as below)
       const enriched: any = { ...transaction }
 
-      // Fetch shift data if shiftId exists
+      // OPTIMIZED: Fetch minimal shift data with select
       if (transaction.shiftId) {
         try {
           const shift = await prisma.shift.findUnique({
             where: { id: transaction.shiftId },
-            include: {
-              template: true,
-              assignments: {
-                include: {
-                  nozzle: {
-                    include: {
-                      tank: true,
-                      pump: true
-                    }
-                  }
+            select: {
+              id: true,
+              status: true,
+              startTime: true,
+              endTime: true,
+              openedBy: true,
+              template: {
+                select: {
+                  id: true,
+                  name: true
                 }
               }
             }
           })
           if (shift) {
-            enriched.shift = {
-              ...shift,
-              assignments: shift.assignments.map(a => ({
-                ...a,
-                pumper: { name: a.pumperName }
-              }))
-            }
+            enriched.shift = shift
           }
         } catch (err) {
           console.warn(`Failed to fetch shift ${transaction.shiftId}:`, err)
@@ -108,102 +102,72 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([enriched])
     }
 
-    // If shiftId is provided, fetch all transactions for that shift
+    // OPTIMIZED: If shiftId is provided, fetch all transactions for that shift
     if (shiftId) {
       const shiftTransactions = await prisma.safeTransaction.findMany({
         where: { shiftId },
+        select: {
+          id: true,
+          safeId: true,
+          type: true,
+          amount: true,
+          balanceBefore: true,
+          balanceAfter: true,
+          shiftId: true,
+          batchId: true,
+          creditSaleId: true,
+          chequeId: true,
+          expenseId: true,
+          loanId: true,
+          depositId: true,
+          description: true,
+          performedBy: true,
+          timestamp: true,
+          createdAt: true,
+          updatedAt: true
+        },
         orderBy: [
           { timestamp: 'desc' },
           { createdAt: 'desc' }
         ]
       })
 
-      // Enrich each transaction
-      const enrichedTransactions = await Promise.all(
-        shiftTransactions.map(async (tx) => {
-          const enriched: any = { ...tx }
-
-          // Fetch shift data
-          if (tx.shiftId) {
-            try {
-              const shift = await prisma.shift.findUnique({
-                where: { id: tx.shiftId },
-                include: {
-                  template: true,
-                  assignments: {
-                    include: {
-                      nozzle: {
-                        include: {
-                          tank: true,
-                          pump: true
-                        }
-                      }
-                    }
-                  }
-                }
-              })
-              if (shift) {
-                enriched.shift = {
-                  ...shift,
-                  assignments: shift.assignments.map(a => ({
-                    ...a,
-                    pumper: { name: a.pumperName }
-                  }))
-                }
-              }
-            } catch (err) {
-              console.warn(`Failed to fetch shift ${tx.shiftId}:`, err)
+      // Fetch shift data once for all transactions (not N+1!)
+      const shift = await prisma.shift.findUnique({
+        where: { id: shiftId },
+        select: {
+          id: true,
+          template: {
+            select: {
+              name: true
+            }
+          },
+          assignments: {
+            select: {
+              pumperName: true
             }
           }
+        }
+      })
 
-          // Fetch POS batch data if batchId exists
-          if (tx.batchId) {
-            try {
-              const batch = await prisma.posBatch.findUnique({
-                where: { id: tx.batchId },
-                include: {
-                  terminalEntries: {
-                    include: {
-                      terminal: {
-                        include: {
-                          bank: true
-                        }
-                      }
-                    }
-                  }
-                }
-              })
-              enriched.batch = batch
-            } catch (err) {
-              console.warn(`Failed to fetch batch ${tx.batchId}:`, err)
-            }
-          }
+      // Attach shift to each transaction
+      const enriched = shiftTransactions.map(tx => ({
+        ...tx,
+        shift: shift ? {
+          ...shift,
+          assignments: shift.assignments.map(a => ({
+            pumperName: a.pumperName,
+            pumper: { name: a.pumperName }
+          }))
+        } : undefined
+      }))
 
-          // Fetch cheque data if chequeId exists
-          if (tx.chequeId) {
-            try {
-              const cheque = await prisma.cheque.findUnique({
-                where: { id: tx.chequeId },
-                include: {
-                  bank: true
-                }
-              })
-              enriched.cheque = cheque
-            } catch (err) {
-              console.warn(`Failed to fetch cheque ${tx.chequeId}:`, err)
-            }
-          }
-
-          return enriched
-        })
-      )
-
-      return NextResponse.json(enrichedTransactions)
+      return NextResponse.json(enriched)
     }
 
     // If no stationId, get transactions from all safes
     let safeIds: string[] = []
-    
+
     if (!stationId) {
       const allSafes = await prisma.safe.findMany({
         select: { id: true }
@@ -211,23 +175,19 @@ export async function GET(request: NextRequest) {
       safeIds = allSafes.map(s => s.id)
     } else {
       // Get or create safe for specific station
-      let safe = await prisma.safe.findUnique({
-        where: { stationId }
+      const safe = await prisma.safe.upsert({
+        where: { stationId },
+        update: {},
+        create: {
+          stationId,
+          openingBalance: 0,
+          currentBalance: 0
+        }
       })
-
-      if (!safe) {
-        safe = await prisma.safe.create({
-          data: {
-            stationId,
-            openingBalance: 0,
-            currentBalance: 0
-          }
-        })
-      }
       safeIds = [safe.id]
     }
 
-    const where: any = { 
+    const where: any = {
       safeId: safeIds.length === 1 ? safeIds[0] : { in: safeIds }
     }
 
@@ -251,86 +211,44 @@ export async function GET(request: NextRequest) {
       ...(limit ? { take: parseInt(limit) } : {})
     })
 
-    // Fetch related data manually since Prisma relations aren't defined
-    const enrichedTransactions = await Promise.all(
-      transactions.map(async (tx) => {
-        const enriched: any = { ...tx }
+    // OPTIMIZED: Batch-fetch all unique shifts to avoid N+1 queries
+    const uniqueShiftIds = [...new Set(transactions.map(tx => tx.shiftId).filter(Boolean))] as string[]
 
-        // Fetch shift data if shiftId exists
-        if (tx.shiftId) {
-          try {
-            const shift = await prisma.shift.findUnique({
-              where: { id: tx.shiftId },
-              include: {
-                template: true,
-                assignments: {
-                  include: {
-                    nozzle: {
-                      include: {
-                        tank: true,
-                        pump: true
-                      }
-                    }
-                  }
-                }
-              }
-            })
-            // Add pumper info to assignments (pumperName is a string field, not a relation)
-            if (shift) {
-              enriched.shift = {
-                ...shift,
-                assignments: shift.assignments.map(a => ({
-                  ...a,
-                  pumper: { name: a.pumperName } // Convert pumperName string to pumper object for frontend
-                }))
-              }
+    const shiftsMap = new Map()
+    if (uniqueShiftIds.length > 0) {
+      const shifts = await prisma.shift.findMany({
+        where: { id: { in: uniqueShiftIds } },
+        select: {
+          id: true,
+          template: {
+            select: {
+              name: true
             }
-          } catch (err) {
-            console.warn(`Failed to fetch shift ${tx.shiftId}:`, err)
+          },
+          assignments: {
+            select: {
+              pumperName: true
+            }
           }
         }
-
-        // Fetch POS batch data if batchId exists
-        if (tx.batchId) {
-          try {
-            const batch = await prisma.posBatch.findUnique({
-              where: { id: tx.batchId },
-              include: {
-                terminalEntries: {
-                  include: {
-                    terminal: {
-                      include: {
-                        bank: true
-                      }
-                    }
-                  }
-                }
-              }
-            })
-            enriched.batch = batch
-          } catch (err) {
-            console.warn(`Failed to fetch batch ${tx.batchId}:`, err)
-          }
-        }
-
-        // Fetch cheque data if chequeId exists
-        if (tx.chequeId) {
-          try {
-            const cheque = await prisma.cheque.findUnique({
-              where: { id: tx.chequeId },
-              include: {
-                bank: true
-              }
-            })
-            enriched.cheque = cheque
-          } catch (err) {
-            console.warn(`Failed to fetch cheque ${tx.chequeId}:`, err)
-          }
-        }
-
-        return enriched
       })
-    )
+
+      shifts.forEach(shift => {
+        shiftsMap.set(shift.id, {
+          ...shift,
+          assignments: shift.assignments.map(a => ({
+            pumperName: a.pumperName,
+            pumper: { name: a.pumperName }
+          }))
+        })
+      })
+    }
+
+    // Enrich transactions with cached shift data (no N+1!)
+    const enrichedTransactions = transactions.map(tx => ({
+      ...tx,
+      shift: tx.shiftId ? shiftsMap.get(tx.shiftId) : undefined
+    }))
 
     return NextResponse.json(enrichedTransactions)
   } catch (error) {
@@ -384,11 +302,11 @@ export async function POST(request: NextRequest) {
     // Calculate balance before transaction chronologically
     // Get transaction timestamp (default to now if not provided)
     const transactionTimestamp = timestamp ? new Date(timestamp) : new Date()
-    
+
     // Get all transactions that occurred before or at the same time as this transaction
     // Order by timestamp ASC to calculate balance chronologically
     const allTransactions = await prisma.safeTransaction.findMany({
-      where: { 
+      where: {
         safeId: safe.id,
         timestamp: { lte: transactionTimestamp }
       },
@@ -412,7 +330,7 @@ export async function POST(request: NextRequest) {
           'CHEQUE_RECEIVED',
           'LOAN_REPAID'
         ].includes(tx.type)
-        
+
         balanceBefore += txIsIncome ? tx.amount : -tx.amount
       }
     }
@@ -478,7 +396,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(transaction, { status: 201 })
   } catch (error) {
     console.error('Error creating safe transaction:', error)
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })

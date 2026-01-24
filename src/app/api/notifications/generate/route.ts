@@ -23,59 +23,61 @@ export async function POST(request: NextRequest) {
               id: true,
               name: true
             }
-          }
+          },
+          fuel: true
         }
       })
 
-    for (const tank of tanks) {
-      const fillPercentage = (tank.currentLevel / tank.capacity) * 100
-      
-      if (fillPercentage < 30) {
-        // Check if notification model exists
-        if (!('notification' in prisma)) {
-          errors.push('Prisma client not regenerated - skipping notification generation')
-          continue
-        }
+      for (const tank of tanks) {
+        const fillPercentage = (tank.currentLevel / tank.capacity) * 100
 
-        // Check if notification already exists (within last 24 hours)
-        const existingNotification = await (prisma as any).notification.findFirst({
-          where: {
-            stationId: tank.stationId,
-            category: 'TANK',
-            type: fillPercentage < 15 ? 'ERROR' : 'WARNING',
-            message: {
-              contains: `Tank ${tank.tankNumber || tank.id}`
-            },
-            createdAt: {
-              gte: new Date(Date.now() - 24 * 60 * 60 * 1000)
-            }
+        if (fillPercentage < 30) {
+          // Check if notification model exists
+          if (!('notification' in prisma)) {
+            errors.push('Prisma client not regenerated - skipping notification generation')
+            continue
           }
-        })
 
-        if (!existingNotification) {
-          const notification = await (prisma as any).notification.create({
-            data: {
+          // Check if notification already exists (within last 24 hours)
+          const prismaWithNotif = prisma as unknown as { notification: { findFirst: (args: unknown) => Promise<any>, create: (args: unknown) => Promise<any> } }
+          const existingNotification = await prismaWithNotif.notification.findFirst({
+            where: {
               stationId: tank.stationId,
-              title: fillPercentage < 15 
-                ? 'Critical: Low Tank Level' 
-                : 'Low Tank Level Warning',
-              message: `Tank ${tank.tankNumber || 'Unknown'} (${tank.fuel?.name || 'Unknown'}) is at ${fillPercentage.toFixed(1)}% capacity - refill needed ${fillPercentage < 15 ? 'urgently' : 'soon'}`,
-              type: fillPercentage < 15 ? 'ERROR' : 'WARNING',
-              priority: fillPercentage < 15 ? 'CRITICAL' : fillPercentage < 20 ? 'HIGH' : 'MEDIUM',
               category: 'TANK',
-              actionUrl: `/tanks`,
-              metadata: {
-                tankId: tank.id,
-                tankNumber: tank.tankNumber,
-                fuelName: tank.fuel?.name || 'Unknown',
-                fillPercentage: fillPercentage.toFixed(1)
+              type: fillPercentage < 15 ? 'ERROR' : 'WARNING',
+              message: {
+                contains: `Tank ${tank.tankNumber || tank.id}`
+              },
+              createdAt: {
+                gte: new Date(Date.now() - 24 * 60 * 60 * 1000)
               }
             }
           })
-          generatedNotifications.push(notification.id)
+
+          if (!existingNotification) {
+            const notification = await prismaWithNotif.notification.create({
+              data: {
+                stationId: tank.stationId,
+                title: fillPercentage < 15
+                  ? 'Critical: Low Tank Level'
+                  : 'Low Tank Level Warning',
+                message: `Tank ${tank.tankNumber || 'Unknown'} (${tank.fuel?.name || 'Unknown'}) is at ${fillPercentage.toFixed(1)}% capacity - refill needed ${fillPercentage < 15 ? 'urgently' : 'soon'}`,
+                type: fillPercentage < 15 ? 'ERROR' : 'WARNING',
+                priority: fillPercentage < 15 ? 'CRITICAL' : fillPercentage < 20 ? 'HIGH' : 'MEDIUM',
+                category: 'TANK',
+                actionUrl: `/tanks`,
+                metadata: {
+                  tankId: tank.id,
+                  tankNumber: tank.tankNumber,
+                  fuelName: tank.fuel?.name || 'Unknown',
+                  fillPercentage: fillPercentage.toFixed(1)
+                }
+              }
+            })
+            generatedNotifications.push(notification.id)
+          }
         }
       }
-    }
     } catch (error) {
       console.error('Error checking tank levels:', error)
       errors.push('Failed to check tank levels')
@@ -84,8 +86,8 @@ export async function POST(request: NextRequest) {
     // 2. Check for overdue credit payments (> 7 days)
     try {
       // First get credit sales for the station
-      const creditSalesForStation = stationId 
-      ? await prisma.creditSale.findMany({
+      const creditSalesForStation = stationId
+        ? await prisma.creditSale.findMany({
           where: {
             shift: {
               stationId: stationId
@@ -96,15 +98,15 @@ export async function POST(request: NextRequest) {
           },
           distinct: ['customerId']
         })
-      : await prisma.creditSale.findMany({
+        : await prisma.creditSale.findMany({
           select: {
             customerId: true
           },
           distinct: ['customerId']
         })
-    
+
       const customerIds = creditSalesForStation.map(s => s.customerId)
-      
+
       // Only query customers if we have credit sales
       const creditCustomers = customerIds.length > 0 ? await prisma.creditCustomer.findMany({
         where: {
@@ -136,7 +138,8 @@ export async function POST(request: NextRequest) {
 
           if (daysSinceLastSale > 7 && customer.currentBalance > 0) {
             // Check if notification already exists (within last 7 days)
-            const existingNotification = await (prisma as any).notification.findFirst({
+            const prismaWithNotif = prisma as unknown as { notification: { findFirst: (args: unknown) => Promise<any>, create: (args: unknown) => Promise<any> } }
+            const existingNotification = await prismaWithNotif.notification.findFirst({
               where: {
                 category: 'CREDIT',
                 type: 'ERROR',
@@ -150,7 +153,7 @@ export async function POST(request: NextRequest) {
             })
 
             if (!existingNotification) {
-              const notification = await (prisma as any).notification.create({
+              const notification = await prismaWithNotif.notification.create({
                 data: {
                   stationId: lastSale.shift?.stationId || null,
                   title: 'Credit Payment Overdue',
@@ -202,10 +205,11 @@ export async function POST(request: NextRequest) {
         const statistics = shift.statistics as any
         if (statistics && statistics.variancePercentage) {
           const variancePercentage = Math.abs(statistics.variancePercentage)
-          
+
           if (variancePercentage > 1.0) {
             // Check if notification already exists for this shift
-            const existingNotification = await (prisma as any).notification.findFirst({
+            const prismaWithNotif = prisma as unknown as { notification: { findFirst: (args: unknown) => Promise<any>, create: (args: unknown) => Promise<any> } }
+            const existingNotification = await prismaWithNotif.notification.findFirst({
               where: {
                 stationId: shift.stationId,
                 category: 'SHIFT',
@@ -219,7 +223,7 @@ export async function POST(request: NextRequest) {
             })
 
             if (!existingNotification) {
-              const notification = await (prisma as any).notification.create({
+              const notification = await prismaWithNotif.notification.create({
                 data: {
                   stationId: shift.stationId,
                   title: 'Shift Variance Alert',
@@ -272,22 +276,23 @@ export async function POST(request: NextRequest) {
       })
 
       if (unreconciledBatches.length > 0) {
-      // Check if notification already exists (within last 24 hours)
-      const existingNotification = await (prisma as any).notification.findFirst({
-        where: {
-          category: 'POS',
-          type: 'WARNING',
-          message: {
-            contains: 'POS reconciliation'
-          },
-          createdAt: {
-            gte: new Date(Date.now() - 24 * 60 * 60 * 1000)
+        // Check if notification already exists (within last 24 hours)
+        const prismaWithNotif = prisma as unknown as { notification: { findFirst: (args: unknown) => Promise<any>, create: (args: unknown) => Promise<any> } }
+        const existingNotification = await prismaWithNotif.notification.findFirst({
+          where: {
+            category: 'POS',
+            type: 'WARNING',
+            message: {
+              contains: 'POS reconciliation'
+            },
+            createdAt: {
+              gte: new Date(Date.now() - 24 * 60 * 60 * 1000)
+            }
           }
-        }
-      })
+        })
 
         if (!existingNotification) {
-          const notification = await (prisma as any).notification.create({
+          const notification = await prismaWithNotif.notification.create({
             data: {
               stationId: unreconciledBatches[0].shift.stationId,
               title: 'POS Reconciliation Pending',

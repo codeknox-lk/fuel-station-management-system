@@ -23,13 +23,13 @@ import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { 
-  Building2, 
-  DollarSign, 
-  Clock, 
+import {
+  Building2,
+  DollarSign,
+  Clock,
   User,
   Fuel,
-  AlertCircle, 
+  AlertCircle,
   FileText,
   Printer,
   Calculator,
@@ -48,6 +48,17 @@ interface Station {
   city: string
 }
 
+interface DeclaredAmounts {
+  cash: number
+  card: number
+  credit: number
+  cheque: number
+  pumperBreakdown: Array<{
+    pumperName: string
+    declaredAmount: number
+  }>
+}
+
 interface Shift {
   id: string
   stationId: string
@@ -56,6 +67,32 @@ interface Shift {
   startTime: string
   endTime: string
   status: 'ACTIVE' | 'CLOSED'
+  declaredAmounts?: DeclaredAmounts
+}
+
+interface ApiShift {
+  id: string
+  stationId: string
+  station?: { name: string }
+  template?: { name: string }
+  startTime: string
+  endTime?: string
+  status: 'ACTIVE' | 'CLOSED'
+  declaredAmounts?: DeclaredAmounts
+}
+
+interface ApiAssignment {
+  id: string
+  nozzleId?: string
+  nozzleNumber?: string
+  pumperName?: string
+  sales?: number
+  fuelId?: string
+  fuel?: { name: string; icon?: React.ReactNode }
+  startMeterReading?: number
+  endMeterReading?: number
+  litersSold?: number
+  pricePerLiter?: number
 }
 
 interface ShiftReport {
@@ -70,7 +107,8 @@ interface ShiftReport {
 interface NozzleReport {
   nozzleId: string
   nozzleName: string
-  fuelType: string
+  fuel?: { name: string; icon?: React.ReactNode }
+  fuelId?: string
   pumperName: string
   startMeter: number
   endMeter: number
@@ -129,18 +167,19 @@ export default function ShiftReportsPage() {
       const data = await response.json()
       // API returns { shifts: [], pagination: {}, summary: {} }
       const shiftsArray = Array.isArray(data) ? data : (data.shifts || [])
-      
+
       // Transform API response to match expected interface
-      const transformedShifts: Shift[] = shiftsArray.map((shift: any) => ({
+      const transformedShifts: Shift[] = shiftsArray.map((shift: ApiShift) => ({
         id: shift.id,
         stationId: shift.stationId,
         stationName: shift.station?.name || 'Unknown Station',
         templateName: shift.template?.name || 'Unknown Template',
         startTime: shift.startTime,
         endTime: shift.endTime || shift.startTime, // Use startTime as fallback if endTime is null
-        status: shift.status
+        status: shift.status,
+        declaredAmounts: shift.declaredAmounts
       }))
-      
+
       setShifts(transformedShifts)
     } catch (err) {
       console.error('Error loading shifts:', err)
@@ -191,9 +230,9 @@ export default function ShiftReportsPage() {
       }
 
       // Transform assignments to nozzle reports
-      const nozzleReports: NozzleReport[] = (reportData.assignments || []).map((assignment: any): NozzleReport => {
-        const declared = (shift.declaredAmounts as any)?.pumperBreakdown || []
-        const pumperBreakdown = declared.find((b: any) => b.pumperName === assignment.pumperName)
+      const nozzleReports: NozzleReport[] = (reportData.assignments || []).map((assignment: ApiAssignment): NozzleReport => {
+        const declared = shift.declaredAmounts?.pumperBreakdown || []
+        const pumperBreakdown = declared.find((b) => b.pumperName === assignment.pumperName)
         const calculatedSales = assignment.sales || 0
         const declaredAmount = pumperBreakdown?.declaredAmount || 0
         const variance = declaredAmount - calculatedSales
@@ -224,22 +263,28 @@ export default function ShiftReportsPage() {
       })
 
       // Get tender summary from shift declared amounts
-      const declaredAmounts = shift.declaredAmounts as any || {}
+      const declaredAmounts = shift.declaredAmounts || {
+        cash: 0,
+        card: 0,
+        credit: 0,
+        cheque: 0,
+        pumperBreakdown: []
+      }
       const cashTotal = declaredAmounts.cash || 0
       const cardTotal = declaredAmounts.card || 0
       const creditTotal = declaredAmounts.credit || 0
       const chequeTotal = declaredAmounts.cheque || 0
-      
+
       // Get POS batches for card breakdown
       const posBatchesResponse = await fetch(`/api/pos/batches?shiftId=${selectedShift}`).catch(() => null)
-      let cardTotals: Record<string, number> = {}
+      const cardTotals: Record<string, number> = {}
       if (posBatchesResponse && posBatchesResponse.ok) {
         const batches = await posBatchesResponse.json()
         for (const batch of batches) {
           if (batch.terminalEntries) {
             for (const entry of batch.terminalEntries) {
               const bankName = entry.terminal?.bank?.name || 'Unknown Bank'
-              const amount = (entry.visaAmount || 0) + (entry.masterAmount || 0) + (entry.amexAmount || 0) + (entry.qrAmount || 0)
+              const amount = (entry.visaAmount || 0) + (entry.masterAmount || 0) + (entry.amexAmount || 0) + (entry.qrAmount || 0) + (entry.dialogTouchAmount || 0)
               cardTotals[bankName] = (cardTotals[bankName] || 0) + amount
             }
           }
@@ -294,11 +339,25 @@ export default function ShiftReportsPage() {
       alert('Please select a shift and generate a report first')
       return
     }
-    
+
     const station = stations.find(s => s.id === selectedStation)
     const stationName = station?.name || 'Unknown Station'
-    
-    exportShiftReportPDF(shiftReport, stationName, selectedShift)
+
+    const exportData = {
+      nozzlePerformance: shiftReport.nozzleReports.map(nr => ({
+        nozzleName: nr.nozzleName,
+        pumperName: nr.pumperName,
+        litresSold: nr.litersSold,
+        amount: nr.salesAmount,
+        variancePercentage: nr.variancePercentage
+      })),
+      totalSales: shiftReport.tenderSummary.totalCalculated,
+      totalDeclared: shiftReport.tenderSummary.totalDeclared,
+      variance: shiftReport.totalVariance,
+      overallStatus: shiftReport.overallStatus
+    }
+
+    exportShiftReportPDF(exportData, stationName, selectedShift)
   }
 
   const getVarianceColor = (percentage: number) => {
@@ -345,7 +404,7 @@ export default function ShiftReportsPage() {
       title: 'Start Meter',
       render: (value: unknown) => {
         const numValue = typeof value === 'number' ? value : 0
-        return <span className="font-mono text-sm">{numValue.toFixed(1)}</span>
+        return <span className="text-sm">{numValue.toFixed(1)}</span>
       }
     },
     {
@@ -353,7 +412,7 @@ export default function ShiftReportsPage() {
       title: 'End Meter',
       render: (value: unknown) => {
         const numValue = typeof value === 'number' ? value : 0
-        return <span className="font-mono text-sm">{numValue.toFixed(1)}</span>
+        return <span className="text-sm">{numValue.toFixed(1)}</span>
       }
     },
     {
@@ -362,7 +421,7 @@ export default function ShiftReportsPage() {
       render: (value: unknown) => {
         const numValue = typeof value === 'number' ? value : 0
         return (
-          <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
+          <span className="font-semibold text-blue-600 dark:text-blue-400">
             {numValue.toFixed(1)}L
           </span>
         )
@@ -374,7 +433,7 @@ export default function ShiftReportsPage() {
       render: (value: unknown) => {
         const numValue = typeof value === 'number' ? value : 0
         return (
-          <span className="font-mono font-semibold text-green-600 dark:text-green-400">
+          <span className="font-semibold text-green-600 dark:text-green-400">
             Rs. {numValue.toLocaleString()}
           </span>
         )
@@ -387,7 +446,7 @@ export default function ShiftReportsPage() {
         const numValue = typeof value === 'number' ? value : 0
         return (
           <div className="text-center">
-            <div className={`font-mono font-semibold ${getVarianceColor(row.variancePercentage)}`}>
+            <div className={`font-semibold ${getVarianceColor(row.variancePercentage)}`}>
               {numValue >= 0 ? '+' : ''}Rs. {numValue.toLocaleString()}
             </div>
             <div className={`text-xs ${getVarianceColor(row.variancePercentage)}`}>
@@ -614,7 +673,7 @@ export default function ShiftReportsPage() {
                   <div className="font-semibold text-foreground">Cash Payments</div>
                   <div className="flex justify-between">
                     <span>Cash Total:</span>
-                    <span className="font-mono font-semibold">Rs. {shiftReport.tenderSummary.cashTotal.toLocaleString()}</span>
+                    <span className="font-semibold">Rs. {shiftReport.tenderSummary.cashTotal.toLocaleString()}</span>
                   </div>
                 </div>
 
@@ -623,12 +682,12 @@ export default function ShiftReportsPage() {
                   {Object.entries(shiftReport.tenderSummary.cardTotals).map(([bank, amount]) => (
                     <div key={bank} className="flex justify-between">
                       <span>{bank}:</span>
-                      <span className="font-mono font-semibold">Rs. {amount.toLocaleString()}</span>
+                      <span className="font-semibold">Rs. {amount.toLocaleString()}</span>
                     </div>
                   ))}
                   <div className="flex justify-between border-t pt-2">
                     <span className="font-semibold">Card Total:</span>
-                    <span className="font-mono font-semibold">
+                    <span className="font-semibold">
                       Rs. {Object.values(shiftReport.tenderSummary.cardTotals).reduce((sum, amount) => sum + amount, 0).toLocaleString()}
                     </span>
                   </div>
@@ -638,11 +697,11 @@ export default function ShiftReportsPage() {
                   <div className="font-semibold text-foreground">Other Payments</div>
                   <div className="flex justify-between">
                     <span>Credit:</span>
-                    <span className="font-mono font-semibold">Rs. {shiftReport.tenderSummary.creditTotal.toLocaleString()}</span>
+                    <span className="font-semibold">Rs. {shiftReport.tenderSummary.creditTotal.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Cheques:</span>
-                    <span className="font-mono font-semibold">Rs. {shiftReport.tenderSummary.chequeTotal.toLocaleString()}</span>
+                    <span className="font-semibold">Rs. {shiftReport.tenderSummary.chequeTotal.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -707,7 +766,7 @@ export default function ShiftReportsPage() {
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Major Variance Detected</AlertTitle>
               <AlertDescription>
-                This shift has a variance of {shiftReport.variancePercentage.toFixed(3)}% which exceeds acceptable limits. 
+                This shift has a variance of {shiftReport.variancePercentage.toFixed(3)}% which exceeds acceptable limits.
                 Please review all transactions and investigate discrepancies before finalizing.
               </AlertDescription>
             </Alert>

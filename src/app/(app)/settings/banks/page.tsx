@@ -11,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { CreditCard, Plus, Edit, Trash2, Building, Phone } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { useRouter } from 'next/navigation'
+import { ArrowLeft } from 'lucide-react'
 
 interface Bank {
   id: string
@@ -29,6 +31,7 @@ interface Bank {
 }
 
 export default function BanksPage() {
+  const router = useRouter()
   const [banks, setBanks] = useState<Bank[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -55,7 +58,18 @@ export default function BanksPage() {
     try {
       const response = await fetch('/api/banks')
       const data = await response.json()
-      setBanks(data)
+      console.log('Fetched banks data:', data)
+      interface ApiBank extends Omit<Bank, 'status'> {
+        isActive: boolean
+      }
+
+      // Map isActive to status for the UI
+      const mappedData = data.map((bank: ApiBank) => ({
+        ...bank,
+        status: (bank.isActive ? 'active' : 'inactive') as 'active' | 'inactive'
+      }))
+      console.log('Mapped banks data:', mappedData)
+      setBanks(mappedData)
     } catch (error) {
       toast({
         title: "Error",
@@ -69,16 +83,22 @@ export default function BanksPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     try {
       const url = editingBank ? `/api/banks/${editingBank.id}` : '/api/banks'
       const method = editingBank ? 'PUT' : 'POST'
-      
+
+      console.log('Submitting bank data:', formData)
+      console.log('URL:', url, 'Method:', method)
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       })
+
+      const responseData = await response.json()
+      console.log('Response:', responseData)
 
       if (!response.ok) throw new Error('Failed to save bank')
 
@@ -91,6 +111,7 @@ export default function BanksPage() {
       resetForm()
       fetchBanks()
     } catch (error) {
+      console.error('Error saving bank:', error)
       toast({
         title: "Error",
         description: `Failed to ${editingBank ? 'update' : 'create'} bank`,
@@ -100,19 +121,22 @@ export default function BanksPage() {
   }
 
   const handleEdit = (bank: Bank) => {
+    console.log('Editing bank:', bank)
     setEditingBank(bank)
-    setFormData({
-      code: bank.code,
-      name: bank.name,
-      accountNumber: bank.accountNumber,
-      accountName: bank.accountName,
-      branch: bank.branch,
-      swiftCode: bank.swiftCode,
-      contactPerson: bank.contactPerson,
-      phone: bank.phone,
-      email: bank.email,
+    const formDataToSet = {
+      code: bank.code || '',
+      name: bank.name || '',
+      accountNumber: bank.accountNumber || '',
+      accountName: bank.accountName || '',
+      branch: bank.branch || '',
+      swiftCode: bank.swiftCode || '',
+      contactPerson: bank.contactPerson || '',
+      phone: bank.phone || '',
+      email: bank.email || '',
       status: bank.status
-    })
+    }
+    console.log('Setting form data:', formDataToSet)
+    setFormData(formDataToSet)
     setDialogOpen(true)
   }
 
@@ -170,7 +194,7 @@ export default function BanksPage() {
       key: 'code' as keyof Bank,
       title: 'Code',
       render: (value: unknown) => (
-        <span className="font-mono font-medium">{value as string}</span>
+        <span className="font-medium">{value ? (value as string) : '-'}</span>
       )
     },
     {
@@ -184,14 +208,14 @@ export default function BanksPage() {
       key: 'accountNumber' as keyof Bank,
       title: 'Account Number',
       render: (value: unknown) => (
-        <span className="font-mono text-sm">{value as string}</span>
+        <span className="text-sm">{value ? (value as string) : '-'}</span>
       )
     },
     {
       key: 'accountName' as keyof Bank,
       title: 'Account Name',
       render: (value: unknown) => (
-        <span className="text-sm">{value as string}</span>
+        <span className="text-sm">{value ? (value as string) : '-'}</span>
       )
     },
     {
@@ -209,11 +233,17 @@ export default function BanksPage() {
       title: 'Contact',
       render: (value: unknown, row: Bank) => (
         <div className="text-sm">
-          <div className="font-medium">{value as string}</div>
-          <div className="flex items-center gap-1 text-muted-foreground">
-            <Phone className="h-3 w-3" />
-            {row.phone}
-          </div>
+          {value || row.phone ? (
+            <>
+              <div className="font-medium">{value ? (value as string) : '-'}</div>
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <Phone className="h-3 w-3" />
+                {row.phone || '-'}
+              </div>
+            </>
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          )}
         </div>
       )
     },
@@ -285,11 +315,17 @@ export default function BanksPage() {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Bank Management</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage bank accounts and payment processing configurations
-          </p>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => router.push('/settings')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Bank Management</h1>
+            <p className="text-muted-foreground mt-2">
+              Manage bank accounts and payment processing configurations
+            </p>
+          </div>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
@@ -298,7 +334,7 @@ export default function BanksPage() {
               Add Bank
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl" aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle>
                 {editingBank ? 'Edit Bank' : 'Add New Bank'}
@@ -313,7 +349,6 @@ export default function BanksPage() {
                     value={formData.code}
                     onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                     placeholder="e.g., BOC, COM, HNB"
-                    required
                   />
                 </div>
                 <div>
@@ -336,7 +371,6 @@ export default function BanksPage() {
                     value={formData.accountNumber}
                     onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })}
                     placeholder="Bank account number"
-                    required
                   />
                 </div>
                 <div>
@@ -346,7 +380,6 @@ export default function BanksPage() {
                     value={formData.accountName}
                     onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
                     placeholder="Account holder name"
-                    required
                   />
                 </div>
               </div>
@@ -359,7 +392,6 @@ export default function BanksPage() {
                     value={formData.branch}
                     onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
                     placeholder="Branch name/location"
-                    required
                   />
                 </div>
                 <div>

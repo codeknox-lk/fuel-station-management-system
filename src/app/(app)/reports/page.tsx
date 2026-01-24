@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { 
-  FileText, 
-  Calendar, 
+import {
+  FileText,
+  Calendar,
   BarChart3,
   TrendingUp,
   Users,
@@ -26,20 +26,24 @@ interface ReportCard {
   href: string
   features: string[]
   color: string
-  ownerOnly?: boolean
+  minRole?: 'OWNER' | 'DEVELOPER'
 }
 
 export default function ReportsPage() {
   const router = useRouter()
+  // specific state for role not needed if we derive from localStorage directly for initial render 
+  // but to avoid hydration mismatch we use state or useEffect. 
+  // simpler here:
   const [userRole, setUserRole] = useState<string>('')
 
   useEffect(() => {
-    // Get user role from localStorage
     if (typeof window !== 'undefined') {
-      const role = localStorage.getItem('userRole') || ''
-      setUserRole(role)
+      setUserRole(localStorage.getItem('userRole') || '')
     }
   }, [])
+
+  const isDeveloper = userRole === 'DEVELOPER'
+  const isOwner = userRole === 'OWNER' || isDeveloper
 
   const allReports: ReportCard[] = [
     {
@@ -142,7 +146,7 @@ export default function ReportsPage() {
     },
     {
       title: 'Station Comparison Report',
-      description: 'Compare performance metrics across all stations (Owner Only)',
+      description: 'Compare performance metrics across all stations',
       icon: <GitCompare className="h-8 w-8" />,
       href: '/reports/station-comparison',
       features: [
@@ -154,15 +158,14 @@ export default function ReportsPage() {
         'Monthly trends comparison'
       ],
       color: 'text-indigo-600 dark:text-indigo-400',
-      ownerOnly: true
+      minRole: 'OWNER'
     }
   ]
 
   // Filter reports based on user role
   const reports = allReports.filter(report => {
-    if (report.ownerOnly && userRole !== 'OWNER') {
-      return false
-    }
+    if (report.minRole === 'DEVELOPER') return isDeveloper
+    if (report.minRole === 'OWNER') return isOwner
     return true
   })
 
@@ -192,6 +195,36 @@ export default function ReportsPage() {
       icon: <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
     }
   ]
+
+  const getRoleStyle = (minRole?: string) => {
+    switch (minRole) {
+      case 'DEVELOPER':
+        return 'border-rose-500/20 dark:border-rose-500/30 bg-rose-500/10 dark:bg-rose-500/20'
+      case 'OWNER':
+        return 'border-orange-500/20 dark:border-orange-500/30 bg-orange-500/10 dark:bg-orange-500/20'
+      default:
+        return ''
+    }
+  }
+
+  const getRoleBadge = (minRole?: string) => {
+    switch (minRole) {
+      case 'DEVELOPER':
+        return (
+          <span className="text-xs bg-rose-500/20 text-rose-600 dark:text-rose-400 px-2 py-1 rounded-full font-medium border border-rose-500/20">
+            DEVELOPER ONLY
+          </span>
+        )
+      case 'OWNER':
+        return (
+          <span className="text-xs bg-orange-500/20 text-orange-600 dark:text-orange-400 px-2 py-1 rounded-full font-medium border border-orange-500/20">
+            OWNER ONLY
+          </span>
+        )
+      default:
+        return null
+    }
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -273,13 +306,18 @@ export default function ReportsPage() {
         {reports.map((report, index) => (
           <Card key={index} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push(report.href)}>
             <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <div className={report.color}>
-                  {report.icon}
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-foreground">{report.title}</h3>
-                  <p className="text-sm text-muted-foreground font-normal">{report.description}</p>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={report.color}>
+                    {report.icon}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                      {report.title}
+                      {getRoleBadge(report.minRole)}
+                    </h3>
+                    <p className="text-sm text-muted-foreground font-normal">{report.description}</p>
+                  </div>
                 </div>
               </CardTitle>
             </CardHeader>
@@ -295,8 +333,8 @@ export default function ReportsPage() {
                   ))}
                 </ul>
                 <div className="pt-3">
-                  <Button 
-                    className="w-full" 
+                  <Button
+                    className="w-full"
                     onClick={(e) => {
                       e.stopPropagation()
                       router.push(report.href)

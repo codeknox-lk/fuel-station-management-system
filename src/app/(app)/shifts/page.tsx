@@ -12,10 +12,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { 
-  Clock, 
-  Users, 
-  PlayCircle, 
+import {
+  Clock,
+  Users,
+  PlayCircle,
   StopCircle,
   Calendar,
   TrendingUp,
@@ -31,10 +31,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 // Function to format duration in a more readable way
 const formatDuration = (hours: number): string => {
   if (hours === 0) return '0h'
-  
+
   const wholeHours = Math.floor(hours)
   const minutes = Math.round((hours - wholeHours) * 60)
-  
+
   if (minutes === 0) {
     return `${wholeHours}h`
   } else if (wholeHours === 0) {
@@ -44,26 +44,15 @@ const formatDuration = (hours: number): string => {
   }
 }
 
-interface Shift {
-  id: string
-  stationId: string
+import { ShiftWithDetails, ShiftStatistics } from '@/types/db'
+
+interface Shift extends ShiftWithDetails {
   stationName: string
   templateName: string
-  startTime: string
-  endTime?: string
-  status: 'OPEN' | 'CLOSED'
-  openedBy: string
-  closedBy?: string
+  durationHours: number
+  totalSales: number
+  totalLiters: number
   assignmentCount: number
-  totalSales?: number
-  statistics?: {
-    durationHours: number
-    totalSales: number
-    totalLiters: number
-    averagePricePerLiter: number
-    assignmentCount: number
-    closedAssignments: number
-  }
 }
 
 interface ShiftStats {
@@ -109,11 +98,11 @@ export default function ShiftsPage() {
       setClosingAll(true)
       setCloseAllError(null)
       setCloseAllSuccess(null)
-      
-      const url = isAllStations 
+
+      const url = isAllStations
         ? '/api/shifts/bulk-close'
         : `/api/shifts/bulk-close`
-      
+
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -122,22 +111,22 @@ export default function ShiftsPage() {
           stationId: isAllStations ? undefined : selectedStation
         })
       })
-      
+
       const data = await response.json()
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Failed to close shifts')
       }
-      
+
       if (data.failed && data.failed > 0) {
         setCloseAllError(`Closed ${data.closed} shift(s), but ${data.failed} failed. Check console for details.`)
       } else {
         setCloseAllSuccess(`Successfully closed ${data.closed} shift(s).`)
       }
-      
+
       // Refresh shifts list
       await fetchShifts()
-      
+
       // Close dialog after a short delay
       setTimeout(() => {
         setCloseAllDialogOpen(false)
@@ -174,7 +163,7 @@ export default function ShiftsPage() {
 
     // Opened by filter
     if (filters.openedBy) {
-      filtered = filtered.filter(shift => 
+      filtered = filtered.filter(shift =>
         shift.openedBy.toLowerCase().includes(filters.openedBy.toLowerCase())
       )
     }
@@ -219,58 +208,71 @@ export default function ShiftsPage() {
   const fetchShifts = async () => {
     try {
       setLoading(true)
-      const url = isAllStations 
+      const url = isAllStations
         ? '/api/shifts'
         : `/api/shifts?stationId=${selectedStation}`
-      
+
       const response = await fetch(url)
       const data = await response.json()
-      
+
       // Handle new API response format
       const shiftsData = data.shifts || data // Support both old and new format
       const summary = data.summary || {}
-      
+
       // Transform the data to include station names and use real statistics
-      const transformedShifts = shiftsData.map((shift: any) => {
+      const transformedShifts: Shift[] = shiftsData.map((shift: ShiftWithDetails) => {
         // Calculate duration
         const start = new Date(shift.startTime)
         const end = shift.endTime ? new Date(shift.endTime) : new Date()
         const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
-        
+
         // Get actual station and template names from relations
         const stationName = shift.station?.name || `Station ${shift.stationId}`
         const templateName = shift.template?.name || `Template ${shift.templateId}`
-        
+
+        // Parse statistics if needed
+        let stats: ShiftStatistics | null = null
+        if (shift.statistics) {
+          if (typeof shift.statistics === 'string') {
+            try { stats = JSON.parse(shift.statistics) } catch { }
+          } else {
+            stats = shift.statistics as unknown as ShiftStatistics
+          }
+        }
+
+        // Count assignments
+        const assignmentCount = shift._count?.assignments ?? 0
+
         return {
           ...shift,
           stationName,
           templateName,
-          assignmentCount: shift.statistics?.assignmentCount || shift._count?.assignments || 0,
-          totalSales: shift.statistics?.totalSales || 0,
+          assignmentCount,
+          totalSales: stats?.totalSales || 0,
           durationHours: Math.round(durationHours * 100) / 100,
-          totalLiters: shift.statistics?.totalLiters || 0
+          totalLiters: stats?.totalLiters || 0
         }
       })
-      
+
       setShifts(transformedShifts)
-      
+
       // Use API summary or calculate from real data
       const activeShifts = summary.active || transformedShifts.filter((s: Shift) => s.status === 'OPEN').length
       const today = new Date().toDateString()
-      const todayShifts = transformedShifts.filter((s: Shift) => 
+      const todayShifts = transformedShifts.filter((s: Shift) =>
         new Date(s.startTime).toDateString() === today
       ).length
-      
+
       // Calculate real sales from closed shifts with actual data
-      const closedShifts = transformedShifts.filter((s: Shift) => s.status === 'CLOSED' && s.statistics?.totalSales && s.statistics.totalSales > 0)
-      const totalSales = closedShifts.reduce((sum: number, s: Shift) => sum + (s.statistics?.totalSales || 0), 0)
-      
+      const closedShifts = transformedShifts.filter((s: Shift) => s.status === 'CLOSED' && s.totalSales > 0)
+      const totalSales = closedShifts.reduce((sum: number, s: Shift) => sum + s.totalSales, 0)
+
       // Calculate average duration from closed shifts with real data
-      const closedShiftsWithDuration = transformedShifts.filter((s: Shift) => s.status === 'CLOSED' && s.statistics?.durationHours && s.statistics.durationHours > 0)
-      const averageDuration = closedShiftsWithDuration.length > 0 
-        ? closedShiftsWithDuration.reduce((sum: number, s: Shift) => sum + (s.statistics?.durationHours || 0), 0) / closedShiftsWithDuration.length
+      const closedShiftsWithDuration = transformedShifts.filter((s: Shift) => s.status === 'CLOSED' && s.durationHours > 0)
+      const averageDuration = closedShiftsWithDuration.length > 0
+        ? closedShiftsWithDuration.reduce((sum: number, s: Shift) => sum + s.durationHours, 0) / closedShiftsWithDuration.length
         : 0
-      
+
       setStats({
         activeShifts,
         todayShifts,
@@ -374,7 +376,7 @@ export default function ShiftsPage() {
         return (
           <div className="flex items-center gap-1">
             <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
-            <span className="font-mono font-semibold text-green-600 dark:text-green-400">
+            <span className="font-semibold text-green-600 dark:text-green-400">
               Rs. {(value as number).toLocaleString()}
             </span>
           </div>
@@ -398,7 +400,7 @@ export default function ShiftsPage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Shift Management</h1>
           <p className="text-muted-foreground mt-1">
-            {isAllStations 
+            {isAllStations
               ? 'Manage shifts across all stations, assignments, and operations'
               : `Manage shifts for ${getSelectedStation()?.name || 'selected station'}, assignments, and operations`
             }
@@ -488,8 +490,8 @@ export default function ShiftsPage() {
               </Link>
               <Dialog open={closeAllDialogOpen} onOpenChange={setCloseAllDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="destructive"
                     className="flex items-center gap-2"
                   >
@@ -501,18 +503,18 @@ export default function ShiftsPage() {
                   <DialogHeader>
                     <DialogTitle>Close All Active Shifts</DialogTitle>
                     <DialogDescription>
-                      This will close all {stats.activeShifts} active shift{stats.activeShifts > 1 ? 's' : ''}. 
+                      This will close all {stats.activeShifts} active shift{stats.activeShifts > 1 ? 's' : ''}.
                       Open assignments will be automatically closed. This action cannot be undone.
                     </DialogDescription>
                   </DialogHeader>
-                  
+
                   {closeAllError && (
                     <Alert variant="destructive">
                       <AlertCircle className="h-4 w-4" />
                       <AlertDescription>{closeAllError}</AlertDescription>
                     </Alert>
                   )}
-                  
+
                   {closeAllSuccess && (
                     <Alert className="bg-green-500/10 border-green-500/20">
                       <AlertCircle className="h-4 w-4 text-green-600" />
@@ -521,7 +523,7 @@ export default function ShiftsPage() {
                       </AlertDescription>
                     </Alert>
                   )}
-                  
+
                   <div className="py-4">
                     <p className="text-sm text-muted-foreground">
                       <strong>Note:</strong> This will:
@@ -534,10 +536,10 @@ export default function ShiftsPage() {
                       <li>Set declared amounts to zero (you can update these later if needed)</li>
                     </ul>
                   </div>
-                  
+
                   <DialogFooter>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => {
                         setCloseAllDialogOpen(false)
                         setCloseAllError(null)
@@ -547,8 +549,8 @@ export default function ShiftsPage() {
                     >
                       Cancel
                     </Button>
-                    <Button 
-                      variant="destructive" 
+                    <Button
+                      variant="destructive"
                       onClick={handleCloseAllActiveShifts}
                       disabled={closingAll}
                     >
@@ -573,8 +575,8 @@ export default function ShiftsPage() {
       )}
 
       {/* Shifts Table */}
-      <FormCard 
-        title="Recent Shifts" 
+      <FormCard
+        title="Recent Shifts"
         description="View and manage all station shifts"
       >
         <div className="space-y-4">
@@ -634,7 +636,7 @@ export default function ShiftsPage() {
               Apply filters to find specific shifts based on your criteria.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
             {/* Status Filter */}
             <div className="space-y-2">

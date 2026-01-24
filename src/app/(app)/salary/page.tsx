@@ -10,11 +10,11 @@ import { FormCard } from '@/components/ui/FormCard'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  DollarSign, 
-  Clock, 
-  TrendingUp, 
-  User, 
+import {
+  DollarSign,
+  Clock,
+  TrendingUp,
+  User,
   Download,
   RefreshCw,
   AlertCircle,
@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { exportSalaryReportPDF } from '@/lib/exportUtils'
+import { useToast } from '@/hooks/use-toast'
 
 interface SalaryData {
   pumperId: string
@@ -111,11 +112,11 @@ export default function SalaryPage() {
   const router = useRouter()
   const { selectedStation } = useStation()
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const { toast } = useToast()
   const [salaryData, setSalaryData] = useState<SalaryResponse | null>(null)
   const [officeStaffSalaryData, setOfficeStaffSalaryData] = useState<OfficeStaffSalaryResponse | null>(null)
   const [loadingOfficeStaff, setLoadingOfficeStaff] = useState(false)
-  
+
   // Month selection
   const currentDate = new Date()
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear().toString())
@@ -139,12 +140,12 @@ export default function SalaryPage() {
 
     try {
       setLoading(true)
-      setError('')
-      
+
+
       // Format month for API (API expects YYYY-MM format, but will calculate 7th-6th period)
       const month = `${selectedYear}-${selectedMonth}`
       const res = await fetch(`/api/salary?stationId=${selectedStation}&month=${month}`)
-      
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
         throw new Error(errorData.error || 'Failed to fetch salary data')
@@ -154,7 +155,11 @@ export default function SalaryPage() {
       setSalaryData(data)
     } catch (err) {
       console.error('Error fetching salary data:', err)
-      setError(err instanceof Error ? err.message : 'Failed to load salary data')
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : 'Failed to load salary data',
+        variant: "destructive"
+      })
     } finally {
       setLoading(false)
     }
@@ -165,11 +170,11 @@ export default function SalaryPage() {
 
     try {
       setLoadingOfficeStaff(true)
-      
+
       // Format month for API (API expects YYYY-MM format)
       const month = `${selectedYear}-${selectedMonth}`
       const res = await fetch(`/api/office-staff/salary?stationId=${selectedStation}&month=${month}`)
-      
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
         console.error('Error fetching office staff salary:', errorData.error || 'Failed to fetch office staff salary data')
@@ -201,16 +206,24 @@ export default function SalaryPage() {
 
   const handleExport = () => {
     if (!salaryData || salaryData.salaryData.length === 0) {
-      setError('No data to export')
+      toast({
+        title: "Error",
+        description: "No data to export",
+        variant: "destructive"
+      })
       return
     }
-    
+
     try {
       const monthLabel = months.find(m => m.value === selectedMonth)?.label || selectedMonth
-      exportSalaryReportPDF(salaryData.salaryData, `${monthLabel} ${selectedYear}`, salaryData)
+      exportSalaryReportPDF(salaryData.salaryData, `${monthLabel} ${selectedYear}`)
     } catch (err) {
       console.error('Error exporting salary report:', err)
-      setError('Failed to export report')
+      toast({
+        title: "Error",
+        description: "Failed to export report",
+        variant: "destructive"
+      })
     }
   }
 
@@ -253,7 +266,7 @@ export default function SalaryPage() {
       render: (value: unknown) => (
         <div className="flex items-center gap-1">
           <TrendingUp className="h-4 w-4 text-green-600" />
-          <span className="font-mono font-semibold text-green-600">
+          <span className="font-semibold text-green-600">
             Rs. {(value as number).toLocaleString()}
           </span>
         </div>
@@ -263,7 +276,7 @@ export default function SalaryPage() {
       key: 'baseSalary' as keyof SalaryData,
       title: 'Base Salary',
       render: (value: unknown) => (
-        <span className="font-mono">Rs. {(value as number).toLocaleString()}</span>
+        <span>Rs. {(value as number).toLocaleString()}</span>
       )
     },
     {
@@ -272,7 +285,7 @@ export default function SalaryPage() {
       render: (value: unknown) => {
         const advances = value as number
         return advances > 0 ? (
-          <span className="font-mono text-orange-600">-Rs. {advances.toLocaleString()}</span>
+          <span className="text-orange-600">-Rs. {advances.toLocaleString()}</span>
         ) : (
           <span className="text-muted-foreground">-</span>
         )
@@ -284,7 +297,7 @@ export default function SalaryPage() {
       render: (value: unknown) => {
         const loans = value as number
         return loans > 0 ? (
-          <span className="font-mono text-red-600">-Rs. {loans.toLocaleString()}</span>
+          <span className="text-red-600">-Rs. {loans.toLocaleString()}</span>
         ) : (
           <span className="text-muted-foreground">-</span>
         )
@@ -299,14 +312,14 @@ export default function SalaryPage() {
         if (add > 0 && deduct > 0) {
           return (
             <div className="flex flex-col gap-0.5">
-              <span className="font-mono text-xs text-green-600">+Rs. {add.toLocaleString()}</span>
-              <span className="font-mono text-xs text-red-600">-Rs. {deduct.toLocaleString()}</span>
+              <span className="text-xs text-green-600">+Rs. {add.toLocaleString()}</span>
+              <span className="text-xs text-red-600">-Rs. {deduct.toLocaleString()}</span>
             </div>
           )
         } else if (add > 0) {
-          return <span className="font-mono text-green-600">+Rs. {add.toLocaleString()}</span>
+          return <span className="text-green-600">+Rs. {add.toLocaleString()}</span>
         } else if (deduct > 0) {
-          return <span className="font-mono text-red-600">-Rs. {deduct.toLocaleString()}</span>
+          return <span className="text-red-600">-Rs. {deduct.toLocaleString()}</span>
         }
         return <span className="text-muted-foreground">-</span>
       }
@@ -319,7 +332,7 @@ export default function SalaryPage() {
         return (
           <div className="flex items-center gap-2">
             <DollarSign className={`h-4 w-4 ${net >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-            <span className={`font-mono font-bold ${net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <span className={`font-bold ${net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               Rs. {net.toLocaleString()}
             </span>
           </div>
@@ -355,7 +368,7 @@ export default function SalaryPage() {
       key: 'baseSalary' as keyof OfficeStaffSalaryData,
       title: 'Base Salary',
       render: (value: unknown) => (
-        <span className="font-mono">Rs. {(value as number).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        <span>Rs. {(value as number).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
       )
     },
     {
@@ -364,7 +377,7 @@ export default function SalaryPage() {
       render: (value: unknown) => {
         const allowances = value as number
         return allowances > 0 ? (
-          <span className="font-mono text-green-600">+Rs. {allowances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span className="text-green-600">+Rs. {allowances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         ) : (
           <span className="text-muted-foreground">-</span>
         )
@@ -376,7 +389,7 @@ export default function SalaryPage() {
       render: (value: unknown) => {
         const deductions = value as number
         return deductions > 0 ? (
-          <span className="font-mono text-red-600">-Rs. {deductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span className="text-red-600">-Rs. {deductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         ) : (
           <span className="text-muted-foreground">-</span>
         )
@@ -390,7 +403,7 @@ export default function SalaryPage() {
         return (
           <div className="flex items-center gap-2">
             <DollarSign className={`h-4 w-4 ${net >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-            <span className={`font-mono font-bold ${net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <span className={`font-bold ${net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               Rs. {net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
@@ -425,8 +438,8 @@ export default function SalaryPage() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handleExport}
             disabled={!salaryData || salaryData.salaryData.length === 0}
           >
@@ -478,16 +491,7 @@ export default function SalaryPage() {
         </CardContent>
       </Card>
 
-      {error && (
-        <Card className="border-red-500/20 bg-red-500/10">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-red-600">
-              <AlertCircle className="h-5 w-5" />
-              <span>{error}</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+
 
       {/* Summary Cards */}
       {salaryData && salaryData.salaryData.length > 0 && (

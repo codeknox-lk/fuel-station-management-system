@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    
+
     const template = await prisma.shiftTemplate.findUnique({
       where: { id },
       include: {
@@ -24,7 +24,7 @@ export async function GET(
         }
       }
     })
-    
+
     if (!template) {
       return NextResponse.json({ error: 'Shift template not found' }, { status: 404 })
     }
@@ -43,25 +43,38 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    
+
+    console.log('=== UPDATE SHIFT TEMPLATE ===')
+    console.log('ID:', id)
+    console.log('Body:', JSON.stringify(body, null, 2))
+
     const template = await prisma.shiftTemplate.findUnique({
       where: { id }
     })
-    
+
     if (!template) {
+      console.log('Template not found')
       return NextResponse.json({ error: 'Shift template not found' }, { status: 404 })
     }
 
-    const { name, startTime, endTime, isActive } = body
-    
+    const { name, startTime, endTime, breakDuration, breakStartTime, description, icon, status } = body
+
+    const updateData = {
+      ...(name && { name }),
+      ...(startTime && { startTime }),
+      ...(endTime && { endTime }),
+      ...(breakDuration !== undefined && { breakDuration }),
+      ...(breakStartTime !== undefined && { breakStartTime: breakStartTime || null }),
+      ...(description !== undefined && { description: description || null }),
+      ...(icon !== undefined && { icon: icon || 'sun' }),
+      ...(status !== undefined && { isActive: status === 'active' })
+    }
+
+    console.log('Update data:', JSON.stringify(updateData, null, 2))
+
     const updatedTemplate = await prisma.shiftTemplate.update({
       where: { id },
-      data: {
-        ...(name && { name }),
-        ...(startTime && { startTime }),
-        ...(endTime && { endTime }),
-        ...(isActive !== undefined && { isActive })
-      },
+      data: updateData,
       include: {
         station: {
           select: {
@@ -72,6 +85,8 @@ export async function PUT(
       }
     })
 
+    console.log('Updated successfully:', updatedTemplate)
+    console.log('============================')
     return NextResponse.json(updatedTemplate)
   } catch (error) {
     console.error('Error updating shift template:', error)
@@ -85,23 +100,30 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    
+
+    console.log('=== DELETE SHIFT TEMPLATE ===')
+    console.log('ID:', id)
+
     const template = await prisma.shiftTemplate.findUnique({
       where: { id }
     })
-    
+
     if (!template) {
+      console.log('Template not found')
       return NextResponse.json({ error: 'Shift template not found' }, { status: 404 })
     }
 
     // Check for shifts using this template
-    const hasShifts = await prisma.shift.count({
+    const shiftsCount = await prisma.shift.count({
       where: { templateId: id }
-    }) > 0
-    
-    if (hasShifts) {
-      return NextResponse.json({ 
-        error: 'Cannot delete shift template with existing shifts. Please remove all shifts first.' 
+    })
+
+    console.log('Shifts using this template:', shiftsCount)
+
+    if (shiftsCount > 0) {
+      console.log('Cannot delete - has shifts')
+      return NextResponse.json({
+        error: `Cannot delete shift template with ${shiftsCount} existing shift(s). Please remove all shifts first.`
       }, { status: 400 })
     }
 
@@ -109,6 +131,8 @@ export async function DELETE(
       where: { id }
     })
 
+    console.log('Deleted successfully')
+    console.log('============================')
     return NextResponse.json({ success: true, message: 'Shift template deleted successfully' })
   } catch (error) {
     console.error('Error deleting shift template:', error)

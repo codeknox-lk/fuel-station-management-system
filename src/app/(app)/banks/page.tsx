@@ -80,7 +80,7 @@ export default function BankAccountsPage() {
   const router = useRouter()
   const { selectedStation } = useStation()
   const { toast } = useToast()
-  
+
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
   const [selectedBank, setSelectedBank] = useState<BankAccount | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -90,7 +90,7 @@ export default function BankAccountsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false)
   const [selectedBankForTransaction, setSelectedBankForTransaction] = useState<BankAccount | null>(null)
-  
+
   // Manual transaction form
   const [manualTransactionForm, setManualTransactionForm] = useState({
     type: 'DEPOSIT',
@@ -100,7 +100,7 @@ export default function BankAccountsPage() {
     transactionDate: new Date().toISOString().split('T')[0],
     notes: ''
   })
-  
+
   // Filters
   const [transactionType, setTransactionType] = useState('all')
   const [startDate, setStartDate] = useState('')
@@ -113,13 +113,13 @@ export default function BankAccountsPage() {
   const fetchBankAccounts = async () => {
     try {
       setLoading(true)
-      const url = selectedStation 
+      const url = selectedStation
         ? `/api/banks/accounts?stationId=${selectedStation}`
         : '/api/banks/accounts'
-      
+
       const response = await fetch(url)
       if (!response.ok) throw new Error('Failed to fetch bank accounts')
-      
+
       const data = await response.json()
       setBankAccounts(data.bankAccounts || [])
     } catch (error) {
@@ -137,16 +137,16 @@ export default function BankAccountsPage() {
   const fetchBankTransactions = async (bankId: string) => {
     try {
       setLoadingTransactions(true)
-      
+
       const params = new URLSearchParams()
       if (selectedStation) params.append('stationId', selectedStation)
       if (transactionType !== 'all') params.append('type', transactionType)
       if (startDate) params.append('startDate', startDate)
       if (endDate) params.append('endDate', endDate)
-      
+
       const response = await fetch(`/api/banks/${bankId}/transactions?${params.toString()}`)
       if (!response.ok) throw new Error('Failed to fetch transactions')
-      
+
       const data = await response.json()
       setTransactions(data.transactions || [])
       setTransactionSummary(data.summary || null)
@@ -218,7 +218,7 @@ export default function BankAccountsPage() {
       if (!response.ok) throw new Error('Failed to create transaction')
 
       const isDeposit = ['DEPOSIT', 'TRANSFER_IN', 'INTEREST', 'ADJUSTMENT'].includes(manualTransactionForm.type)
-      
+
       toast({
         title: "Success",
         description: `Successfully ${isDeposit ? 'added' : 'removed'} Rs. ${parseFloat(manualTransactionForm.amount).toLocaleString()} ${isDeposit ? 'to' : 'from'} ${selectedBankForTransaction.name}`
@@ -267,7 +267,7 @@ export default function BankAccountsPage() {
 
   const getStatusBadge = (status?: string) => {
     if (!status) return null
-    
+
     switch (status) {
       case 'CLEARED':
         return <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20"><CheckCircle className="h-3 w-3 mr-1" />Cleared</Badge>
@@ -476,7 +476,7 @@ export default function BankAccountsPage() {
 
               {/* Action Buttons */}
               <div className="grid grid-cols-2 gap-2 pt-2">
-                <Button 
+                <Button
                   onClick={() => handleOpenTransaction(bank)}
                   variant="default"
                   size="sm"
@@ -484,8 +484,8 @@ export default function BankAccountsPage() {
                   <Plus className="h-4 w-4 mr-2" />
                   Transaction
                 </Button>
-                <Button 
-                  onClick={() => handleViewDetails(bank)} 
+                <Button
+                  onClick={() => handleViewDetails(bank)}
                   variant="outline"
                   size="sm"
                 >
@@ -516,7 +516,7 @@ export default function BankAccountsPage() {
               Add or remove money from this bank account
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div className="p-3 bg-muted/50 rounded-lg">
               <div className="text-sm text-muted-foreground">Current Balance</div>
@@ -612,8 +612,8 @@ export default function BankAccountsPage() {
                   <div className="text-sm text-muted-foreground">New Balance (After Transaction)</div>
                   <div className="text-lg font-bold text-blue-600">
                     Rs. {(
-                      selectedBankForTransaction.currentBalance + 
-                      (['DEPOSIT', 'TRANSFER_IN', 'INTEREST', 'ADJUSTMENT'].includes(manualTransactionForm.type) ? 1 : -1) * 
+                      selectedBankForTransaction.currentBalance +
+                      (['DEPOSIT', 'TRANSFER_IN', 'INTEREST', 'ADJUSTMENT'].includes(manualTransactionForm.type) ? 1 : -1) *
                       parseFloat(manualTransactionForm.amount || '0')
                     ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </div>

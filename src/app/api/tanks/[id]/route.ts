@@ -8,9 +8,9 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    
-    const { capacity, currentLevel, isActive } = body
-    
+
+    const { capacity, currentLevel, isActive, tankNumber } = body
+
     // Check if tank exists
     const existingTank = await prisma.tank.findUnique({
       where: { id }
@@ -21,6 +21,24 @@ export async function PUT(
         { error: 'Tank not found' },
         { status: 404 }
       )
+    }
+
+    // Check uniqueness of tankNumber if provided
+    if (tankNumber) {
+      const duplicateTank = await prisma.tank.findFirst({
+        where: {
+          tankNumber,
+          stationId: existingTank.stationId,
+          id: { not: id } // Exclude current tank
+        }
+      })
+
+      if (duplicateTank) {
+        return NextResponse.json(
+          { error: 'Tank number already exists at this station' },
+          { status: 400 }
+        )
+      }
     }
 
     // Validate capacity if provided
@@ -50,7 +68,8 @@ export async function PUT(
       data: {
         ...(capacity !== undefined && { capacity: parseFloat(capacity) }),
         ...(currentLevel !== undefined && { currentLevel: parseFloat(currentLevel) }),
-        ...(isActive !== undefined && { isActive })
+        ...(isActive !== undefined && { isActive }),
+        ...(tankNumber !== undefined && { tankNumber })
       },
       include: {
         station: {
@@ -75,7 +94,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    
+
     // Check if tank exists
     const tank = await prisma.tank.findUnique({
       where: { id },
@@ -98,7 +117,7 @@ export async function DELETE(
     // Safety check: Can't delete if has nozzles assigned
     if (tank.nozzles.length > 0) {
       return NextResponse.json(
-        { 
+        {
           error: 'Cannot delete tank',
           details: `This tank has ${tank.nozzles.length} nozzle(s) assigned. Please remove or reassign the nozzles first.`
         },
@@ -111,9 +130,9 @@ export async function DELETE(
       where: { id }
     })
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Tank deleted successfully',
-      id 
+      id
     })
   } catch (error) {
     console.error('Error deleting tank:', error)

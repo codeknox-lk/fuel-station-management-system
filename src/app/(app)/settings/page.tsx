@@ -3,10 +3,10 @@
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { 
-  Building2, 
-  CreditCard, 
-  Clock, 
+import {
+  Building2,
+  CreditCard,
+  Clock,
   DollarSign,
   Monitor,
   Users,
@@ -26,11 +26,17 @@ interface SettingCard {
   href: string
   features: string[]
   color: string
-  restricted?: boolean
+  minRole?: 'OWNER' | 'DEVELOPER'
 }
 
 export default function SettingsPage() {
   const router = useRouter()
+
+  // Get user role from localStorage
+  const userRole = typeof window !== 'undefined' ? localStorage.getItem('userRole') : null
+  const isDeveloper = userRole === 'DEVELOPER'
+  const isOwner = userRole === 'OWNER' || isDeveloper // Developer provides Owner access too
+  const isManager = userRole === 'MANAGER' || isOwner
 
   const settings: SettingCard[] = [
     {
@@ -39,12 +45,14 @@ export default function SettingsPage() {
       icon: <Building2 className="h-8 w-8" />,
       href: '/settings/stations',
       features: [
-        'Add/Edit/Delete stations',
+        // Only DEVELOPER can Add/Delete, others can only Edit
+        isDeveloper ? 'Add/Edit/Delete stations' : 'Edit stations',
         'Station codes and names',
         'Location and contact details',
         'Operating hours configuration'
       ],
-      color: 'text-blue-600 dark:text-blue-400'
+      color: 'text-blue-600 dark:text-blue-400',
+      minRole: 'DEVELOPER'
     },
     {
       title: 'Pumpers',
@@ -136,7 +144,7 @@ export default function SettingsPage() {
         'Profile management'
       ],
       color: 'text-red-600 dark:text-red-400',
-      restricted: true
+      minRole: 'OWNER'
     },
     {
       title: 'Tolerance Settings',
@@ -150,7 +158,7 @@ export default function SettingsPage() {
         'Alert configurations'
       ],
       color: 'text-indigo-600',
-      restricted: true
+      minRole: 'OWNER'
     },
     {
       title: 'Tanks & Infrastructure',
@@ -166,6 +174,43 @@ export default function SettingsPage() {
       color: 'text-orange-600 dark:text-orange-400'
     }
   ]
+
+  const getRoleStyle = (minRole?: string) => {
+    switch (minRole) {
+      case 'DEVELOPER':
+        return 'border-rose-500/20 dark:border-rose-500/30 bg-rose-500/10 dark:bg-rose-500/20'
+      case 'OWNER':
+        return 'border-orange-500/20 dark:border-orange-500/30 bg-orange-500/10 dark:bg-orange-500/20'
+      default:
+        return ''
+    }
+  }
+
+  const getRoleBadge = (minRole?: string) => {
+    switch (minRole) {
+      case 'DEVELOPER':
+        return (
+          <span className="text-xs bg-rose-500/20 text-rose-600 dark:text-rose-400 px-2 py-1 rounded-full font-medium border border-rose-500/20">
+            DEVELOPER ONLY
+          </span>
+        )
+      case 'OWNER':
+        return (
+          <span className="text-xs bg-orange-500/20 text-orange-600 dark:text-orange-400 px-2 py-1 rounded-full font-medium border border-orange-500/20">
+            OWNER ONLY
+          </span>
+        )
+      default:
+        return null
+    }
+  }
+
+  // Filter settings based on role
+  const visibleSettings = settings.filter(setting => {
+    if (setting.minRole === 'DEVELOPER') return isDeveloper
+    if (setting.minRole === 'OWNER') return isOwner
+    return true
+  })
 
   return (
     <div className="space-y-6 p-6">
@@ -184,10 +229,10 @@ export default function SettingsPage() {
 
       {/* Settings Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {settings.map((setting, index) => (
-          <Card 
-            key={index} 
-            className={`hover:shadow-lg transition-shadow cursor-pointer ${setting.restricted ? 'border-orange-500/20 dark:border-orange-500/30 bg-orange-500/10 dark:bg-orange-500/20/30' : ''}`}
+        {visibleSettings.map((setting, index) => (
+          <Card
+            key={index}
+            className={`hover:shadow-lg transition-shadow cursor-pointer ${getRoleStyle(setting.minRole)}`}
             onClick={() => router.push(setting.href)}
           >
             <CardHeader>
@@ -199,11 +244,7 @@ export default function SettingsPage() {
                   <div>
                     <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
                       {setting.title}
-                      {setting.restricted && (
-                        <span className="text-xs bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300 px-2 py-1 rounded-full">
-                          OWNER ONLY
-                        </span>
-                      )}
+                      {getRoleBadge(setting.minRole)}
                     </h3>
                     <p className="text-sm text-muted-foreground font-normal">{setting.description}</p>
                   </div>
@@ -223,8 +264,8 @@ export default function SettingsPage() {
                   ))}
                 </ul>
                 <div className="pt-3">
-                  <Button 
-                    className="w-full" 
+                  <Button
+                    className="w-full"
                     onClick={(e) => {
                       e.stopPropagation()
                       router.push(setting.href)
@@ -258,7 +299,7 @@ export default function SettingsPage() {
                 <li>• Backup and restore</li>
               </ul>
             </div>
-            
+
             <div>
               <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
                 <Users className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -271,7 +312,7 @@ export default function SettingsPage() {
                 <li>• Session management</li>
               </ul>
             </div>
-            
+
             <div>
               <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
                 <SettingsIcon className="h-4 w-4 text-orange-600 dark:text-orange-400" />

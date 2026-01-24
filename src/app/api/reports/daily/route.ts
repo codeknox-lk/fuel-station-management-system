@@ -56,11 +56,11 @@ export async function GET(request: NextRequest) {
               continue // Skip invalid readings (not a rollover)
             }
           }
-          
+
           if (litersSold <= 0) continue
-          
+
           const fuelId = assignment.nozzle.tank.fuelId
-          
+
           const price = await prisma.price.findFirst({
             where: {
               fuelId,
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
             },
             orderBy: { effectiveDate: 'desc' }
           })
-          
+
           const pricePerLiter = price ? price.price : 0
           totalCashIn += litersSold * pricePerLiter
         }
@@ -185,6 +185,7 @@ export async function GET(request: NextRequest) {
     const tanks = await prisma.tank.findMany({
       where: { stationId },
       include: {
+        fuel: true,
         deliveries: {
           where: {
             deliveryDate: {

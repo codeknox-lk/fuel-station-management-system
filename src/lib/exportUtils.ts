@@ -16,10 +16,10 @@ export class PDFExporter {
       unit: 'mm',
       format: 'a4'
     })
-    
+
     this.pageWidth = orientation === 'portrait' ? 210 : 297
     this.pageHeight = orientation === 'portrait' ? 297 : 210
-    
+
     this.addProfessionalHeader(title)
     this.currentY = 55
   }
@@ -28,38 +28,38 @@ export class PDFExporter {
     // Background header
     this.doc.setFillColor(63, 81, 181) // Blue header
     this.doc.rect(0, 0, this.pageWidth, 50, 'F')
-    
+
     // Company name
     this.doc.setFontSize(24)
     this.doc.setFont('helvetica', 'bold')
     this.doc.setTextColor(255, 255, 255)
     this.doc.text('FUEL STATION', this.margin, 20)
-    
+
     this.doc.setFontSize(12)
     this.doc.setFont('helvetica', 'normal')
     this.doc.text('Management System', this.margin, 28)
-    
+
     // Report title
     this.doc.setFontSize(18)
     this.doc.setFont('helvetica', 'bold')
     this.doc.text(title, this.margin, 40)
-    
+
     // Date and page info
     this.doc.setFontSize(9)
     this.doc.setFont('helvetica', 'normal')
-    const dateStr = new Date().toLocaleString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
+    const dateStr = new Date().toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'long',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     })
     this.doc.text(dateStr, this.pageWidth - this.margin, 20, { align: 'right' })
-    
+
     // Reset text color
     this.doc.setTextColor(0, 0, 0)
   }
-  
+
   private checkPageBreak(requiredHeight: number) {
     if (this.currentY + requiredHeight > this.pageHeight - this.margin - 15) {
       this.addPageFooter()
@@ -70,7 +70,7 @@ export class PDFExporter {
     }
     return false
   }
-  
+
   private addPageHeader() {
     // Minimal header for continuation pages
     this.doc.setFillColor(240, 240, 240)
@@ -82,9 +82,14 @@ export class PDFExporter {
     this.doc.setTextColor(0, 0, 0)
     this.currentY = 20
   }
-  
+
   private addPageFooter() {
-    const pageNum = (this.doc as any).internal.getNumberOfPages()
+    interface ExtendedJsPDF {
+      internal: {
+        getNumberOfPages: () => number
+      }
+    }
+    const pageNum = (this.doc as unknown as ExtendedJsPDF).internal.getNumberOfPages()
     this.doc.setFontSize(8)
     this.doc.setTextColor(128, 128, 128)
     this.doc.text(
@@ -104,17 +109,17 @@ export class PDFExporter {
 
   addSectionTitle(title: string) {
     this.checkPageBreak(15)
-    
+
     // Section background
     this.doc.setFillColor(245, 247, 250)
     this.doc.rect(this.margin, this.currentY, this.pageWidth - 2 * this.margin, 10, 'F')
-    
+
     this.doc.setFontSize(14)
     this.doc.setFont('helvetica', 'bold')
     this.doc.setTextColor(63, 81, 181)
     this.doc.text(title, this.margin + 3, this.currentY + 7)
     this.doc.setTextColor(0, 0, 0)
-    
+
     this.currentY += 15
   }
 
@@ -122,7 +127,7 @@ export class PDFExporter {
     if (title) {
       this.addSectionTitle(title)
     }
-    
+
     this.checkPageBreak(30)
 
     autoTable(this.doc, {
@@ -152,38 +157,43 @@ export class PDFExporter {
         }
       }
     })
-    
-    const finalY = (this.doc as any).lastAutoTable?.finalY || this.currentY
+
+    interface AutoTableJsPDF {
+      lastAutoTable?: {
+        finalY: number
+      }
+    }
+    const finalY = (this.doc as unknown as AutoTableJsPDF).lastAutoTable?.finalY || this.currentY
     this.currentY = finalY + 10
   }
-  
+
   addStatisticsGrid(stats: { label: string; value: string | number; color?: string }[][]) {
     this.checkPageBreak(35)
-    
+
     const cardWidth = (this.pageWidth - 2 * this.margin - 10) / stats[0].length
     const cardHeight = 25
-    
+
     stats.forEach((row, rowIndex) => {
       const yPos = this.currentY + (rowIndex * (cardHeight + 5))
-      
+
       row.forEach((stat, colIndex) => {
         const xPos = this.margin + (colIndex * (cardWidth + 5))
-        
+
         // Card background
         this.doc.setFillColor(248, 249, 250)
         this.doc.roundedRect(xPos, yPos, cardWidth, cardHeight, 2, 2, 'F')
-        
+
         // Border
         this.doc.setDrawColor(220, 220, 220)
         this.doc.setLineWidth(0.5)
         this.doc.roundedRect(xPos, yPos, cardWidth, cardHeight, 2, 2, 'S')
-        
+
         // Label
         this.doc.setFontSize(8)
         this.doc.setFont('helvetica', 'normal')
         this.doc.setTextColor(100, 100, 100)
         this.doc.text(stat.label, xPos + 3, yPos + 7)
-        
+
         // Value
         this.doc.setFontSize(16)
         this.doc.setFont('helvetica', 'bold')
@@ -194,14 +204,14 @@ export class PDFExporter {
           this.doc.setTextColor(63, 81, 181)
         }
         this.doc.text(String(stat.value), xPos + 3, yPos + 18)
-        
+
         this.doc.setTextColor(0, 0, 0)
       })
     })
-    
+
     this.currentY += (stats.length * (cardHeight + 5)) + 10
   }
-  
+
   private parseColor(color: string): [number, number, number] {
     // Simple color parser for common colors
     const colorMap: { [key: string]: [number, number, number] } = {
@@ -214,20 +224,20 @@ export class PDFExporter {
     }
     return colorMap[color] || [63, 81, 181]
   }
-  
+
   addChart(chartImageData: string, title: string, width?: number, height?: number) {
     const imgWidth = width || (this.pageWidth - 2 * this.margin)
     const imgHeight = height || 80
-    
+
     this.checkPageBreak(imgHeight + 20)
-    
+
     if (title) {
       this.doc.setFontSize(12)
       this.doc.setFont('helvetica', 'bold')
       this.doc.text(title, this.margin, this.currentY)
       this.currentY += 8
     }
-    
+
     try {
       this.doc.addImage(chartImageData, 'PNG', this.margin, this.currentY, imgWidth, imgHeight)
       this.currentY += imgHeight + 10
@@ -240,29 +250,29 @@ export class PDFExporter {
       this.doc.setTextColor(0, 0, 0)
     }
   }
-  
+
   addKeyValuePairs(data: { label: string; value: string | number }[], columns: number = 2) {
     this.checkPageBreak(data.length * 8 / columns)
-    
+
     const colWidth = (this.pageWidth - 2 * this.margin) / columns
-    
+
     data.forEach((item, index) => {
       const col = index % columns
       const row = Math.floor(index / columns)
       const xPos = this.margin + (col * colWidth)
       const yPos = this.currentY + (row * 8)
-      
+
       this.doc.setFontSize(9)
       this.doc.setFont('helvetica', 'bold')
       this.doc.text(`${item.label}:`, xPos, yPos)
-      
+
       this.doc.setFont('helvetica', 'normal')
       this.doc.text(String(item.value), xPos + 50, yPos)
     })
-    
+
     this.currentY += Math.ceil(data.length / columns) * 8 + 10
   }
-  
+
   addDivider() {
     this.checkPageBreak(5)
     this.doc.setDrawColor(220, 220, 220)
@@ -270,12 +280,12 @@ export class PDFExporter {
     this.doc.line(this.margin, this.currentY, this.pageWidth - this.margin, this.currentY)
     this.currentY += 8
   }
-  
+
   addText(text: string, fontSize: number = 10, bold: boolean = false) {
     this.checkPageBreak(10)
     this.doc.setFontSize(fontSize)
     this.doc.setFont('helvetica', bold ? 'bold' : 'normal')
-    
+
     const lines = this.doc.splitTextToSize(text, this.pageWidth - 2 * this.margin)
     this.doc.text(lines, this.margin, this.currentY)
     this.currentY += lines.length * (fontSize * 0.5) + 5
@@ -283,49 +293,54 @@ export class PDFExporter {
 
   addSummaryCards(summaryData: { label: string; value: string | number }[]) {
     this.addSectionTitle('Summary')
-    
+
     const cardWidth = 85
     const cardHeight = 20
     const cols = 2
-    
+
     summaryData.forEach((item, index) => {
       const col = index % cols
       const row = Math.floor(index / cols)
       const x = this.margin + (col * (cardWidth + 5))
       const y = this.currentY + (row * (cardHeight + 5))
-      
+
       this.checkPageBreak(cardHeight + 10)
-      
+
       // Card background with gradient effect
       this.doc.setFillColor(248, 249, 250)
       this.doc.roundedRect(x, y, cardWidth, cardHeight, 2, 2, 'F')
-      
+
       // Border
       this.doc.setDrawColor(220, 220, 220)
       this.doc.setLineWidth(0.5)
       this.doc.roundedRect(x, y, cardWidth, cardHeight, 2, 2, 'S')
-      
+
       // Label
       this.doc.setFontSize(8)
       this.doc.setFont('helvetica', 'normal')
       this.doc.setTextColor(100, 100, 100)
       this.doc.text(item.label, x + 3, y + 7)
-      
+
       // Value
       this.doc.setFontSize(14)
       this.doc.setFont('helvetica', 'bold')
       this.doc.setTextColor(63, 81, 181)
       this.doc.text(String(item.value), x + 3, y + 16)
-      
+
       this.doc.setTextColor(0, 0, 0)
     })
-    
+
     this.currentY += Math.ceil(summaryData.length / cols) * (cardHeight + 5) + 10
   }
 
   save(filename: string) {
     // Add footer to all pages
-    const pageCount = (this.doc as any).internal.getNumberOfPages()
+    interface ExtendedJsPDF {
+      internal: {
+        getNumberOfPages: () => number
+      }
+    }
+    const pageCount = (this.doc as unknown as ExtendedJsPDF).internal.getNumberOfPages()
     for (let i = 1; i <= pageCount; i++) {
       this.doc.setPage(i)
       this.doc.setFontSize(8)
@@ -348,7 +363,7 @@ export class PDFExporter {
         this.pageHeight - 10
       )
     }
-    
+
     this.doc.save(filename)
   }
 
@@ -369,9 +384,9 @@ export class ExcelExporter {
   addWorksheet(name: string, headers: string[], data: (string | number)[][]) {
     const worksheetData = [headers, ...data]
     this.worksheets[name] = worksheetData
-    
+
     const worksheet = XLSX.utils.aoa_to_sheet(worksheetData)
-    
+
     // Auto-size columns
     const colWidths = headers.map((_, colIndex) => {
       const maxLength = Math.max(
@@ -381,7 +396,7 @@ export class ExcelExporter {
       return { wch: Math.min(Math.max(maxLength + 2, 10), 50) }
     })
     worksheet['!cols'] = colWidths
-    
+
     XLSX.utils.book_append_sheet(this.workbook, worksheet, name)
   }
 
@@ -407,29 +422,29 @@ export const captureChartAsImage = async (chartId: string): Promise<string | nul
       console.warn(`Chart element with ID "${chartId}" not found`)
       return null
     }
-    
+
     const svgElement = chartElement.querySelector('svg')
     if (!svgElement) {
       console.warn(`SVG element not found in chart "${chartId}"`)
       return null
     }
-    
+
     // Clone the SVG to avoid modifying the original
     const clonedSvg = svgElement.cloneNode(true) as SVGElement
-    
+
     // Get dimensions
     const bbox = svgElement.getBoundingClientRect()
     const width = bbox.width || 800
     const height = bbox.height || 400
-    
+
     // Set explicit dimensions on cloned SVG
     clonedSvg.setAttribute('width', width.toString())
     clonedSvg.setAttribute('height', height.toString())
-    
+
     // Inline all styles
     const styleSheets = Array.from(document.styleSheets)
     let allCSS = ''
-    
+
     try {
       styleSheets.forEach(sheet => {
         try {
@@ -444,38 +459,38 @@ export const captureChartAsImage = async (chartId: string): Promise<string | nul
     } catch (e) {
       console.warn('Could not read stylesheets', e)
     }
-    
+
     // Add style element to SVG
     if (allCSS) {
       const styleElement = document.createElementNS('http://www.w3.org/2000/svg', 'style')
       styleElement.textContent = allCSS
       clonedSvg.insertBefore(styleElement, clonedSvg.firstChild)
     }
-    
+
     // Serialize SVG
     const serializer = new XMLSerializer()
     let svgString = serializer.serializeToString(clonedSvg)
-    
+
     // Add XML declaration and ensure proper encoding
     svgString = '<?xml version="1.0" encoding="UTF-8"?>' + svgString
-    
+
     // Create canvas with higher resolution
     const scale = 3 // 3x for high quality
     const canvas = document.createElement('canvas')
     canvas.width = width * scale
     canvas.height = height * scale
     const ctx = canvas.getContext('2d')
-    
+
     if (!ctx) return null
-    
+
     // Fill with white background
     ctx.fillStyle = 'white'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
-    
+
     // Create blob and image
     const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' })
     const url = URL.createObjectURL(blob)
-    
+
     return new Promise((resolve) => {
       const img = new Image()
       img.onload = () => {
@@ -499,7 +514,7 @@ export const captureChartAsImage = async (chartId: string): Promise<string | nul
 }
 
 // Report-specific export functions
-interface DailyReportData {
+export interface DailyReportData {
   salesBreakdown?: {
     petrol92?: { litres: number; amount: number }
     petrol95?: { litres: number; amount: number }
@@ -514,7 +529,7 @@ interface DailyReportData {
 
 export const exportDailyReportPDF = (reportData: DailyReportData, stationName: string, date: string): void => {
   const pdf = new PDFExporter(`Daily Report - ${stationName} - ${date}`)
-  
+
   // Sales breakdown
   const salesData = [
     ['Petrol 92', `${reportData.salesBreakdown?.petrol92?.litres || 0}L`, `Rs. ${(reportData.salesBreakdown?.petrol92?.amount || 0).toLocaleString()}`],
@@ -523,7 +538,7 @@ export const exportDailyReportPDF = (reportData: DailyReportData, stationName: s
     ['Super Diesel', `${reportData.salesBreakdown?.superDiesel?.litres || 0}L`, `Rs. ${(reportData.salesBreakdown?.superDiesel?.amount || 0).toLocaleString()}`]
   ]
   pdf.addTable(['Fuel Type', 'Litres', 'Amount'], salesData, 'Sales Breakdown')
-  
+
   // Summary cards
   const summaryData = [
     { label: 'Total Sales', value: `Rs. ${(reportData.totalSales || 0).toLocaleString()}` },
@@ -532,13 +547,13 @@ export const exportDailyReportPDF = (reportData: DailyReportData, stationName: s
     { label: 'Variance', value: `${(reportData.variancePercentage || 0).toFixed(2)}%` }
   ]
   pdf.addSummaryCards(summaryData)
-  
+
   pdf.save(`daily-report-${stationName}-${date}.pdf`)
 }
 
 export const exportDailyReportExcel = (reportData: DailyReportData, stationName: string, date: string) => {
   const excel = new ExcelExporter()
-  
+
   // Sales breakdown
   const salesData = [
     ['Petrol 92', reportData.salesBreakdown?.petrol92?.litres || 0, reportData.salesBreakdown?.petrol92?.amount || 0],
@@ -547,7 +562,7 @@ export const exportDailyReportExcel = (reportData: DailyReportData, stationName:
     ['Super Diesel', reportData.salesBreakdown?.superDiesel?.litres || 0, reportData.salesBreakdown?.superDiesel?.amount || 0]
   ]
   excel.addWorksheet('Sales Breakdown', ['Fuel Type', 'Litres', 'Amount (Rs)'], salesData)
-  
+
   // Summary
   const summaryData = [
     { label: 'Total Sales', value: reportData.totalSales || 0 },
@@ -556,7 +571,7 @@ export const exportDailyReportExcel = (reportData: DailyReportData, stationName:
     { label: 'Variance %', value: reportData.variancePercentage || 0 }
   ]
   excel.addSummaryWorksheet('Summary', summaryData)
-  
+
   excel.save(`daily-report-${stationName}-${date}.xlsx`)
 }
 
@@ -576,7 +591,7 @@ interface ShiftReportData {
 
 export const exportShiftReportPDF = (shiftData: ShiftReportData, stationName: string, shiftId: string) => {
   const pdf = new PDFExporter(`Shift Report - ${stationName} - Shift ${shiftId}`)
-  
+
   // Nozzle performance
   const nozzleData = shiftData.nozzlePerformance?.map((nozzle) => [
     nozzle.nozzleName,
@@ -585,9 +600,9 @@ export const exportShiftReportPDF = (shiftData: ShiftReportData, stationName: st
     `Rs. ${nozzle.amount.toLocaleString()}`,
     `${nozzle.variancePercentage.toFixed(2)}%`
   ]) || []
-  
+
   pdf.addTable(['Nozzle', 'Pumper', 'Litres', 'Amount', 'Variance'], nozzleData, 'Nozzle Performance')
-  
+
   // Summary
   const summaryData = [
     { label: 'Total Sales', value: `Rs. ${(shiftData.totalSales || 0).toLocaleString()}` },
@@ -596,7 +611,7 @@ export const exportShiftReportPDF = (shiftData: ShiftReportData, stationName: st
     { label: 'Status', value: shiftData.overallStatus || 'Unknown' }
   ]
   pdf.addSummaryCards(summaryData)
-  
+
   pdf.save(`shift-report-${stationName}-${shiftId}.pdf`)
 }
 
@@ -616,7 +631,7 @@ interface TankReportData {
 
 export const exportTankReportPDF = (tankData: TankReportData[], stationName: string, date: string) => {
   const pdf = new PDFExporter(`Tank Movement Report - ${stationName} - ${date}`, 'landscape')
-  
+
   const tankMovementData = tankData.map(tank => [
     tank.tankName,
     tank.fuelName,
@@ -630,18 +645,18 @@ export const exportTankReportPDF = (tankData: TankReportData[], stationName: str
     `${tank.variancePercentage.toFixed(2)}%`,
     tank.status
   ])
-  
+
   pdf.addTable([
-    'Tank', 'Fuel Type', 'Opening', 'Deliveries', 'Sales', 'Test Returns', 
+    'Tank', 'Fuel Type', 'Opening', 'Deliveries', 'Sales', 'Test Returns',
     'Closing Book', 'Closing Dip', 'Variance', 'Variance %', 'Status'
   ], tankMovementData, 'Tank Movement')
-  
+
   pdf.save(`tank-report-${stationName}-${date}.pdf`)
 }
 
 interface ProfitReportData {
   revenueBreakdown?: Array<{
-    source: string
+    category: string
     amount: number
     percentage: number
   }>
@@ -658,25 +673,25 @@ interface ProfitReportData {
 
 export const exportProfitReportPDF = (profitData: ProfitReportData, stationName: string, month: string) => {
   const pdf = new PDFExporter(`Profit Report - ${stationName} - ${month}`)
-  
+
   // Revenue breakdown
   const revenueData = profitData.revenueBreakdown?.map((item) => [
-    item.source,
+    item.category,
     `Rs. ${item.amount.toLocaleString()}`,
     `${item.percentage.toFixed(1)}%`
   ]) || []
-  
+
   pdf.addTable(['Revenue Source', 'Amount', 'Percentage'], revenueData, 'Revenue Breakdown')
-  
+
   // Expense breakdown
   const expenseData = profitData.expenseBreakdown?.map((item) => [
     item.category,
     `Rs. ${item.amount.toLocaleString()}`,
     `${item.percentage.toFixed(1)}%`
   ]) || []
-  
+
   pdf.addTable(['Expense Category', 'Amount', 'Percentage'], expenseData, 'Expense Breakdown')
-  
+
   // Summary
   const summaryData = [
     { label: 'Total Revenue', value: `Rs. ${(profitData.totalRevenue || 0).toLocaleString()}` },
@@ -685,7 +700,7 @@ export const exportProfitReportPDF = (profitData: ProfitReportData, stationName:
     { label: 'Profit Margin', value: `${(profitData.profitMargin || 0).toFixed(2)}%` }
   ]
   pdf.addSummaryCards(summaryData)
-  
+
   pdf.save(`profit-report-${stationName}-${month}.pdf`)
 }
 
@@ -709,9 +724,9 @@ interface SalaryReportData {
   salaryData: SalaryReportData[]
 }
 
-export const exportSalaryReportPDF = (salaryData: SalaryReportData[], monthLabel: string, response: SalaryReportResponse) => {
+export const exportSalaryReportPDF = (salaryData: SalaryReportData[], monthLabel: string) => {
   const pdf = new PDFExporter(`Monthly Salary Report - ${monthLabel}`, 'landscape')
-  
+
   // Salary breakdown table
   const salaryTableData = salaryData.map((pumper) => [
     pumper.pumperName,
@@ -722,11 +737,11 @@ export const exportSalaryReportPDF = (salaryData: SalaryReportData[], monthLabel
     `Rs. ${pumper.baseSalary.toLocaleString()}`,
     `Rs. ${pumper.totalAdvances.toLocaleString()}`,
     `Rs. ${pumper.totalLoans.toLocaleString()}`,
-    pumper.varianceAdd > 0 ? `+Rs. ${pumper.varianceAdd.toLocaleString()}` : 
-    pumper.varianceDeduct > 0 ? `-Rs. ${pumper.varianceDeduct.toLocaleString()}` : '-',
+    pumper.varianceAdd > 0 ? `+Rs. ${pumper.varianceAdd.toLocaleString()}` :
+      pumper.varianceDeduct > 0 ? `-Rs. ${pumper.varianceDeduct.toLocaleString()}` : '-',
     `Rs. ${pumper.netSalary.toLocaleString()}`
   ])
-  
+
   pdf.addTable([
     'Pumper',
     'Employee ID',
@@ -739,7 +754,7 @@ export const exportSalaryReportPDF = (salaryData: SalaryReportData[], monthLabel
     'Variance',
     'Net Salary'
   ], salaryTableData, 'Monthly Salary Breakdown')
-  
+
   // Summary
   const totalBaseSalary = salaryData.reduce((sum, p) => sum + p.baseSalary, 0)
   const totalAdvances = salaryData.reduce((sum, p) => sum + p.totalAdvances, 0)
@@ -747,7 +762,7 @@ export const exportSalaryReportPDF = (salaryData: SalaryReportData[], monthLabel
   const totalVarianceAdd = salaryData.reduce((sum, p) => sum + p.varianceAdd, 0)
   const totalVarianceDeduct = salaryData.reduce((sum, p) => sum + p.varianceDeduct, 0)
   const totalNetSalary = salaryData.reduce((sum, p) => sum + p.netSalary, 0)
-  
+
   const summaryData = [
     { label: 'Total Pumpers', value: salaryData.length.toString() },
     { label: 'Total Base Salary', value: `Rs. ${totalBaseSalary.toLocaleString()}` },
@@ -758,7 +773,7 @@ export const exportSalaryReportPDF = (salaryData: SalaryReportData[], monthLabel
     { label: 'Total Net Salary', value: `Rs. ${totalNetSalary.toLocaleString()}` }
   ]
   pdf.addSummaryCards(summaryData)
-  
+
   pdf.save(`salary-report-${monthLabel.replace(/\s+/g, '-')}.pdf`)
 }
 
@@ -776,18 +791,18 @@ interface DailySalesReportData {
 
 export const exportDailySalesReportPDF = async (reportData: DailySalesReportData, stationName: string, monthLabel: string, chartImage?: string) => {
   const pdf = new PDFExporter(`Daily Sales Report (Rs) - ${stationName} - ${monthLabel}`, 'landscape')
-  
+
   const totalDays = reportData.dailySales.length || 1
   const totalRevenue = reportData.grandTotal || 0
   const avgDaily = totalDays > 0 ? Math.round(totalRevenue / totalDays) : 0
-  
-  const maxDay = reportData.dailySales.length > 0 
+
+  const maxDay = reportData.dailySales.length > 0
     ? reportData.dailySales.reduce((max, day) => day.totalSales > max.totalSales ? day : max)
     : { totalSales: 0, date: '' }
   const minDay = reportData.dailySales.length > 0
     ? reportData.dailySales.reduce((min, day) => day.totalSales < min.totalSales ? day : min)
     : { totalSales: 0, date: '' }
-  
+
   // Report Information
   pdf.addSectionTitle('Report Information')
   pdf.addKeyValuePairs([
@@ -796,9 +811,9 @@ export const exportDailySalesReportPDF = async (reportData: DailySalesReportData
     { label: 'Total Days in Period', value: totalDays.toString() },
     { label: 'Report Generated', value: new Date().toLocaleString() }
   ], 2)
-  
+
   pdf.addDivider()
-  
+
   // Key Performance Metrics
   pdf.addSectionTitle('Key Performance Metrics')
   const statsGrid = [
@@ -814,16 +829,16 @@ export const exportDailySalesReportPDF = async (reportData: DailySalesReportData
     ]
   ]
   pdf.addStatisticsGrid(statsGrid)
-  
+
   pdf.addDivider()
-  
+
   // Sales Trend Chart
   if (chartImage) {
     pdf.addSectionTitle('Daily Sales Trend')
     pdf.addChart(chartImage, '', 250, 100)
     pdf.addDivider()
   }
-  
+
   // Revenue by Fuel Type
   pdf.addSectionTitle('Revenue Breakdown by Fuel Type')
   const fuelBreakdown: { label: string; value: string }[] = reportData.fuelTypes.map(fuelName => {
@@ -835,9 +850,9 @@ export const exportDailySalesReportPDF = async (reportData: DailySalesReportData
     }
   })
   pdf.addKeyValuePairs(fuelBreakdown, 2)
-  
+
   pdf.addDivider()
-  
+
   // Complete Daily Sales Table
   pdf.addSectionTitle('Daily Sales Details')
   const salesData = reportData.dailySales.map((day) => {
@@ -850,7 +865,7 @@ export const exportDailySalesReportPDF = async (reportData: DailySalesReportData
     row.push(`Rs. ${day.totalSales.toLocaleString()}`)
     return row
   })
-  
+
   // Add totals row
   const totalsRow: (string | number)[] = ['TOTAL']
   reportData.fuelTypes.forEach(fuelName => {
@@ -859,27 +874,27 @@ export const exportDailySalesReportPDF = async (reportData: DailySalesReportData
   })
   totalsRow.push(`Rs. ${totalRevenue.toLocaleString()}`)
   salesData.push(totalsRow)
-  
+
   const headers = ['Date', ...reportData.fuelTypes, 'Daily Total']
   pdf.addTable(headers, salesData)
-  
+
   pdf.save(`daily-sales-rs-${stationName.replace(/\s+/g, '-')}-${monthLabel.replace(/\s+/g, '-')}.pdf`)
 }
 
 export const exportDailySalesReportExcel = (reportData: DailySalesReportData, stationName: string, monthLabel: string) => {
   const excel = new ExcelExporter()
-  
+
   const totalDays = reportData.dailySales.length || 1
   const totalRevenue = reportData.grandTotal || 0
   const avgDaily = Math.round(totalRevenue / totalDays)
-  
-  const maxDay = reportData.dailySales.length > 0 
+
+  const maxDay = reportData.dailySales.length > 0
     ? reportData.dailySales.reduce((max, day) => day.totalSales > max.totalSales ? day : max)
     : { totalSales: 0 }
   const minDay = reportData.dailySales.length > 0
     ? reportData.dailySales.reduce((min, day) => day.totalSales < min.totalSales ? day : min)
     : { totalSales: 0 }
-  
+
   // Daily sales data with totals
   const salesData = reportData.dailySales.map((day) => {
     const row: (string | number)[] = [new Date(day.date).toLocaleDateString()]
@@ -889,7 +904,7 @@ export const exportDailySalesReportExcel = (reportData: DailySalesReportData, st
     row.push(day.totalSales)
     return row
   })
-  
+
   // Add totals row
   const totalsRow: (string | number)[] = ['TOTAL']
   reportData.fuelTypes.forEach(fuelName => {
@@ -898,10 +913,10 @@ export const exportDailySalesReportExcel = (reportData: DailySalesReportData, st
   })
   totalsRow.push(totalRevenue)
   salesData.push(totalsRow)
-  
+
   const headers = ['Date', ...reportData.fuelTypes, 'Daily Total (Rs)']
   excel.addWorksheet('Daily Sales', headers, salesData)
-  
+
   // Fuel type breakdown
   const fuelBreakdown = reportData.fuelTypes.map(fuelName => {
     const total = reportData.dailySales.reduce((sum, day) => sum + (day.sales[fuelName] || 0), 0)
@@ -913,7 +928,7 @@ export const exportDailySalesReportExcel = (reportData: DailySalesReportData, st
     ]
   })
   excel.addWorksheet('Fuel Type Breakdown', ['Fuel Type', 'Total Revenue (Rs)', 'Percentage'], fuelBreakdown)
-  
+
   // Summary with all metrics
   const summaryData = [
     { label: 'Station', value: stationName },
@@ -927,7 +942,7 @@ export const exportDailySalesReportExcel = (reportData: DailySalesReportData, st
     { label: 'Fuel Types Sold', value: reportData.fuelTypes.length }
   ]
   excel.addSummaryWorksheet('Summary', summaryData)
-  
+
   excel.save(`daily-sales-rs-${stationName.replace(/\s+/g, '-')}-${monthLabel.replace(/\s+/g, '-')}.xlsx`)
 }
 
@@ -944,7 +959,7 @@ interface DailySalesLitersData {
 
 export const exportDailySalesLitersReportPDF = (reportData: DailySalesLitersData, stationName: string, monthLabel: string) => {
   const pdf = new PDFExporter(`Daily Sales Report (Liters) - ${stationName} - ${monthLabel}`, 'landscape')
-  
+
   // Daily sales table
   const salesData = reportData.dailySales.map((day) => {
     const row: (string | number)[] = [day.date]
@@ -954,10 +969,10 @@ export const exportDailySalesLitersReportPDF = (reportData: DailySalesLitersData
     row.push(`${day.totalLiters.toLocaleString()} L`)
     return row
   })
-  
+
   const headers = ['Date', ...reportData.fuelTypes, 'Total']
   pdf.addTable(headers, salesData, 'Daily Sales Breakdown (Volume)')
-  
+
   // Summary
   const summaryData = [
     { label: 'Total Days', value: reportData.dailySales.length.toString() },
@@ -965,17 +980,17 @@ export const exportDailySalesLitersReportPDF = (reportData: DailySalesLitersData
     { label: 'Average Daily Volume', value: `${Math.round(reportData.grandTotal / reportData.dailySales.length).toLocaleString()} L` }
   ]
   pdf.addSummaryCards(summaryData)
-  
+
   pdf.save(`daily-sales-liters-${stationName.replace(/\s+/g, '-')}-${monthLabel.replace(/\s+/g, '-')}.pdf`)
 }
 
 export const exportDailySalesLitersReportExcel = (reportData: DailySalesLitersData, stationName: string, monthLabel: string) => {
   const excel = new ExcelExporter()
-  
+
   const totalDays = reportData.dailySales.length || 1
   const totalVolume = reportData.grandTotal || 0
   const avgDaily = Math.round(totalVolume / totalDays)
-  
+
   // Daily sales data with totals
   const salesData = reportData.dailySales.map((day) => {
     const row: (string | number)[] = [new Date(day.date).toLocaleDateString()]
@@ -985,7 +1000,7 @@ export const exportDailySalesLitersReportExcel = (reportData: DailySalesLitersDa
     row.push(day.totalLiters)
     return row
   })
-  
+
   // Add totals row
   const totalsRow: (string | number)[] = ['TOTAL']
   reportData.fuelTypes.forEach(fuelName => {
@@ -994,10 +1009,10 @@ export const exportDailySalesLitersReportExcel = (reportData: DailySalesLitersDa
   })
   totalsRow.push(totalVolume)
   salesData.push(totalsRow)
-  
+
   const headers = ['Date', ...reportData.fuelTypes, 'Daily Total (L)']
   excel.addWorksheet('Daily Sales', headers, salesData)
-  
+
   // Fuel type breakdown
   const fuelBreakdown = reportData.fuelTypes.map(fuelName => {
     const total = reportData.dailySales.reduce((sum, day) => sum + (day.sales[fuelName] || 0), 0)
@@ -1009,7 +1024,7 @@ export const exportDailySalesLitersReportExcel = (reportData: DailySalesLitersDa
     ]
   })
   excel.addWorksheet('Fuel Type Breakdown', ['Fuel Type', 'Total Volume (L)', 'Percentage'], fuelBreakdown)
-  
+
   // Summary
   const summaryData = [
     { label: 'Station', value: stationName },
@@ -1020,7 +1035,7 @@ export const exportDailySalesLitersReportExcel = (reportData: DailySalesLitersDa
     { label: 'Fuel Types Sold', value: reportData.fuelTypes.length }
   ]
   excel.addSummaryWorksheet('Summary', summaryData)
-  
+
   excel.save(`daily-sales-liters-${stationName.replace(/\s+/g, '-')}-${monthLabel.replace(/\s+/g, '-')}.xlsx`)
 }
 
@@ -1047,13 +1062,13 @@ interface POSSalesReportData {
 
 export const exportPOSSalesReportPDF = async (reportData: POSSalesReportData, stationName: string, monthLabel: string, chartImage?: string) => {
   const pdf = new PDFExporter(`POS Sales Report - ${stationName} - ${monthLabel}`, 'landscape')
-  
+
   const totalSales = reportData.summary.totalSales || 0
   const totalTransactions = reportData.summary.totalTransactions || 1
   const totalTerminals = reportData.summary.totalTerminals || 1
   const avgPerTransaction = Math.round(totalSales / totalTransactions)
   const avgPerTerminal = Math.round(totalSales / totalTerminals)
-  
+
   // Report Information
   pdf.addSectionTitle('Report Information')
   pdf.addKeyValuePairs([
@@ -1062,9 +1077,9 @@ export const exportPOSSalesReportPDF = async (reportData: POSSalesReportData, st
     { label: 'Banks Serviced', value: reportData.summary.totalBanks.toString() },
     { label: 'Active POS Terminals', value: totalTerminals.toString() }
   ], 2)
-  
+
   pdf.addDivider()
-  
+
   // Key Performance Metrics
   pdf.addSectionTitle('Key Performance Metrics')
   const statsGrid = [
@@ -1080,16 +1095,16 @@ export const exportPOSSalesReportPDF = async (reportData: POSSalesReportData, st
     ]
   ]
   pdf.addStatisticsGrid(statsGrid)
-  
+
   pdf.addDivider()
-  
+
   // Sales Trend Chart
   if (chartImage) {
     pdf.addSectionTitle('Daily Sales Trend by Bank')
     pdf.addChart(chartImage, '', 250, 100)
     pdf.addDivider()
   }
-  
+
   // Bank-wise breakdown
   pdf.addSectionTitle('Sales Analysis by Bank')
   const bankData = reportData.bankBreakdown.map((bank) => {
@@ -1103,7 +1118,7 @@ export const exportPOSSalesReportPDF = async (reportData: POSSalesReportData, st
       `Rs. ${avgTrans.toLocaleString()}`
     ]
   })
-  
+
   // Add totals row for banks
   const bankTotalsRow = [
     'TOTAL',
@@ -1113,11 +1128,11 @@ export const exportPOSSalesReportPDF = async (reportData: POSSalesReportData, st
     `Rs. ${avgPerTransaction.toLocaleString()}`
   ]
   bankData.push(bankTotalsRow)
-  
+
   pdf.addTable(['Bank', 'Total Sales', 'Transactions', 'Market Share', 'Avg/Transaction'], bankData)
-  
+
   pdf.addDivider()
-  
+
   // Terminal-wise breakdown
   pdf.addSectionTitle('Sales Analysis by POS Terminal')
   const terminalData = reportData.terminalBreakdown.map((terminal) => {
@@ -1132,7 +1147,7 @@ export const exportPOSSalesReportPDF = async (reportData: POSSalesReportData, st
       `Rs. ${avgTrans.toLocaleString()}`
     ]
   })
-  
+
   // Add totals row for terminals
   const terminalTotalsRow = [
     'TOTAL',
@@ -1143,21 +1158,21 @@ export const exportPOSSalesReportPDF = async (reportData: POSSalesReportData, st
     `Rs. ${avgPerTransaction.toLocaleString()}`
   ]
   terminalData.push(terminalTotalsRow)
-  
+
   pdf.addTable(['POS Terminal', 'Bank', 'Total Sales', 'Trans', 'Share', 'Avg/Trans'], terminalData)
-  
+
   pdf.save(`pos-sales-${stationName.replace(/\s+/g, '-')}-${monthLabel.replace(/\s+/g, '-')}.pdf`)
 }
 
 export const exportPOSSalesReportExcel = (reportData: POSSalesReportData, stationName: string, monthLabel: string) => {
   const excel = new ExcelExporter()
-  
+
   const totalSales = reportData.summary.totalSales || 0
   const totalTransactions = reportData.summary.totalTransactions || 1
   const totalTerminals = reportData.summary.totalTerminals || 1
   const avgPerTransaction = Math.round(totalSales / totalTransactions)
   const avgPerTerminal = Math.round(totalSales / totalTerminals)
-  
+
   // Bank breakdown with calculations
   const bankData = reportData.bankBreakdown.map((bank) => {
     const percentage = totalSales > 0 ? ((bank.totalAmount / totalSales) * 100).toFixed(2) : '0.00'
@@ -1170,7 +1185,7 @@ export const exportPOSSalesReportExcel = (reportData: POSSalesReportData, statio
       avgTrans
     ]
   })
-  
+
   // Add totals row
   bankData.push([
     'TOTAL',
@@ -1179,9 +1194,9 @@ export const exportPOSSalesReportExcel = (reportData: POSSalesReportData, statio
     '100.00%',
     avgPerTransaction
   ])
-  
+
   excel.addWorksheet('Sales by Bank', ['Bank', 'Total Sales (Rs)', 'Transactions', 'Market Share', 'Avg/Trans (Rs)'], bankData)
-  
+
   // Terminal breakdown with calculations
   const terminalData = reportData.terminalBreakdown.map((terminal) => {
     const avgTrans = terminal.transactionCount > 0 ? Math.round(terminal.totalAmount / terminal.transactionCount) : 0
@@ -1195,7 +1210,7 @@ export const exportPOSSalesReportExcel = (reportData: POSSalesReportData, statio
       avgTrans
     ]
   })
-  
+
   // Add totals row
   terminalData.push([
     'TOTAL',
@@ -1205,9 +1220,9 @@ export const exportPOSSalesReportExcel = (reportData: POSSalesReportData, statio
     '100.00%',
     avgPerTransaction
   ])
-  
+
   excel.addWorksheet('Sales by Terminal', ['POS Terminal', 'Bank', 'Total Sales (Rs)', 'Trans', 'Share', 'Avg/Trans (Rs)'], terminalData)
-  
+
   // Summary with all metrics
   const summaryData = [
     { label: 'Station', value: stationName },
@@ -1220,7 +1235,7 @@ export const exportPOSSalesReportExcel = (reportData: POSSalesReportData, statio
     { label: 'Avg Per Terminal (Rs)', value: avgPerTerminal }
   ]
   excel.addSummaryWorksheet('Summary', summaryData)
-  
+
   excel.save(`pos-sales-${stationName.replace(/\s+/g, '-')}-${monthLabel.replace(/\s+/g, '-')}.xlsx`)
 }
 
@@ -1246,22 +1261,22 @@ interface CreditCustomerReportData {
 
 export const exportCreditCustomerReportPDF = async (reportData: CreditCustomerReportData, stationName: string, monthLabel: string, chartImage?: string) => {
   const pdf = new PDFExporter(`Credit Customer Report - ${stationName} - ${monthLabel}`, 'landscape')
-  
+
   const totalCustomers = reportData.summary.totalCustomers || 0
   const activeCustomers = reportData.summary.activeCustomers || 1
   const totalOutstanding = reportData.summary.totalOutstanding || 0
   const totalCreditSales = reportData.summary.totalCreditSales || 0
   const totalPayments = reportData.summary.totalPayments || 0
-  
-  const collectionRate = totalCreditSales > 0 
-    ? ((totalPayments / totalCreditSales) * 100).toFixed(1) 
+
+  const collectionRate = totalCreditSales > 0
+    ? ((totalPayments / totalCreditSales) * 100).toFixed(1)
     : '0.0'
   const avgOutstanding = Math.round(totalOutstanding / activeCustomers)
   const avgCreditLimit = reportData.customerDetails.length > 0
     ? Math.round(reportData.customerDetails.reduce((sum, c) => sum + c.creditLimit, 0) / reportData.customerDetails.length)
     : 0
   const netCreditChange = totalCreditSales - totalPayments
-  
+
   // Report Information
   pdf.addSectionTitle('Report Information')
   pdf.addKeyValuePairs([
@@ -1270,9 +1285,9 @@ export const exportCreditCustomerReportPDF = async (reportData: CreditCustomerRe
     { label: 'Total Customers', value: totalCustomers.toString() },
     { label: 'Active Customers', value: activeCustomers.toString() }
   ], 2)
-  
+
   pdf.addDivider()
-  
+
   // Key Performance Metrics
   pdf.addSectionTitle('Key Performance Metrics')
   const statsGrid = [
@@ -1288,16 +1303,16 @@ export const exportCreditCustomerReportPDF = async (reportData: CreditCustomerRe
     ]
   ]
   pdf.addStatisticsGrid(statsGrid)
-  
+
   pdf.addDivider()
-  
+
   // Aging Analysis Chart
   if (chartImage) {
     pdf.addSectionTitle('Customer Aging Analysis')
     pdf.addChart(chartImage, '', 250, 100)
     pdf.addDivider()
   }
-  
+
   // Financial Analysis
   pdf.addSectionTitle('Financial Analysis')
   const financialMetrics = [
@@ -1307,13 +1322,13 @@ export const exportCreditCustomerReportPDF = async (reportData: CreditCustomerRe
     { label: 'Recovery Rate', value: `${collectionRate}%` }
   ]
   pdf.addKeyValuePairs(financialMetrics, 2)
-  
+
   pdf.addDivider()
-  
+
   // Complete Customer Details
   pdf.addSectionTitle('Customer Account Details')
   const customerData = reportData.customerDetails.map((customer) => {
-    const utilization = customer.creditLimit > 0 
+    const utilization = customer.creditLimit > 0
       ? ((customer.currentBalance / customer.creditLimit) * 100).toFixed(0)
       : '0'
     const netActivity = customer.salesInPeriod - customer.paymentsInPeriod
@@ -1329,7 +1344,7 @@ export const exportCreditCustomerReportPDF = async (reportData: CreditCustomerRe
       customer.agingCategory
     ]
   })
-  
+
   // Add totals row
   const totalsRow = [
     'TOTAL',
@@ -1343,28 +1358,28 @@ export const exportCreditCustomerReportPDF = async (reportData: CreditCustomerRe
     '-'
   ]
   customerData.push(totalsRow)
-  
+
   pdf.addTable(
-    ['Customer', 'Company', 'Balance', 'Limit', 'Util%', 'Sales', 'Payments', 'Net Change', 'Aging'], 
+    ['Customer', 'Company', 'Balance', 'Limit', 'Util%', 'Sales', 'Payments', 'Net Change', 'Aging'],
     customerData
   )
-  
+
   pdf.save(`credit-customers-${stationName.replace(/\s+/g, '-')}-${monthLabel.replace(/\s+/g, '-')}.pdf`)
 }
 
 export const exportCreditCustomerReportExcel = (reportData: CreditCustomerReportData, stationName: string, monthLabel: string) => {
   const excel = new ExcelExporter()
-  
+
   const totalOutstanding = reportData.summary.totalOutstanding || 0
   const totalCreditSales = reportData.summary.totalCreditSales || 0
   const totalPayments = reportData.summary.totalPayments || 0
   const collectionRate = totalCreditSales > 0 ? ((totalPayments / totalCreditSales) * 100).toFixed(2) : '0.00'
   const netCreditChange = totalCreditSales - totalPayments
-  
+
   // Customer details with calculations
   const customerData = reportData.customerDetails.map((customer) => {
-    const utilization = customer.creditLimit > 0 
-      ? `${((customer.currentBalance / customer.creditLimit) * 100).toFixed(1)}%` 
+    const utilization = customer.creditLimit > 0
+      ? `${((customer.currentBalance / customer.creditLimit) * 100).toFixed(1)}%`
       : 'N/A'
     const netActivity = customer.salesInPeriod - customer.paymentsInPeriod
     return [
@@ -1379,7 +1394,7 @@ export const exportCreditCustomerReportExcel = (reportData: CreditCustomerReport
       customer.agingCategory
     ]
   })
-  
+
   // Add totals row
   customerData.push([
     'TOTAL',
@@ -1392,9 +1407,9 @@ export const exportCreditCustomerReportExcel = (reportData: CreditCustomerReport
     netCreditChange,
     '-'
   ])
-  
+
   excel.addWorksheet('Customer Details', ['Customer', 'Company', 'Balance (Rs)', 'Limit (Rs)', 'Utilization', 'Sales (Rs)', 'Payments (Rs)', 'Net Change (Rs)', 'Aging'], customerData)
-  
+
   // Summary with all metrics
   const summaryData = [
     { label: 'Station', value: stationName },
@@ -1408,7 +1423,7 @@ export const exportCreditCustomerReportExcel = (reportData: CreditCustomerReport
     { label: 'Net Credit Change (Rs)', value: netCreditChange }
   ]
   excel.addSummaryWorksheet('Summary', summaryData)
-  
+
   excel.save(`credit-customers-${stationName.replace(/\s+/g, '-')}-${monthLabel.replace(/\s+/g, '-')}.xlsx`)
 }
 
@@ -1419,6 +1434,10 @@ interface PumperDetailsReportData {
     totalShifts: number
     totalSales: number
     totalLiters: number
+    excellentPerformers?: number
+    goodPerformers?: number
+    needsImprovement?: number
+    criticalPerformers?: number
   }
   pumperDetails: Array<{
     name: string
@@ -1430,12 +1449,16 @@ interface PumperDetailsReportData {
     varianceRate: number
     performanceRating: string
     totalLoanBalance: number
+    averageLitersPerShift: number
+    activeLoansCount: number
+    totalMonthlyRental: number
+    advanceLimit: number
   }>
 }
 
 export const exportPumperDetailsReportPDF = (reportData: PumperDetailsReportData, stationName: string, monthLabel: string) => {
   const pdf = new PDFExporter(`Pumper Details Report - ${stationName} - ${monthLabel}`, 'landscape')
-  
+
   // Pumper details
   const pumperData = reportData.pumperDetails.map((pumper) => [
     pumper.name,
@@ -1449,7 +1472,7 @@ export const exportPumperDetailsReportPDF = (reportData: PumperDetailsReportData
     `Rs. ${pumper.totalLoanBalance.toLocaleString()}`
   ])
   pdf.addTable(['Pumper', 'Employee ID', 'Shifts', 'Total Sales', 'Liters', 'Avg/Shift', 'Variance', 'Rating', 'Loans'], pumperData, 'Pumper Performance')
-  
+
   // Summary
   const summaryData = [
     { label: 'Total Pumpers', value: reportData.summary.totalPumpers.toString() },
@@ -1458,19 +1481,19 @@ export const exportPumperDetailsReportPDF = (reportData: PumperDetailsReportData
     { label: 'Total Liters', value: `${reportData.summary.totalLiters.toLocaleString()} L` }
   ]
   pdf.addSummaryCards(summaryData)
-  
+
   pdf.save(`pumper-details-${stationName.replace(/\s+/g, '-')}-${monthLabel.replace(/\s+/g, '-')}.pdf`)
 }
 
 export const exportPumperDetailsReportExcel = (reportData: PumperDetailsReportData, stationName: string, monthLabel: string) => {
   const excel = new ExcelExporter()
-  
+
   const totalSales = reportData.summary.totalSales || 0
   const totalLiters = reportData.summary.totalLiters || 0
   const totalShifts = reportData.summary.totalShifts || 1
   const avgSalesPerShift = Math.round(totalSales / totalShifts)
   const avgLitersPerShift = Math.round(totalLiters / totalShifts)
-  
+
   // Pumper details with all metrics
   const pumperData = reportData.pumperDetails.map((pumper) => [
     pumper.name,
@@ -1487,7 +1510,7 @@ export const exportPumperDetailsReportExcel = (reportData: PumperDetailsReportDa
     pumper.totalMonthlyRental,
     pumper.advanceLimit
   ])
-  
+
   // Add totals row
   pumperData.push([
     'TOTAL',
@@ -1504,7 +1527,7 @@ export const exportPumperDetailsReportExcel = (reportData: PumperDetailsReportDa
     reportData.pumperDetails.reduce((sum, p) => sum + p.totalMonthlyRental, 0),
     '-'
   ])
-  
+
   excel.addWorksheet('Pumper Performance', [
     'Pumper',
     'Employee ID',
@@ -1520,7 +1543,7 @@ export const exportPumperDetailsReportExcel = (reportData: PumperDetailsReportDa
     'Monthly Rental (Rs)',
     'Advance Limit (Rs)'
   ], pumperData)
-  
+
   // Summary with all metrics
   const summaryData = [
     { label: 'Station', value: stationName },
@@ -1537,6 +1560,6 @@ export const exportPumperDetailsReportExcel = (reportData: PumperDetailsReportDa
     { label: 'Critical Performers', value: reportData.summary.criticalPerformers || 0 }
   ]
   excel.addSummaryWorksheet('Summary', summaryData)
-  
+
   excel.save(`pumper-details-${stationName.replace(/\s+/g, '-')}-${monthLabel.replace(/\s+/g, '-')}.xlsx`)
 }

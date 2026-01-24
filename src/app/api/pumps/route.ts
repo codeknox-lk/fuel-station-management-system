@@ -6,7 +6,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const stationId = searchParams.get('stationId')
 
-    const where: any = {}
+    interface PumpWhereInput {
+      stationId?: string
+    }
+    const where: PumpWhereInput = {}
     if (stationId) {
       where.stationId = stationId
     }
@@ -47,10 +50,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    
+    interface PumpBody {
+      stationId?: string
+      pumpNumber?: string
+      isActive?: boolean
+    }
+    const body = await request.json() as PumpBody
+
     const { stationId, pumpNumber, isActive } = body
-    
+
     // Validation
     if (!stationId || !pumpNumber) {
       return NextResponse.json(
@@ -98,7 +106,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newPump, { status: 201 })
   } catch (error) {
     console.error('Error creating pump:', error)
-    
+
     // Handle unique constraint violations (duplicate pump number at same station)
     if (error instanceof Error && (error.message.includes('Unique constraint') || error.message.includes('P2002'))) {
       return NextResponse.json(
@@ -106,7 +114,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     // Handle foreign key constraint violations
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
       return NextResponse.json(
@@ -114,7 +122,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

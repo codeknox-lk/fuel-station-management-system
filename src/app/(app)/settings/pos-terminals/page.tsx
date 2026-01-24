@@ -11,6 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Monitor, Plus, Edit, Trash2, Building2, Wifi, CreditCard } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { useRouter } from 'next/navigation'
+import { ArrowLeft } from 'lucide-react'
+import { useStation } from '@/contexts/StationContext'
 
 interface POSTerminal {
   id: string
@@ -39,9 +42,12 @@ interface Station {
 interface Bank {
   id: string
   name: string
+  accountNumber?: string | null
 }
 
 export default function POSTerminalsPage() {
+  const router = useRouter()
+  const { selectedStation, isAllStations } = useStation()
   const [terminals, setTerminals] = useState<POSTerminal[]>([])
   const [stations, setStations] = useState<Station[]>([])
   const [banks, setBanks] = useState<Bank[]>([])
@@ -61,11 +67,16 @@ export default function POSTerminalsPage() {
     fetchTerminals()
     fetchStations()
     fetchBanks()
-  }, [])
+  }, [selectedStation]) // Re-fetch when station changes
 
   const fetchTerminals = async () => {
     try {
-      const response = await fetch('/api/pos/terminals')
+      // Build URL with stationId filter
+      const url = isAllStations
+        ? '/api/pos/terminals'
+        : `/api/pos/terminals?stationId=${selectedStation}`
+
+      const response = await fetch(url)
       const data = await response.json()
       setTerminals(data)
     } catch (error) {
@@ -102,11 +113,11 @@ export default function POSTerminalsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     try {
       const url = editingTerminal ? `/api/pos/terminals/${editingTerminal.id}` : '/api/pos/terminals'
       const method = editingTerminal ? 'PUT' : 'POST'
-      
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -135,9 +146,9 @@ export default function POSTerminalsPage() {
   const handleEdit = (terminal: POSTerminal) => {
     setEditingTerminal(terminal)
     setFormData({
-      terminalNumber: terminal.terminalNumber,
-      name: terminal.name,
-      stationId: terminal.stationId,
+      terminalNumber: terminal.terminalNumber || '',
+      name: terminal.name || '',
+      stationId: terminal.stationId || '',
       bankId: terminal.bankId || '',
       isActive: terminal.isActive
     })
@@ -174,7 +185,7 @@ export default function POSTerminalsPage() {
     setFormData({
       terminalNumber: '',
       name: '',
-      stationId: '',
+      stationId: !isAllStations && selectedStation ? selectedStation : '',
       bankId: '',
       isActive: true
     })
@@ -197,7 +208,7 @@ export default function POSTerminalsPage() {
       key: 'terminalNumber' as keyof POSTerminal,
       title: 'Terminal Number',
       render: (value: unknown) => (
-        <span className="font-mono font-medium">{value as string}</span>
+        <span className="font-medium">{value as string}</span>
       )
     },
     {
@@ -271,7 +282,7 @@ export default function POSTerminalsPage() {
   ]
 
   const safeTerminals = Array.isArray(terminals) ? terminals : []
-  
+
   const stats = [
     {
       title: 'Total Terminals',
@@ -296,11 +307,17 @@ export default function POSTerminalsPage() {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">POS Terminal Management</h1>
-          <p className="text-muted-foreground mt-2">
-            Configure point-of-sale terminals and payment processing devices
-          </p>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => router.push('/settings')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">POS Terminal Management</h1>
+            <p className="text-muted-foreground mt-2">
+              Configure point-of-sale terminals and payment processing devices
+            </p>
+          </div>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
@@ -368,7 +385,7 @@ export default function POSTerminalsPage() {
                   {banks && banks.length > 0 ? (
                     banks.map((bank) => (
                       <option key={bank.id} value={bank.id}>
-                        {bank.name}
+                        {bank.name}{bank.accountNumber ? ` - ${bank.accountNumber}` : ''}
                       </option>
                     ))
                   ) : (

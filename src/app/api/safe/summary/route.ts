@@ -30,11 +30,8 @@ export async function GET(request: NextRequest) {
           include: {
             nozzle: {
               include: {
-                pump: {
-                  include: {
-                    tank: true
-                  }
-                }
+                tank: true,
+                pump: true
               }
             }
           }
@@ -80,7 +77,7 @@ export async function GET(request: NextRequest) {
     const totalCashIn = dayTransactions
       .filter(tx => tx.type === 'CASH_FUEL_SALES')
       .reduce((sum, tx) => sum + tx.amount, 0)
-    
+
     // Also get POS card payments (should be in safe)
     const totalPosCardIn = dayTransactions
       .filter(tx => tx.type === 'POS_CARD_PAYMENT')
@@ -90,7 +87,7 @@ export async function GET(request: NextRequest) {
     const totalExpensesFromSafe = dayTransactions
       .filter(tx => tx.type === 'EXPENSE')
       .reduce((sum, tx) => sum + tx.amount, 0)
-    
+
     // Also get from expense records (if not from safe)
     const expenses = await prisma.expense.findMany({
       where: {
@@ -106,7 +103,7 @@ export async function GET(request: NextRequest) {
 
     // Get loans given from safe transactions
     const totalLoansGiven = dayTransactions
-      .filter(tx => tx.type === 'LOAN_GIVEN' || tx.type === 'EXTERNAL_LOAN')
+      .filter(tx => tx.type === 'LOAN_GIVEN')
       .reduce((sum, tx) => sum + tx.amount, 0)
 
     // Get credit repayments from safe transactions
@@ -121,7 +118,7 @@ export async function GET(request: NextRequest) {
 
     // Get deposits from safe transactions
     const totalDeposits = dayTransactions
-      .filter(tx => tx.type === 'DEPOSIT' || tx.type === 'BANK_DEPOSIT')
+      .filter(tx => tx.type === 'BANK_DEPOSIT')
       .reduce((sum, tx) => sum + tx.amount, 0)
 
     // Calculate opening balance (balance at start of day)
@@ -150,7 +147,7 @@ export async function GET(request: NextRequest) {
           'CHEQUE_RECEIVED',
           'LOAN_REPAID'
         ].includes(tx.type)
-        
+
         openingBalance += txIsIncome ? tx.amount : -tx.amount
       }
     }
@@ -170,10 +167,8 @@ export async function GET(request: NextRequest) {
     const totalOutflow = dayTransactions
       .filter(tx => [
         'EXPENSE',
-        'DEPOSIT',
         'BANK_DEPOSIT',
-        'LOAN_GIVEN',
-        'EXTERNAL_LOAN'
+        'LOAN_GIVEN'
       ].includes(tx.type))
       .reduce((sum, tx) => sum + tx.amount, 0)
 
@@ -233,11 +228,11 @@ export async function GET(request: NextRequest) {
       ].includes(tx.type))
       .map(tx => ({
         id: tx.id,
-        type: tx.type === 'CASH_FUEL_SALES' ? 'CASH_SALES' : 
-              tx.type === 'POS_CARD_PAYMENT' ? 'CARD_PAYMENT' :
-              tx.type === 'CREDIT_PAYMENT' ? 'CREDIT_PAYMENT' :
+        type: tx.type === 'CASH_FUEL_SALES' ? 'CASH_SALES' :
+          tx.type === 'POS_CARD_PAYMENT' ? 'CARD_PAYMENT' :
+            tx.type === 'CREDIT_PAYMENT' ? 'CREDIT_PAYMENT' :
               tx.type === 'CHEQUE_RECEIVED' ? 'CHEQUE_RECEIVED' :
-              tx.type === 'LOAN_REPAID' ? 'LOAN_RECEIPT' : 'OTHER',
+                tx.type === 'LOAN_REPAID' ? 'LOAN_RECEIPT' : 'OTHER',
         description: tx.description,
         amount: tx.amount,
         time: new Date(tx.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
@@ -248,16 +243,14 @@ export async function GET(request: NextRequest) {
     const outflowDetails: any[] = dayTransactions
       .filter(tx => [
         'EXPENSE',
-        'DEPOSIT',
         'BANK_DEPOSIT',
-        'LOAN_GIVEN',
-        'EXTERNAL_LOAN'
+        'LOAN_GIVEN'
       ].includes(tx.type))
       .map(tx => ({
         id: tx.id,
         type: tx.type === 'EXPENSE' ? 'EXPENSE' :
-              tx.type === 'DEPOSIT' || tx.type === 'BANK_DEPOSIT' ? 'DEPOSIT' :
-              tx.type === 'LOAN_GIVEN' || tx.type === 'EXTERNAL_LOAN' ? 'LOAN_PAYMENT' : 'OTHER',
+          tx.type === 'BANK_DEPOSIT' ? 'DEPOSIT' :
+            tx.type === 'LOAN_GIVEN' ? 'LOAN_PAYMENT' : 'OTHER',
         description: tx.description,
         amount: tx.amount,
         time: new Date(tx.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
@@ -269,30 +262,29 @@ export async function GET(request: NextRequest) {
     const cashSales = dayTransactions
       .filter(tx => tx.type === 'CASH_FUEL_SALES')
       .reduce((sum, tx) => sum + tx.amount, 0)
-    
+
     const creditPayments = dayTransactions
       .filter(tx => tx.type === 'CREDIT_PAYMENT')
       .reduce((sum, tx) => sum + tx.amount, 0)
-    
+
     const loanReceipts = dayTransactions
       .filter(tx => tx.type === 'LOAN_REPAID')
       .reduce((sum, tx) => sum + tx.amount, 0)
-    
+
     const otherInflows = dayTransactions
       .filter(tx => tx.type === 'CHEQUE_RECEIVED' || tx.type === 'POS_CARD_PAYMENT')
       .reduce((sum, tx) => sum + tx.amount, 0)
 
     const loanPayments = dayTransactions
-      .filter(tx => tx.type === 'LOAN_GIVEN' || tx.type === 'EXTERNAL_LOAN')
+      .filter(tx => tx.type === 'LOAN_GIVEN')
       .reduce((sum, tx) => sum + tx.amount, 0)
-    
+
     const otherOutflows = dayTransactions
-      .filter(tx => tx.type !== 'EXPENSE' && tx.type !== 'DEPOSIT' && 
-                    tx.type !== 'BANK_DEPOSIT' && tx.type !== 'LOAN_GIVEN' && 
-                    tx.type !== 'EXTERNAL_LOAN' && ![
-                      'CASH_FUEL_SALES', 'POS_CARD_PAYMENT', 'CREDIT_PAYMENT',
-                      'CHEQUE_RECEIVED', 'LOAN_REPAID', 'OPENING_BALANCE'
-                    ].includes(tx.type))
+      .filter(tx => tx.type !== 'EXPENSE' && tx.type !== 'BANK_DEPOSIT' &&
+        tx.type !== 'LOAN_GIVEN' && ![
+          'CASH_FUEL_SALES', 'POS_CARD_PAYMENT', 'CREDIT_PAYMENT',
+          'CHEQUE_RECEIVED', 'LOAN_REPAID', 'OPENING_BALANCE'
+        ].includes(String(tx.type)))
       .reduce((sum, tx) => sum + tx.amount, 0)
 
     const summary = {

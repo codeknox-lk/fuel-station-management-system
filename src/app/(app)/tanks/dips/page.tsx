@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useStation } from '@/contexts/StationContext'
+import { useToast } from '@/hooks/use-toast'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -26,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Droplets, Clock, AlertCircle, CheckCircle, Plus, ArrowLeft, TrendingDown, TrendingUp, RefreshCw } from 'lucide-react'
+import { Droplets, Clock, AlertCircle, CheckCircle, Plus, ArrowLeft, RefreshCw } from 'lucide-react'
 import { depthToVolume, getTankCapacityLabel, validateDepth, getMaxDepth } from '@/lib/tank-calibration'
 
 interface Station {
@@ -107,18 +108,17 @@ export default function TankDipsPage() {
   const [tanks, setTanks] = useState<Tank[]>([])
   const [recentDips, setRecentDips] = useState<TankDip[]>([])
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const { toast } = useToast()
 
   // Form state
   const { selectedStation, setSelectedStation } = useStation()
   const [selectedTank, setSelectedTank] = useState('')
   const [dipDepth, setDipDepth] = useState('')
   const [dipLitres, setDipLitres] = useState('')
-  const [dipTime, setDipTime] = useState<Date>(new Date())
+  const [dipTime, setDipTime] = useState<Date | undefined>(new Date())
 
   // Dip details dialog state
-  const [selectedDip, setSelectedDip] = useState<any>(null)
+  const [selectedDip, setSelectedDip] = useState<TankDip | null>(null)
   const [showDipDetails, setShowDipDetails] = useState(false)
 
   // Active shifts state
@@ -142,13 +142,17 @@ export default function TankDipsPage() {
 
         setStations(stationsData)
         setRecentDips(dipsData)
-      } catch (err) {
-        setError('Failed to load initial data')
+      } catch {
+        toast({
+          title: "Error",
+          description: "Failed to load initial data",
+          variant: "destructive"
+        })
       }
     }
 
     loadData()
-  }, [])
+  }, [toast])
 
   // Load tanks when station changes
   useEffect(() => {
@@ -158,8 +162,12 @@ export default function TankDipsPage() {
           const response = await fetch(`/api/tanks?stationId=${selectedStation}&type=tanks`)
           const tanksData = await response.json()
           setTanks(tanksData)
-        } catch (err) {
-          setError('Failed to load tanks')
+        } catch {
+          toast({
+            title: "Error",
+            description: "Failed to load tanks",
+            variant: "destructive"
+          })
         }
       }
 
@@ -168,35 +176,27 @@ export default function TankDipsPage() {
       setTanks([])
       setActiveShifts([])
       setPumpReadings([])
-      setUpdatedTankLevels({})
       setShowUpdatedLevels(false)
     }
-  }, [selectedStation])
+  }, [selectedStation, toast])
 
-  // Load shifts active at dip time when station or dip time changes
-  useEffect(() => {
-    if (selectedStation && dipTime) {
-      loadActiveShifts()
-    }
-  }, [selectedStation, dipTime])
-
-  const loadActiveShifts = async () => {
+  const loadActiveShifts = useCallback(async () => {
     if (!selectedStation || !dipTime) return
 
     try {
       setLoadingShifts(true)
-      
+
       const dipTimeISO = dipTime.toISOString()
-      
+
       const response = await fetch(
         `/api/shifts?stationId=${selectedStation}&activeAt=${dipTimeISO}&includeAssignments=true`
       )
-      
+
       if (response.ok) {
         const data = await response.json()
         const shiftsData = Array.isArray(data) ? data : data.shifts || []
         setActiveShifts(shiftsData)
-        
+
         // Initialize pump readings for all nozzles in active shifts
         const initialReadings: PumpReading[] = []
         shiftsData.forEach((shift: ActiveShift) => {
@@ -219,7 +219,14 @@ export default function TankDipsPage() {
     } finally {
       setLoadingShifts(false)
     }
-  }
+  }, [selectedStation, dipTime])
+
+  // Load shifts active at dip time when station or dip time changes
+  useEffect(() => {
+    if (selectedStation && dipTime) {
+      loadActiveShifts()
+    }
+  }, [selectedStation, dipTime, loadActiveShifts])
 
   const handleCurrentMeterChange = (assignmentId: string, value: string) => {
     setPumpReadings(prev => prev.map(reading => {
@@ -243,7 +250,7 @@ export default function TankDipsPage() {
     if (tanks.length === 0 || pumpReadings.length === 0) return
 
     const tankFuelUsed: Record<string, number> = {}
-    
+
     pumpReadings.forEach(reading => {
       if (reading.currentMeter && reading.fuelUsed > 0) {
         if (!tankFuelUsed[reading.tankId]) {
@@ -255,13 +262,13 @@ export default function TankDipsPage() {
 
     const updated: Record<string, number> = {}
     const tankUpdates: Array<{ tankId: string; newLevel: number }> = []
-    
+
     tanks.forEach(tank => {
       const fuelUsed = tankFuelUsed[tank.id] || 0
       const currentLevel = tank.currentLevel || 0
       const newLevel = Math.max(0, currentLevel - fuelUsed)
       updated[tank.id] = newLevel
-      
+
       // Only include tanks that have changed
       if (fuelUsed > 0) {
         tankUpdates.push({
@@ -305,23 +312,32 @@ export default function TankDipsPage() {
           throw new Error('Failed to reload tank data')
         }
         const tanksData = await tanksRes.json()
-        
+
         // Force state update
         setTanks([])
         await new Promise(resolve => setTimeout(resolve, 50))
         setTanks(tanksData)
-        
+
         // Update the updatedTankLevels with fresh data from server
         const freshUpdated: Record<string, number> = {}
         tanksData.forEach((tank: Tank) => {
           freshUpdated[tank.id] = tank.currentLevel || 0
         })
         setUpdatedTankLevels(freshUpdated)
-        
+
+
         // Then show success message
-        setSuccess(`Successfully updated stock levels for ${tankUpdates.length} tank(s). Tank levels refreshed.`)
-      } catch (err: any) {
-        setError(err.message || 'Failed to update tank stock')
+        toast({
+          title: "Success",
+          description: `Successfully updated stock levels for ${tankUpdates.length} tank(s). Tank levels refreshed.`
+        })
+
+      } catch (err) {
+        toast({
+          title: "Error",
+          description: (err as Error).message || 'Failed to update tank stock',
+          variant: "destructive"
+        })
       } finally {
         setUpdatingStock(false)
       }
@@ -330,15 +346,17 @@ export default function TankDipsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (!selectedStation || !selectedTank || !dipLitres) {
-      setError('Please fill in all required fields')
+
+    if (!selectedStation || !selectedTank || !dipLitres || !dipTime) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      })
       return
     }
 
     setLoading(true)
-    setError('')
-    setSuccess('')
 
     try {
       const response = await fetch('/api/tanks/dips', {
@@ -358,8 +376,11 @@ export default function TankDipsPage() {
         throw new Error(errorData.error || 'Failed to record tank dip')
       }
 
-      setSuccess('Tank dip recorded successfully!')
-      
+      toast({
+        title: "Success",
+        description: "Tank dip recorded successfully!"
+      })
+
       // Reset form
       setSelectedTank('')
       setDipDepth('')
@@ -374,13 +395,18 @@ export default function TankDipsPage() {
       const dipsRes = await fetch('/api/tanks/dips?limit=10')
       const dipsData = await dipsRes.json()
       setRecentDips(dipsData)
-      
+
       // Reload tanks to update stock levels
       const tanksRes = await fetch(`/api/tanks?stationId=${selectedStation}&type=tanks`)
       const tanksData = await tanksRes.json()
       setTanks(tanksData)
-    } catch (err: any) {
-      setError(err.message || 'Failed to record tank dip')
+      setTanks(tanksData)
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: (err as Error).message || 'Failed to record tank dip',
+        variant: "destructive"
+      })
     } finally {
       setLoading(false)
     }
@@ -407,7 +433,7 @@ export default function TankDipsPage() {
       title: 'Tank',
       render: (value: unknown, row: TankDip) => (
         <div className="flex items-center gap-2">
-          <span className="font-medium">Tank {value || 'N/A'}</span>
+          <span className="font-medium">Tank {(value as string) || 'N/A'}</span>
           {row.fuel && <Badge variant="outline">{row.fuel.icon} {row.fuel.name}</Badge>}
         </div>
       )
@@ -417,7 +443,7 @@ export default function TankDipsPage() {
       title: 'Dip Reading',
       render: (value: unknown) => {
         if (value == null) return <span className="text-muted-foreground">-</span>
-        return <span className="font-mono font-semibold">{(value as number).toLocaleString()}L</span>
+        return <span className="font-semibold">{(value as number).toLocaleString()}L</span>
       }
     },
     {
@@ -432,9 +458,9 @@ export default function TankDipsPage() {
           return <span className="text-muted-foreground">-</span>
         }
         return (
-          <span className={`font-mono ${numValue >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {numValue > 0 ? '+' : ''}{numValue.toLocaleString()}L
-            </span>
+          <span className={`${numValue >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {numValue > 0 ? '+' : ''}{numValue.toLocaleString()}L
+          </span>
         )
       }
     },
@@ -466,11 +492,11 @@ export default function TankDipsPage() {
   const getAdjustedTankLevel = (tankId: string): number => {
     const tank = tanks.find(t => t.id === tankId)
     if (!tank) return 0
-    
+
     if (showUpdatedLevels && updatedTankLevels[tankId] !== undefined) {
       return updatedTankLevels[tankId]
     }
-    
+
     return tank.currentLevel || 0
   }
 
@@ -478,11 +504,11 @@ export default function TankDipsPage() {
     <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" onClick={() => router.push('/tanks')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => router.push('/tanks')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
           <div>
             <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
               <Droplets className="h-8 w-8 text-blue-600" />
@@ -500,22 +526,6 @@ export default function TankDipsPage() {
       </div>
 
       {/* Alerts */}
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {success && (
-        <Alert className="border-green-500/50 bg-green-500/10">
-          <CheckCircle className="h-4 w-4 text-green-600" />
-          <AlertTitle className="text-green-600">Success</AlertTitle>
-          <AlertDescription className="text-green-600">{success}</AlertDescription>
-        </Alert>
-      )}
-
       {/* Record New Dip Form */}
       <Card>
         <CardHeader>
@@ -526,39 +536,39 @@ export default function TankDipsPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Basic Info */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
+              <div>
                 <Label htmlFor="station">Station *</Label>
-              <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
-                <SelectTrigger id="station">
-                  <SelectValue placeholder="Select a station" />
-                </SelectTrigger>
-                <SelectContent>
-                  {stations.map((station) => (
-                    <SelectItem key={station.id} value={station.id}>
-                      {station.name} ({station.city})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
+                  <SelectTrigger id="station">
+                    <SelectValue placeholder="Select a station" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stations.map((station) => (
+                      <SelectItem key={station.id} value={station.id}>
+                        {station.name} ({station.city})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div>
+              <div>
                 <Label htmlFor="tank">Tank *</Label>
-              <Select value={selectedTank} onValueChange={setSelectedTank} disabled={loading || !selectedStation}>
-                <SelectTrigger id="tank">
-                  <SelectValue placeholder="Select a tank" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableTanks.map((tank) => (
-                    <SelectItem key={tank.id} value={tank.id}>
+                <Select value={selectedTank} onValueChange={setSelectedTank} disabled={loading || !selectedStation}>
+                  <SelectTrigger id="tank">
+                    <SelectValue placeholder="Select a tank" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableTanks.map((tank) => (
+                      <SelectItem key={tank.id} value={tank.id}>
                         Tank {tank.tankNumber} - {tank.fuel?.icon} {tank.fuel?.name} ({tank.capacity.toLocaleString()}L)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div>
+              <div>
                 <Label htmlFor="dipTime">Dip Time *</Label>
                 <DateTimePicker
                   value={dipTime}
@@ -582,7 +592,7 @@ export default function TankDipsPage() {
                             Current System Stock
                             {updatingStock && <RefreshCw className="h-3 w-3 animate-spin" />}
                           </div>
-                          <div className="text-2xl font-bold font-mono">{systemLevel.toLocaleString()}L</div>
+                          <div className="text-2xl font-bold">{systemLevel.toLocaleString()}L</div>
                           {selectedTankData.updatedAt && (
                             <div className="text-xs text-muted-foreground mt-1">
                               Last updated: {new Date(selectedTankData.updatedAt).toLocaleString()}
@@ -599,7 +609,7 @@ export default function TankDipsPage() {
             })()}
 
             {/* Active Shifts Section */}
-            {selectedStation && selectedTank && (
+            {selectedStation && selectedTank && dipTime && (
               loadingShifts ? (
                 <Card className="border-muted">
                   <CardContent className="pt-6">
@@ -658,7 +668,7 @@ export default function TankDipsPage() {
                                 </div>
                                 <div>
                                   <Label className="text-xs text-muted-foreground">Opening</Label>
-                                  <div className="font-mono text-sm font-semibold">
+                                  <div className="text-sm font-semibold">
                                     {assignment.startMeterReading.toLocaleString()}L
                                   </div>
                                 </div>
@@ -674,12 +684,12 @@ export default function TankDipsPage() {
                                     value={reading.currentMeter}
                                     onChange={(e) => handleCurrentMeterChange(assignment.id, e.target.value)}
                                     placeholder="Enter"
-                                    className="font-mono"
+                                    className=""
                                   />
                                 </div>
                                 <div>
                                   <Label className="text-xs text-muted-foreground">Fuel Sold</Label>
-                                  <div className={`font-mono text-sm font-semibold ${reading.fuelUsed > 0 ? 'text-orange-600' : ''}`}>
+                                  <div className={`text-sm font-semibold ${reading.fuelUsed > 0 ? 'text-orange-600' : ''}`}>
                                     {reading.fuelUsed > 0 ? `${reading.fuelUsed.toLocaleString()}L` : '-'}
                                   </div>
                                 </div>
@@ -713,9 +723,9 @@ export default function TankDipsPage() {
                             {tanks.map(tank => {
                               const originalLevel = tank.currentLevel || 0
                               const updatedLevel = updatedTankLevels[tank.id]
-                              
+
                               if (updatedLevel === undefined) return null
-                              
+
                               const fuelUsed = originalLevel - updatedLevel
                               if (fuelUsed === 0) return null
 
@@ -727,15 +737,15 @@ export default function TankDipsPage() {
                                   <div className="space-y-1">
                                     <div className="flex justify-between text-muted-foreground">
                                       <span>System:</span>
-                                      <span className="font-mono">{originalLevel.toLocaleString()}L</span>
+                                      <span className="">{originalLevel.toLocaleString()}L</span>
                                     </div>
                                     <div className="flex justify-between text-orange-600">
                                       <span>Sold:</span>
-                                      <span className="font-mono">-{fuelUsed.toLocaleString()}L</span>
+                                      <span className="">-{fuelUsed.toLocaleString()}L</span>
                                     </div>
                                     <div className="flex justify-between border-t pt-1 font-semibold text-green-600">
                                       <span>Actual:</span>
-                                      <span className="font-mono">{updatedLevel.toLocaleString()}L</span>
+                                      <span className="">{updatedLevel.toLocaleString()}L</span>
                                     </div>
                                   </div>
                                 </div>
@@ -762,23 +772,23 @@ export default function TankDipsPage() {
             {selectedTank && (() => {
               const tank = tanks.find(t => t.id === selectedTank)
               if (!tank) return null
-              
+
               const tankCapacity = tank.capacity as 9000 | 15000 | 22500
               const maxDepth = getMaxDepth(tankCapacity)
-              
+
               return (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="dipDepth">Liquid Depth (cm) *</Label>
-              <Input
+                      <Input
                         id="dipDepth"
-                type="number"
+                        type="number"
                         value={dipDepth}
                         onChange={(e) => {
                           const depth = e.target.value
                           setDipDepth(depth)
-                          
+
                           if (depth && parseFloat(depth) > 0) {
                             const validation = validateDepth(parseFloat(depth), tankCapacity)
                             if (validation.valid) {
@@ -790,12 +800,12 @@ export default function TankDipsPage() {
                           }
                         }}
                         placeholder="Enter depth from dipstick"
-                min="0"
+                        min="0"
                         max={maxDepth}
-                step="0.1"
-                disabled={loading}
-                required
-                        className="text-lg font-mono"
+                        step="0.1"
+                        disabled={loading}
+                        required
+                        className=""
                       />
                       <p className="text-xs text-muted-foreground mt-1">
                         Using {getTankCapacityLabel(tankCapacity)} chart (max: {maxDepth}cm)
@@ -810,7 +820,7 @@ export default function TankDipsPage() {
                         value={dipLitres ? parseFloat(dipLitres).toLocaleString() : ''}
                         disabled
                         placeholder="Auto-calculated from depth"
-                        className="text-lg font-mono bg-muted"
+                        className="bg-muted"
                       />
                       <p className="text-xs text-muted-foreground mt-1">
                         {dipDepth && dipLitres ? (
@@ -828,12 +838,12 @@ export default function TankDipsPage() {
                   {dipLitres && (() => {
                     const adjustedLevel = getAdjustedTankLevel(selectedTank)
                     if (adjustedLevel > 0) {
-                  const dipReading = parseFloat(dipLitres)
+                      const dipReading = parseFloat(dipLitres)
                       const variance = dipReading - adjustedLevel
                       const variancePercentage = (variance / adjustedLevel) * 100
-                  const isWarning = Math.abs(variancePercentage) > 2
+                      const isWarning = Math.abs(variancePercentage) > 2
 
-                  return (
+                      return (
                         <Card className={isWarning ? 'border-red-500/30 bg-red-500/5' : 'border-green-500/30 bg-green-500/5'}>
                           <CardContent className="pt-6">
                             <div className="flex items-center gap-2 mb-3">
@@ -845,12 +855,12 @@ export default function TankDipsPage() {
                               <div className={`font-semibold ${isWarning ? 'text-red-600' : 'text-green-600'}`}>
                                 {isWarning ? 'Variance Warning' : 'Variance OK'}
                               </div>
-                      </div>
+                            </div>
                             <div className="space-y-2 text-sm">
                               <div className="flex justify-between">
                                 <span className="text-muted-foreground">
                                   {showUpdatedLevels ? 'Adjusted:' : 'System:'}
-                          </span>
+                                </span>
                                 <span className="font-mono font-semibold">{adjustedLevel.toLocaleString()}L</span>
                               </div>
                               <div className="flex justify-between">
@@ -866,33 +876,33 @@ export default function TankDipsPage() {
                                   <div className={`text-xs ${isWarning ? 'text-red-600' : 'text-green-600'}`}>
                                     ({variancePercentage > 0 ? '+' : ''}{variancePercentage.toFixed(2)}%)
                                   </div>
-                        </div>
-                      </div>
-                    </div>
+                                </div>
+                              </div>
+                            </div>
                           </CardContent>
                         </Card>
-                  )
-                }
-                return null
-              })()}
-            </div>
+                      )
+                    }
+                    return null
+                  })()}
+                </div>
               )
             })()}
 
             <div className="flex justify-end gap-4 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={() => router.push('/tanks')} disabled={loading}>
-              Cancel
-            </Button>
+              <Button type="button" variant="outline" onClick={() => router.push('/tanks')} disabled={loading}>
+                Cancel
+              </Button>
               <Button type="submit" disabled={loading || !dipLitres}>
-              {loading ? 'Recording...' : (
-                <>
-                  <Plus className="mr-2 h-4 w-4" />
+                {loading ? 'Recording...' : (
+                  <>
+                    <Plus className="mr-2 h-4 w-4" />
                     Record Tank Dip
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
         </CardContent>
       </Card>
 
@@ -903,8 +913,8 @@ export default function TankDipsPage() {
           <CardDescription>Latest 10 tank dip records</CardDescription>
         </CardHeader>
         <CardContent>
-        <DataTable
-          data={recentDips}
+          <DataTable
+            data={recentDips}
             columns={columns}
             onRowClick={handleViewDetails}
           />
@@ -948,7 +958,7 @@ export default function TankDipsPage() {
                     {(selectedDip.variance || 0) > 0 ? '+' : ''}{selectedDip.variance != null ? selectedDip.variance.toLocaleString() : '0'}L
                     <span className="text-sm ml-2">
                       ({(selectedDip.variancePercentage || 0) > 0 ? '+' : ''}{selectedDip.variancePercentage != null ? selectedDip.variancePercentage.toFixed(2) : '0'}%)
-                        </span>
+                    </span>
                   </div>
                 </div>
                 <div className="col-span-2">

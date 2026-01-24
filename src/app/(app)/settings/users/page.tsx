@@ -9,14 +9,16 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Users, Plus, Edit, Trash2, Mail, Shield, User, Crown, UserCheck } from 'lucide-react'
+import { Users, Plus, Edit, Trash2, Mail, Shield, User, Crown, UserCheck, ArrowLeft, Key } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { useRouter } from 'next/navigation'
+import { TempPasswordModal } from '@/components/admin/TempPasswordModal'
 
 interface SystemUser {
   id: string
   name: string
   email: string
-  role: 'OWNER' | 'MANAGER' | 'ACCOUNTS'
+  role: 'DEVELOPER' | 'OWNER' | 'MANAGER' | 'ACCOUNTS'
   status: 'active' | 'inactive' | 'suspended'
   lastLogin: string
   createdAt: string
@@ -24,6 +26,7 @@ interface SystemUser {
 }
 
 export default function UsersPage() {
+  const router = useRouter()
   const [users, setUsers] = useState<SystemUser[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -31,10 +34,38 @@ export default function UsersPage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    password: '',
     role: 'MANAGER' as SystemUser['role'],
     status: 'active' as SystemUser['status']
   })
   const { toast } = useToast()
+  const [resetPasswordUser, setResetPasswordUser] = useState<{ username: string; tempPassword: string } | null>(null)
+  const [showTempPasswordModal, setShowTempPasswordModal] = useState(false)
+
+  // Get current user role
+  const userRole = typeof window !== 'undefined' ? localStorage.getItem('userRole') : null
+  const isDeveloper = userRole === 'DEVELOPER'
+  const isOwner = userRole === 'OWNER'
+  const isManager = userRole === 'MANAGER'
+
+  // Define role hierarchy - who can manage whom
+  const getRoleHierarchy = () => {
+    if (isDeveloper) {
+      return ['DEVELOPER', 'OWNER', 'MANAGER', 'ACCOUNTS']
+    }
+    if (isOwner) {
+      return ['OWNER', 'MANAGER', 'ACCOUNTS']
+    }
+    if (isManager) {
+      return ['MANAGER', 'ACCOUNTS']
+    }
+    return [] // ACCOUNTS can't manage users
+  }
+
+  const manageableRoles = getRoleHierarchy()
+
+  // Filter users based on current user's role
+  const filteredUsers = users.filter(user => manageableRoles.includes(user.role))
 
   useEffect(() => {
     fetchUsers()
@@ -43,8 +74,15 @@ export default function UsersPage() {
   const fetchUsers = async () => {
     try {
       const response = await fetch('/api/users')
+      if (!response.ok) throw new Error('Failed to fetch users')
       const data = await response.json()
-      setUsers(data)
+
+      if (Array.isArray(data)) {
+        setUsers(data)
+      } else {
+        console.error('Invalid users data:', data)
+        setUsers([])
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -58,18 +96,27 @@ export default function UsersPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     try {
       const url = editingUser ? `/api/users/${editingUser.id}` : '/api/users'
       const method = editingUser ? 'PUT' : 'POST'
-      
+
+      // Prepare request body with username field
+      const requestBody = {
+        ...formData,
+        username: formData.name // API expects 'username' field
+      }
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(requestBody)
       })
 
-      if (!response.ok) throw new Error('Failed to save user')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save user')
+      }
 
       toast({
         title: "Success",
@@ -82,7 +129,7 @@ export default function UsersPage() {
     } catch (error) {
       toast({
         title: "Error",
-        description: `Failed to ${editingUser ? 'update' : 'create'} user`,
+        description: error instanceof Error ? error.message : `Failed to ${editingUser ? 'update' : 'create'} user`,
         variant: "destructive"
       })
     }
@@ -91,8 +138,9 @@ export default function UsersPage() {
   const handleEdit = (user: SystemUser) => {
     setEditingUser(user)
     setFormData({
-      name: user.name,
-      email: user.email,
+      name: user.name || '',
+      email: user.email || '',
+      password: '', // Don't populate password when editing
       role: user.role,
       status: user.status
     })
@@ -124,11 +172,65 @@ export default function UsersPage() {
     }
   }
 
+  const handleResetPassword = async (user: SystemUser) => {
+    // Prevent resetting own password
+    const currentUserId = localStorage.getItem('userId')
+    if (user.id === currentUserId) {
+      toast({
+        title: "Error",
+        description: "You cannot reset your own password using this method",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Confirm action
+    if (!confirm(`Are you sure you want to reset the password for ${user.name}? They will be logged out and required to change their password on next login.`)) {
+      return
+    }
+
+    try {
+      const response = await fetch('/api/admin/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.detail || 'Failed to reset password')
+      }
+
+      const data = await response.json()
+
+      // Show temp password modal
+      setResetPasswordUser({
+        username: data.username,
+        tempPassword: data.tempPassword
+      })
+      setShowTempPasswordModal(true)
+
+      toast({
+        title: "Success",
+        description: "Password reset successfully"
+      })
+
+      fetchUsers()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to reset password",
+        variant: "destructive"
+      })
+    }
+  }
+
   const resetForm = () => {
     setEditingUser(null)
     setFormData({
       name: '',
       email: '',
+      password: '',
       role: 'MANAGER',
       status: 'active'
     })
@@ -145,6 +247,7 @@ export default function UsersPage() {
 
   const getRoleColor = (role: SystemUser['role']) => {
     switch (role) {
+      case 'DEVELOPER': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
       case 'OWNER': return 'bg-purple-500/20 text-purple-400 dark:bg-purple-600/30 dark:text-purple-300'
       case 'MANAGER': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
       case 'ACCOUNTS': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
@@ -154,6 +257,7 @@ export default function UsersPage() {
 
   const getRoleIcon = (role: SystemUser['role']) => {
     switch (role) {
+      case 'DEVELOPER': return <Shield className="h-3 w-3 fill-current" />
       case 'OWNER': return <Crown className="h-3 w-3" />
       case 'MANAGER': return <Shield className="h-3 w-3" />
       case 'ACCOUNTS': return <UserCheck className="h-3 w-3" />
@@ -162,11 +266,14 @@ export default function UsersPage() {
   }
 
   const formatLastLogin = (dateString: string) => {
+    if (!dateString) return 'Never'
     const date = new Date(dateString)
+    if (isNaN(date.getTime())) return 'Never'
+
     const now = new Date()
     const diffMs = now.getTime() - date.getTime()
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-    
+
     if (diffDays === 0) return 'Today'
     if (diffDays === 1) return 'Yesterday'
     if (diffDays < 7) return `${diffDays} days ago`
@@ -247,6 +354,17 @@ export default function UsersPage() {
           >
             <Edit className="h-4 w-4" />
           </Button>
+          {(isDeveloper || isOwner) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleResetPassword(row)}
+              className="text-orange-600 dark:text-orange-400 hover:text-orange-700"
+              title="Reset Password"
+            >
+              <Key className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -264,31 +382,38 @@ export default function UsersPage() {
   const stats = [
     {
       title: 'Total Users',
-      value: users.length.toString(),
+      value: filteredUsers.length.toString(),
       description: 'System users',
       icon: <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
     },
     {
       title: 'Active',
-      value: users.filter(u => u.status === 'active').length.toString(),
+      value: filteredUsers.filter(u => u.status === 'active').length.toString(),
       description: 'Currently active',
       icon: <div className="h-5 w-5 bg-green-500/10 dark:bg-green-500/200 rounded-full" />
     },
     {
       title: 'Owners',
-      value: users.filter(u => u.role === 'OWNER').length.toString(),
+      value: filteredUsers.filter(u => u.role === 'OWNER').length.toString(),
       description: 'System owners',
       icon: <Crown className="h-5 w-5 text-purple-600 dark:text-purple-400" />
     },
     {
       title: 'Managers',
-      value: users.filter(u => u.role === 'MANAGER').length.toString(),
+      value: filteredUsers.filter(u => u.role === 'MANAGER').length.toString(),
       description: 'Station managers',
       icon: <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
     }
   ]
 
   const rolePermissions = {
+    DEVELOPER: [
+      'FULL system access',
+      'Add/Delete stations',
+      'All OWNER permissions',
+      'System configuration',
+      'Database management'
+    ],
     OWNER: [
       'Full system access',
       'User management',
@@ -315,11 +440,17 @@ export default function UsersPage() {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">User Management</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage system users, roles, and access permissions
-          </p>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => router.push('/settings')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">User Management</h1>
+            <p className="text-muted-foreground mt-2">
+              Manage system users, roles, and access permissions
+            </p>
+          </div>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
@@ -359,6 +490,21 @@ export default function UsersPage() {
                 </div>
               </div>
 
+              {/* Password field - required for new users, optional for editing */}
+              <div>
+                <Label htmlFor="password">
+                  Password {editingUser ? '(leave blank to keep current)' : ''}
+                </Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="Enter password"
+                  required={!editingUser}
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="role">Role</Label>
@@ -369,9 +515,11 @@ export default function UsersPage() {
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     required
                   >
-                    <option value="MANAGER">Manager</option>
-                    <option value="ACCOUNTS">Accounts</option>
-                    <option value="OWNER">Owner</option>
+                    {/* Show roles based on current user's permissions */}
+                    {isDeveloper && <option value="DEVELOPER">Developer</option>}
+                    {(isDeveloper || isOwner) && <option value="OWNER">Owner</option>}
+                    {(isDeveloper || isOwner || isManager) && <option value="MANAGER">Manager</option>}
+                    {(isDeveloper || isOwner || isManager) && <option value="ACCOUNTS">Accounts</option>}
                   </select>
                 </div>
                 <div>
@@ -441,39 +589,54 @@ export default function UsersPage() {
 
       {/* Role Permissions Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {Object.entries(rolePermissions).map(([role, permissions]) => (
-          <Card key={role}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                {getRoleIcon(role as SystemUser['role'])}
-                {role}
-                <Badge className={getRoleColor(role as SystemUser['role'])} variant="secondary">
-                  {users.filter(u => u.role === role).length} users
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
-                {permissions.map((permission, index) => (
-                  <li key={index} className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full flex-shrink-0"></div>
-                    {permission}
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        ))}
+        {Object.entries(rolePermissions)
+          .filter(([role]) => !isOwner || role !== 'DEVELOPER')
+          .map(([role, permissions]) => (
+            <Card key={role}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  {getRoleIcon(role as SystemUser['role'])}
+                  {role}
+                  <Badge className={getRoleColor(role as SystemUser['role'])} variant="secondary">
+                    {filteredUsers.filter(u => u.role === role).length} users
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  {permissions.map((permission, index) => (
+                    <li key={index} className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full flex-shrink-0"></div>
+                      {permission}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          ))}
       </div>
 
       {/* Users Table */}
       <FormCard title="System Users" description="Manage user accounts and access permissions">
         <DataTable
-          data={users}
+          data={filteredUsers}
           columns={columns}
           searchPlaceholder="Search users..."
         />
       </FormCard>
+
+      {/* Temp Password Modal */}
+      {resetPasswordUser && (
+        <TempPasswordModal
+          isOpen={showTempPasswordModal}
+          onClose={() => {
+            setShowTempPasswordModal(false)
+            setResetPasswordUser(null)
+          }}
+          tempPassword={resetPasswordUser.tempPassword}
+          username={resetPasswordUser.username}
+        />
+      )}
     </div>
   )
 }

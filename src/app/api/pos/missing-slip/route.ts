@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,14 +33,14 @@ export async function GET(request: NextRequest) {
           }
         }
       })
-      
+
       if (!slip) {
         return NextResponse.json({ error: 'Missing slip not found' }, { status: 404 })
       }
       return NextResponse.json(slip)
     }
 
-    const where: any = {}
+    const where: Prisma.PosMissingSlipWhereInput = {}
     if (shiftId) {
       where.shiftId = shiftId
     }
@@ -85,10 +86,18 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    
+    interface MissingSlipBody {
+      terminalId?: string
+      amount?: number
+      lastFourDigits?: string
+      timestamp?: string | Date
+      reportedBy?: string
+      notes?: string
+    }
+    const body = await request.json() as MissingSlipBody
+
     const { terminalId, amount, lastFourDigits, timestamp, reportedBy, notes } = body
-    
+
     if (!terminalId || amount === undefined || !lastFourDigits || !timestamp || !reportedBy) {
       return NextResponse.json(
         { error: 'Terminal ID, amount, last four digits, timestamp, and reported by are required' },
@@ -152,7 +161,7 @@ export async function POST(request: NextRequest) {
       data: {
         terminalId,
         shiftId: shift.id,
-        amount: parseFloat(amount),
+        amount: parseFloat(String(amount)),
         lastFourDigits,
         timestamp: new Date(timestamp),
         reportedBy,
@@ -180,7 +189,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newSlip, { status: 201 })
   } catch (error) {
     console.error('Error creating missing slip:', error)
-    
+
     // Handle foreign key constraint violations
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
       return NextResponse.json(
@@ -188,7 +197,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,17 +12,38 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
 
     if (id) {
+      // OPTIMIZED: Use select
       const delivery = await prisma.delivery.findUnique({
         where: { id },
-        include: {
+        select: {
+          id: true,
+          stationId: true,
+          tankId: true,
+          supplier: true,
+          invoiceNumber: true,
+          quantity: true,
+          deliveryDate: true,
+          verificationStatus: true,
+          verifiedBy: true,
+          verifiedAt: true,
+          notes: true,
+          createdAt: true,
+          updatedAt: true,
           tank: {
             select: {
               id: true,
               tankNumber: true,
               fuelId: true,
-              fuel: true,
               capacity: true,
-              currentLevel: true
+              currentLevel: true,
+              fuel: {
+                select: {
+                  id: true,
+                  name: true,
+                  code: true,
+                  icon: true
+                }
+              }
             }
           },
           station: {
@@ -32,19 +54,19 @@ export async function GET(request: NextRequest) {
           }
         }
       })
-      
+
       if (!delivery) {
         return NextResponse.json({ error: 'Delivery not found' }, { status: 404 })
       }
       return NextResponse.json(delivery)
     }
 
-    const where: any = {}
+    const where: Prisma.DeliveryWhereInput = {}
     if (tankId) {
       where.tankId = tankId
     }
     if (status) {
-      where.verificationStatus = status
+      where.verificationStatus = status as any
     }
     if (startDate && endDate) {
       where.deliveryDate = {
@@ -53,17 +75,38 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // OPTIMIZED: Use select for list
     const deliveries = await prisma.delivery.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        stationId: true,
+        tankId: true,
+        supplier: true,
+        invoiceNumber: true,
+        invoiceQuantity: true, // Needed for variance calculation
+        actualReceived: true,  // Needed for variance calculation
+        quantity: true,
+        deliveryDate: true,
+        verificationStatus: true,
+        verifiedBy: true,
+        verifiedAt: true,
+        notes: true,
+        createdAt: true,
         tank: {
           select: {
             id: true,
             tankNumber: true,
             fuelId: true,
-            fuel: true,
             capacity: true,
-            currentLevel: true
+            currentLevel: true,
+            fuel: {
+              select: {
+                id: true,
+                name: true,
+                code: true
+              }
+            }
           }
         },
         station: {
@@ -79,8 +122,8 @@ export async function GET(request: NextRequest) {
     // Calculate variances
     const deliveriesWithVariance = deliveries.map(d => ({
       ...d,
-      invoiceVariance: d.invoiceQuantity && d.quantity 
-        ? d.quantity - d.invoiceQuantity 
+      invoiceVariance: d.invoiceQuantity && d.quantity
+        ? d.quantity - d.invoiceQuantity
         : null,
       dipVariance: d.actualReceived && d.invoiceQuantity
         ? d.actualReceived - d.invoiceQuantity
@@ -96,24 +139,38 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    interface DeliveryBody {
+      stationId?: string
+      tankId?: string
+      invoiceQuantity?: number | string
+      supplier?: string
+      deliveryDate?: string | Date
+      receivedBy?: string
+      invoiceNumber?: string
+      notes?: string
+      beforeDipReading?: number | string
+      beforeDipTime?: string | Date
+      fuelSoldDuring?: number | string
+      beforeMeterReadings?: Record<string, any>
+    }
+    const body = await request.json() as DeliveryBody
     console.log('[API] 📦 Delivery request body:', JSON.stringify(body, null, 2))
-    
-    const { 
-      stationId, 
-      tankId, 
-      invoiceQuantity, 
-      supplier, 
-      deliveryDate, 
-      receivedBy, 
-      invoiceNumber, 
+
+    const {
+      stationId,
+      tankId,
+      invoiceQuantity,
+      supplier,
+      deliveryDate,
+      receivedBy,
+      invoiceNumber,
       notes,
       beforeDipReading,
       beforeDipTime,
       fuelSoldDuring,
       beforeMeterReadings
     } = body
-    
+
     console.log('[API] 🔍 Validation check:', {
       stationId: !!stationId,
       tankId: !!tankId,
@@ -122,7 +179,7 @@ export async function POST(request: NextRequest) {
       receivedBy: !!receivedBy,
       beforeDipReading: !!beforeDipReading
     })
-    
+
     if (!stationId || !tankId || !invoiceQuantity || !supplier || !receivedBy) {
       console.log('[API] ❌ Validation failed - missing required fields')
       return NextResponse.json(
@@ -147,7 +204,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate: Ensure quantity is positive
-    if (parseFloat(invoiceQuantity) <= 0) {
+    if (parseFloat(String(invoiceQuantity)) <= 0) {
       return NextResponse.json(
         { error: 'Invoice quantity must be greater than zero' },
         { status: 400 }
@@ -155,13 +212,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate: Check if tank level would exceed capacity (based on invoice)
-    const estimatedNewLevel = tank.currentLevel + parseFloat(invoiceQuantity)
+    const estimatedNewLevel = tank.currentLevel + parseFloat(String(invoiceQuantity))
     if (estimatedNewLevel > tank.capacity * 1.05) { // Allow 5% tolerance
       const availableSpace = tank.capacity - tank.currentLevel
       return NextResponse.json(
-        { 
+        {
           error: 'Delivery may exceed tank capacity',
-          details: `Tank capacity: ${tank.capacity.toLocaleString()}L, Current: ${tank.currentLevel.toLocaleString()}L, Invoice: ${parseFloat(invoiceQuantity).toLocaleString()}L. Available space: ${availableSpace.toFixed(1)}L`
+          details: `Tank capacity: ${tank.capacity.toLocaleString()}L, Current: ${tank.currentLevel.toLocaleString()}L, Invoice: ${parseFloat(String(invoiceQuantity)).toLocaleString()}L. Available space: ${availableSpace.toFixed(1)}L`
         },
         { status: 400 }
       )
@@ -173,17 +230,17 @@ export async function POST(request: NextRequest) {
       data: {
         stationId,
         tankId,
-        quantity: parseFloat(invoiceQuantity), // Temporary, will be updated after verification
-        invoiceQuantity: parseFloat(invoiceQuantity),
+        quantity: parseFloat(String(invoiceQuantity)), // Temporary, will be updated after verification
+        invoiceQuantity: parseFloat(String(invoiceQuantity)),
         supplier,
         deliveryDate: deliveryDateObj,
         receivedBy,
         invoiceNumber: invoiceNumber || null,
         notes: notes || null,
-        beforeDipReading: beforeDipReading ? parseFloat(beforeDipReading) : null,
-        beforeDipTime: beforeDipTime ? new Date(beforeDipTime) : null,
-        fuelSoldDuring: fuelSoldDuring ? parseFloat(fuelSoldDuring) : null,
-        beforeMeterReadings: beforeMeterReadings || null,
+        beforeDipReading: beforeDipReading ? parseFloat(String(beforeDipReading)) : null,
+        beforeDipTime: beforeDipTime ? new Date(String(beforeDipTime)) : null,
+        fuelSoldDuring: fuelSoldDuring ? parseFloat(String(fuelSoldDuring)) : null,
+        beforeMeterReadings: beforeMeterReadings as any || null,
         verificationStatus: 'PENDING_VERIFICATION'
       },
       include: {
@@ -215,15 +272,15 @@ export async function POST(request: NextRequest) {
       stack: error instanceof Error ? error.stack : undefined,
       error
     })
-    
+
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
       return NextResponse.json(
         { error: 'Invalid station or tank ID' },
         { status: 400 }
       )
     }
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })

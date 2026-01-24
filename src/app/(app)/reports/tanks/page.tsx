@@ -16,13 +16,13 @@ import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { 
-  Building2, 
-  Calendar, 
+import {
+  Building2,
+  Calendar,
   Fuel,
   TrendingUp,
   TrendingDown,
-  AlertCircle, 
+  AlertCircle,
   Download,
   FileText,
   Calculator,
@@ -75,12 +75,12 @@ interface TankMovement {
   fuelName: string
   capacity: number
   date: string
-  
+
   // Opening balances
   openingDip: number
   openingBook: number
   openingPercentage: number
-  
+
   // Movements
   deliveries: number
   deliveryCount: number
@@ -90,17 +90,17 @@ interface TankMovement {
   testReturns: number
   testPourDetails: TestPourDetail[]
   adjustments: number
-  
+
   // Closing balances
   closingBook: number
   closingDip: number
   closingPercentage: number
-  
+
   // Variance analysis
   variance: number
   variancePercentage: number
   varianceStatus: 'WITHIN_TOLERANCE' | 'NEEDS_REVIEW' | 'CRITICAL'
-  
+
   // Additional metrics
   averageDailySales: number
   daysUntilEmpty: number
@@ -126,6 +126,22 @@ interface TankReportSummary {
   tanksNeedingDelivery: number
 }
 
+interface TankApiResponse {
+  tankId: string
+  tankNumber: string
+  fuel?: { name: string }
+  capacity: number
+  openingStock: number
+  closingBookStock: number
+  closingDipStock: number
+  deliveries: number
+  sales: number
+  testReturns: number
+  variance: number
+  variancePercentage: number
+  toleranceStatus: 'NORMAL' | 'WARNING' | 'CRITICAL'
+}
+
 export default function TanksReportsPage() {
   const [stations, setStations] = useState<Station[]>([])
   const [tankMovements, setTankMovements] = useState<TankMovement[]>([])
@@ -144,7 +160,7 @@ export default function TanksReportsPage() {
         const response = await fetch('/api/stations?active=true')
         const stationsData = await response.json()
         setStations(stationsData)
-      } catch (err) {
+      } catch (_err) {
         setError('Failed to load stations')
       }
     }
@@ -164,7 +180,7 @@ export default function TanksReportsPage() {
     try {
       // Call API endpoint to get real tank report data
       const url = `/api/tanks/report?stationId=${selectedStation}&date=${selectedDate}`
-      
+
       const response = await fetch(url, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
@@ -173,20 +189,20 @@ export default function TanksReportsPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || `Failed to fetch tank report: ${response.status}`)
+        throw new Error((errorData as { error?: string }).error || `Failed to fetch tank report: ${response.status}`)
       }
 
       const reportData = await response.json()
-      
+
       const station = stations.find(s => s.id === selectedStation)
-      
+
       // Transform API data to match frontend interface
-      const tankMovements: TankMovement[] = (reportData.tanks || []).map((tank: any, idx: number) => {
+      const tankMovements: TankMovement[] = (reportData.tanks || []).map((tank: TankApiResponse, idx: number) => {
         const openingStock = tank.openingStock || 0
         const closingBookStock = tank.closingBookStock || 0
         const closingDipStock = tank.closingDipStock || 0
         const capacity = tank.capacity || 10000
-        
+
         return {
           id: tank.tankId || `tank-${idx}`,
           tankId: tank.tankId,
@@ -211,9 +227,9 @@ export default function TanksReportsPage() {
           closingPercentage: capacity > 0 ? (closingBookStock / capacity) * 100 : 0,
           variance: tank.variance || 0,
           variancePercentage: tank.variancePercentage || 0,
-          varianceStatus: (tank.toleranceStatus === 'NORMAL' ? 'WITHIN_TOLERANCE' : 
-                          tank.toleranceStatus === 'WARNING' ? 'NEEDS_REVIEW' : 
-                          tank.toleranceStatus === 'CRITICAL' ? 'CRITICAL' : 'NORMAL') as any,
+          varianceStatus: (tank.toleranceStatus === 'NORMAL' ? 'WITHIN_TOLERANCE' :
+            tank.toleranceStatus === 'WARNING' ? 'NEEDS_REVIEW' :
+              tank.toleranceStatus === 'CRITICAL' ? 'CRITICAL' : 'NORMAL') as TankMovement['varianceStatus'],
           averageDailySales: tank.sales || 0,
           daysUntilEmpty: (tank.sales || 0) > 0 ? (closingBookStock / tank.sales) : 0,
           lastDeliveryDate: selectedDate,
@@ -221,7 +237,7 @@ export default function TanksReportsPage() {
           recommendedDeliveryDate: new Date(new Date(selectedDate).getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
         }
       })
-      
+
       // Calculate summary statistics from real data
       const totalTanks = tankMovements.length
       const totalCapacity = tankMovements.reduce((sum, t) => sum + t.capacity, 0)
@@ -231,8 +247,8 @@ export default function TanksReportsPage() {
       const totalTestReturns = tankMovements.reduce((sum, t) => sum + t.testReturns, 0)
       const totalClosingStock = tankMovements.reduce((sum, t) => sum + t.closingDip, 0)
       const totalVariance = tankMovements.reduce((sum, t) => sum + Math.abs(t.variance), 0)
-      const averageVariancePercentage = tankMovements.length > 0 
-        ? tankMovements.reduce((sum, t) => sum + Math.abs(t.variancePercentage), 0) / tankMovements.length 
+      const averageVariancePercentage = tankMovements.length > 0
+        ? tankMovements.reduce((sum, t) => sum + Math.abs(t.variancePercentage), 0) / tankMovements.length
         : 0
       const tanksWithinTolerance = tankMovements.filter(t => t.varianceStatus === 'WITHIN_TOLERANCE').length
       const tanksNeedingReview = tankMovements.filter(t => t.varianceStatus === 'NEEDS_REVIEW').length
@@ -260,7 +276,7 @@ export default function TanksReportsPage() {
       setTankMovements(tankMovements)
       setSummary(reportSummary)
 
-    } catch (err) {
+    } catch (_err) {
       setError('Failed to generate tank movement report')
     } finally {
       setLoading(false)
@@ -272,12 +288,18 @@ export default function TanksReportsPage() {
       alert('Please select a station and generate a report first')
       return
     }
-    
+
     const station = stations.find(s => s.id === selectedStation)
     const stationName = station?.name || 'Unknown Station'
     const dateStr = selectedDate
-    
-    exportTankReportPDF(tankMovements as any, stationName, dateStr)
+
+    const exportData = tankMovements.map(tm => ({
+      ...tm,
+      openingStock: tm.openingBook, // Using book stock as primary opening stock
+      status: tm.varianceStatus
+    }))
+
+    exportTankReportPDF(exportData, stationName, dateStr)
   }
 
   const getVarianceColor = (percentage: number) => {
@@ -335,7 +357,7 @@ export default function TanksReportsPage() {
       key: 'capacity' as keyof TankMovement,
       title: 'Capacity',
       render: (value: unknown) => (
-        <span className="font-mono text-sm">{(value as number)?.toLocaleString() || 0}L</span>
+        <span className="text-sm">{(value as number)?.toLocaleString() || 0}L</span>
       )
     },
     {
@@ -343,7 +365,7 @@ export default function TanksReportsPage() {
       title: 'Opening Stock',
       render: (value: unknown, row: TankMovement) => (
         <div>
-          <div className="font-mono text-sm font-semibold">{(value as number)?.toLocaleString() || 0}L</div>
+          <div className="text-sm font-semibold">{(value as number)?.toLocaleString() || 0}L</div>
           <div className="text-xs text-muted-foreground">
             Book: {row.openingBook?.toLocaleString() || 0}L
           </div>
@@ -358,7 +380,7 @@ export default function TanksReportsPage() {
       title: 'Deliveries',
       render: (value: unknown, row: TankMovement) => (
         <div>
-          <div className="font-mono font-semibold text-green-600 dark:text-green-400">
+          <div className="font-semibold text-green-600 dark:text-green-400">
             +{(value as number)?.toLocaleString() || 0}L
           </div>
           {row.deliveryCount > 0 && (
@@ -374,7 +396,7 @@ export default function TanksReportsPage() {
       title: 'Sales',
       render: (value: unknown, row: TankMovement) => (
         <div>
-          <div className="font-mono font-semibold text-red-600 dark:text-red-400">
+          <div className="font-semibold text-red-600 dark:text-red-400">
             -{(value as number)?.toLocaleString() || 0}L
           </div>
           <div className="text-xs text-muted-foreground">
@@ -387,7 +409,7 @@ export default function TanksReportsPage() {
       key: 'testReturns' as keyof TankMovement,
       title: 'Test Returns',
       render: (value: unknown) => (
-        <div className="font-mono font-semibold text-blue-600 dark:text-blue-400">
+        <div className="font-semibold text-blue-600 dark:text-blue-400">
           +{(value as number)?.toLocaleString() || 0}L
         </div>
       )
@@ -397,7 +419,7 @@ export default function TanksReportsPage() {
       title: 'Closing Stock',
       render: (value: unknown, row: TankMovement) => (
         <div>
-          <div className="font-mono text-sm font-semibold">{(value as number)?.toLocaleString() || 0}L</div>
+          <div className="text-sm font-semibold">{(value as number)?.toLocaleString() || 0}L</div>
           <div className="text-xs text-muted-foreground">
             Book: {row.closingBook?.toLocaleString() || 0}L
           </div>
@@ -412,7 +434,7 @@ export default function TanksReportsPage() {
       title: 'Variance',
       render: (value: unknown, row: TankMovement) => (
         <div>
-          <div className={`font-mono font-semibold ${getVarianceColor(row.variancePercentage)}`}>
+          <div className={`font-semibold ${getVarianceColor(row.variancePercentage)}`}>
             {(value as number) >= 0 ? '+' : ''}{(value as number)?.toLocaleString() || 0}L
           </div>
           <div className={`text-xs ${getVarianceColor(row.variancePercentage)}`}>
@@ -466,7 +488,7 @@ export default function TanksReportsPage() {
       key: 'deliveryNumber' as keyof DeliveryDetail,
       title: 'Delivery #',
       render: (value: unknown) => (
-        <span className="font-mono font-medium">{value as string}</span>
+        <span className="font-medium">{value as string}</span>
       )
     },
     {
@@ -480,7 +502,7 @@ export default function TanksReportsPage() {
       key: 'quantity' as keyof DeliveryDetail,
       title: 'Quantity',
       render: (value: unknown) => (
-        <span className="font-mono font-semibold text-green-600">
+        <span className="font-semibold text-green-600">
           +{(value as number)?.toLocaleString() || 0}L
         </span>
       )
@@ -525,7 +547,7 @@ export default function TanksReportsPage() {
       key: 'amount' as keyof TestPourDetail,
       title: 'Amount',
       render: (value: unknown) => (
-        <span className="font-mono font-semibold text-blue-600">
+        <span className="font-semibold text-blue-600">
           {(value as number)?.toLocaleString() || 0}L
         </span>
       )
@@ -639,11 +661,11 @@ export default function TanksReportsPage() {
                     Tank Movement Report
                   </CardTitle>
                   <CardDescription className="mt-2 text-base">
-                    {stations.find(s => s.id === selectedStation)?.name} • {new Date(selectedDate).toLocaleDateString('en-US', { 
-                      weekday: 'long', 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
+                    {stations.find(s => s.id === selectedStation)?.name} • {new Date(selectedDate).toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
                     })}
                   </CardDescription>
                 </div>
@@ -985,7 +1007,7 @@ export default function TanksReportsPage() {
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Critical Variance Alert</AlertTitle>
               <AlertDescription>
-                {summary.criticalTanks} tank{summary.criticalTanks > 1 ? 's have' : ' has'} critical variance levels exceeding 3%. 
+                {summary.criticalTanks} tank{summary.criticalTanks > 1 ? 's have' : ' has'} critical variance levels exceeding 3%.
                 Immediate investigation and corrective action required.
               </AlertDescription>
             </Alert>
@@ -996,7 +1018,7 @@ export default function TanksReportsPage() {
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Low Fill Level Warning</AlertTitle>
               <AlertDescription>
-                {summary.lowFillTanks} tank{summary.lowFillTanks > 1 ? 's are' : ' is'} below 30% capacity. 
+                {summary.lowFillTanks} tank{summary.lowFillTanks > 1 ? 's are' : ' is'} below 30% capacity.
                 Consider scheduling fuel deliveries to prevent stock-outs.
               </AlertDescription>
             </Alert>
@@ -1007,7 +1029,7 @@ export default function TanksReportsPage() {
               <Truck className="h-4 w-4" />
               <AlertTitle>Delivery Scheduling Required</AlertTitle>
               <AlertDescription>
-                {summary.tanksNeedingDelivery} tank{summary.tanksNeedingDelivery > 1 ? 's require' : ' requires'} immediate delivery scheduling 
+                {summary.tanksNeedingDelivery} tank{summary.tanksNeedingDelivery > 1 ? 's require' : ' requires'} immediate delivery scheduling
                 (below 20% capacity or less than 2 days of stock remaining).
               </AlertDescription>
             </Alert>

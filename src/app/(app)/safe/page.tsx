@@ -9,12 +9,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
+import { useToast } from '@/hooks/use-toast'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
 import { DateTimePicker } from '@/components/inputs/DateTimePicker'
 import { Checkbox } from '@/components/ui/checkbox'
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -25,14 +27,14 @@ import {
   Wallet,
   Plus,
   Minus,
-  DollarSign, 
+  DollarSign,
   CreditCard,
   FileText,
-  TrendingUp, 
-  TrendingDown, 
+  TrendingUp,
+  TrendingDown,
   Calendar,
   Clock,
-  AlertCircle, 
+  AlertCircle,
   CheckCircle,
   ArrowUpRight,
   ArrowDownRight,
@@ -81,7 +83,7 @@ interface SafeTransaction {
   expenseId?: string
   loanId?: string
   shift?: {
-  id: string
+    id: string
     template?: {
       name: string
     }
@@ -98,7 +100,7 @@ interface SafeTransaction {
       cheque?: number
       total?: number
       pumperBreakdown?: Array<{
-  pumperName: string
+        pumperName: string
         calculatedSales: number
         declaredAmount: number
         declaredCash: number
@@ -125,35 +127,48 @@ interface SafeTransaction {
     }
   }
   batch?: {
-  id: string
-  totalAmount: number
-  terminalEntries?: Array<{
     id: string
-    terminal: {
+    totalAmount: number
+    terminalEntries?: Array<{
       id: string
-      name: string
-        terminalNumber: string
-      bank?: {
+      terminal: {
+        id: string
         name: string
+        terminalNumber: string
+        bank?: {
+          name: string
+        }
       }
-    }
-    startNumber: string
-    endNumber: string
-    transactionCount: number
-    visaAmount: number
-    masterAmount: number
-    amexAmount: number
-    qrAmount: number
-  }>
+      startNumber: string
+      endNumber: string
+      transactionCount: number
+      visaAmount: number
+      masterAmount: number
+      amexAmount: number
+      qrAmount: number
+      dialogTouchAmount: number
+    }>
   }
   cheque?: {
-  id: string
+    id: string
     chequeNumber: string
     amount: number
-  bank?: {
-    name: string
+    bank?: {
+      name: string
+    }
   }
+}
+
+interface GroupedTransaction extends SafeTransaction {
+  isGrouped: boolean
+  breakdown?: {
+    cash: number
+    card: number
+    credit: number
+    cheque: number
+    total: number
   }
+  transactions?: SafeTransaction[]
 }
 
 
@@ -174,7 +189,7 @@ const EXPENSE_TYPES = [
 ]
 
 // Group transactions by shift closure
-function groupTransactionsByShift(transactions: SafeTransaction[]): any[] {
+function groupTransactionsByShift(transactions: SafeTransaction[]): (SafeTransaction | GroupedTransaction)[] {
   const shiftGroups = new Map<string, SafeTransaction[]>()
   const standalone: SafeTransaction[] = []
 
@@ -191,24 +206,24 @@ function groupTransactionsByShift(transactions: SafeTransaction[]): any[] {
   })
 
   // Create grouped entries for shift closures
-  const grouped: any[] = []
-  
+  const grouped: (SafeTransaction | GroupedTransaction)[] = []
+
   shiftGroups.forEach((shiftTxs, shiftId) => {
     // Sort by timestamp to get the first transaction (for display)
     shiftTxs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     const firstTx = shiftTxs[0]
-    
+
     // Get shift info from first transaction
     const shift = firstTx.shift
-    const declaredAmounts = shift?.declaredAmounts as any
-    
+    const declaredAmounts = shift?.declaredAmounts
+
     // Use shift's declaredAmounts if available (more reliable), otherwise calculate from transactions
     let cashAmount = 0
     let cardAmount = 0
     let creditAmount = 0
     let chequeAmount = 0
     let totalAmount = 0
-    
+
     if (declaredAmounts) {
       // Use declared amounts from shift (most accurate)
       cashAmount = declaredAmounts.cash || 0
@@ -224,7 +239,7 @@ function groupTransactionsByShift(transactions: SafeTransaction[]): any[] {
       creditAmount = shiftTxs.find(tx => tx.type === 'CREDIT_PAYMENT')?.amount || 0
       chequeAmount = shiftTxs.filter(tx => tx.type === 'CHEQUE_RECEIVED').reduce((sum, tx) => sum + tx.amount, 0)
     }
-    
+
     const shiftName = shift?.template?.name || 'Shift'
     const pumpers = shift?.assignments
       ?.map(a => a.pumper?.name || a.pumperName)
@@ -270,22 +285,21 @@ function groupTransactionsByShift(transactions: SafeTransaction[]): any[] {
 
 export default function SafePage() {
   const router = useRouter()
-  const { selectedStation } = useStation()
+  const { selectedStation, setSelectedStation, stations } = useStation()
   const [safe, setSafe] = useState<Safe | null>(null)
   const [transactions, setTransactions] = useState<SafeTransaction[]>([])
-  const [groupedTransactions, setGroupedTransactions] = useState<any[]>([])
+  const [groupedTransactions, setGroupedTransactions] = useState<(SafeTransaction | GroupedTransaction)[]>([])
   const [outstandingCredit, setOutstandingCredit] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-  
+  const { toast } = useToast()
+
   const [cashFlowData, setCashFlowData] = useState<Array<{
     date: string
     income: number
     expenses: number
     balance: number
   }>>([])
-  
+
   const [topTransactions, setTopTransactions] = useState<{
     largestIncome: SafeTransaction | null
     largestExpense: SafeTransaction | null
@@ -311,7 +325,7 @@ export default function SafePage() {
   const [customExpense, setCustomExpense] = useState('')
   const [transactionDate, setTransactionDate] = useState<Date>(new Date())
   const [openingBalance, setOpeningBalance] = useState<number | undefined>(undefined)
-  
+
   // Loan form states
   const [loanCategory, setLoanCategory] = useState<'PUMPER' | 'EXTERNAL' | 'OFFICE'>('PUMPER')
   const [loanPumperId, setLoanPumperId] = useState('')
@@ -319,13 +333,13 @@ export default function SafePage() {
   const [loanAmount, setLoanAmount] = useState<number | undefined>(undefined)
   const [loanMonthlyRental, setLoanMonthlyRental] = useState<number | undefined>(undefined)
   const [loanNotes, setLoanNotes] = useState('')
-  
+
   // Bank deposit form states
   const [depositAmount, setDepositAmount] = useState<number | undefined>(undefined)
   const [depositBankId, setDepositBankId] = useState('')
   const [depositPerformedBy, setDepositPerformedBy] = useState('')
   const [depositNotes, setDepositNotes] = useState('')
-  
+
   // Data states
   const [pumpers, setPumpers] = useState<Array<{ id: string; name: string; employeeId?: string }>>([])
   const [banks, setBanks] = useState<Array<{ id: string; name: string; branch?: string; accountNumber?: string }>>([])
@@ -336,21 +350,21 @@ export default function SafePage() {
       fetchPumpersAndBanks()
     }
   }, [selectedStation])
-  
+
   const fetchPumpersAndBanks = async () => {
     if (!selectedStation || selectedStation === 'all') return
-    
+
     try {
       const [pumpersRes, banksRes] = await Promise.all([
         fetch(`/api/pumpers?active=true`),
         fetch(`/api/banks?active=true`)
       ])
-      
+
       if (pumpersRes.ok) {
         const pumpersData = await pumpersRes.json()
         setPumpers(Array.isArray(pumpersData) ? pumpersData : [])
       }
-      
+
       if (banksRes.ok) {
         const banksData = await banksRes.json()
         setBanks(Array.isArray(banksData) ? banksData : [])
@@ -367,9 +381,9 @@ export default function SafePage() {
         fetchSafe()
       }
     }
-    
+
     window.addEventListener('focus', handleFocus)
-    
+
     return () => {
       window.removeEventListener('focus', handleFocus)
     }
@@ -380,12 +394,12 @@ export default function SafePage() {
 
     try {
       setLoading(true)
-      
+
       // Build API URLs with station filter
       const stationParam = selectedStation === 'all' ? '' : `stationId=${selectedStation}`
       const stationQuery = stationParam ? `?${stationParam}` : ''
       const stationQueryAmp = stationParam ? `${stationParam}&` : ''
-      
+
       const [safeRes, transactionsRes, creditRes] = await Promise.all([
         fetch(`/api/safe${stationQuery}`),
         fetch(`/api/safe/transactions?${stationQueryAmp}limit=50`),
@@ -414,7 +428,11 @@ export default function SafePage() {
       setGroupedTransactions(grouped)
     } catch (err) {
       console.error('Failed to fetch safe:', err)
-      setError('Failed to load safe data')
+      toast({
+        title: "Error",
+        description: "Failed to load safe data",
+        variant: "destructive"
+      })
     } finally {
       setLoading(false)
     }
@@ -423,13 +441,17 @@ export default function SafePage() {
   const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedStation || selectedStation === 'all' || amount === undefined || !sourceOfIncome || !responsiblePerson) {
-      setError('Please fill in all required fields')
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      })
       return
     }
 
     try {
-      const finalDescription = description 
-        ? `${sourceOfIncome} - ${description}` 
+      const finalDescription = description
+        ? `${sourceOfIncome} - ${description}`
         : sourceOfIncome
 
       const response = await fetch('/api/safe', {
@@ -455,31 +477,46 @@ export default function SafePage() {
       setResponsiblePerson('')
       setDescription('')
       setTransactionDate(new Date())
-      setSuccess('Transaction added successfully!')
-      setTimeout(() => setSuccess(''), 3000)
+
+      toast({
+        title: "Success",
+        description: "Transaction added successfully!"
+      })
 
       fetchSafe()
     } catch (err) {
-      setError('Failed to add transaction')
+      toast({
+        title: "Error",
+        description: "Failed to add transaction",
+        variant: "destructive"
+      })
     }
   }
 
   const handleRemoveTransaction = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedStation || selectedStation === 'all' || amount === undefined || !responsiblePerson) {
-      setError('Please fill in all required fields')
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      })
       return
     }
 
     if (expenseCategory === 'OTHER' && !customExpense) {
-      setError('Please specify the expense type')
+      toast({
+        title: "Error",
+        description: "Please specify the expense type",
+        variant: "destructive"
+      })
       return
     }
 
     try {
       const expenseType = expenseCategory === 'OTHER' ? customExpense : 'General Expense'
-      const finalDescription = description 
-        ? `${expenseType} - ${description}` 
+      const finalDescription = description
+        ? `${expenseType} - ${description}`
         : expenseType
 
       const response = await fetch('/api/safe', {
@@ -506,19 +543,30 @@ export default function SafePage() {
       setResponsiblePerson('')
       setDescription('')
       setTransactionDate(new Date())
-      setSuccess('Transaction recorded successfully!')
-      setTimeout(() => setSuccess(''), 3000)
+
+      toast({
+        title: "Success",
+        description: "Transaction recorded successfully!"
+      })
 
       fetchSafe()
     } catch (err) {
-      setError('Failed to record transaction')
+      toast({
+        title: "Error",
+        description: "Failed to record transaction",
+        variant: "destructive"
+      })
     }
   }
 
   const handleSetOpeningBalance = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedStation || selectedStation === 'all' || openingBalance === undefined) {
-      setError('Please enter opening balance')
+      toast({
+        title: "Error",
+        description: "Please enter opening balance",
+        variant: "destructive"
+      })
       return
     }
 
@@ -541,12 +589,19 @@ export default function SafePage() {
 
       setBalanceDialogOpen(false)
       setOpeningBalance(undefined)
-      setSuccess('Opening balance set successfully!')
-      setTimeout(() => setSuccess(''), 3000)
+
+      toast({
+        title: "Success",
+        description: "Opening balance set successfully!"
+      })
 
       fetchSafe()
     } catch (err) {
-      setError('Failed to set opening balance')
+      toast({
+        title: "Error",
+        description: "Failed to set opening balance",
+        variant: "destructive"
+      })
     }
   }
 
@@ -554,24 +609,37 @@ export default function SafePage() {
   const handleGiveLoan = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedStation || selectedStation === 'all' || loanAmount === undefined) {
-      setError('Please fill in all required fields')
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      })
       return
     }
-    
+
     if (loanCategory === 'PUMPER' && !loanPumperId) {
-      setError('Please select a pumper')
+      toast({
+        title: "Error",
+        description: "Please select a pumper",
+        variant: "destructive"
+      })
       return
     }
-    
+
     if ((loanCategory === 'EXTERNAL' || loanCategory === 'OFFICE') && !loanRecipientName) {
-      setError('Please enter recipient name')
+      toast({
+        title: "Error",
+        description: "Please enter recipient name",
+        variant: "destructive"
+      })
       return
     }
 
     try {
       const username = typeof window !== 'undefined' ? localStorage.getItem('username') || 'System' : 'System'
-      
+
       let apiUrl = ''
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let bodyData: any = {
         stationId: selectedStation,
         amount: loanAmount || 0,
@@ -624,30 +692,50 @@ export default function SafePage() {
       setLoanAmount(undefined)
       setLoanMonthlyRental(undefined)
       setLoanNotes('')
-      setSuccess('Loan recorded successfully!')
-      setTimeout(() => setSuccess(''), 3000)
+
+      toast({
+        title: "Success",
+        description: "Loan recorded successfully!"
+      })
+
       fetchSafe()
     } catch (err) {
-      setError('Failed to record loan')
+      toast({
+        title: "Error",
+        description: "Failed to record loan",
+        variant: "destructive"
+      })
     }
   }
-  
+
   const handleBankDeposit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedStation || selectedStation === 'all' || !depositBankId || depositAmount === undefined || !depositPerformedBy) {
-      setError('Please fill in all required fields')
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      })
       return
     }
 
     // Validate deposit amount doesn't exceed safe balance
     const currentBalance = safe?.currentBalance || 0
     if (depositAmount > currentBalance) {
-      setError(`Cannot deposit more than available cash. Current balance: Rs. ${currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+      toast({
+        title: "Error",
+        description: `Cannot deposit more than available cash. Current: Rs. ${currentBalance.toLocaleString()}`,
+        variant: "destructive"
+      })
       return
     }
 
     if (depositAmount <= 0) {
-      setError('Deposit amount must be greater than zero')
+      toast({
+        title: "Error",
+        description: "Deposit amount must be greater than zero",
+        variant: "destructive"
+      })
       return
     }
 
@@ -680,12 +768,19 @@ export default function SafePage() {
       setDepositAmount(undefined)
       setDepositPerformedBy('')
       setDepositNotes('')
-      setError('') // Clear any previous errors
-      setSuccess('Bank deposit recorded successfully!')
-      setTimeout(() => setSuccess(''), 3000)
+
+      toast({
+        title: "Success",
+        description: "Bank deposit recorded successfully!"
+      })
+
       fetchSafe()
     } catch (err) {
-      setError('Failed to record bank deposit')
+      toast({
+        title: "Error",
+        description: "Failed to record bank deposit",
+        variant: "destructive"
+      })
     }
   }
 
@@ -716,12 +811,12 @@ export default function SafePage() {
 
   const getTypeColor = (type: string) => {
     if (INCOME_TYPES.includes(type)) {
-        return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
     }
-        return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+    return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
   }
 
-  const transactionColumns: Column<any>[] = [
+  const transactionColumns: Column<SafeTransaction | GroupedTransaction>[] = [
     {
       key: 'timestamp',
       title: 'Date & Time',
@@ -735,7 +830,7 @@ export default function SafePage() {
     {
       key: 'type',
       title: 'Type',
-      render: (value: unknown, row: any) => {
+      render: (value: unknown, row: SafeTransaction | GroupedTransaction) => {
         const type = value as string
         if (type === 'SHIFT_CLOSURE') {
           return (
@@ -760,24 +855,24 @@ export default function SafePage() {
     {
       key: 'description',
       title: 'Details',
-      render: (value: unknown, row: any) => {
+      render: (value: unknown, row: SafeTransaction | GroupedTransaction) => {
         const description = value as string
-        
+
         // Show shift closure breakdown
-        if (row.isGrouped && row.type === 'SHIFT_CLOSURE') {
+        if ('isGrouped' in row && row.isGrouped && row.type === 'SHIFT_CLOSURE') {
           const shiftName = row.shift?.template?.name || 'Shift'
           const pumpers = row.shift?.assignments
-            ?.map((a: any) => a.pumper?.name || a.pumperName)
-            .filter((name: string, index: number, arr: string[]) => name && arr.indexOf(name) === index)
+            ?.map((a) => a.pumper?.name || a.pumperName)
+            .filter((name, index, arr) => name && arr.indexOf(name) === index)
             .join(', ') || 'Unknown'
-          
+
           const breakdown = row.breakdown
           const parts: string[] = []
-          if (breakdown.cash > 0) parts.push(`Cash: Rs. ${breakdown.cash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
-          if (breakdown.card > 0) parts.push(`Card: Rs. ${breakdown.card.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
-          if (breakdown.credit > 0) parts.push(`Credit: Rs. ${breakdown.credit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
-          if (breakdown.cheque > 0) parts.push(`Cheque: Rs. ${breakdown.cheque.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
-          
+          if (breakdown && breakdown.cash > 0) parts.push(`Cash: Rs. ${breakdown.cash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+          if (breakdown && breakdown.card > 0) parts.push(`Card: Rs. ${breakdown.card.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+          if (breakdown && breakdown.credit > 0) parts.push(`Credit: Rs. ${breakdown.credit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+          if (breakdown && breakdown.cheque > 0) parts.push(`Cheque: Rs. ${breakdown.cheque.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+
           return (
             <div className="space-y-1">
               <div className="text-sm font-medium">{description}</div>
@@ -788,7 +883,7 @@ export default function SafePage() {
               {parts.length > 0 && (
                 <div className="text-xs text-muted-foreground mt-1">
                   {parts.join(' • ')}
-                  {breakdown.total > 0 && (
+                  {breakdown && breakdown.total > 0 && (
                     <span className="ml-2 font-semibold text-foreground">
                       • Total: Rs. {breakdown.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
@@ -798,15 +893,15 @@ export default function SafePage() {
             </div>
           )
         }
-        
+
         // Show shift info for individual shift transactions (shouldn't happen in grouped view, but fallback)
         if (row.shift) {
           const shiftName = row.shift.template?.name || 'Shift'
           const pumpers = row.shift.assignments
-            ?.map((a: any) => a.pumper?.name || a.pumperName)
-            .filter((name: string, index: number, arr: string[]) => name && arr.indexOf(name) === index)
+            ?.map((a) => a.pumper?.name || a.pumperName)
+            .filter((name, index, arr) => name && arr.indexOf(name) === index)
             .join(', ') || 'Unknown'
-          
+
           return (
             <div className="space-y-1">
               <div className="text-sm font-medium">{description}</div>
@@ -817,13 +912,13 @@ export default function SafePage() {
             </div>
           )
         }
-        
+
         // Show POS batch details
         if (row.batch && row.type === 'POS_CARD_PAYMENT') {
-          const terminals = row.batch.terminalEntries?.map((entry: any) => 
+          const terminals = row.batch.terminalEntries?.map((entry) =>
             `${entry.terminal.terminalNumber} (${entry.terminal.name})`
           ).join(', ') || 'Unknown Terminal'
-          
+
           return (
             <div className="space-y-1">
               <div className="text-sm font-medium">{description}</div>
@@ -834,7 +929,7 @@ export default function SafePage() {
             </div>
           )
         }
-        
+
         // Show cheque details
         if (row.cheque) {
           return (
@@ -847,14 +942,14 @@ export default function SafePage() {
             </div>
           )
         }
-        
+
         return <span className="text-sm">{description}</span>
       }
     },
     {
       key: 'amount',
       title: 'Amount',
-      render: (value: unknown, row: any) => {
+      render: (value: unknown, row: SafeTransaction | GroupedTransaction) => {
         const isIncome = row.type === 'SHIFT_CLOSURE' || INCOME_TYPES.includes(row.type)
         return (
           <div className={`flex items-center gap-2 font-mono ${isIncome ? 'text-green-700' : 'text-red-700'}`}>
@@ -884,9 +979,9 @@ export default function SafePage() {
   ]
 
   if (!selectedStation || selectedStation === 'all') {
-  return (
-    <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold text-foreground">Safe Management</h1>
+    return (
+      <div className="space-y-6 p-6">
+        <h1 className="text-3xl font-bold text-foreground">Safe Management</h1>
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>No Station Selected</AlertTitle>
@@ -937,23 +1032,37 @@ export default function SafePage() {
         </div>
       </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+      {/* Station Selector */}
+      <Card>
+        <CardContent className="p-4 flex items-center gap-4">
+          <Building2 className="h-5 w-5 text-muted-foreground" />
+          <div className="flex-1">
+            <Label htmlFor="station-select" className="sr-only">Select Station</Label>
+            <Select
+              value={selectedStation || ''}
+              onValueChange={setSelectedStation}
+            >
+              <SelectTrigger id="station-select" className="w-[300px]">
+                <SelectValue placeholder="Select a station" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Stations</SelectItem>
+                {stations.map((station) => (
+                  <SelectItem key={station.id} value={station.id}>
+                    {station.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button variant="outline" onClick={fetchSafe}>
+            <TrendingUp className="mr-2 h-4 w-4" />
+            Refresh Data
+          </Button>
+        </CardContent>
+      </Card>
 
-      {success && (
-        <Alert>
-          <CheckCircle className="h-4 w-4" />
-          <AlertTitle>Success</AlertTitle>
-          <AlertDescription>{success}</AlertDescription>
-        </Alert>
-      )}
-
-      {/* Safe Balance Cards */}
+      {/* Safe Balance Cards */},
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="p-4 border rounded-lg bg-card">
           <div className="flex items-center justify-between">
@@ -1026,10 +1135,10 @@ export default function SafePage() {
               <p className="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1">
                 Rs. {(() => {
                   const loanGiven = groupedTransactions
-                    .filter(t => !t.isGrouped && t.type === 'LOAN_GIVEN')
+                    .filter(t => !('isGrouped' in t && t.isGrouped) && t.type === 'LOAN_GIVEN')
                     .reduce((sum, t) => sum + t.amount, 0)
                   const loanRepaid = groupedTransactions
-                    .filter(t => !t.isGrouped && t.type === 'LOAN_REPAID')
+                    .filter(t => !('isGrouped' in t && t.isGrouped) && t.type === 'LOAN_REPAID')
                     .reduce((sum, t) => sum + t.amount, 0)
                   return (loanGiven - loanRepaid).toLocaleString()
                 })()}
@@ -1046,7 +1155,7 @@ export default function SafePage() {
         <div className="p-4 border rounded-lg bg-card">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <h3 className="text-sm font-medium text-muted-foreground">Today's Collections</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">Today&apos;s Collections</h3>
               <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
                 Rs. {(() => {
                   const today = new Date()
@@ -1055,8 +1164,8 @@ export default function SafePage() {
                     .filter(t => {
                       const txDate = new Date(t.timestamp)
                       txDate.setHours(0, 0, 0, 0)
-                      return txDate.getTime() === today.getTime() && 
-                             ['CASH_FUEL_SALES', 'POS_CARD_PAYMENT', 'CREDIT_PAYMENT', 'CHEQUE_RECEIVED', 'LOAN_REPAID'].includes(t.type)
+                      return txDate.getTime() === today.getTime() &&
+                        ['CASH_FUEL_SALES', 'POS_CARD_PAYMENT', 'CREDIT_PAYMENT', 'CHEQUE_RECEIVED', 'LOAN_REPAID'].includes(t.type)
                     })
                     .reduce((sum, t) => sum + t.amount, 0)
                   return todayCollections.toLocaleString()
@@ -1086,7 +1195,7 @@ export default function SafePage() {
                   const weekAgo = new Date()
                   weekAgo.setDate(weekAgo.getDate() - 7)
                   const deposits = groupedTransactions
-                    .filter(t => !t.isGrouped && t.type === 'BANK_DEPOSIT' && new Date(t.timestamp) >= weekAgo)
+                    .filter(t => !('isGrouped' in t && t.isGrouped) && t.type === 'BANK_DEPOSIT' && new Date(t.timestamp) >= weekAgo)
                     .reduce((sum, t) => sum + t.amount, 0)
                   return deposits.toLocaleString()
                 })()}
@@ -1113,14 +1222,14 @@ export default function SafePage() {
                     txDate.setHours(0, 0, 0, 0)
                     return txDate.getTime() === today.getTime()
                   })
-                  const largest = todayTx.length > 0 
+                  const largest = todayTx.length > 0
                     ? Math.max(...todayTx.map(t => t.amount))
                     : 0
                   return largest.toLocaleString()
                 })()}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Today's peak transaction
+                Today&apos;s peak transaction
               </p>
             </div>
             <ArrowUpCircle className="h-8 w-8 text-red-600 dark:text-red-400 ml-2" />
@@ -1261,7 +1370,7 @@ export default function SafePage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               {expenseCategory === 'OTHER' && (
                 <div>
                   <Label htmlFor="customExpense" className="text-base font-semibold">Specify Expense Type *</Label>
@@ -1567,7 +1676,7 @@ export default function SafePage() {
           onRowClick={(row) => {
             // For shift closures, navigate to the first transaction's details page
             // The details page will show all related transactions
-            if (row.isGrouped && row.transactions && row.transactions.length > 0) {
+            if ('isGrouped' in row && row.isGrouped && row.transactions && row.transactions.length > 0) {
               router.push(`/safe/transactions/${row.transactions[0].id}`)
             } else {
               router.push(`/safe/transactions/${row.id}`)

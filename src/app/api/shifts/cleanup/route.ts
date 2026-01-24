@@ -17,15 +17,15 @@ export async function DELETE(request: NextRequest) {
   try {
     // Security: You might want to add authentication/authorization here
     // For now, we'll allow it, but in production, restrict to admin/owner
-    
+
     const { searchParams } = new URL(request.url)
     const statusParam = searchParams.get('status')
     const allParam = searchParams.get('all')
-    
+
     // Determine which shifts to delete
     let whereClause: any = {}
     let statusType = 'CLOSED'
-    
+
     if (allParam === 'true') {
       // Delete all shifts
       whereClause = {}
@@ -43,22 +43,22 @@ export async function DELETE(request: NextRequest) {
       whereClause = { status: 'CLOSED' }
       statusType = 'CLOSED'
     }
-    
+
     console.log(`🔍 Checking for ${statusType} shifts...`)
-    
+
     // First, count how many shifts exist
     const shiftsCount = await prisma.shift.count({
       where: whereClause
     })
-    
+
     if (shiftsCount === 0) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: `No ${statusType.toLowerCase()} shifts found`,
         deleted: 0,
         status: statusType
       })
     }
-    
+
     // Get shifts info before deletion
     const shifts = await prisma.shift.findMany({
       where: whereClause,
@@ -89,41 +89,41 @@ export async function DELETE(request: NextRequest) {
         startTime: 'desc'
       }
     })
-    
+
     console.log(`Found ${shiftsCount} ${statusType.toLowerCase()} shift(s) to delete`)
-    
+
     // Delete related data first to avoid foreign key constraint violations
     // Delete in order: related records -> assignments -> shifts
-    
+
     // Get shift IDs to delete
     const shiftIds = shifts.map(s => s.id)
-    
+
     console.log('🗑️  Deleting related data first...')
-    
+
     // Delete credit sales
     const creditSalesDeleted = await prisma.creditSale.deleteMany({
       where: { shiftId: { in: shiftIds } }
     })
     console.log(`  - Deleted ${creditSalesDeleted.count} credit sale(s)`)
-    
+
     // Delete POS missing slips
     const posMissingSlipsDeleted = await prisma.posMissingSlip.deleteMany({
       where: { shiftId: { in: shiftIds } }
     })
     console.log(`  - Deleted ${posMissingSlipsDeleted.count} POS missing slip(s)`)
-    
+
     // Delete meter audits
     const meterAuditsDeleted = await prisma.meterAudit.deleteMany({
       where: { shiftId: { in: shiftIds } }
     })
     console.log(`  - Deleted ${meterAuditsDeleted.count} meter audit(s)`)
-    
+
     // Delete test pours
     const testPoursDeleted = await prisma.testPour.deleteMany({
       where: { shiftId: { in: shiftIds } }
     })
     console.log(`  - Deleted ${testPoursDeleted.count} test pour(s)`)
-    
+
     // Delete tenders (if they exist)
     try {
       const tendersDeleted = await prisma.tender.deleteMany({
@@ -133,26 +133,26 @@ export async function DELETE(request: NextRequest) {
     } catch (e) {
       console.log('  - No tenders to delete or error:', e)
     }
-    
+
     // Delete assignments (cascade should handle this, but being explicit)
     const assignmentsDeleted = await prisma.shiftAssignment.deleteMany({
       where: { shiftId: { in: shiftIds } }
     })
     console.log(`  - Deleted ${assignmentsDeleted.count} assignment(s)`)
-    
+
     // Finally, delete shifts
     console.log('🗑️  Deleting shifts...')
     const deleteResult = await prisma.shift.deleteMany({
       where: whereClause
     })
-    
+
     console.log(`✅ Successfully deleted ${deleteResult.count} ${statusType.toLowerCase()} shift(s)`)
-    
+
     return NextResponse.json({
       message: `Successfully deleted ${deleteResult.count} ${statusType.toLowerCase()} shift(s)`,
       deleted: deleteResult.count,
       status: statusType,
-      shifts: shifts.map(shift => ({
+      shifts: shifts.map((shift: any) => ({
         id: shift.id,
         station: shift.station.name,
         template: shift.template.name,
@@ -166,15 +166,15 @@ export async function DELETE(request: NextRequest) {
     })
   } catch (error) {
     console.error('❌ Error deleting shifts:', error)
-    
+
     if (error instanceof Error) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Failed to delete shifts',
         details: error.message
       }, { status: 500 })
     }
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       error: 'Internal server error'
     }, { status: 500 })
   }

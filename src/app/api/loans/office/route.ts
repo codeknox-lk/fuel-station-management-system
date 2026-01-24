@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
@@ -20,19 +21,19 @@ export async function GET(request: NextRequest) {
           }
         }
       })
-      
+
       if (!loan) {
         return NextResponse.json({ error: 'Office staff loan not found' }, { status: 404 })
       }
       return NextResponse.json(loan)
     }
 
-    const where: any = {}
+    const where: Prisma.LoanOfficeStaffWhereInput = {}
     if (stationId) {
       where.stationId = stationId
     }
     if (status) {
-      where.status = status
+      where.status = status as any
     }
 
     const loans = await prisma.loanOfficeStaff.findMany({
@@ -68,9 +69,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    
+
     const { stationId, staffName, amount, monthlyRental, reason, dueDate, fromSafe, givenBy } = body
-    
+
     if (!stationId || !staffName || !amount || !reason || !dueDate) {
       return NextResponse.json(
         { error: 'Station ID, staff name, amount, reason, and due date are required' },
@@ -120,7 +121,7 @@ export async function POST(request: NextRequest) {
         // Calculate balance before transaction chronologically
         const loanTimestamp = new Date(dueDate)
         const allTransactions = await prisma.safeTransaction.findMany({
-          where: { 
+          where: {
             safeId: safe.id,
             timestamp: { lte: loanTimestamp }
           },
@@ -175,7 +176,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newLoan, { status: 201 })
   } catch (error) {
     console.error('Error creating office staff loan:', error)
-    
+
     // Handle foreign key constraint violations
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
       return NextResponse.json(
@@ -183,7 +184,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

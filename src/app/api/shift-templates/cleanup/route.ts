@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 
 /**
@@ -17,11 +18,11 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const patternParam = searchParams.get('pattern')
     const allParam = searchParams.get('all')
-    
+
     // Determine which templates to delete
-    let whereClause: any = {}
+    let whereClause: Prisma.ShiftTemplateWhereInput = {}
     let description = 'templates'
-    
+
     if (allParam === 'true') {
       // Delete all templates
       whereClause = {}
@@ -36,21 +37,21 @@ export async function DELETE(request: NextRequest) {
       }
       description = `templates starting with "${pattern}"`
     }
-    
+
     console.log(`🔍 Checking for ${description}...`)
-    
+
     // First, count how many templates exist
     const templatesCount = await prisma.shiftTemplate.count({
       where: whereClause
     })
-    
+
     if (templatesCount === 0) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: `No ${description} found`,
         deleted: 0
       })
     }
-    
+
     // Get templates info before deletion
     const templates = await prisma.shiftTemplate.findMany({
       where: whereClause,
@@ -76,12 +77,12 @@ export async function DELETE(request: NextRequest) {
         createdAt: 'desc'
       }
     })
-    
+
     console.log(`Found ${templatesCount} ${description} to delete`)
-    
+
     // Check if any templates have associated shifts
     const templatesWithShifts = templates.filter(t => t._count.shifts > 0)
-    
+
     if (templatesWithShifts.length > 0) {
       // If we're deleting all, we can still proceed, but warn about shifts
       // Otherwise, we should check for shifts
@@ -97,16 +98,16 @@ export async function DELETE(request: NextRequest) {
         }, { status: 400 })
       }
     }
-    
+
     // Delete templates
     // Note: If templates have shifts, we need to delete shifts first (which we already did earlier)
     console.log('🗑️  Deleting templates...')
     const deleteResult = await prisma.shiftTemplate.deleteMany({
       where: whereClause
     })
-    
+
     console.log(`✅ Successfully deleted ${deleteResult.count} ${description}`)
-    
+
     return NextResponse.json({
       message: `Successfully deleted ${deleteResult.count} ${description}`,
       deleted: deleteResult.count,
@@ -122,15 +123,15 @@ export async function DELETE(request: NextRequest) {
     })
   } catch (error) {
     console.error('❌ Error deleting shift templates:', error)
-    
+
     if (error instanceof Error) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Failed to delete shift templates',
         details: error.message
       }, { status: 500 })
     }
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       error: 'Internal server error'
     }, { status: 500 })
   }

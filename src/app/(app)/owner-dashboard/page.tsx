@@ -8,13 +8,13 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -22,13 +22,13 @@ import {
   LineChart,
   Line
 } from 'recharts'
-import { 
-  Building2, 
-  DollarSign, 
+import {
+  Building2,
+  DollarSign,
   TrendingUp,
   TrendingDown,
   AlertTriangle,
-  AlertCircle, 
+  AlertCircle,
   RefreshCw,
   Users,
   Fuel,
@@ -39,28 +39,35 @@ import {
   EyeOff
 } from 'lucide-react'
 
+interface Station {
+  id: string
+  name: string
+  city: string
+  isActive: boolean
+}
+
 interface StationSummary {
   stationId: string
   stationName: string
   city: string
-  
+
   // Financial metrics
   todayRevenue: number
   todayProfit: number
   monthlyRevenue: number
   monthlyProfit: number
   profitMargin: number
-  
+
   // Operational metrics
   activeShifts: number
   activePumpers: number
   tanksFillLevel: number
-  
+
   // Variance and exceptions
   todayVariance: number
   variancePercentage: number
   criticalAlerts: number
-  
+
   // Trends
   revenueGrowth: number
   profitGrowth: number
@@ -97,7 +104,7 @@ export default function OwnerDashboardPage() {
   const [topExceptions, setTopExceptions] = useState<Exception[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  
+
   // View state
   const [showIndividualStations, setShowIndividualStations] = useState(true)
   const [selectedView, setSelectedView] = useState<'combined' | 'individual'>('combined')
@@ -105,7 +112,7 @@ export default function OwnerDashboardPage() {
   // Load dashboard data
   useEffect(() => {
     loadDashboardData()
-    
+
     // Auto-refresh every 5 minutes
     const interval = setInterval(loadDashboardData, 5 * 60 * 1000)
     return () => clearInterval(interval)
@@ -125,34 +132,34 @@ export default function OwnerDashboardPage() {
         stations.map(async (station: Station, index: number) => {
           // Fetch real data for each station
           const today = new Date().toISOString().split('T')[0]
-          
+
           // Fetch daily report data
           const dailyReportResponse = await fetch(`/api/reports/daily?stationId=${station.id}&date=${today}`)
           const dailyReport = dailyReportResponse.ok ? await dailyReportResponse.json() : null
-          
+
           // Fetch active shifts
           const shiftsResponse = await fetch(`/api/shifts?stationId=${station.id}&active=true`)
           const activeShifts = shiftsResponse.ok ? await shiftsResponse.json() : []
-          
+
           // Fetch tank data
           const tanksResponse = await fetch(`/api/tanks?stationId=${station.id}`)
           const tanks = tanksResponse.ok ? await tanksResponse.json() : []
-          
+
           // Calculate metrics from real data
           const todayRevenue = dailyReport?.totalSales || (180000 + (index * 50000) + Math.random() * 40000)
           const todayProfit = dailyReport?.netProfit || (todayRevenue * (0.15 + Math.random() * 0.1))
           const variance = dailyReport?.variance || (Math.random() * 2000 - 1000)
           const variancePercentage = dailyReport?.variancePercentage || ((variance / todayRevenue) * 100)
-          
+
           // Calculate tank fill levels
           interface Tank {
             currentLevel: number
             capacity: number
           }
-          const tanksFillLevel = tanks.length > 0 
+          const tanksFillLevel = tanks.length > 0
             ? tanks.reduce((avg: number, tank: Tank) => avg + ((tank.currentLevel / tank.capacity) * 100), 0) / tanks.length
             : Math.floor(Math.random() * 40) + 40
-          
+
           // Determine status based on real metrics
           let status: 'EXCELLENT' | 'GOOD' | 'NEEDS_ATTENTION' | 'CRITICAL'
           const profitMargin = (todayProfit / todayRevenue) * 100
@@ -189,11 +196,11 @@ export default function OwnerDashboardPage() {
       const totalVariance = stationSummaries.reduce((sum, s) => sum + Math.abs(s.todayVariance), 0)
       const totalAlerts = stationSummaries.reduce((sum, s) => sum + s.criticalAlerts, 0)
       const averageProfitMargin = stationSummaries.reduce((sum, s) => sum + s.profitMargin, 0) / stationSummaries.length
-      
-      const bestStation = stationSummaries.reduce((best, station) => 
+
+      const bestStation = stationSummaries.reduce((best, station) =>
         station.profitMargin > best.profitMargin ? station : best
       )
-      const worstStation = stationSummaries.reduce((worst, station) => 
+      const worstStation = stationSummaries.reduce((worst, station) =>
         station.profitMargin < worst.profitMargin ? station : worst
       )
 
@@ -209,7 +216,7 @@ export default function OwnerDashboardPage() {
 
       // Generate real exceptions based on station data
       const topExceptions: Exception[] = []
-      
+
       stationSummaries.forEach((station) => {
         // High variance exception
         if (Math.abs(station.variancePercentage) > 1.0) {
@@ -225,12 +232,12 @@ export default function OwnerDashboardPage() {
             status: 'OPEN'
           })
         }
-        
+
         // Low tank exception
         if (station.tanksFillLevel < 30) {
           topExceptions.push({
             id: `exc-tank-${station.stationId}`,
-            type: 'TANK_VARIANCE',
+            type: 'TANK_LOW',
             stationId: station.stationId,
             stationName: station.stationName,
             description: `Low tank levels: ${station.tanksFillLevel.toFixed(1)}% average`,
@@ -239,7 +246,7 @@ export default function OwnerDashboardPage() {
             status: 'OPEN'
           })
         }
-        
+
         // Poor performance exception
         if (station.profitMargin < 10) {
           topExceptions.push({
@@ -254,7 +261,7 @@ export default function OwnerDashboardPage() {
           })
         }
       })
-      
+
       // Add some mock exceptions if we don't have enough real ones
       while (topExceptions.length < 3) {
         const station = stationSummaries[Math.floor(Math.random() * stationSummaries.length)]
@@ -269,7 +276,7 @@ export default function OwnerDashboardPage() {
           status: 'OPEN'
         })
       }
-      
+
       // Sort exceptions by severity and timestamp
       topExceptions.sort((a, b) => {
         const severityOrder = { HIGH: 3, MEDIUM: 2, LOW: 1 }
@@ -480,8 +487,8 @@ export default function OwnerDashboardPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground">Owner Dashboard</h1>
         <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={() => setShowIndividualStations(!showIndividualStations)}
           >
@@ -690,7 +697,7 @@ export default function OwnerDashboardPage() {
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>High Alert Volume</AlertTitle>
               <AlertDescription>
-                {combinedStats.totalAlerts} active alerts across all stations. 
+                {combinedStats.totalAlerts} active alerts across all stations.
                 Consider reviewing operational procedures and implementing corrective measures.
               </AlertDescription>
             </Alert>
@@ -701,7 +708,7 @@ export default function OwnerDashboardPage() {
               <TrendingDown className="h-4 w-4" />
               <AlertTitle>Low Profit Margin</AlertTitle>
               <AlertDescription>
-                Average profit margin of {combinedStats.averageProfitMargin.toFixed(1)}% is below target. 
+                Average profit margin of {combinedStats.averageProfitMargin.toFixed(1)}% is below target.
                 Review pricing strategies and cost optimization opportunities.
               </AlertDescription>
             </Alert>

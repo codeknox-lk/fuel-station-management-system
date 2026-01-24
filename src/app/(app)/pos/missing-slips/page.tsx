@@ -18,12 +18,12 @@ import { MoneyInput } from '@/components/inputs/MoneyInput'
 import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { 
-  CreditCard, 
-  Clock, 
-  AlertTriangle, 
-  AlertCircle, 
-  CheckCircle, 
+import {
+  CreditCard,
+  Clock,
+  AlertTriangle,
+  AlertCircle,
+  CheckCircle,
   Plus,
   DollarSign,
   Calendar,
@@ -66,8 +66,8 @@ export default function MissingSlipsPage() {
 
   // Form state
   const [selectedBatch, setSelectedBatch] = useState('')
-  const [amount, setAmount] = useState('')
-  const [transactionTime, setTransactionTime] = useState<Date>(new Date())
+  const [amount, setAmount] = useState<number>(0)
+  const [transactionTime, setTransactionTime] = useState<Date | undefined>(new Date())
   const [lastFourDigits, setLastFourDigits] = useState('')
 
   // Load initial data
@@ -84,7 +84,7 @@ export default function MissingSlipsPage() {
 
         setBatches(batchesData)
         setRecentSlips(slipsData)
-      } catch (err) {
+      } catch (_err) {
         setError('Failed to load initial data')
       }
     }
@@ -94,8 +94,8 @@ export default function MissingSlipsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (!selectedBatch || !amount || !lastFourDigits) {
+
+    if (!selectedBatch || !amount || !lastFourDigits || !transactionTime) {
       setError('Please fill in all required fields')
       return
     }
@@ -105,8 +105,7 @@ export default function MissingSlipsPage() {
       return
     }
 
-    const amountValue = parseFloat(amount)
-    if (amountValue <= 0) {
+    if (amount <= 0) {
       setError('Amount must be greater than 0')
       return
     }
@@ -121,8 +120,8 @@ export default function MissingSlipsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           batchId: selectedBatch,
-          amount: amountValue,
-          transactionTime: transactionTime.toISOString(),
+          amount: amount,
+          transactionTime: transactionTime!.toISOString(),
           lastFourDigits,
           reportedBy: typeof window !== 'undefined' ? localStorage.getItem('username') || 'System User' : 'System User'
         })
@@ -133,22 +132,22 @@ export default function MissingSlipsPage() {
       }
 
       const newSlip = await response.json()
-      
+
       // Add to recent slips list
       setRecentSlips(prev => [newSlip, ...prev.slice(0, 9)])
-      
+
       // Reset form
       setSelectedBatch('')
-      setAmount('')
+      setAmount(0)
       setTransactionTime(new Date())
       setLastFourDigits('')
-      
+
       setSuccess('Missing slip reported successfully!')
-      
+
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000)
 
-    } catch (err) {
+    } catch (_err) {
       setError('Failed to report missing slip')
     } finally {
       setLoading(false)
@@ -323,7 +322,7 @@ export default function MissingSlipsPage() {
                       <div className="flex flex-col">
                         <span className="font-medium">{batch.batchNumber}</span>
                         <span className="text-xs text-muted-foreground">
-                          {new Date(batch.batchDate).toLocaleDateString()} - 
+                          {new Date(batch.batchDate).toLocaleDateString()} -
                           Rs. {batch.totalAmount.toLocaleString()}
                         </span>
                       </div>
@@ -387,7 +386,7 @@ export default function MissingSlipsPage() {
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Important Information</AlertTitle>
             <AlertDescription>
-              Missing slips should be reported as soon as they are discovered. 
+              Missing slips should be reported as soon as they are discovered.
               Provide accurate transaction details to help with reconciliation and investigation.
             </AlertDescription>
           </Alert>

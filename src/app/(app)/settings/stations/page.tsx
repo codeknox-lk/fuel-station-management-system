@@ -12,18 +12,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Building2, Plus, Edit, Trash2, MapPin, Phone, Clock } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { useRouter } from 'next/navigation'
+import { ArrowLeft } from 'lucide-react'
 
 interface Station {
   id: string
   name: string
   address: string
   city: string
+  phone?: string
+  email?: string
+  openingHours?: string
   isActive: boolean
   createdAt: string
   updatedAt: string
 }
 
 export default function StationsPage() {
+  const router = useRouter()
   const [stations, setStations] = useState<Station[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -32,9 +38,16 @@ export default function StationsPage() {
     name: '',
     address: '',
     city: '',
+    phone: '',
+    email: '',
+    openingHours: '',
     isActive: true
   })
   const { toast } = useToast()
+
+  // Check if user is DEVELOPER (only role that can add/delete stations)
+  const userRole = typeof window !== 'undefined' ? localStorage.getItem('userRole') : null
+  const isDeveloper = userRole === 'DEVELOPER'
 
   useEffect(() => {
     fetchStations()
@@ -58,11 +71,11 @@ export default function StationsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     try {
       const url = editingStation ? `/api/stations/${editingStation.id}` : '/api/stations'
       const method = editingStation ? 'PUT' : 'POST'
-      
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -94,6 +107,9 @@ export default function StationsPage() {
       name: station.name,
       address: station.address,
       city: station.city,
+      phone: station.phone || '',
+      email: station.email || '',
+      openingHours: station.openingHours || '',
       isActive: station.isActive
     })
     setDialogOpen(true)
@@ -130,6 +146,9 @@ export default function StationsPage() {
       name: '',
       address: '',
       city: '',
+      phone: '',
+      email: '',
+      openingHours: '',
       isActive: true
     })
   }
@@ -164,6 +183,26 @@ export default function StationsPage() {
       )
     },
     {
+      key: 'phone' as keyof Station,
+      title: 'Phone',
+      render: (value: unknown) => (
+        <div className="flex items-center gap-2">
+          <Phone className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm">{value ? (value as string) : '-'}</span>
+        </div>
+      )
+    },
+    {
+      key: 'openingHours' as keyof Station,
+      title: 'Opening Hours',
+      render: (value: unknown) => (
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm">{value ? (value as string) : '-'}</span>
+        </div>
+      )
+    },
+    {
       key: 'isActive' as keyof Station,
       title: 'Status',
       render: (value: unknown) => (
@@ -184,130 +223,171 @@ export default function StationsPage() {
           >
             <Edit className="h-4 w-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleDelete(row)}
-            className="text-red-600 dark:text-red-400 hover:text-red-700"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {/* Only DEVELOPER can delete stations */}
+          {isDeveloper && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleDelete(row)}
+              className="text-red-600 dark:text-red-400 hover:text-red-700"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       )
     }
   ]
 
+  const stationsList = Array.isArray(stations) ? stations : []
+
   const stats = [
     {
       title: 'Total Stations',
-      value: stations.length.toString(),
+      value: stationsList.length.toString(),
       description: 'Registered stations',
       icon: <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
     },
     {
       title: 'Active',
-      value: stations.filter(s => s.status === 'active').length.toString(),
+      value: stationsList.filter(s => s.isActive).length.toString(),
       description: 'Currently operational',
       icon: <div className="h-5 w-5 bg-green-500/10 dark:bg-green-500/200 rounded-full" />
     },
     {
-      title: 'Maintenance',
-      value: stations.filter(s => s.status === 'maintenance').length.toString(),
-      description: 'Under maintenance',
-      icon: <div className="h-5 w-5 bg-yellow-500/10 dark:bg-yellow-500/200 rounded-full" />
-    },
-    {
       title: 'Inactive',
-      value: stations.filter(s => s.status === 'inactive').length.toString(),
+      value: stationsList.filter(s => !s.isActive).length.toString(),
       description: 'Not operational',
-      icon: <div className="h-5 w-5 bg-muted0 rounded-full" />
+      icon: <div className="h-5 w-5 bg-red-500/10 dark:bg-red-500/200 rounded-full" />
     }
   ]
 
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Station Management</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage petrol stations, locations, and operational details
-          </p>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => router.push('/settings')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Station Management</h1>
+            <p className="text-muted-foreground mt-2">
+              Manage petrol stations, locations, and operational details
+            </p>
+          </div>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Station
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {editingStation ? 'Edit Station' : 'Add New Station'}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="name">Station Name</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g., Main Street Station"
-                  required
-                />
-              </div>
 
-              <div>
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="Full address"
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="city">City</Label>
-                <Input
-                  id="city"
-                  value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  placeholder="City name"
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="isActive">Status</Label>
-                <Select
-                  value={formData.isActive ? 'active' : 'inactive'}
-                  onValueChange={(value) => setFormData({ ...formData, isActive: value === 'active' })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4">
-                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">
-                  {editingStation ? 'Update Station' : 'Create Station'}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        {/* Only DEVELOPER can see Add Station button */}
+        {isDeveloper && (
+          <Button onClick={() => { resetForm(); setDialogOpen(true); }}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Station
+          </Button>
+        )}
       </div>
+
+      {/* Dialog for both Add and Edit - visible to all roles */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingStation ? 'Edit Station' : 'Add New Station'}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="name">Station Name</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g., Main Street Station"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="address">Address</Label>
+              <Input
+                id="address"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                placeholder="Full address"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="city">City</Label>
+              <Input
+                id="city"
+                value={formData.city}
+                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                placeholder="City name"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="e.g., +1 234 567 8900"
+                />
+              </div>
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="station@example.com"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="openingHours">Opening Hours</Label>
+              <Input
+                id="openingHours"
+                value={formData.openingHours}
+                onChange={(e) => setFormData({ ...formData, openingHours: e.target.value })}
+                placeholder="e.g., Mon-Fri: 6AM-10PM, Sat-Sun: 7AM-9PM"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="isActive">Status</Label>
+              <Select
+                value={formData.isActive ? 'active' : 'inactive'}
+                onValueChange={(value) => setFormData({ ...formData, isActive: value === 'active' })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                {editingStation ? 'Update Station' : 'Create Station'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

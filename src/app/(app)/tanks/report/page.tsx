@@ -16,13 +16,13 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { 
-  Fuel, 
-  Calendar, 
-  TrendingUp, 
-  TrendingDown, 
-  AlertCircle, 
-  CheckCircle, 
+import {
+  Fuel,
+  Calendar,
+  TrendingUp,
+  TrendingDown,
+  AlertCircle,
+  CheckCircle,
   Building2,
   Droplets,
   Truck,
@@ -41,14 +41,14 @@ interface Tank {
   id: string
   stationId: string
   tankNumber: string
-  fuelName: string
+  fuelType: string
   capacity: number
 }
 
 interface TankReport {
   tankId: string
   tankNumber: string
-  fuelName: string
+  fuelType: string
   capacity: number
   openingStock: number
   deliveries: number
@@ -130,15 +130,31 @@ export default function TankReportPage() {
     try {
       // Call the real API endpoint
       const response = await fetch(`/api/tanks/report?stationId=${selectedStation}&date=${selectedDate}`)
-      
+
       if (!response.ok) {
         throw new Error('Failed to generate report')
       }
 
       const apiData = await response.json()
-      
+
       // Transform API data to match our interface
-      const tankReports: TankReport[] = apiData.tanks.map((tank: any) => ({
+      interface TankReportData {
+        tankId: string
+        tankNumber: string
+        fuelType: string
+        capacity: number
+        openingStock: number
+        deliveries: number
+        sales: number
+        testReturns: number
+        closingBookStock: number
+        closingDipStock: number
+        variance: number
+        variancePercentage: number
+        toleranceStatus: 'NORMAL' | 'WARNING' | 'CRITICAL'
+        toleranceLimit: number
+      }
+      const tankReports: TankReport[] = apiData.tanks.map((tank: TankReportData) => ({
         tankId: tank.tankId,
         tankNumber: tank.tankNumber,
         fuelType: tank.fuelType,
@@ -161,7 +177,7 @@ export default function TankReportPage() {
 
       const criticalTanks = tankReports.filter(t => t.toleranceStatus === 'CRITICAL').length
       const warningTanks = tankReports.filter(t => t.toleranceStatus === 'WARNING').length
-      
+
       let overallStatus: 'NORMAL' | 'WARNING' | 'CRITICAL' = 'NORMAL'
       if (criticalTanks > 0) {
         overallStatus = 'CRITICAL'
@@ -330,7 +346,7 @@ export default function TankReportPage() {
                         <Droplets className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                         <span className="font-medium">Opening</span>
                       </div>
-                      <div className="font-mono text-lg">{tank.openingStock.toLocaleString()}L</div>
+                      <div className="text-lg">{tank.openingStock.toLocaleString()}L</div>
                     </div>
 
                     {/* Deliveries */}
@@ -339,7 +355,7 @@ export default function TankReportPage() {
                         <Truck className="h-4 w-4 text-green-600 dark:text-green-400" />
                         <span className="font-medium">Deliveries</span>
                       </div>
-                      <div className="font-mono text-lg text-green-600 dark:text-green-400">+{tank.deliveries.toLocaleString()}L</div>
+                      <div className="text-lg text-green-600 dark:text-green-400">+{tank.deliveries.toLocaleString()}L</div>
                     </div>
 
                     {/* Sales */}
@@ -348,7 +364,7 @@ export default function TankReportPage() {
                         <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
                         <span className="font-medium">Sales</span>
                       </div>
-                      <div className="font-mono text-lg text-red-600 dark:text-red-400">-{tank.sales.toLocaleString()}L</div>
+                      <div className="text-lg text-red-600 dark:text-red-400">-{tank.sales.toLocaleString()}L</div>
                     </div>
 
                     {/* Test Returns */}
@@ -357,7 +373,7 @@ export default function TankReportPage() {
                         <TestTube className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                         <span className="font-medium">Test Returns</span>
                       </div>
-                      <div className="font-mono text-lg text-purple-600 dark:text-purple-400">+{tank.testReturns.toLocaleString()}L</div>
+                      <div className="text-lg text-purple-600 dark:text-purple-400">+{tank.testReturns.toLocaleString()}L</div>
                     </div>
 
                     {/* Book Stock */}
@@ -366,7 +382,7 @@ export default function TankReportPage() {
                         <Calculator className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">Book Stock</span>
                       </div>
-                      <div className="font-mono text-lg">{tank.closingBookStock.toLocaleString()}L</div>
+                      <div className="text-lg">{tank.closingBookStock.toLocaleString()}L</div>
                     </div>
 
                     {/* Dip Stock */}
@@ -375,7 +391,7 @@ export default function TankReportPage() {
                         <Droplets className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                         <span className="font-medium">Dip Stock</span>
                       </div>
-                      <div className="font-mono text-lg font-semibold">{tank.closingDipStock.toLocaleString()}L</div>
+                      <div className="text-lg font-semibold">{tank.closingDipStock.toLocaleString()}L</div>
                     </div>
 
                     {/* Variance */}
@@ -388,7 +404,7 @@ export default function TankReportPage() {
                         )}
                         <span className="font-medium">Variance</span>
                       </div>
-                      <div className={`font-mono text-lg font-bold ${tank.variance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                      <div className={`text-lg font-bold ${tank.variance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                         {tank.variance >= 0 ? '+' : ''}{tank.variance.toLocaleString()}L
                       </div>
                       <div className={`text-xs ${Math.abs(tank.variancePercentage) <= 2 ? 'text-muted-foreground' : 'text-red-600 dark:text-red-400'}`}>

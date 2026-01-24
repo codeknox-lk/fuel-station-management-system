@@ -5,17 +5,17 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { useStation } from '@/contexts/StationContext'
 import { useTheme } from '@/contexts/ThemeContext'
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator 
+  DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Bell, 
-  LogOut, 
+import {
+  Bell,
+  LogOut,
   ChevronDown,
   Building2,
   AlertTriangle,
@@ -29,7 +29,7 @@ import {
   RefreshCw
 } from 'lucide-react'
 
-type UserRole = 'OWNER' | 'MANAGER' | 'ACCOUNTS'
+type UserRole = 'DEVELOPER' | 'OWNER' | 'MANAGER' | 'ACCOUNTS'
 
 interface TopBarProps {
   userRole: UserRole
@@ -49,6 +49,7 @@ interface Notification {
 }
 
 const roleColors = {
+  DEVELOPER: 'bg-red-500/20 text-red-600 dark:bg-red-600/30 dark:text-red-300',
   OWNER: 'bg-purple-500/20 text-purple-600 dark:bg-purple-600/30 dark:text-purple-300',
   MANAGER: 'bg-blue-500/20 text-blue-600 dark:bg-blue-600/30 dark:text-blue-300',
   ACCOUNTS: 'bg-green-500/20 text-green-600 dark:bg-green-600/30 dark:text-green-300'
@@ -72,11 +73,11 @@ export function TopBar({ userRole }: TopBarProps) {
       }
       params.append('limit', '10') // Get top 10 unread for dropdown
       params.append('isRead', 'false') // Only unread notifications
-      
+
       // Create abort controller for timeout
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
-      
+
       const response = await fetch(`/api/notifications?${params.toString()}`, {
         method: 'GET',
         headers: {
@@ -109,7 +110,7 @@ export function TopBar({ userRole }: TopBarProps) {
         setNotifications([])
         return
       }
-      
+
       const data = await response.json().catch((jsonError) => {
         console.warn('Failed to parse notifications response:', jsonError)
         setNotifications([])
@@ -129,24 +130,37 @@ export function TopBar({ userRole }: TopBarProps) {
       }
 
       if (data.notifications && Array.isArray(data.notifications)) {
+        interface ApiNotification {
+          id: string
+          title?: string
+          message?: string
+          type?: string
+          priority?: string
+          timestamp?: string
+          createdAt?: string
+          read?: boolean
+          isRead?: boolean
+          actionUrl?: string | null
+        }
+
         // Map API format to TopBar format
-        const mappedNotifications = data.notifications.map((n: any) => ({
+        const mappedNotifications = (data.notifications as ApiNotification[]).map((n) => ({
           id: n.id,
           title: n.title || 'Notification',
           message: n.message || '',
-          type: (n.type || 'info').toLowerCase() as any, // Convert to lowercase for compatibility
-          priority: (n.priority || 'medium').toLowerCase() as any, // Convert to lowercase for compatibility
+          type: (n.type || 'info').toLowerCase() as Notification['type'], // Convert to lowercase for compatibility
+          priority: (n.priority || 'medium').toLowerCase() as Notification['priority'], // Convert to lowercase for compatibility
           timestamp: n.createdAt || n.timestamp || new Date().toISOString(),
           createdAt: n.createdAt || n.timestamp || new Date().toISOString(),
           read: n.isRead || n.read || false,
           isRead: n.isRead || n.read || false,
           actionUrl: n.actionUrl || null
         }))
-        
+
         // Filter to only show unread notifications in the dropdown
-        const unreadOnly = mappedNotifications.filter(n => !n.read && !n.isRead)
+        const unreadOnly = mappedNotifications.filter((n) => !n.read && !n.isRead)
         setNotifications(unreadOnly)
-        
+
         // Use the total unread count from pagination, not just the count of fetched notifications
         if (data.pagination && typeof data.pagination.unread === 'number') {
           setTotalUnreadCount(data.pagination.unread)
@@ -174,7 +188,7 @@ export function TopBar({ userRole }: TopBarProps) {
   // Load notifications on mount and when station changes
   useEffect(() => {
     loadNotifications()
-    
+
     // Auto-refresh every 30 seconds (for real-time updates)
     const interval = setInterval(loadNotifications, 30 * 1000)
     return () => clearInterval(interval)
@@ -185,10 +199,10 @@ export function TopBar({ userRole }: TopBarProps) {
     const handleNotificationUpdate = () => {
       loadNotifications()
     }
-    
+
     window.addEventListener('notificationRead', handleNotificationUpdate)
     window.addEventListener('notificationUpdated', handleNotificationUpdate)
-    
+
     return () => {
       window.removeEventListener('notificationRead', handleNotificationUpdate)
       window.removeEventListener('notificationUpdated', handleNotificationUpdate)
@@ -219,7 +233,7 @@ export function TopBar({ userRole }: TopBarProps) {
           body: JSON.stringify({ isRead: true })
         })
         // Update local state
-        setNotifications(prev => 
+        setNotifications(prev =>
           prev.map(n => n.id === notification.id ? { ...n, read: true, isRead: true } : n)
         )
         // Decrease unread count
@@ -228,7 +242,7 @@ export function TopBar({ userRole }: TopBarProps) {
         console.error('Failed to mark notification as read:', error)
       }
     }
-    
+
     // Navigate to action URL if provided
     if (notification.actionUrl) {
       router.push(notification.actionUrl)
@@ -265,7 +279,7 @@ export function TopBar({ userRole }: TopBarProps) {
     const now = new Date()
     const time = new Date(timestamp)
     const diffInMinutes = Math.floor((now.getTime() - time.getTime()) / (1000 * 60))
-    
+
     if (diffInMinutes < 1) {
       return 'Just now'
     } else if (diffInMinutes < 60) {
@@ -307,7 +321,7 @@ export function TopBar({ userRole }: TopBarProps) {
                 <h3 className="font-semibold text-base">Unread Notifications</h3>
                 <p className="text-sm text-muted-foreground">{unreadCount} unread</p>
               </div>
-              
+
               {isLoadingNotifications ? (
                 <div className="px-4 py-6 text-center text-base text-muted-foreground">
                   <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
@@ -322,9 +336,8 @@ export function TopBar({ userRole }: TopBarProps) {
                   {notifications.map((notification) => (
                     <DropdownMenuItem
                       key={notification.id}
-                      className={`px-4 py-4 cursor-pointer hover:bg-muted ${
-                        !notification.read && !notification.isRead ? 'bg-blue-500/10 dark:bg-blue-500/20' : ''
-                      }`}
+                      className={`px-4 py-4 cursor-pointer hover:bg-muted ${!notification.read && !notification.isRead ? 'bg-blue-500/10 dark:bg-blue-500/20' : ''
+                        }`}
                       onClick={() => handleNotificationClick(notification)}
                     >
                       <div className="flex items-start gap-3 w-full">
@@ -355,11 +368,11 @@ export function TopBar({ userRole }: TopBarProps) {
                   ))}
                 </div>
               )}
-              
+
               {notifications.length > 0 && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     className="text-center text-base font-semibold text-blue-600 hover:text-blue-800 cursor-pointer py-3"
                     onClick={() => router.push('/notifications')}
                   >
@@ -380,7 +393,7 @@ export function TopBar({ userRole }: TopBarProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => setSelectedStation('all')}
                 className={selectedStation === 'all' ? 'bg-blue-500/10 dark:bg-blue-500/20' : ''}
               >
@@ -388,7 +401,7 @@ export function TopBar({ userRole }: TopBarProps) {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               {stations.map((station) => (
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   key={station.id}
                   onClick={() => setSelectedStation(station.id)}
                   className={selectedStation === station.id ? 'bg-blue-500/10 dark:bg-blue-500/20' : ''}

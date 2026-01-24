@@ -10,19 +10,38 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type') // tanks, pumps, nozzles
 
     if (id) {
-      // Get specific tank with all relations
+      // OPTIMIZED: Get specific tank with select
       const tank = await prisma.tank.findUnique({
         where: { id },
-        include: {
+        select: {
+          id: true,
+          tankNumber: true,
+          capacity: true,
+          currentLevel: true,
+          fuelId: true,
+          stationId: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
           station: {
             select: {
               id: true,
               name: true
             }
           },
-          fuel: true,
+          fuel: {
+            select: {
+              id: true,
+              name: true,
+              code: true
+            }
+          },
           nozzles: {
-            include: {
+            select: {
+              id: true,
+              nozzleNumber: true,
+              isActive: true,
+              pumpId: true,
               pump: {
                 select: {
                   id: true,
@@ -33,7 +52,7 @@ export async function GET(request: NextRequest) {
           }
         }
       })
-      
+
       if (!tank) {
         return NextResponse.json({ error: 'Tank not found' }, { status: 404 })
       }
@@ -42,9 +61,16 @@ export async function GET(request: NextRequest) {
 
     if (type === 'pumps') {
       const where = stationId ? { stationId } : {}
+      // Optimized: Use select for better performance
       const pumps = await prisma.pump.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          pumpNumber: true,
+          isActive: true,
+          stationId: true,
+          createdAt: true,
+          updatedAt: true,
           station: {
             select: {
               id: true,
@@ -66,7 +92,7 @@ export async function GET(request: NextRequest) {
 
     if (type === 'nozzles') {
       const pumpId = searchParams.get('pumpId')
-      
+
       if (pumpId) {
         const nozzles = await prisma.nozzle.findMany({
           where: { pumpId },
@@ -89,25 +115,25 @@ export async function GET(request: NextRequest) {
         })
         return NextResponse.json(nozzles)
       }
-      
+
       // Get nozzles by station with fuel type
       // First get pumps for the station, then get nozzles
       if (!stationId) {
         return NextResponse.json({ error: 'Station ID is required' }, { status: 400 })
       }
-      
+
       // Get pumps for the station first
       const pumps = await prisma.pump.findMany({
         where: { stationId },
         select: { id: true }
       })
-      
+
       const pumpIds = pumps.map(p => p.id)
-      
+
       if (pumpIds.length === 0) {
         return NextResponse.json([])
       }
-      
+
       // Get nozzles for those pumps
       // Note: Nozzle has tankId directly, not through pump
       const nozzles = await prisma.nozzle.findMany({
@@ -135,33 +161,57 @@ export async function GET(request: NextRequest) {
         },
         orderBy: { nozzleNumber: 'asc' }
       })
-      
+
       return NextResponse.json(nozzles)
     }
 
     // Get tanks
-    const where: any = {}
+    interface TankWhereInput {
+      stationId?: string
+    }
+    const where: TankWhereInput = {}
     if (stationId) {
       where.stationId = stationId
     }
-    
+
     // Filter out oil tanks for dipping operations if type is 'tanks'
     if (type === 'tanks') {
       // We filter out OIL tanks in code after fetching
     }
 
+    // Optimized: Use select instead of include for better performance
     const tanks = await prisma.tank.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        tankNumber: true,
+        capacity: true,
+        currentLevel: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        fuelId: true,
+        stationId: true,
         station: {
           select: {
             id: true,
             name: true
           }
         },
-        fuel: true,
+        fuel: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            category: true
+          }
+        },
         nozzles: {
-          include: {
+          select: {
+            id: true,
+            nozzleNumber: true,
+            isActive: true,
+            pumpId: true,
             pump: {
               select: {
                 id: true,
@@ -171,7 +221,7 @@ export async function GET(request: NextRequest) {
           }
         }
       },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { tankNumber: 'asc' }
     })
 
     // Filter out oil tanks if type is 'tanks' (for dipping operations)
@@ -190,9 +240,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    
+
     const { stationId, fuelId, capacity, currentLevel } = body
-    
+
     // Validation
     if (!stationId || !fuelId || !capacity) {
       return NextResponse.json(
@@ -209,7 +259,7 @@ export async function POST(request: NextRequest) {
     }
 
     const initialLevel = currentLevel || 0
-    
+
     if (initialLevel < 0 || initialLevel > capacity) {
       return NextResponse.json(
         { error: 'Initial level must be between 0 and capacity' },
@@ -242,20 +292,35 @@ export async function POST(request: NextRequest) {
       // Find highest tank number for this station (regardless of fuel type)
       // because tankNumber must be unique per station
       const existingTanks = await prisma.tank.findMany({
-        where: { 
+        where: {
           stationId
         },
         select: { tankNumber: true }
       })
-      
+
       if (existingTanks.length === 0) {
-        tankNumber = 'TANK-1'
+        tankNumber = 'TANK-01'
       } else {
         // Get the highest number from existing tanks
         const numbers = existingTanks
           .map(t => parseInt(t.tankNumber.replace(/[^0-9]/g, '')) || 0)
         const maxNum = Math.max(...numbers)
-        tankNumber = `TANK-${maxNum + 1}`
+        tankNumber = `TANK-${(maxNum + 1).toString().padStart(2, '0')}`
+      }
+    } else {
+      // Check if custom tank number already exists
+      const existingTank = await prisma.tank.findFirst({
+        where: {
+          stationId,
+          tankNumber
+        }
+      })
+
+      if (existingTank) {
+        return NextResponse.json(
+          { error: 'Tank number already exists at this station' },
+          { status: 400 }
+        )
       }
     }
 
@@ -285,7 +350,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newTank, { status: 201 })
   } catch (error) {
     console.error('Error creating tank:', error)
-    
+
     // Handle foreign key constraint violations
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
       return NextResponse.json(
@@ -293,7 +358,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

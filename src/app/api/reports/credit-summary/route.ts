@@ -174,7 +174,7 @@ export async function GET(request: NextRequest) {
     const dailyMap = new Map<string, { date: string, sales: number, payments: number }>()
     
     // Initialize all days in range
-    let currentDate = new Date(dateStart)
+    const currentDate = new Date(dateStart)
     while (currentDate <= dateEnd) {
       const dateKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
       dailyMap.set(dateKey, { date: dateKey, sales: 0, payments: 0 })

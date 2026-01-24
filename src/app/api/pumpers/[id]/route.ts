@@ -7,11 +7,11 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    
+
     const pumper = await prisma.pumper.findUnique({
       where: { id }
     })
-    
+
     if (!pumper) {
       return NextResponse.json({ error: 'Pumper not found' }, { status: 404 })
     }
@@ -30,12 +30,12 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    
+
     // Find existing pumper
     const existingPumper = await prisma.pumper.findUnique({
       where: { id }
     })
-    
+
     if (!existingPumper) {
       return NextResponse.json({ error: 'Pumper not found' }, { status: 404 })
     }
@@ -54,6 +54,7 @@ export async function PUT(
       rating,
       specializations,
       baseSalary,
+      holidayAllowance,
       isActive
     } = body
 
@@ -71,7 +72,7 @@ export async function PUT(
           id: { not: id }
         }
       })
-      
+
       if (duplicateCheck) {
         return NextResponse.json({
           error: 'Cannot update pumper',
@@ -90,7 +91,7 @@ export async function PUT(
           id: { not: id }
         }
       })
-      
+
       if (duplicateByPhone) {
         return NextResponse.json({
           error: 'Cannot update pumper',
@@ -102,7 +103,7 @@ export async function PUT(
 
     // Build update data
     const updateData: any = {}
-    
+
     if (name !== undefined) updateData.name = name.trim()
     if (phone !== undefined) updateData.phone = phone || null
     if (phoneNumber !== undefined) updateData.phone = phoneNumber || null
@@ -146,7 +147,7 @@ export async function PUT(
         }, { status: 404 })
       }
     }
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Failed to update pumper',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
@@ -159,11 +160,11 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    
+
     const pumper = await prisma.pumper.findUnique({
       where: { id }
     })
-    
+
     if (!pumper) {
       return NextResponse.json({ error: 'Pumper not found' }, { status: 404 })
     }
@@ -175,7 +176,7 @@ export async function DELETE(
         status: 'ACTIVE'
       }
     })
-    
+
     if (activeAssignmentsCount > 0) {
       return NextResponse.json({
         error: 'Cannot delete pumper with active shift assignments',
@@ -192,7 +193,7 @@ export async function DELETE(
           status: 'ACTIVE'
         }
       })
-      
+
       if (activeLoansCount > 0) {
         return NextResponse.json({
           error: 'Cannot delete pumper with active loans',
@@ -211,8 +212,8 @@ export async function DELETE(
     })
 
     console.log('✅ Pumper deleted successfully:', id)
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       message: 'Pumper deleted successfully',
       deletedPumper: {
         id: pumper.id,
@@ -229,7 +230,7 @@ export async function DELETE(
         }, { status: 400 })
       }
     }
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Failed to delete pumper',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })

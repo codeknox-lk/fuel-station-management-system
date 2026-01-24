@@ -11,7 +11,13 @@ export async function PATCH(
     const body = await request.json()
     const { isRead, ...otherFields } = body
 
-    const updateData: any = { ...otherFields }
+    interface NotificationUpdateInput {
+      isRead?: boolean
+      readAt?: Date | null
+      [key: string]: unknown
+    }
+
+    const updateData: NotificationUpdateInput = { ...otherFields }
     if (isRead !== undefined) {
       updateData.isRead = isRead
       if (isRead) {
@@ -29,7 +35,14 @@ export async function PATCH(
       )
     }
 
-    const notification = await (prisma as any).notification.update({
+    interface PrismaWithNotification {
+      notification: {
+        update: (args: unknown) => Promise<unknown>
+        delete: (args: unknown) => Promise<unknown>
+      }
+    }
+
+    const notification = await (prisma as unknown as PrismaWithNotification).notification.update({
       where: { id },
       data: updateData,
       include: {
@@ -68,7 +81,14 @@ export async function DELETE(
       )
     }
 
-    await (prisma as any).notification.delete({
+    interface PrismaWithNotification {
+      notification: {
+        update: (args: unknown) => Promise<unknown>
+        delete: (args: unknown) => Promise<unknown>
+      }
+    }
+
+    await (prisma as unknown as PrismaWithNotification).notification.delete({
       where: { id }
     })
 

@@ -5,8 +5,11 @@ import { useRouter } from 'next/navigation'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { TopBar } from '@/components/layout/TopBar'
 import { StationProvider } from '@/contexts/StationContext'
+import { useIdleTimer } from '@/hooks/useIdleTimer'
+import { IdleWarningModal } from '@/components/auth/IdleWarningModal'
+import { logout } from '@/lib/auth'
 
-type UserRole = 'OWNER' | 'MANAGER' | 'ACCOUNTS'
+type UserRole = 'DEVELOPER' | 'OWNER' | 'MANAGER' | 'ACCOUNTS'
 
 export default function AppLayout({
   children,
@@ -17,11 +20,24 @@ export default function AppLayout({
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
+  // Idle timer with 15-minute timeout
+  const { showWarning, resetTimer } = useIdleTimer({
+    onIdle: logout,
+    idleTime: 15 * 60 * 1000, // 15 minutes
+    warningTime: 30 * 1000, // 30 seconds
+  })
+
   useEffect(() => {
-    const role = localStorage.getItem('userRole') as UserRole
-    if (role && ['OWNER', 'MANAGER', 'ACCOUNTS'].includes(role)) {
+    const rawRole = localStorage.getItem('userRole')
+    console.log('AppLayout checking role:', rawRole)
+
+    // Normalize role to uppercase for comparison
+    const role = rawRole ? rawRole.toUpperCase() as UserRole : null
+
+    if (role && ['DEVELOPER', 'OWNER', 'MANAGER', 'ACCOUNTS'].includes(role)) {
       setUserRole(role)
     } else {
+      console.log('Invalid role, redirecting to login:', role)
       router.push('/login')
     }
     setIsLoading(false)
@@ -30,7 +46,7 @@ export default function AppLayout({
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 dark:border-purple-400"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 dark:border-orange-400"></div>
       </div>
     )
   }
@@ -47,7 +63,7 @@ export default function AppLayout({
           <div className="flex-shrink-0">
             <Sidebar userRole={userRole} />
           </div>
-          
+
           {/* Main content area */}
           <div className="flex-1 flex flex-col min-w-0">
             <TopBar userRole={userRole} />
@@ -57,6 +73,14 @@ export default function AppLayout({
           </div>
         </div>
       </div>
+
+      {/* Idle Warning Modal */}
+      <IdleWarningModal
+        isOpen={showWarning}
+        onStayLoggedIn={resetTimer}
+        onLogout={logout}
+        warningTime={30000}
+      />
     </StationProvider>
   )
 }

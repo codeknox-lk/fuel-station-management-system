@@ -8,9 +8,9 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    
+
     const { pumpNumber, isActive } = body
-    
+
     // Check if pump exists
     const existingPump = await prisma.pump.findUnique({
       where: { id }
@@ -50,7 +50,7 @@ export async function PUT(
     return NextResponse.json(updatedPump)
   } catch (error) {
     console.error('Error updating pump:', error)
-    
+
     // Handle unique constraint violations
     if (error instanceof Error && (error.message.includes('Unique constraint') || error.message.includes('P2002'))) {
       return NextResponse.json(
@@ -58,7 +58,7 @@ export async function PUT(
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -69,17 +69,10 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    
+
     // Check if pump exists
     const pump = await prisma.pump.findUnique({
-      where: { id },
-      include: {
-        nozzles: {
-          select: {
-            id: true
-          }
-        }
-      }
+      where: { id }
     })
 
     if (!pump) {
@@ -89,25 +82,19 @@ export async function DELETE(
       )
     }
 
-    // Safety check: Can't delete if has nozzles assigned
-    if (pump.nozzles.length > 0) {
-      return NextResponse.json(
-        { 
-          error: 'Cannot delete pump',
-          details: `This pump has ${pump.nozzles.length} nozzle(s) assigned. Please remove the nozzles first.`
-        },
-        { status: 400 }
-      )
-    }
+    // Use transaction to delete associated nozzles first, then the pump
+    await prisma.$transaction([
+      prisma.nozzle.deleteMany({
+        where: { pumpId: id }
+      }),
+      prisma.pump.delete({
+        where: { id }
+      })
+    ])
 
-    // Delete pump
-    await prisma.pump.delete({
-      where: { id }
-    })
-
-    return NextResponse.json({ 
-      message: 'Pump deleted successfully',
-      id 
+    return NextResponse.json({
+      message: 'Pump and associated nozzles deleted successfully',
+      id
     })
   } catch (error) {
     console.error('Error deleting pump:', error)

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
           }
         }
       })
-      
+
       if (!loan) {
         return NextResponse.json({ error: 'Pumper loan not found' }, { status: 404 })
       }
@@ -28,13 +29,13 @@ export async function GET(request: NextRequest) {
     }
 
     const pumperName = searchParams.get('pumperName')
-    
-    const where: any = {}
+
+    const where: Prisma.LoanPumperWhereInput = {}
     if (stationId) {
       where.stationId = stationId
     }
     if (status) {
-      where.status = status
+      where.status = status as import('@prisma/client').LoanStatus
     }
     if (pumperName) {
       // Case-insensitive match for pumper name using Prisma's case-insensitive filter
@@ -77,10 +78,20 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    
+    interface LoanBody {
+      stationId?: string
+      pumperName?: string
+      amount?: string | number
+      monthlyRental?: string | number
+      reason?: string
+      dueDate?: string | Date
+      givenBy?: string
+      fromSafe?: boolean
+    }
+    const body = await request.json() as LoanBody
+
     const { stationId, pumperName, amount, monthlyRental, reason, dueDate, fromSafe, givenBy } = body
-    
+
     if (!stationId || !pumperName || !amount || !reason || !dueDate) {
       return NextResponse.json(
         { error: 'Station ID, pumper name, amount, reason, and due date are required' },
@@ -92,8 +103,8 @@ export async function POST(request: NextRequest) {
       data: {
         stationId,
         pumperName,
-        amount: parseFloat(amount),
-        monthlyRental: monthlyRental !== undefined && monthlyRental !== null ? parseFloat(monthlyRental) : 0,
+        amount: parseFloat(String(amount)),
+        monthlyRental: monthlyRental !== undefined && monthlyRental !== null ? parseFloat(String(monthlyRental)) : 0,
         reason,
         givenBy: givenBy || null,
         dueDate: new Date(dueDate),
@@ -110,7 +121,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Deduct from safe if fromSafe is true
-    if (fromSafe && parseFloat(amount) > 0) {
+    if (fromSafe && parseFloat(String(amount)) > 0) {
       try {
         // Get or create safe
         let safe = await prisma.safe.findUnique({
@@ -130,7 +141,7 @@ export async function POST(request: NextRequest) {
         // Calculate balance before transaction chronologically
         const loanTimestamp = new Date(dueDate) // Use loan date
         const allTransactions = await prisma.safeTransaction.findMany({
-          where: { 
+          where: {
             safeId: safe.id,
             timestamp: { lte: loanTimestamp }
           },
@@ -155,14 +166,14 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        const balanceAfter = balanceBefore - parseFloat(amount)
+        const balanceAfter = balanceBefore - parseFloat(String(amount))
 
         // Create safe transaction
         await prisma.safeTransaction.create({
           data: {
             safeId: safe.id,
             type: 'LOAN_GIVEN',
-            amount: parseFloat(amount),
+            amount: parseFloat(String(amount)),
             balanceBefore,
             balanceAfter,
             loanId: newLoan.id,
@@ -186,7 +197,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newLoan, { status: 201 })
   } catch (error) {
     console.error('Error creating pumper loan:', error)
-    
+
     // Handle foreign key constraint violations
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
       return NextResponse.json(
@@ -194,7 +205,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

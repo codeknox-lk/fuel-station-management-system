@@ -63,6 +63,7 @@ export async function GET(request: NextRequest) {
     // Create a map of processed types per shift
     const processedTypes = new Map<string, Set<string>>()
     safeTransactions.forEach(tx => {
+      if (!tx.shiftId) return
       if (!processedTypes.has(tx.shiftId)) {
         processedTypes.set(tx.shiftId, new Set())
       }
@@ -84,10 +85,20 @@ export async function GET(request: NextRequest) {
       batchTotalsByShift.set(batch.shiftId, current + batch.totalAmount)
     })
 
+    interface DeclaredAmounts {
+      cash: number
+      card: number
+      credit: number
+      cheque: number
+    }
+    interface ShiftStatistics {
+      totalSales: number
+    }
+
     // Format shifts with all tender types
     const unprocessedShifts = shifts.map(shift => {
-      const declaredAmounts = shift.declaredAmounts as any
-      const statistics = shift.statistics as any
+      const declaredAmounts = shift.declaredAmounts as unknown as DeclaredAmounts
+      const statistics = shift.statistics as unknown as ShiftStatistics
       const processedForShift = processedTypes.get(shift.id) || new Set()
 
       const cashAmount = declaredAmounts?.cash || 0

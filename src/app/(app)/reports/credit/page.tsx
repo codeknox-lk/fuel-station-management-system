@@ -21,24 +21,25 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  PieLabelRenderProps
 } from 'recharts'
-import { 
-  Users, 
-  DollarSign, 
-  TrendingUp, 
-  AlertCircle, 
+import {
+  Users,
+  DollarSign,
+  TrendingUp,
+  AlertCircle,
   ArrowLeft,
   RefreshCw,
   Download,
@@ -140,12 +141,12 @@ export default function CreditReportPage() {
     const station = stations.find(s => s.id === selectedStation)
     const stationName = station?.name || 'All Stations'
     const monthLabel = `${selectedYear}-${selectedMonth}`
-    
+
     const exportData = {
       summary: reportData.summary,
       customerDetails: reportData.customerDetails
     }
-    
+
     exportCreditCustomerReportPDF(exportData, stationName, monthLabel)
   }
 
@@ -154,12 +155,12 @@ export default function CreditReportPage() {
     const station = stations.find(s => s.id === selectedStation)
     const stationName = station?.name || 'All Stations'
     const monthLabel = `${selectedYear}-${selectedMonth}`
-    
+
     const exportData = {
       summary: reportData.summary,
       customerDetails: reportData.customerDetails
     }
-    
+
     exportCreditCustomerReportExcel(exportData, stationName, monthLabel)
   }
 
@@ -391,7 +392,7 @@ export default function CreditReportPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={reportData.dailyBreakdown}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
+                  <XAxis
                     dataKey="date"
                     tickFormatter={(value) => {
                       const d = new Date(value)
@@ -399,22 +400,22 @@ export default function CreditReportPage() {
                     }}
                   />
                   <YAxis tickFormatter={(value) => `Rs. ${(value / 1000).toFixed(0)}k`} />
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value: number) => `Rs. ${value.toLocaleString()}`}
                     labelFormatter={(date) => new Date(date).toLocaleDateString()}
                   />
                   <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="sales" 
-                    stroke="#10b981" 
+                  <Line
+                    type="monotone"
+                    dataKey="sales"
+                    stroke="#10b981"
                     strokeWidth={2}
                     name="Credit Sales"
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="payments" 
-                    stroke="#3b82f6" 
+                  <Line
+                    type="monotone"
+                    dataKey="payments"
+                    stroke="#3b82f6"
                     strokeWidth={2}
                     name="Payments Received"
                   />
@@ -434,7 +435,10 @@ export default function CreditReportPage() {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      label={(props: PieLabelRenderProps) => {
+                        const percent = ((props.percent as number) ?? 0) * 100
+                        return `${props.name}: ${percent.toFixed(0)}%`
+                      }}
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
@@ -454,8 +458,8 @@ export default function CreditReportPage() {
                 {Object.entries(reportData.agingBreakdown).map(([category, data]) => (
                   <div key={category} className="flex items-center justify-between p-3 rounded border">
                     <div className="flex items-center gap-3">
-                      <div 
-                        className="w-4 h-4 rounded" 
+                      <div
+                        className="w-4 h-4 rounded"
                         style={{ backgroundColor: AGING_COLORS[category as keyof typeof AGING_COLORS] }}
                       />
                       <div>
@@ -463,7 +467,7 @@ export default function CreditReportPage() {
                         <p className="text-sm text-muted-foreground">{data.count} customers</p>
                       </div>
                     </div>
-                    <p className="font-mono font-semibold">Rs. {data.amount.toLocaleString()}</p>
+                    <p className="font-semibold">Rs. {data.amount.toLocaleString()}</p>
                   </div>
                 ))}
               </div>
@@ -496,34 +500,33 @@ export default function CreditReportPage() {
                           <p className="text-xs text-muted-foreground">{customer.phoneNumber}</p>
                         </div>
                       </td>
-                      <td className="text-right p-3 font-mono">
+                      <td className="text-right p-3">
                         <span className={customer.currentBalance > 0 ? 'text-red-600 font-semibold' : ''}>
                           Rs. {customer.currentBalance.toLocaleString()}
                         </span>
                       </td>
-                      <td className="text-right p-3 font-mono">
+                      <td className="text-right p-3">
                         Rs. {customer.creditLimit.toLocaleString()}
                       </td>
                       <td className="text-right p-3">
-                        <span className={`px-2 py-1 rounded text-xs ${
-                          customer.utilizationPercent > 80 ? 'bg-red-100 text-red-700' :
+                        <span className={`px-2 py-1 rounded text-xs ${customer.utilizationPercent > 80 ? 'bg-red-100 text-red-700' :
                           customer.utilizationPercent > 50 ? 'bg-orange-100 text-orange-700' :
-                          'bg-green-100 text-green-700'
-                        }`}>
+                            'bg-green-100 text-green-700'
+                          }`}>
                           {customer.utilizationPercent.toFixed(0)}%
                         </span>
                       </td>
-                      <td className="text-right p-3 font-mono">Rs. {customer.salesInPeriod.toLocaleString()}</td>
-                      <td className="text-right p-3 font-mono">Rs. {customer.paymentsInPeriod.toLocaleString()}</td>
+                      <td className="text-right p-3">Rs. {customer.salesInPeriod.toLocaleString()}</td>
+                      <td className="text-right p-3">Rs. {customer.paymentsInPeriod.toLocaleString()}</td>
                       <td className="p-3">
-                        {customer.lastPaymentDate 
+                        {customer.lastPaymentDate
                           ? new Date(customer.lastPaymentDate).toLocaleDateString()
                           : 'Never'}
                       </td>
                       <td className="p-3">
-                        <span 
+                        <span
                           className="px-2 py-1 rounded text-xs font-medium"
-                          style={{ 
+                          style={{
                             backgroundColor: `${AGING_COLORS[customer.agingCategory as keyof typeof AGING_COLORS]}20`,
                             color: AGING_COLORS[customer.agingCategory as keyof typeof AGING_COLORS]
                           }}

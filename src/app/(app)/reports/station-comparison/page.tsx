@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { DateTimePicker } from '@/components/inputs/DateTimePicker'
-import { 
+import {
   ArrowLeft,
   TrendingUp,
   TrendingDown,
@@ -50,7 +50,7 @@ export default function StationComparisonPage() {
   const [loading, setLoading] = useState(true)
   const [stations, setStations] = useState<StationStats[]>([])
   const [error, setError] = useState<string | null>(null)
-  
+
   // Date range state - default last 30 days
   const [startDate, setStartDate] = useState<Date>(() => {
     const date = new Date()
@@ -80,21 +80,21 @@ export default function StationComparisonPage() {
     try {
       setLoading(true)
       setError(null)
-      
+
       const startDateStr = startDate.toISOString().split('T')[0]
       const endDateStr = endDate.toISOString().split('T')[0]
-      
+
       console.log('Fetching station data for:', { startDate: startDateStr, endDate: endDateStr })
-      
+
       const response = await fetch(
         `/api/reports/station-comparison?startDate=${startDateStr}&endDate=${endDateStr}`
       )
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         throw new Error(errorData.details || errorData.error || 'Failed to fetch data')
       }
-      
+
       const data = await response.json()
       console.log('Received station data:', data)
       setStations(data)
@@ -119,16 +119,16 @@ export default function StationComparisonPage() {
     }
 
     const doc = new jsPDF()
-    
+
     // Add title
     doc.setFontSize(18)
     doc.text('Station Comparison Report', 14, 20)
-    
+
     // Add date range
     doc.setFontSize(11)
     doc.text(`Period: ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`, 14, 28)
     doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 34)
-    
+
     // Calculate totals
     const totals = stations.reduce((acc, station) => ({
       totalSales: acc.totalSales + station.totalSales,
@@ -146,7 +146,7 @@ export default function StationComparisonPage() {
     doc.text(`Total Sales: Rs. ${totals.totalSales.toLocaleString()}`, 14, 56)
     doc.text(`Total Volume: ${totals.totalVolume.toLocaleString()} L`, 14, 62)
     doc.text(`Total Profit: Rs. ${totals.totalProfit.toLocaleString()}`, 14, 68)
-    
+
     // Prepare table data
     const tableData = stations.map(station => [
       station.name,
@@ -170,7 +170,7 @@ export default function StationComparisonPage() {
       totals.shiftsCount.toString(),
       '-'
     ])
-    
+
     // Add table
     autoTable(doc, {
       startY: 75,
@@ -181,7 +181,7 @@ export default function StationComparisonPage() {
       footStyles: { fillColor: [229, 231, 235], textColor: [0, 0, 0], fontStyle: 'bold' },
       styles: { fontSize: 9 }
     })
-    
+
     // Save PDF
     const startDateStr = startDate.toISOString().split('T')[0]
     const endDateStr = endDate.toISOString().split('T')[0]
@@ -262,7 +262,7 @@ export default function StationComparisonPage() {
     XLSX.writeFile(wb, `Station_Comparison_${startDateStr}_to_${endDateStr}.xlsx`)
   }
 
-  const bestPerformer = stations.length > 0 
+  const bestPerformer = stations.length > 0
     ? stations.reduce((best, station) => station.totalSales > best.totalSales ? station : best, stations[0])
     : null
 
@@ -299,9 +299,9 @@ export default function StationComparisonPage() {
               <div className="text-sm text-red-900 dark:text-red-100">
                 <p className="font-semibold mb-1">Error Loading Report:</p>
                 <p>{error}</p>
-                <Button 
-                  onClick={fetchStationData} 
-                  variant="outline" 
+                <Button
+                  onClick={fetchStationData}
+                  variant="outline"
                   size="sm"
                   className="mt-2"
                 >
@@ -350,8 +350,8 @@ export default function StationComparisonPage() {
           </div>
 
           <div className="flex items-end">
-            <Button 
-              onClick={handleApplyFilters} 
+            <Button
+              onClick={handleApplyFilters}
               className="w-full"
               disabled={loading}
             >
@@ -363,7 +363,7 @@ export default function StationComparisonPage() {
           <div className="flex items-end">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button 
+                <Button
                   variant="outline"
                   className="w-full"
                   disabled={stations.length === 0}
@@ -502,16 +502,16 @@ export default function StationComparisonPage() {
                         )}
                       </div>
                     </td>
-                    <td className="p-3 text-right font-mono">
+                    <td className="p-3 text-right">
                       Rs. {station.totalSales.toLocaleString()}
                     </td>
-                    <td className="p-3 text-right font-mono">
+                    <td className="p-3 text-right">
                       {station.totalVolume.toLocaleString()}
                     </td>
-                    <td className="p-3 text-right font-mono text-green-600 dark:text-green-400">
+                    <td className="p-3 text-right text-green-600 dark:text-green-400">
                       Rs. {station.totalProfit.toLocaleString()}
                     </td>
-                    <td className="p-3 text-right font-mono">
+                    <td className="p-3 text-right">
                       Rs. {station.avgDailySales.toLocaleString()}
                     </td>
                     <td className="p-3 text-center">
@@ -522,7 +522,7 @@ export default function StationComparisonPage() {
                     </td>
                     <td className="p-3 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <span className="font-mono">{station.profitMargin}%</span>
+                        <span className="">{station.profitMargin}%</span>
                         {station.profitMargin >= 10 ? (
                           <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
                         ) : (
@@ -536,13 +536,13 @@ export default function StationComparisonPage() {
               <tfoot>
                 <tr className="border-t-2 font-bold bg-muted">
                   <td className="p-3">TOTAL</td>
-                  <td className="p-3 text-right font-mono">
+                  <td className="p-3 text-right">
                     Rs. {totalAcrossStations.sales.toLocaleString()}
                   </td>
-                  <td className="p-3 text-right font-mono">
+                  <td className="p-3 text-right">
                     {totalAcrossStations.volume.toLocaleString()}
                   </td>
-                  <td className="p-3 text-right font-mono text-green-600 dark:text-green-400">
+                  <td className="p-3 text-right text-green-600 dark:text-green-400">
                     Rs. {totalAcrossStations.profit.toLocaleString()}
                   </td>
                   <td colSpan={4}></td>

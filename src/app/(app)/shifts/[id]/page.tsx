@@ -7,75 +7,25 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DataTable } from '@/components/ui/DataTable'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { 
-  Clock, 
-  Users, 
+import {
+  Clock,
+  Users,
   DollarSign,
   TrendingUp,
   Fuel,
   User,
   Calendar,
   ArrowLeft,
-  Printer,
-  BarChart3,
-  Target,
-  AlertCircle,
-  CheckCircle
+  Printer
 } from 'lucide-react'
 import Link from 'next/link'
 import { getNozzleDisplayWithBadge } from '@/lib/nozzleUtils'
+import { ShiftWithDetails, AssignmentWithDetails, ShiftStatistics, DeclaredAmounts, Expense } from '@/types/db'
 
-interface Shift {
-  id: string
-  stationId: string
-  stationName: string
-  templateName: string
-  startTime: string
-  endTime?: string
-  status: 'OPEN' | 'CLOSED'
-  openedBy: string
-  closedBy?: string
-  assignmentCount: number
-  totalSales?: number
-  statistics?: {
-    durationHours: number
-    totalSales: number
-    totalLiters: number
-    averagePricePerLiter: number
-    assignmentCount: number
-    closedAssignments: number
-  }
-  declaredAmounts?: any
-}
-
-interface Assignment {
-  id: string
-  shiftId: string
-  nozzleId: string
-  pumperId: string
-  pumperName: string
-  startMeterReading: number
-  endMeterReading?: number
-  status: 'ACTIVE' | 'CLOSED'
-  assignedAt: string
-  closedAt?: string
-  canSales?: number // Can sales in litres
-  pumpSales?: number // Pump sales in litres (calculated)
-  nozzle?: {
-    id: string
-    nozzleNumber: string
-    pump?: {
-      pumpNumber: string
-    }
-    tank?: {
-      fuelId: string
-      fuel?: {
-        id: string
-        name: string
-        icon?: string | null
-      }
-    }
-  }
+// Helper type for the UI which might have parsed JSON fields
+interface UIShift extends Omit<ShiftWithDetails, 'statistics' | 'declaredAmounts'> {
+  statistics?: ShiftStatistics
+  declaredAmounts?: DeclaredAmounts
 }
 
 interface TenderSummary {
@@ -99,18 +49,22 @@ interface TenderSummary {
   }
 }
 
+
+
+
+
 // Function to format duration
 const formatDuration = (hours: number): string => {
   // Handle negative durations
   if (hours < 0) {
     return 'Invalid duration'
   }
-  
+
   if (hours === 0) return '0h'
-  
+
   const wholeHours = Math.floor(hours)
   const minutes = Math.round((hours - wholeHours) * 60)
-  
+
   if (minutes === 0) {
     return `${wholeHours}h`
   } else if (wholeHours === 0) {
@@ -125,20 +79,16 @@ const formatCurrency = (amount: number): string => {
   return `Rs. ${amount.toLocaleString()}`
 }
 
-// Function to calculate variance percentage
-const calculateVariancePercentage = (actual: number, target: number): number => {
-  if (target === 0) return 0
-  return ((actual - target) / target) * 100
-}
+
 
 export default function ShiftDetailsPage() {
   const params = useParams()
   const router = useRouter()
   // Extract id immediately using useMemo to avoid Next.js 15 enumeration issues
   const shiftId = useMemo(() => (params?.id as string) || '', [params])
-  
-  const [shift, setShift] = useState<Shift | null>(null)
-  const [assignments, setAssignments] = useState<Assignment[]>([])
+
+  const [shift, setShift] = useState<UIShift | null>(null)
+  const [assignments, setAssignments] = useState<AssignmentWithDetails[]>([])
   const [tenderSummary, setTenderSummary] = useState<TenderSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -147,7 +97,7 @@ export default function ShiftDetailsPage() {
     const fetchShiftDetails = async () => {
       try {
         setLoading(true)
-        
+
         // Fetch shift details
         const shiftResponse = await fetch(`/api/shifts/${shiftId}`)
         if (!shiftResponse.ok) {
@@ -159,12 +109,12 @@ export default function ShiftDetailsPage() {
           throw new Error(`Failed to load shift: ${errorData.error || shiftResponse.statusText}`)
         }
         const shiftData = await shiftResponse.json()
-        
+
         // Validate shift data
         if (!shiftData || !shiftData.id) {
           throw new Error('Invalid shift data received')
         }
-        
+
         // Transform shift data to include proper names
         const transformedShift = {
           ...shiftData,
@@ -172,41 +122,41 @@ export default function ShiftDetailsPage() {
           templateName: shiftData.template?.name || 'Unknown Template',
           assignmentCount: shiftData._count?.assignments || 0
         }
-        
+
         setShift(transformedShift)
-        
+
         // Fetch assignments
         const assignmentsResponse = await fetch(`/api/shifts/${shiftId}/assignments`)
         if (assignmentsResponse.ok) {
           const assignmentsData = await assignmentsResponse.json()
           setAssignments(assignmentsData)
-          
+
           // Fetch tender summary if shift is closed
           if (shiftData.status === 'CLOSED') {
             try {
               const assignmentsParam = encodeURIComponent(JSON.stringify(assignmentsData))
-              
+
               // For closed shifts, use the actual statistics from the shift
               // This ensures consistency with the close API calculations
               // Parse statistics if it's a JSON string
-              let stats: any = {}
+              let stats: ShiftStatistics | null = null
               if (shiftData.statistics) {
                 if (typeof shiftData.statistics === 'string') {
                   try {
                     stats = JSON.parse(shiftData.statistics)
                   } catch (e) {
                     console.error('Failed to parse statistics JSON:', e)
-                    stats = {}
+                    stats = null
                   }
                 } else {
-                  stats = shiftData.statistics
+                  stats = shiftData.statistics as unknown as ShiftStatistics
                 }
               }
               const calculatedSales = stats?.totalSales || 0
-              
+
               // Use stored declared amounts if available, otherwise simulate
               // Parse declaredAmounts if it's a JSON string
-              let declaredAmounts: any = null
+              let declaredAmounts: DeclaredAmounts | null = null
               if (shiftData.declaredAmounts) {
                 if (typeof shiftData.declaredAmounts === 'string') {
                   try {
@@ -216,10 +166,10 @@ export default function ShiftDetailsPage() {
                     declaredAmounts = null
                   }
                 } else {
-                  declaredAmounts = shiftData.declaredAmounts
+                  declaredAmounts = shiftData.declaredAmounts as unknown as DeclaredAmounts
                 }
               }
-              
+
               let cashAmount, cardAmount, creditAmount, chequeAmount
               if (declaredAmounts) {
                 cashAmount = declaredAmounts.cash || 0
@@ -235,7 +185,7 @@ export default function ShiftDetailsPage() {
                 creditAmount = Math.round(totalDeclared * 0.08)
                 chequeAmount = Math.round(totalDeclared * 0.02)
               }
-              
+
               const tenderResponse = await fetch(
                 `/api/tenders/shift/${shiftId}?cashAmount=${cashAmount}&cardAmount=${cardAmount}&creditAmount=${creditAmount}&chequeAmount=${chequeAmount}&assignments=${assignmentsParam}`
               )
@@ -248,7 +198,7 @@ export default function ShiftDetailsPage() {
             }
           }
         }
-        
+
       } catch (err) {
         console.error('Error fetching shift details:', err)
         setError(err instanceof Error ? err.message : 'Failed to load shift details')
@@ -256,7 +206,7 @@ export default function ShiftDetailsPage() {
         setLoading(false)
       }
     }
-    
+
     if (shiftId) {
       fetchShiftDetails()
     }
@@ -278,7 +228,7 @@ export default function ShiftDetailsPage() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          <h1 
+          <h1
             className="text-3xl font-bold text-foreground shift-details-title"
             style={{
               textDecoration: 'none',
@@ -296,7 +246,7 @@ export default function ShiftDetailsPage() {
             Shift Details
           </h1>
         </div>
-        
+
         <Alert className="border-red-500/20 dark:border-red-500/30 bg-red-500/10 dark:bg-red-500/20">
           <AlertDescription className="text-red-700 dark:text-red-300">
             {error}
@@ -314,7 +264,7 @@ export default function ShiftDetailsPage() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          <h1 
+          <h1
             className="text-3xl font-bold text-foreground shift-details-title"
             style={{
               textDecoration: 'none',
@@ -332,7 +282,7 @@ export default function ShiftDetailsPage() {
             Shift Details
           </h1>
         </div>
-        
+
         <Alert className="border-yellow-500/20 dark:border-yellow-500/30 bg-yellow-500/10 dark:bg-yellow-500/20">
           <AlertDescription className="text-yellow-700 dark:text-yellow-300">
             Shift not found
@@ -344,17 +294,17 @@ export default function ShiftDetailsPage() {
 
   // Calculate actual liters for each assignment
   const assignmentsWithCalculations = assignments.map(assignment => {
-    const actualLiters = assignment.startMeterReading && assignment.endMeterReading 
-      ? assignment.endMeterReading - assignment.startMeterReading 
+    const actualLiters = assignment.startMeterReading && assignment.endMeterReading
+      ? assignment.endMeterReading - assignment.startMeterReading
       : 0
-    
+
     // For closed shifts, use saved statistics if available
     // Otherwise, calculate proportionally from total sales if available
     let sales = 0
     try {
       if (shift && shift.status === 'CLOSED') {
         // Parse statistics if it's a JSON string, otherwise use as-is
-        let stats: any = {}
+        let stats: Partial<ShiftStatistics> = {}
         if (shift.statistics) {
           if (typeof shift.statistics === 'string') {
             try {
@@ -367,7 +317,7 @@ export default function ShiftDetailsPage() {
             stats = shift.statistics
           }
         }
-        
+
         if (stats?.totalSales && stats?.totalLiters) {
           // Calculate sales proportionally based on liters if we have total sales
           // This is more accurate than using a hardcoded price
@@ -381,7 +331,7 @@ export default function ShiftDetailsPage() {
         }
       } else if (shift) {
         // For open shifts or shifts without statistics
-        let stats: any = {}
+        let stats: Partial<ShiftStatistics> = {}
         if (shift.statistics) {
           if (typeof shift.statistics === 'string') {
             try {
@@ -405,7 +355,7 @@ export default function ShiftDetailsPage() {
       // Fallback to simple calculation
       sales = Math.round(actualLiters * 470)
     }
-    
+
     return {
       ...assignment,
       actualLiters,
@@ -415,9 +365,9 @@ export default function ShiftDetailsPage() {
 
   const assignmentColumns = [
     {
-      key: 'nozzleId' as keyof Assignment,
+      key: 'nozzleId' as keyof AssignmentWithDetails,
       title: 'Nozzle',
-      render: (_value: unknown, row: any) => {
+      render: (_value: unknown, row: AssignmentWithDetails) => {
         if (row.nozzle) {
           const display = getNozzleDisplayWithBadge({
             id: row.nozzle.id,
@@ -442,7 +392,7 @@ export default function ShiftDetailsPage() {
       }
     },
     {
-      key: 'pumperName' as keyof Assignment,
+      key: 'pumperName' as keyof AssignmentWithDetails,
       title: 'Pumper',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
@@ -452,52 +402,52 @@ export default function ShiftDetailsPage() {
       )
     },
     {
-      key: 'startMeterReading' as keyof Assignment,
+      key: 'startMeterReading' as keyof AssignmentWithDetails,
       title: 'Start Meter',
       render: (value: unknown) => (
-        <span className="font-mono text-sm">{value as number}L</span>
+        <span className="text-sm">{value as number}L</span>
       )
     },
     {
-      key: 'endMeterReading' as keyof Assignment,
+      key: 'endMeterReading' as keyof AssignmentWithDetails,
       title: 'End Meter',
       render: (value: unknown) => (
-        <span className="font-mono text-sm">{value ? `${value}L` : '-'}</span>
+        <span className="text-sm">{value ? `${value}L` : '-'}</span>
       )
     },
     {
-      key: 'actualLiters' as keyof Assignment,
+      key: 'actualLiters' as keyof AssignmentWithDetails,
       title: 'Pump Sales',
-      render: (value: unknown, row: any) => (
+      render: (value: unknown, row: AssignmentWithDetails) => (
         <div className="flex items-center gap-1">
           <Fuel className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
+          <span className="font-semibold text-blue-600 dark:text-blue-400">
             {row.actualLiters}L
           </span>
         </div>
       )
     },
     {
-      key: 'canSales' as keyof Assignment,
+      key: 'canSales' as keyof AssignmentWithDetails,
       title: 'Can Sales',
       render: (value: unknown) => (
-        <span className="font-mono text-sm">{value ? `${value}L` : '0L'}</span>
+        <span className="text-sm">{value ? `${value}L` : '0L'}</span>
       )
     },
     {
-      key: 'sales' as keyof Assignment,
+      key: 'sales' as keyof AssignmentWithDetails,
       title: 'Total Sales',
-      render: (value: unknown, row: any) => (
+      render: (value: unknown, row: AssignmentWithDetails) => (
         <div className="flex items-center gap-1">
           <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
-          <span className="font-mono font-semibold text-green-600 dark:text-green-400">
-            {formatCurrency(row.sales)}
+          <span className="font-semibold text-green-600 dark:text-green-400">
+            {formatCurrency(row.sales || 0)}
           </span>
         </div>
       )
     },
     {
-      key: 'status' as keyof Assignment,
+      key: 'status' as keyof AssignmentWithDetails,
       title: 'Status',
       render: (value: unknown) => (
         <Badge variant={value === 'CLOSED' ? 'default' : 'secondary'}>
@@ -517,7 +467,7 @@ export default function ShiftDetailsPage() {
             Back
           </Button>
           <div className="flex flex-col">
-            <h1 
+            <h1
               className="text-3xl font-bold text-foreground shift-details-title"
               style={{
                 textDecoration: 'none',
@@ -539,7 +489,7 @@ export default function ShiftDetailsPage() {
             </p>
           </div>
         </div>
-        
+
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => window.print()}>
             <Printer className="h-4 w-4 mr-2" />
@@ -577,11 +527,11 @@ export default function ShiftDetailsPage() {
           <CardContent>
             <div className="text-2xl font-bold">
               {(() => {
-                const stats = typeof shift.statistics === 'string' 
+                const stats = typeof shift.statistics === 'string'
                   ? (() => { try { return JSON.parse(shift.statistics as string) } catch { return {} } })()
                   : shift.statistics || {}
-                return stats?.durationHours !== undefined ? formatDuration(stats.durationHours) : 
-                       shift.status === 'CLOSED' ? '0h' : '-'
+                return stats?.durationHours !== undefined ? formatDuration(stats.durationHours) :
+                  shift.status === 'CLOSED' ? '0h' : '-'
               })()}
             </div>
             <p className="text-xs text-muted-foreground">Total time</p>
@@ -607,7 +557,7 @@ export default function ShiftDetailsPage() {
           <CardContent>
             <div className="text-2xl font-bold">
               {(() => {
-                const stats = typeof shift.statistics === 'string' 
+                const stats = typeof shift.statistics === 'string'
                   ? (() => { try { return JSON.parse(shift.statistics as string) } catch { return {} } })()
                   : shift.statistics || {}
                 return stats?.totalSales ? formatCurrency(stats.totalSales) : '-'
@@ -632,25 +582,25 @@ export default function ShiftDetailsPage() {
                 <h4 className="font-semibold text-blue-700 dark:text-blue-300 mb-3">Sales Breakdown</h4>
                 <div className="grid grid-cols-4 gap-4 text-sm">
                   <div className="text-center">
-                    <div className="text-blue-600 dark:text-blue-400 font-mono text-lg">
+                    <div className="text-blue-600 dark:text-blue-400 text-lg">
                       {tenderSummary.salesBreakdown.totalPumpSales.toLocaleString()}L
                     </div>
                     <div className="text-muted-foreground">Pump Sales</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-green-600 dark:text-green-400 font-mono text-lg">
+                    <div className="text-green-600 dark:text-green-400 text-lg">
                       {tenderSummary.salesBreakdown.totalCanSales.toLocaleString()}L
                     </div>
                     <div className="text-muted-foreground">Can Sales</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-orange-600 dark:text-orange-400 font-mono text-lg">
+                    <div className="text-orange-600 dark:text-orange-400 text-lg">
                       Rs. {(tenderSummary.salesBreakdown.oilSales?.totalAmount || 0).toLocaleString()}
                     </div>
                     <div className="text-muted-foreground">Oil Sales ({tenderSummary.salesBreakdown.oilSales?.salesCount || 0})</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-purple-600 dark:text-purple-400 font-mono text-lg font-bold">
+                    <div className="text-purple-600 dark:text-purple-400 text-lg font-bold">
                       {tenderSummary.salesBreakdown.totalLitres.toLocaleString()}L
                     </div>
                     <div className="text-muted-foreground">Total Fuel</div>
@@ -663,9 +613,9 @@ export default function ShiftDetailsPage() {
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Sales (Calculated):</span>
-                  <span className="font-mono font-semibold">
+                  <span className="font-semibold">
                     Rs. {(() => {
-                      const stats = typeof shift.statistics === 'string' 
+                      const stats = typeof shift.statistics === 'string'
                         ? (() => { try { return JSON.parse(shift.statistics as string) } catch { return {} } })()
                         : shift.statistics || {}
                       return (stats?.totalSales ?? 0).toLocaleString()
@@ -674,36 +624,35 @@ export default function ShiftDetailsPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Declared:</span>
-                  <span className="font-mono font-semibold">
+                  <span className="font-semibold">
                     Rs. {(tenderSummary?.totalDeclared ?? 0).toLocaleString()}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Variance:</span>
-                  <span className={`font-mono font-semibold ${
-                    (tenderSummary?.variance ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                  }`}>
+                  <span className={`font-semibold ${(tenderSummary?.variance ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                    }`}>
                     Rs. {(tenderSummary?.variance ?? 0).toLocaleString()}
                   </span>
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Tolerance:</span>
-                  <span className="font-mono">
+                  <span>
                     Rs. {(tenderSummary?.varianceClassification?.tolerance ?? 0).toLocaleString()}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Variance %:</span>
-                  <span className="font-mono">
+                  <span>
                     {(tenderSummary?.varianceClassification?.variancePercentage ?? 0).toFixed(2)}%
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Status:</span>
-                  <Badge 
+                  <Badge
                     variant={tenderSummary?.varianceClassification?.isNormal ? "default" : "destructive"}
                   >
                     {tenderSummary?.varianceClassification?.isNormal ? 'Normal' : 'Suspicious'}
@@ -732,7 +681,7 @@ export default function ShiftDetailsPage() {
                 {new Date(shift.startTime).toLocaleString()}
               </p>
             </div>
-            
+
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -742,33 +691,33 @@ export default function ShiftDetailsPage() {
                 {shift.endTime ? new Date(shift.endTime).toLocaleString() : '-'}
               </p>
             </div>
-            
+
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Duration</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                {shift.endTime 
+                {shift.endTime
                   ? formatDuration((new Date(shift.endTime).getTime() - new Date(shift.startTime).getTime()) / (1000 * 60 * 60))
-                  : shift.statistics?.durationHours 
+                  : shift.statistics?.durationHours
                     ? formatDuration(shift.statistics.durationHours)
                     : '-'}
               </p>
             </div>
-            
+
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Pumpers</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                {assignments.length > 0 
+                {assignments.length > 0
                   ? Array.from(new Set(assignments.map(a => a.pumperName).filter(Boolean))).join(', ') || 'No pumpers assigned'
                   : 'No pumpers assigned'}
               </p>
             </div>
-            
+
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-muted-foreground" />
@@ -776,7 +725,7 @@ export default function ShiftDetailsPage() {
               </div>
               <p className="text-sm text-muted-foreground">{shift.openedBy}</p>
             </div>
-            
+
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-muted-foreground" />
@@ -811,296 +760,293 @@ export default function ShiftDetailsPage() {
       </Card>
 
       {/* Pumper-wise Breakdown (for closed shifts) */}
-      {shift.status === 'CLOSED' && shift.declaredAmounts && 
-       (shift.declaredAmounts as any).pumperBreakdown && 
-       Array.isArray((shift.declaredAmounts as any).pumperBreakdown) && 
-       (shift.declaredAmounts as any).pumperBreakdown.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Pumper-wise Breakdown</CardTitle>
-            <CardDescription>Detailed sales breakdown by pumper</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {(shift.declaredAmounts as any).pumperBreakdown.map((breakdown: any, idx: number) => {
-              const totalCard = Object.values(breakdown.declaredCardAmounts || {}).reduce((sum: number, amt: any) => sum + (amt || 0), 0)
-              const totalCredit = Object.values(breakdown.declaredCreditAmounts || {}).reduce((sum: number, amt: any) => sum + (amt || 0), 0)
-              const totalCheques = (breakdown.cheques || []).reduce((sum: number, chq: any) => sum + (chq.amount || 0), 0)
-              const bankDeposits = (breakdown.expenses || []).filter((exp: any) => exp.type === 'BANK_DEPOSIT')
-              const loans = (breakdown.expenses || []).filter((exp: any) => exp.type === 'LOAN_GIVEN')
-              const otherExpenses = (breakdown.expenses || []).filter((exp: any) => exp.type !== 'BANK_DEPOSIT' && exp.type !== 'LOAN_GIVEN')
-              
-              return (
-                <div key={idx} className="bg-card border rounded-lg p-4 space-y-3">
-                  <div className="flex items-center justify-between border-b pb-2">
-                    <div className="font-semibold text-base">{breakdown.pumperName}</div>
-                    <Badge variant={breakdown.varianceStatus === 'ADD_TO_SALARY' ? 'default' : breakdown.varianceStatus === 'DEDUCT_FROM_SALARY' ? 'destructive' : 'outline'}>
-                      {breakdown.varianceStatus === 'ADD_TO_SALARY' ? 'Add to Salary' : 
-                       breakdown.varianceStatus === 'DEDUCT_FROM_SALARY' ? 'Deduct from Salary' : 
-                       'Normal'}
-                    </Badge>
-                  </div>
-                  
-                  {/* Sales Summary */}
-                  <div className="space-y-2">
-                    <div className="text-xs font-semibold text-muted-foreground uppercase">Sales</div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="text-muted-foreground">Calculated Sales:</div>
-                      <div className="font-mono text-right font-medium">Rs. {breakdown.calculatedSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                    </div>
-                  </div>
+      {shift.status === 'CLOSED' && shift.declaredAmounts &&
+        (shift.declaredAmounts as DeclaredAmounts)?.pumperBreakdown &&
+        (shift.declaredAmounts as DeclaredAmounts).pumperBreakdown!.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Pumper-wise Breakdown</CardTitle>
+              <CardDescription>Detailed sales breakdown by pumper</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {((shift.declaredAmounts as DeclaredAmounts).pumperBreakdown || []).map((breakdown, idx) => {
+                const totalCard = Object.values(breakdown.declaredCardAmounts || {}).reduce((sum, amt) => sum + (amt || 0), 0)
+                const totalCredit = Object.values(breakdown.declaredCreditAmounts || {}).reduce((sum, amt) => sum + (amt || 0), 0)
+                const totalCheques = (breakdown.cheques || []).reduce((sum, chq) => sum + (chq.amount || 0), 0)
+                const bankDeposits = (breakdown.expenses || []).filter(exp => exp.type === 'BANK_DEPOSIT')
+                const loans = (breakdown.expenses || []).filter(exp => exp.type === 'LOAN_GIVEN')
+                const otherExpenses = (breakdown.expenses || []).filter(exp => exp.type !== 'BANK_DEPOSIT' && exp.type !== 'LOAN_GIVEN')
 
-                  {/* Cash */}
-                  {breakdown.declaredCash > 0 && (
-                    <div className="space-y-2 border-t pt-2">
-                      <div className="text-xs font-semibold text-muted-foreground uppercase">Cash</div>
-                      <div className="text-sm font-mono text-right">Rs. {breakdown.declaredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                return (
+                  <div key={idx} className="bg-card border rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <div className="font-semibold text-base">{breakdown.pumperName}</div>
+                      <Badge variant={breakdown.varianceStatus === 'ADD_TO_SALARY' ? 'default' : breakdown.varianceStatus === 'DEDUCT_FROM_SALARY' ? 'destructive' : 'outline'}>
+                        {breakdown.varianceStatus === 'ADD_TO_SALARY' ? 'Add to Salary' :
+                          breakdown.varianceStatus === 'DEDUCT_FROM_SALARY' ? 'Deduct from Salary' :
+                            'Normal'}
+                      </Badge>
                     </div>
-                  )}
 
-                  {/* Card Payments by Terminal */}
-                  {totalCard > 0 && Object.keys(breakdown.declaredCardAmounts || {}).length > 0 && (
-                    <div className="space-y-2 border-t pt-2">
-                      <div className="text-xs font-semibold text-muted-foreground uppercase">Card Payments</div>
-                      <div className="space-y-1">
-                        {Object.entries(breakdown.declaredCardAmounts || {}).map(([terminalId, amount]: [string, any]) => {
-                          const terminalInfo = (breakdown.declaredCardAmountsWithNames as any)?.[terminalId]
-                          const terminalName = terminalInfo?.terminalName || `Terminal ${terminalId}`
-                          return (
-                            <div key={terminalId} className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">{terminalName}:</span>
-                              <span className="font-mono">Rs. {(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    {/* Sales Summary */}
+                    <div className="space-y-2">
+                      <div className="text-xs font-semibold text-muted-foreground uppercase">Sales</div>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="text-muted-foreground">Calculated Sales:</div>
+                        <div className="font-mono text-right font-medium">Rs. {breakdown.calculatedSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                      </div>
+                    </div>
+
+                    {/* Cash */}
+                    {breakdown.declaredCash > 0 && (
+                      <div className="space-y-2 border-t pt-2">
+                        <div className="text-xs font-semibold text-muted-foreground uppercase">Cash</div>
+                        <div className="text-sm font-mono text-right">Rs. {breakdown.declaredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                      </div>
+                    )}
+
+                    {/* Card Payments by Terminal */}
+                    {totalCard > 0 && Object.keys(breakdown.declaredCardAmounts || {}).length > 0 && (
+                      <div className="space-y-2 border-t pt-2">
+                        <div className="text-xs font-semibold text-muted-foreground uppercase">Card Payments</div>
+                        <div className="space-y-1">
+                          {Object.entries(breakdown.declaredCardAmounts || {}).map(([terminalId, amount]) => {
+                            const terminalInfo = breakdown.declaredCardAmountsWithNames?.[terminalId]
+                            const terminalName = terminalInfo?.terminalName || `Terminal ${terminalId}`
+                            return (
+                              <div key={terminalId} className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">{terminalName}:</span>
+                                <span className="font-mono">Rs. {amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              </div>
+                            )
+                          })}
+                          <div className="flex justify-between text-sm font-semibold pt-1 border-t">
+                            <span>Total Card:</span>
+                            <span className="font-mono">Rs. {totalCard.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Credit Customers */}
+                    {totalCredit > 0 && Object.keys(breakdown.declaredCreditAmounts || {}).length > 0 && (
+                      <div className="space-y-2 border-t pt-2">
+                        <div className="text-xs font-semibold text-muted-foreground uppercase">Credit Sales</div>
+                        <div className="space-y-1">
+                          {Object.entries(breakdown.declaredCreditAmounts || {}).map(([customerId, amount]) => {
+                            const customerInfo = breakdown.declaredCreditAmountsWithNames?.[customerId]
+                            const customerName = customerInfo?.customerName || `Customer ${customerId}`
+                            return (
+                              <div key={customerId} className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">{customerName}:</span>
+                                <span className="font-mono">Rs. {amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              </div>
+                            )
+                          })}
+                          <div className="flex justify-between text-sm font-semibold pt-1 border-t">
+                            <span>Total Credit:</span>
+                            <span className="font-mono">Rs. {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Cheques */}
+                    {totalCheques > 0 && breakdown.cheques && breakdown.cheques.length > 0 && (
+                      <div className="space-y-2 border-t pt-2">
+                        <div className="text-xs font-semibold text-muted-foreground uppercase">Cheques</div>
+                        <div className="space-y-1">
+                          {breakdown.cheques.map((cheque, chqIdx) => (
+                            <div key={chqIdx} className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">
+                                #{cheque.chequeNumber} from {cheque.receivedFrom}{cheque.bankName ? ` (${cheque.bankName})` : ''}:
+                              </span>
+                              <span className="font-mono">Rs. {(cheque.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
-                          )
-                        })}
-                        <div className="flex justify-between text-sm font-semibold pt-1 border-t">
-                          <span>Total Card:</span>
-                          <span className="font-mono">Rs. {totalCard.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          ))}
+                          <div className="flex justify-between text-sm font-semibold pt-1 border-t">
+                            <span>Total Cheques:</span>
+                            <span className="font-mono">Rs. {totalCheques.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Credit Customers */}
-                  {totalCredit > 0 && Object.keys(breakdown.declaredCreditAmounts || {}).length > 0 && (
-                    <div className="space-y-2 border-t pt-2">
-                      <div className="text-xs font-semibold text-muted-foreground uppercase">Credit Sales</div>
-                      <div className="space-y-1">
-                        {Object.entries(breakdown.declaredCreditAmounts || {}).map(([customerId, amount]: [string, any]) => {
-                          const customerInfo = (breakdown.declaredCreditAmountsWithNames as any)?.[customerId]
-                          const customerName = customerInfo?.customerName || `Customer ${customerId}`
-                          return (
-                            <div key={customerId} className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">{customerName}:</span>
-                              <span className="font-mono">Rs. {(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    {/* Advances */}
+                    {breakdown.advanceTaken > 0 && (
+                      <div className="space-y-2 border-t pt-2">
+                        <div className="text-xs font-semibold text-muted-foreground uppercase">Advances</div>
+                        <div className="text-sm font-mono text-right text-orange-600 dark:text-orange-400">
+                          - Rs. {breakdown.advanceTaken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Loans */}
+                    {loans.length > 0 && (
+                      <div className="space-y-2 border-t pt-2">
+                        <div className="text-xs font-semibold text-muted-foreground uppercase">Loans Given</div>
+                        <div className="space-y-1">
+                          {(loans as (Expense & { loanGivenToName?: string })[]).map((loan, loanIdx) => (
+                            <div key={loanIdx} className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Loan to {loan.loanGivenToName || 'Pumper'}:</span>
+                              <span className="font-mono text-orange-600 dark:text-orange-400">- Rs. {(loan.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
-                          )
-                        })}
-                        <div className="flex justify-between text-sm font-semibold pt-1 border-t">
-                          <span>Total Credit:</span>
-                          <span className="font-mono">Rs. {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Bank Deposits */}
+                    {bankDeposits.length > 0 && (
+                      <div className="space-y-2 border-t pt-2">
+                        <div className="text-xs font-semibold text-muted-foreground uppercase">Bank Deposits</div>
+                        <div className="space-y-1">
+                          {(bankDeposits as (Expense & { bankName?: string })[]).map((deposit, depIdx) => (
+                            <div key={depIdx} className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Bank Deposit ({deposit.bankName || 'Bank'}):</span>
+                              <span className="font-mono text-blue-600 dark:text-blue-400">+ Rs. {(deposit.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Other Expenses */}
+                    {otherExpenses.length > 0 && (
+                      <div className="space-y-2 border-t pt-2">
+                        <div className="text-xs font-semibold text-muted-foreground uppercase">Other Expenses</div>
+                        <div className="space-y-1">
+                          {otherExpenses.map((expense, expIdx) => (
+                            <div key={expIdx} className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">{expense.description || 'Other Expense'}:</span>
+                              <span className="font-mono text-orange-600 dark:text-orange-400">- Rs. {(expense.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Summary */}
+                    <div className="space-y-2 border-t pt-2 bg-muted/50 p-2 rounded">
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="font-semibold">Total Declared:</div>
+                        <div className="font-mono text-right font-semibold">Rs. {breakdown.declaredAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div className="font-semibold">Variance:</div>
+                        <div className={`font-mono text-right font-semibold ${breakdown.variance > 20 ? 'text-red-600 dark:text-red-400' :
+                          breakdown.variance < -20 ? 'text-green-600 dark:text-green-400' :
+                            'text-foreground'
+                          }`}>
+                          {breakdown.variance >= 0 ? '+' : ''}Rs. {breakdown.variance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </div>
                     </div>
-                  )}
+                  </div>
+                )
+              })}
 
-                  {/* Cheques */}
-                  {totalCheques > 0 && breakdown.cheques && breakdown.cheques.length > 0 && (
-                    <div className="space-y-2 border-t pt-2">
-                      <div className="text-xs font-semibold text-muted-foreground uppercase">Cheques</div>
-                      <div className="space-y-1">
-                        {breakdown.cheques.map((cheque: any, chqIdx: number) => (
-                          <div key={chqIdx} className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">
-                              #{cheque.chequeNumber} from {cheque.receivedFrom}{cheque.bankName ? ` (${cheque.bankName})` : ''}:
-                            </span>
-                            <span className="font-mono">Rs. {(cheque.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                          </div>
-                        ))}
-                        <div className="flex justify-between text-sm font-semibold pt-1 border-t">
-                          <span>Total Cheques:</span>
-                          <span className="font-mono">Rs. {totalCheques.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+              {/* Overall Totals */}
+              {(() => {
+                const pumperBreakdowns = (shift.declaredAmounts as DeclaredAmounts).pumperBreakdown || []
+                let totalCalculatedSales = 0
+                let totalDeclaredCash = 0
+                let totalDeclaredCard = 0
+                let totalDeclaredCredit = 0
+                let totalDeclaredCheque = 0
+                let totalAdvances = 0
+                let totalBankDeposits = 0
+                let totalOtherExpenses = 0
+                let totalDeclared = 0
+                let totalVariance = 0
 
-                  {/* Advances */}
-                  {breakdown.advanceTaken > 0 && (
-                    <div className="space-y-2 border-t pt-2">
-                      <div className="text-xs font-semibold text-muted-foreground uppercase">Advances</div>
-                      <div className="text-sm font-mono text-right text-orange-600 dark:text-orange-400">
-                        - Rs. {breakdown.advanceTaken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </div>
-                    </div>
-                  )}
+                pumperBreakdowns.forEach(bd => {
+                  totalCalculatedSales += bd.calculatedSales || 0
+                  totalDeclaredCash += bd.declaredCash || 0
+                  totalDeclaredCard += Object.values(bd.declaredCardAmounts || {}).reduce((sum, amt) => sum + (amt || 0), 0)
+                  totalDeclaredCredit += Object.values(bd.declaredCreditAmounts || {}).reduce((sum, amt) => sum + (amt || 0), 0)
+                  totalDeclaredCheque += (bd.cheques || []).reduce((sum, chq) => sum + (chq.amount || 0), 0)
+                  totalAdvances += bd.advanceTaken || 0
+                  const bankDeposits = (bd.expenses || []).filter(exp => exp.type === 'BANK_DEPOSIT').reduce((sum, exp) => sum + (exp.amount || 0), 0)
+                  const otherExpenses = (bd.expenses || []).filter(exp => exp.type !== 'BANK_DEPOSIT').reduce((sum, exp) => sum + (exp.amount || 0), 0)
+                  totalBankDeposits += bankDeposits
+                  totalOtherExpenses += otherExpenses
+                  totalDeclared += bd.declaredAmount || 0
+                  totalVariance += bd.variance || 0
+                })
 
-                  {/* Loans */}
-                  {loans.length > 0 && (
-                    <div className="space-y-2 border-t pt-2">
-                      <div className="text-xs font-semibold text-muted-foreground uppercase">Loans Given</div>
-                      <div className="space-y-1">
-                        {loans.map((loan: any, loanIdx: number) => (
-                          <div key={loanIdx} className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Loan to {loan.loanGivenToName || 'Pumper'}:</span>
-                            <span className="font-mono text-orange-600 dark:text-orange-400">- Rs. {(loan.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Bank Deposits */}
-                  {bankDeposits.length > 0 && (
-                    <div className="space-y-2 border-t pt-2">
-                      <div className="text-xs font-semibold text-muted-foreground uppercase">Bank Deposits</div>
-                      <div className="space-y-1">
-                        {bankDeposits.map((deposit: any, depIdx: number) => (
-                          <div key={depIdx} className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Bank Deposit ({deposit.bankName || 'Bank'}):</span>
-                            <span className="font-mono text-blue-600 dark:text-blue-400">+ Rs. {(deposit.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Other Expenses */}
-                  {otherExpenses.length > 0 && (
-                    <div className="space-y-2 border-t pt-2">
-                      <div className="text-xs font-semibold text-muted-foreground uppercase">Other Expenses</div>
-                      <div className="space-y-1">
-                        {otherExpenses.map((expense: any, expIdx: number) => (
-                          <div key={expIdx} className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">{expense.description || 'Other Expense'}:</span>
-                            <span className="font-mono text-orange-600 dark:text-orange-400">- Rs. {(expense.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Summary */}
-                  <div className="space-y-2 border-t pt-2 bg-muted/50 p-2 rounded">
+                return (
+                  <div className="bg-primary/10 dark:bg-primary/20 border-2 border-primary/30 rounded-lg p-4 space-y-3">
+                    <div className="text-sm font-bold uppercase text-primary mb-2">Overall Totals</div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="font-semibold">Total Declared:</div>
-                      <div className="font-mono text-right font-semibold">Rs. {breakdown.declaredAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                      <div className="font-semibold">Variance:</div>
-                      <div className={`font-mono text-right font-semibold ${
-                        breakdown.variance > 20 ? 'text-red-600 dark:text-red-400' : 
-                        breakdown.variance < -20 ? 'text-green-600 dark:text-green-400' : 
-                        'text-foreground'
-                      }`}>
-                        {breakdown.variance >= 0 ? '+' : ''}Rs. {breakdown.variance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <div className="font-semibold">Total Calculated Sales:</div>
+                      <div className="font-mono text-right font-semibold">Rs. {totalCalculatedSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+
+                      {totalDeclaredCash > 0 && (
+                        <>
+                          <div className="text-muted-foreground">Total Cash:</div>
+                          <div className="font-mono text-right">Rs. {totalDeclaredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        </>
+                      )}
+
+                      {totalDeclaredCard > 0 && (
+                        <>
+                          <div className="text-muted-foreground">Total Card:</div>
+                          <div className="font-mono text-right">Rs. {totalDeclaredCard.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        </>
+                      )}
+
+                      {totalDeclaredCredit > 0 && (
+                        <>
+                          <div className="text-muted-foreground">Total Credit:</div>
+                          <div className="font-mono text-right">Rs. {totalDeclaredCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        </>
+                      )}
+
+                      {totalDeclaredCheque > 0 && (
+                        <>
+                          <div className="text-muted-foreground">Total Cheques:</div>
+                          <div className="font-mono text-right">Rs. {totalDeclaredCheque.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        </>
+                      )}
+
+                      {totalBankDeposits > 0 && (
+                        <>
+                          <div className="text-muted-foreground">Total Bank Deposits:</div>
+                          <div className="font-mono text-right text-blue-600 dark:text-blue-400">+ Rs. {totalBankDeposits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        </>
+                      )}
+
+                      {totalAdvances > 0 && (
+                        <>
+                          <div className="text-muted-foreground">Total Advances:</div>
+                          <div className="font-mono text-right text-orange-600 dark:text-orange-400">- Rs. {totalAdvances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        </>
+                      )}
+
+                      {totalOtherExpenses > 0 && (
+                        <>
+                          <div className="text-muted-foreground">Total Other Expenses:</div>
+                          <div className="font-mono text-right text-orange-600 dark:text-orange-400">- Rs. {totalOtherExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        </>
+                      )}
+
+                      <div className="font-bold text-base pt-2 border-t">Total Declared:</div>
+                      <div className="font-mono text-right font-bold text-base pt-2 border-t">Rs. {totalDeclared.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+
+                      <div className="font-bold text-base">Total Variance:</div>
+                      <div className={`font-mono text-right font-bold text-base ${totalVariance > 20 ? 'text-red-600 dark:text-red-400' :
+                        totalVariance < -20 ? 'text-green-600 dark:text-green-400' :
+                          'text-foreground'
+                        }`}>
+                        {totalVariance >= 0 ? '+' : ''}Rs. {totalVariance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                     </div>
                   </div>
-                </div>
-              )
-            })}
-
-            {/* Overall Totals */}
-            {(() => {
-              const pumperBreakdowns = (shift.declaredAmounts as any).pumperBreakdown
-              let totalCalculatedSales = 0
-              let totalDeclaredCash = 0
-              let totalDeclaredCard = 0
-              let totalDeclaredCredit = 0
-              let totalDeclaredCheque = 0
-              let totalAdvances = 0
-              let totalBankDeposits = 0
-              let totalOtherExpenses = 0
-              let totalDeclared = 0
-              let totalVariance = 0
-
-              pumperBreakdowns.forEach((bd: any) => {
-                totalCalculatedSales += bd.calculatedSales || 0
-                totalDeclaredCash += bd.declaredCash || 0
-                totalDeclaredCard += Object.values(bd.declaredCardAmounts || {}).reduce((sum: number, amt: any) => sum + (amt || 0), 0)
-                totalDeclaredCredit += Object.values(bd.declaredCreditAmounts || {}).reduce((sum: number, amt: any) => sum + (amt || 0), 0)
-                totalDeclaredCheque += (bd.cheques || []).reduce((sum: number, chq: any) => sum + (chq.amount || 0), 0)
-                totalAdvances += bd.advanceTaken || 0
-                const bankDeposits = (bd.expenses || []).filter((exp: any) => exp.type === 'BANK_DEPOSIT').reduce((sum: number, exp: any) => sum + (exp.amount || 0), 0)
-                const otherExpenses = (bd.expenses || []).filter((exp: any) => exp.type !== 'BANK_DEPOSIT').reduce((sum: number, exp: any) => sum + (exp.amount || 0), 0)
-                totalBankDeposits += bankDeposits
-                totalOtherExpenses += otherExpenses
-                totalDeclared += bd.declaredAmount || 0
-                totalVariance += bd.variance || 0
-              })
-
-              return (
-                <div className="bg-primary/10 dark:bg-primary/20 border-2 border-primary/30 rounded-lg p-4 space-y-3">
-                  <div className="text-sm font-bold uppercase text-primary mb-2">Overall Totals</div>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="font-semibold">Total Calculated Sales:</div>
-                    <div className="font-mono text-right font-semibold">Rs. {totalCalculatedSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                    
-                    {totalDeclaredCash > 0 && (
-                      <>
-                        <div className="text-muted-foreground">Total Cash:</div>
-                        <div className="font-mono text-right">Rs. {totalDeclaredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                      </>
-                    )}
-                    
-                    {totalDeclaredCard > 0 && (
-                      <>
-                        <div className="text-muted-foreground">Total Card:</div>
-                        <div className="font-mono text-right">Rs. {totalDeclaredCard.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                      </>
-                    )}
-                    
-                    {totalDeclaredCredit > 0 && (
-                      <>
-                        <div className="text-muted-foreground">Total Credit:</div>
-                        <div className="font-mono text-right">Rs. {totalDeclaredCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                      </>
-                    )}
-                    
-                    {totalDeclaredCheque > 0 && (
-                      <>
-                        <div className="text-muted-foreground">Total Cheques:</div>
-                        <div className="font-mono text-right">Rs. {totalDeclaredCheque.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                      </>
-                    )}
-                    
-                    {totalBankDeposits > 0 && (
-                      <>
-                        <div className="text-muted-foreground">Total Bank Deposits:</div>
-                        <div className="font-mono text-right text-blue-600 dark:text-blue-400">+ Rs. {totalBankDeposits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                      </>
-                    )}
-                    
-                    {totalAdvances > 0 && (
-                      <>
-                        <div className="text-muted-foreground">Total Advances:</div>
-                        <div className="font-mono text-right text-orange-600 dark:text-orange-400">- Rs. {totalAdvances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                      </>
-                    )}
-                    
-                    {totalOtherExpenses > 0 && (
-                      <>
-                        <div className="text-muted-foreground">Total Other Expenses:</div>
-                        <div className="font-mono text-right text-orange-600 dark:text-orange-400">- Rs. {totalOtherExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                      </>
-                    )}
-                    
-                    <div className="font-bold text-base pt-2 border-t">Total Declared:</div>
-                    <div className="font-mono text-right font-bold text-base pt-2 border-t">Rs. {totalDeclared.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                    
-                    <div className="font-bold text-base">Total Variance:</div>
-                    <div className={`font-mono text-right font-bold text-base ${
-                      totalVariance > 20 ? 'text-red-600 dark:text-red-400' : 
-                      totalVariance < -20 ? 'text-green-600 dark:text-green-400' : 
-                      'text-foreground'
-                    }`}>
-                      {totalVariance >= 0 ? '+' : ''}Rs. {totalVariance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </div>
-                  </div>
-                </div>
-              )
-            })()}
-          </CardContent>
-        </Card>
-      )}
+                )
+              })()}
+            </CardContent>
+          </Card>
+        )}
 
     </div>
   )

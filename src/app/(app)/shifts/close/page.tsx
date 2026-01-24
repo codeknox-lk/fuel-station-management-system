@@ -7,7 +7,7 @@ import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -39,13 +39,11 @@ interface Shift {
   endTime?: string
   status: string
   openedBy: string
-  assignments?: Array<{
-    pumperName: string
-  }>
+  assignments?: Assignment[]
 }
 
 interface Assignment {
-  id: string
+  id: string | number
   nozzleId: string
   pumperName: string
   startMeterReading: number
@@ -177,6 +175,13 @@ interface PumperBreakdown {
   assignments: Assignment[]
 }
 
+interface Pumper {
+  id: string
+  name: string
+  employeeId?: string
+  isActive?: boolean
+}
+
 export default function CloseShiftPage() {
   const router = useRouter()
   const [stations, setStations] = useState<Station[]>([])
@@ -185,7 +190,7 @@ export default function CloseShiftPage() {
   const [posTerminals, setPosTerminals] = useState<PosTerminal[]>([])
   const [creditCustomers, setCreditCustomers] = useState<Array<{ id: string; name: string; creditLimit: number; currentBalance: number }>>([])
   const [banks, setBanks] = useState<Array<{ id: string; name: string; branch?: string; accountNumber?: string }>>([])
-  const [pumpers, setPumpers] = useState<Array<{ id: string; name: string; employeeId?: string; isActive?: boolean }>>([])
+  const [pumpers, setPumpers] = useState<Pumper[]>([])
   const [nozzles, setNozzles] = useState<Array<{ id: string; nozzleNumber: string; pumpNumber?: string; fuelType?: string; pumpId?: string; tankId?: string }>>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -195,10 +200,10 @@ export default function CloseShiftPage() {
   const { selectedStation } = useStation()
   const [selectedShift, setSelectedShift] = useState('')
   const [endTime, setEndTime] = useState<Date>(new Date())
-  
+
   // Tender summary (calculated from pumper-wise data)
   const [tenderSummary, setTenderSummary] = useState<TenderSummary | null>(null)
-  
+
   // Pumper-wise breakdown
   const [pumperDeclaredCash, setPumperDeclaredCash] = useState<Record<string, number>>({}) // pumperName -> cash amount
   const [pumperDeclaredCardAmounts, setPumperDeclaredCardAmounts] = useState<Record<string, Record<string, number>>>({}) // pumperName -> {terminalId -> amount}
@@ -210,7 +215,7 @@ export default function CloseShiftPage() {
   const [pumperTestPours, setPumperTestPours] = useState<Record<string, PumperTestPour[]>>({}) // pumperName -> test pours array
   const [pumperBreakdowns, setPumperBreakdowns] = useState<PumperBreakdown[]>([])
   const [pumperMonthlyRentals, setPumperMonthlyRentals] = useState<Record<string, number>>({}) // pumperId -> total monthly rental from active loans
-  
+
   // POS Terminal Verification (individual slips per pumper)
   const [posSlips, setPosSlips] = useState<Record<string, POSSlipEntry[]>>({}) // pumperName -> array of slips
   const [posVerificationOpen, setPosVerificationOpen] = useState<Record<string, boolean>>({}) // pumperName -> is open
@@ -220,7 +225,7 @@ export default function CloseShiftPage() {
   // Track minimized slips
   const [minimizedPOSSlips, setMinimizedPOSSlips] = useState<Record<string, boolean>>({}) // slipId -> is minimized
   const [minimizedMissingSlips, setMinimizedMissingSlips] = useState<Record<string, boolean>>({}) // slipId -> is minimized
-  
+
   // Add Bank Dialog State
   const [addBankDialogOpen, setAddBankDialogOpen] = useState(false)
   const [newBank, setNewBank] = useState({ name: '', branch: '', accountNumber: '' })
@@ -235,7 +240,7 @@ export default function CloseShiftPage() {
           fetch('/api/banks?active=true'),
           fetch('/api/pumpers?active=true&status=ACTIVE')
         ])
-        
+
         if (!stationsRes.ok) {
           console.error('Failed to load stations:', stationsRes.status)
           setStations([])
@@ -251,7 +256,7 @@ export default function CloseShiftPage() {
           const customersData = await customersRes.json()
           setCreditCustomers(Array.isArray(customersData) ? customersData : [])
         }
-        
+
         if (!banksRes.ok) {
           console.error('Failed to load banks:', banksRes.status)
           setBanks([])
@@ -266,7 +271,7 @@ export default function CloseShiftPage() {
         } else {
           const pumpersData = await pumpersRes.json()
           setPumpers(Array.isArray(pumpersData) ? pumpersData : [])
-          
+
           // Fetch monthly loan rentals for all pumpers
           await fetchPumperMonthlyRentals(pumpersData)
         }
@@ -274,32 +279,32 @@ export default function CloseShiftPage() {
         setError('Failed to load data')
       }
     }
-    
+
     loadData()
   }, [])
-  
+
   // Fetch monthly rental totals for all pumpers
-  const fetchPumperMonthlyRentals = async (pumpersData: any[]) => {
+  const fetchPumperMonthlyRentals = async (pumpersData: Pumper[]) => {
     try {
       const rentals: Record<string, number> = {}
-      
+
       for (const pumper of pumpersData) {
         // Fetch active loans for this pumper
         const loansRes = await fetch(`/api/loans/pumper?pumperName=${encodeURIComponent(pumper.name)}&status=ACTIVE`)
-        
+
         if (loansRes.ok) {
           const loans = await loansRes.json()
           // Sum up monthly rental amounts from all active loans
-          const totalMonthlyRental = loans.reduce((sum: number, loan: any) => {
+          const totalMonthlyRental = loans.reduce((sum: number, loan: { monthlyRental: number }) => {
             return sum + (loan.monthlyRental || 0)
           }, 0)
-          
+
           rentals[pumper.id] = totalMonthlyRental
         } else {
           rentals[pumper.id] = 0
         }
       }
-      
+
       setPumperMonthlyRentals(rentals)
     } catch (err) {
       console.error('Failed to fetch pumper monthly rentals:', err)
@@ -316,11 +321,11 @@ export default function CloseShiftPage() {
             const terminalsData = await res.json()
             // Debug: Log to check if bank data is included
             if (Array.isArray(terminalsData) && terminalsData.length > 0) {
-              console.log('POS Terminals loaded:', terminalsData.map((t: any) => ({ 
-                id: t.id, 
-                name: t.name, 
+              console.log('POS Terminals loaded:', terminalsData.map((t: PosTerminal) => ({
+                id: t.id,
+                name: t.name,
                 terminalNumber: t.terminalNumber,
-                bank: t.bank 
+                bank: t.bank
               })))
             }
             setPosTerminals(Array.isArray(terminalsData) ? terminalsData : [])
@@ -332,7 +337,7 @@ export default function CloseShiftPage() {
           setPosTerminals([])
         }
       }
-      
+
       loadPosTerminals()
     } else {
       setPosTerminals([])
@@ -346,9 +351,9 @@ export default function CloseShiftPage() {
         try {
           const res = await fetch(`/api/shifts?stationId=${selectedStation}&active=true`)
           const shiftsData = await res.json()
-          
+
           // Handle both old format (array) and new format (object with shifts property)
-          let shiftsArray: any[] = []
+          let shiftsArray: Shift[] = []
           if (Array.isArray(shiftsData)) {
             shiftsArray = shiftsData
           } else if (shiftsData.shifts && Array.isArray(shiftsData.shifts)) {
@@ -356,7 +361,7 @@ export default function CloseShiftPage() {
           } else {
             shiftsArray = []
           }
-          
+
           // Fetch assignments for each shift since they're not included in the initial response
           const shiftsWithAssignments = await Promise.all(
             shiftsArray.map(async (shift) => {
@@ -376,13 +381,13 @@ export default function CloseShiftPage() {
               }
             })
           )
-          
+
           setShifts(shiftsWithAssignments)
         } catch (err) {
           setError('Failed to load shifts')
         }
       }
-      
+
       loadShifts()
     }
   }, [selectedStation])
@@ -394,31 +399,31 @@ export default function CloseShiftPage() {
         try {
           setError('')
           const res = await fetch(`/api/shifts/${selectedShift}/assignments`)
-          
+
           if (!res.ok) {
             const errorData = await res.json().catch(() => ({}))
             console.error('Failed to load assignments:', res.status, errorData)
             setAssignments([])
             return
           }
-          
+
           const assignmentsData = await res.json()
           console.log('Assignments API response:', assignmentsData)
-          
+
           // Ensure assignmentsData is an array
           if (Array.isArray(assignmentsData)) {
             // Transform assignments to include nozzle info if not present
-            const transformedAssignments = assignmentsData.map((assignment: any) => ({
+            const transformedAssignments = assignmentsData.map((assignment: Assignment) => ({
               ...assignment,
               // Extract nozzle info from API response structure
-              nozzle: assignment.nozzle || null
+              nozzle: assignment.nozzle || undefined
             }))
             setAssignments(transformedAssignments)
-            
+
             // Also update the shift in the shifts array with assignments so dropdown shows pumper names
-            setShifts(prevShifts => 
-              prevShifts.map(shift => 
-                shift.id === selectedShift 
+            setShifts(prevShifts =>
+              prevShifts.map(shift =>
+                shift.id === selectedShift
                   ? { ...shift, assignments: transformedAssignments }
                   : shift
               )
@@ -433,7 +438,7 @@ export default function CloseShiftPage() {
           setAssignments([])
         }
       }
-      
+
       loadAssignments()
     } else {
       setAssignments([])
@@ -459,8 +464,8 @@ export default function CloseShiftPage() {
                   }
                   // If array, get most recent active price
                   if (Array.isArray(priceData) && priceData.length > 0) {
-                    const activePrices = priceData.filter((p: any) => p.isActive)
-                      .sort((a: any, b: any) => new Date(b.effectiveDate).getTime() - new Date(a.effectiveDate).getTime())
+                    const activePrices = priceData.filter((p: { isActive: boolean; effectiveDate: string }) => p.isActive)
+                      .sort((a: { effectiveDate: string }, b: { effectiveDate: string }) => new Date(b.effectiveDate).getTime() - new Date(a.effectiveDate).getTime())
                     return { fuelType, price: activePrices[0]?.price || 470 }
                   }
                 }
@@ -470,8 +475,8 @@ export default function CloseShiftPage() {
               return { fuelType, price: 470 }
             })
           )
-          const priceMap = Object.fromEntries(prices.map(p => [p.fuelId, p.price]))
-          
+          const priceMap = Object.fromEntries(prices.map(p => [p.fuelType, p.price]))
+
           // Group assignments by pumper
           const pumperMap = new Map<string, Assignment[]>()
           assignments.forEach(assignment => {
@@ -482,12 +487,12 @@ export default function CloseShiftPage() {
               pumperMap.get(assignment.pumperName)!.push(assignment)
             }
           })
-          
+
           // Calculate sales per pumper
           const breakdowns: PumperBreakdown[] = []
           pumperMap.forEach((pumperAssignments, pumperName) => {
             let calculatedSales = 0
-            
+
             pumperAssignments.forEach(assignment => {
               if (assignment.endMeterReading && assignment.startMeterReading) {
                 const delta = Math.max(0, assignment.endMeterReading - assignment.startMeterReading)
@@ -498,20 +503,20 @@ export default function CloseShiftPage() {
                 calculatedSales += pumpSales * price
               }
             })
-            
+
             const cash = pumperDeclaredCash[pumperName] || 0
             const creditAmounts = pumperDeclaredCreditAmounts[pumperName] || {}
             const cheques = pumperDeclaredCheques[pumperName] || []
             const cheque = cheques.reduce((sum, chq) => sum + chq.amount, 0)
             const advance = pumperAdvances[pumperName] || 0
             const expenses = pumperExpenses[pumperName] || []
-            
+
             // Separate bank deposits from other expenses
             const bankDeposits = expenses.filter(exp => exp.type === 'BANK_DEPOSIT')
             const otherExpenses = expenses.filter(exp => exp.type !== 'BANK_DEPOSIT')
             const totalBankDeposits = bankDeposits.reduce((sum, exp) => sum + exp.amount, 0)
             const totalOtherExpenses = otherExpenses.reduce((sum, exp) => sum + exp.amount, 0)
-            
+
             // Calculate card total from POS slips instead of manual entry
             const pumperSlips = posSlips[pumperName] || []
             const totalCardFromSlips = pumperSlips.reduce((sum, slip) => {
@@ -520,7 +525,7 @@ export default function CloseShiftPage() {
               }
               return sum
             }, 0)
-            
+
             // Include missing slips in card total (they represent transactions that happened but slip wasn't provided)
             const key = `${pumperName}-unified`
             const pumperMissingSlips = missingSlips[key] || []
@@ -530,10 +535,10 @@ export default function CloseShiftPage() {
               }
               return sum
             }, 0)
-            
+
             // Total card amount = regular slips + missing slips
             const totalCard = totalCardFromSlips + totalCardFromMissing
-            
+
             // Build card amounts map from slips for compatibility (include missing slips)
             const cardAmounts: Record<string, number> = {}
             pumperSlips.forEach(slip => {
@@ -548,7 +553,7 @@ export default function CloseShiftPage() {
               }
             })
             const totalCredit = Object.values(creditAmounts).reduce((sum, amount) => sum + amount, 0)
-            
+
             // CORRECT LOGIC:
             // - Cash declared = FULL cash amount they received from sales (NOT already deducted)
             // - Advance is money taken FROM the cash declared (will be deducted from salary later, NOT from variance)
@@ -580,22 +585,22 @@ export default function CloseShiftPage() {
             //                                    = Cash + Card + Credit + Cheque + Bank Deposits - Other Expenses
             //                                    (Advance is NOT included - it's handled separately in salary)
             const declaredAmount = cash + totalCard + totalCredit + cheque + totalBankDeposits
-            
+
             // Effective declared for variance calculation - does NOT include advance
             // Advance will be deducted from salary separately, not from variance
             // Other expenses (loans, etc.) reduce the effective declared amount
             // Bank deposits are already included in declared amount (they're cash that was deposited)
             const effectiveDeclaredAmount = declaredAmount - totalOtherExpenses
             const variance = calculatedSales - effectiveDeclaredAmount
-            
+
             // Variance logic: If |variance| > 20, add/deduct FULL variance amount
             // If |variance| <= 20, ignore (NORMAL - no adjustment)
             // If variance > 20: sales > effective declared (SHORTAGE) → DEDUCT FULL variance from salary
             // If variance < -20: effective declared > sales (SURPLUS) → ADD FULL variance to salary
-            const varianceStatus = Math.abs(variance) > 20 
+            const varianceStatus = Math.abs(variance) > 20
               ? (variance > 20 ? 'DEDUCT_FROM_SALARY' : 'ADD_TO_SALARY')
-                : 'NORMAL'
-            
+              : 'NORMAL'
+
             breakdowns.push({
               pumperName,
               calculatedSales,
@@ -613,13 +618,13 @@ export default function CloseShiftPage() {
               assignments: pumperAssignments
             })
           })
-          
+
           setPumperBreakdowns(breakdowns.sort((a, b) => a.pumperName.localeCompare(b.pumperName)))
         } catch (err) {
           console.error('Failed to calculate pumper breakdown:', err)
         }
       }
-      
+
       calculatePumperBreakdown()
     } else {
       setPumperBreakdowns([])
@@ -633,15 +638,17 @@ export default function CloseShiftPage() {
         try {
           // Aggregate totals from pumper-wise breakdown
           const totalCash = pumperBreakdowns.reduce((sum, b) => sum + b.declaredCash, 0)
-          const totalCard = pumperBreakdowns.reduce((sum, b) => 
-            sum + Object.values(b.declaredCardAmounts).reduce((cardSum, amount) => cardSum + amount, 0), 0
-          )
-          const totalCredit = pumperBreakdowns.reduce((sum, b) => 
-            sum + Object.values(b.declaredCreditAmounts).reduce((creditSum, amount) => creditSum + amount, 0), 0
-          )
+          const totalCard = pumperBreakdowns.reduce((sum: number, b: PumperBreakdown) => {
+            const amounts = Object.values(b.declaredCardAmounts) as number[]
+            return sum + amounts.reduce((cardSum: number, amount: number) => cardSum + amount, 0)
+          }, 0)
+          const totalCredit = pumperBreakdowns.reduce((sum: number, b: PumperBreakdown) => {
+            const amounts = Object.values(b.declaredCreditAmounts) as number[]
+            return sum + amounts.reduce((creditSum: number, amount: number) => creditSum + amount, 0)
+          }, 0)
           const totalCheque = pumperBreakdowns.reduce((sum, b) => sum + b.declaredCheque, 0)
           const totalDeclared = totalCash + totalCard + totalCredit + totalCheque
-          
+
           // Prepare assignments with all required data for API calculation
           const assignmentsForApi = assignments.map((assignment) => ({
             id: assignment.id,
@@ -652,25 +659,25 @@ export default function CloseShiftPage() {
             pumpSales: assignment.pumpSales || 0,
             fuelType: assignment.nozzle?.tank?.fuel?.name || null
           }))
-          
+
           const assignmentsParam = encodeURIComponent(JSON.stringify(assignmentsForApi))
           const res = await fetch(
             `/api/tenders/shift/${selectedShift}?cashAmount=${totalCash}&cardAmount=${totalCard}&creditAmount=${totalCredit}&chequeAmount=${totalCheque}&assignments=${assignmentsParam}`
           )
-          
+
           if (!res.ok) {
             const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
             console.error('Failed to fetch summary:', res.status, errorData)
             return
           }
-          
+
           const summary = await res.json()
           setTenderSummary(summary)
         } catch (err) {
           console.error('Failed to calculate summary:', err)
         }
       }
-      
+
       const timeoutId = setTimeout(calculateSummary, 100)
       return () => clearTimeout(timeoutId)
     } else {
@@ -678,19 +685,19 @@ export default function CloseShiftPage() {
     }
   }, [selectedShift, assignments, pumperBreakdowns])
 
-  const handleUpdateAssignment = (assignmentId: string, field: 'endMeterReading' | 'canSales', value: number) => {
-    setAssignments(prev => 
+  const handleUpdateAssignment = (assignmentId: string | number, field: 'endMeterReading' | 'canSales', value: number) => {
+    setAssignments(prev =>
       prev.map(assignment => {
         if (assignment.id === assignmentId) {
           const updated = { ...assignment, [field]: value }
-          
+
           // Calculate pump sales when meter reading or can sales change
           if (field === 'endMeterReading' || field === 'canSales') {
             const meterDelta = (updated.endMeterReading || 0) - updated.startMeterReading
             const canSales = updated.canSales || 0
             updated.pumpSales = Math.max(0, meterDelta - canSales)
           }
-          
+
           return updated
         }
         return assignment
@@ -705,37 +712,7 @@ export default function CloseShiftPage() {
     setPumperDeclaredCash(prev => ({ ...prev, [pumperName]: amount }))
   }
 
-  const handleAddPumperCardRow = (pumperName: string, terminalId: string) => {
-    setPumperDeclaredCardAmounts(prev => ({
-      ...prev,
-      [pumperName]: {
-        ...(prev[pumperName] || {}),
-        [terminalId]: 0
-      }
-    }))
-  }
 
-  const handleRemovePumperCardRow = (pumperName: string, terminalId: string) => {
-    setPumperDeclaredCardAmounts(prev => {
-      const newAmounts = { ...prev }
-      if (newAmounts[pumperName]) {
-        const updated = { ...newAmounts[pumperName] }
-        delete updated[terminalId]
-        newAmounts[pumperName] = updated
-      }
-      return newAmounts
-    })
-  }
-
-  const handleUpdatePumperCardAmount = (pumperName: string, terminalId: string, amount: number) => {
-    setPumperDeclaredCardAmounts(prev => ({
-      ...prev,
-      [pumperName]: {
-        ...(prev[pumperName] || {}),
-        [terminalId]: amount
-      }
-    }))
-  }
 
   const handleAddPumperCreditRow = (pumperName: string, customerId: string) => {
     setPumperDeclaredCreditAmounts(prev => ({
@@ -789,10 +766,10 @@ export default function CloseShiftPage() {
     }))
   }
 
-  const handleUpdatePumperCheque = (pumperName: string, chequeId: string, field: keyof PumperCheque, value: any) => {
+  const handleUpdatePumperCheque = (pumperName: string, chequeId: string, field: keyof PumperCheque, value: string | number) => {
     setPumperDeclaredCheques(prev => ({
       ...prev,
-      [pumperName]: (prev[pumperName] || []).map(chq => 
+      [pumperName]: (prev[pumperName] || []).map(chq =>
         chq.id === chequeId ? { ...chq, [field]: value } : chq
       )
     }))
@@ -802,24 +779,24 @@ export default function CloseShiftPage() {
     // Find pumper ID
     const pumper = pumpers.find(p => p.name === pumperName)
     const pumperId = pumper?.id
-    
+
     // Check advance limit: monthly rental + advance cannot exceed 50,000
     const ADVANCE_LIMIT = 50000
     const monthlyRental = pumperId ? (pumperMonthlyRentals[pumperId] || 0) : 0
     const availableAdvanceLimit = ADVANCE_LIMIT - monthlyRental
-    
+
     if (amount > availableAdvanceLimit) {
       setError(`Advance limit exceeded for ${pumperName}! Monthly loan rental: Rs. ${monthlyRental.toLocaleString()}, Available advance limit: Rs. ${availableAdvanceLimit.toLocaleString()}. Total (rental + advance) cannot exceed Rs. ${ADVANCE_LIMIT.toLocaleString()}.`)
       setTimeout(() => setError(''), 7000)
       return
     }
-    
+
     // Validate: Total advances (taken + given) cannot exceed cash declared
     const currentCash = pumperDeclaredCash[pumperName] || 0
     const otherAdvances = otherPumperAdvances[pumperName] || []
     const otherAdvancesTotal = otherAdvances.reduce((sum, a) => sum + a.amount, 0)
     const totalAdvances = amount + otherAdvancesTotal
-    
+
     if (totalAdvances > currentCash && currentCash > 0) {
       setError(`Total advances (taken: Rs. ${amount.toLocaleString()} + given: Rs. ${otherAdvancesTotal.toLocaleString()}) cannot exceed cash declared (Rs. ${currentCash.toLocaleString()}). Advances can only come from cash.`)
       setTimeout(() => setError(''), 5000)
@@ -849,36 +826,36 @@ export default function CloseShiftPage() {
         const receivingPumperName = advances[index].pumperName
         const receivingPumper = pumpers.find(p => p.name === receivingPumperName)
         const receivingPumperId = receivingPumper?.id
-        
+
         // Check advance limit for receiving pumper: monthly rental + advance cannot exceed 50,000
         const ADVANCE_LIMIT = 50000
         const monthlyRental = receivingPumperId ? (pumperMonthlyRentals[receivingPumperId] || 0) : 0
         const availableAdvanceLimit = ADVANCE_LIMIT - monthlyRental
         const newAmount = value as number
-        
+
         if (newAmount > availableAdvanceLimit) {
           setError(`Advance limit exceeded for ${receivingPumperName}! Monthly loan rental: Rs. ${monthlyRental.toLocaleString()}, Available advance limit: Rs. ${availableAdvanceLimit.toLocaleString()}. Total (rental + advance) cannot exceed Rs. ${ADVANCE_LIMIT.toLocaleString()}.`)
           setTimeout(() => setError(''), 7000)
           return prev // Don't update if validation fails
         }
-        
+
         // Validate: Total advances (taken + given) cannot exceed cash declared
         const currentCash = pumperDeclaredCash[pumperName] || 0
         const advanceTaken = pumperAdvances[pumperName] || 0
         const otherAdvancesTotal = advances.reduce((sum, a, i) => i !== index ? sum + a.amount : sum, 0)
         const totalAdvances = advanceTaken + otherAdvancesTotal + newAmount
-        
+
         if (totalAdvances > currentCash && currentCash > 0) {
           setError(`Total advances (taken: Rs. ${advanceTaken.toLocaleString()} + given: Rs. ${(otherAdvancesTotal + newAmount).toLocaleString()}) cannot exceed cash declared (Rs. ${currentCash.toLocaleString()}). Advances can only come from cash.`)
           setTimeout(() => setError(''), 5000)
           return prev // Don't update if validation fails
         }
-        
+
         advances[index] = { ...advances[index], [field]: newAmount }
       } else {
         advances[index] = { ...advances[index], [field]: value as string }
       }
-      
+
       return {
         ...prev,
         [pumperName]: advances
@@ -898,15 +875,15 @@ export default function CloseShiftPage() {
   const checkDuplicateCard = (pumperName: string, lastFourDigits: string, cardType: string, terminalId: string, slipIdToExclude?: string): boolean => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    
+
     const slips = posSlips[pumperName] || []
     return slips.some(slip => {
       if (slip.id === slipIdToExclude) return false
       const slipDate = new Date(slip.timestamp)
       slipDate.setHours(0, 0, 0, 0)
-      
+
       // Check for duplicate: same last 4 digits + same card type + same terminal + same day
-      return slip.lastFourDigits === lastFourDigits 
+      return slip.lastFourDigits === lastFourDigits
         && slip.cardType === cardType
         && slip.terminalId === terminalId
         && slipDate.getTime() === today.getTime()
@@ -917,20 +894,20 @@ export default function CloseShiftPage() {
   const getDuplicateCardDetails = (pumperName: string, lastFourDigits: string, cardType: string, terminalId: string, slipIdToExclude?: string): POSSlipEntry | null => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    
+
     const slips = posSlips[pumperName] || []
     const duplicate = slips.find(slip => {
       if (slip.id === slipIdToExclude) return false
       const slipDate = new Date(slip.timestamp)
       slipDate.setHours(0, 0, 0, 0)
-      
+
       // Check for duplicate: same last 4 digits + same card type + same terminal + same day
-      return slip.lastFourDigits === lastFourDigits 
+      return slip.lastFourDigits === lastFourDigits
         && slip.cardType === cardType
         && slip.terminalId === terminalId
         && slipDate.getTime() === today.getTime()
     })
-    
+
     return duplicate || null
   }
 
@@ -1006,33 +983,33 @@ export default function CloseShiftPage() {
     }))
   }
 
-  const handleUpdatePOSSlip = (pumperName: string, slipId: string, field: keyof POSSlipEntry, value: any) => {
+  const handleUpdatePOSSlip = (pumperName: string, slipId: string, field: keyof POSSlipEntry, value: string | number | Date) => {
     // Get current slip to check against
     const currentSlips = posSlips[pumperName] || []
     const currentSlip = currentSlips.find(s => s.id === slipId)
-    
+
     // Update the slip first to get the new values
-    const updatedSlips = currentSlips.map(slip => 
+    const updatedSlips = currentSlips.map(slip =>
       slip.id === slipId ? { ...slip, [field]: value } : slip
     )
     const updatedSlip = updatedSlips.find(s => s.id === slipId)!
-    
+
     // Check for duplicate card if updating lastFourDigits, cardType, or terminalId
     // Only check if we have all required fields (last4, cardType, terminalId)
-    if ((field === 'lastFourDigits' || field === 'cardType' || field === 'terminalId') 
-        && updatedSlip.lastFourDigits 
-        && updatedSlip.lastFourDigits.length === 4
-        && updatedSlip.cardType
-        && updatedSlip.terminalId) {
-      
+    if ((field === 'lastFourDigits' || field === 'cardType' || field === 'terminalId')
+      && updatedSlip.lastFourDigits
+      && updatedSlip.lastFourDigits.length === 4
+      && updatedSlip.cardType
+      && updatedSlip.terminalId) {
+
       const duplicateSlip = getDuplicateCardDetails(
-        pumperName, 
-        updatedSlip.lastFourDigits, 
+        pumperName,
+        updatedSlip.lastFourDigits,
         updatedSlip.cardType,
         updatedSlip.terminalId,
         slipId
       )
-      
+
       if (duplicateSlip) {
         // Show error with details about the duplicate slip
         setDuplicateCardErrors(prev => ({
@@ -1040,9 +1017,9 @@ export default function CloseShiftPage() {
           [slipId]: {
             cardNumber: updatedSlip.lastFourDigits,
             duplicateSlip
-      }
+          }
         }))
-        
+
         // Also show a global error message
         const terminal = posTerminals.find(t => t.id === duplicateSlip.terminalId)
         const duplicateTime = new Date(duplicateSlip.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
@@ -1157,12 +1134,12 @@ export default function CloseShiftPage() {
     })
   }
 
-  const handleUpdateMissingSlip = (pumperName: string, terminalId: string, slipId: string, field: keyof MissingSlipEntry, value: any) => {
+  const handleUpdateMissingSlip = (pumperName: string, terminalId: string, slipId: string, field: keyof MissingSlipEntry, value: string | number | Date) => {
     // Use unified key for all missing slips per pumper
     const key = `${pumperName}-unified`
     setMissingSlips(prev => ({
       ...prev,
-      [key]: (prev[key] || []).map(slip => 
+      [key]: (prev[key] || []).map(slip =>
         slip.id === slipId ? { ...slip, [field]: value } : slip
       )
     }))
@@ -1207,8 +1184,8 @@ export default function CloseShiftPage() {
   const handleUpdatePumperExpense = (pumperName: string, expenseId: string, field: keyof PumperExpense, value: number | string) => {
     setPumperExpenses(prev => ({
       ...prev,
-      [pumperName]: (prev[pumperName] || []).map(exp => 
-        exp.id === expenseId 
+      [pumperName]: (prev[pumperName] || []).map(exp =>
+        exp.id === expenseId
           ? { ...exp, [field]: value }
           : exp
       )
@@ -1273,7 +1250,7 @@ export default function CloseShiftPage() {
     }))
   }
 
-  const handleUpdatePumperTestPour = (pumperName: string, testPourId: string, field: keyof PumperTestPour, value: any) => {
+  const handleUpdatePumperTestPour = (pumperName: string, testPourId: string, field: keyof PumperTestPour, value: string | number | boolean | undefined) => {
     setPumperTestPours(prev => ({
       ...prev,
       [pumperName]: (prev[pumperName] || []).map(tp => {
@@ -1285,7 +1262,7 @@ export default function CloseShiftPage() {
             if (selectedNozzle) {
               updated.nozzleNumber = selectedNozzle.nozzleNumber
               updated.pumpNumber = selectedNozzle.pumpNumber
-              updated.fuelType = selectedNozzle.fuel?.name
+              updated.fuelType = selectedNozzle.fuelType
             }
           }
           return updated
@@ -1300,24 +1277,24 @@ export default function CloseShiftPage() {
       setError('Please select a shift to close')
       return
     }
-    
+
     if (!Array.isArray(assignments) || assignments.length === 0) {
       setError('No assignments found. Cannot close shift without assignments.')
       return
     }
-    
+
     // Validate all assignments have end meter readings
     const incompleteAssignments = assignments.filter(a => !a.endMeterReading || a.endMeterReading === null)
     if (incompleteAssignments.length > 0) {
       setError(`Please fill in all end meter readings. ${incompleteAssignments.length} assignment(s) missing end readings.`)
       return
     }
-    
+
     // Validate end meter readings are >= start readings
-    const invalidReadings = assignments.filter(a => 
-      a.endMeterReading !== null && 
+    const invalidReadings = assignments.filter(a =>
+      a.endMeterReading !== null &&
       a.endMeterReading !== undefined &&
-      a.startMeterReading !== null && 
+      a.startMeterReading !== null &&
       a.startMeterReading !== undefined &&
       a.endMeterReading < a.startMeterReading
     )
@@ -1325,33 +1302,33 @@ export default function CloseShiftPage() {
       setError(`Invalid meter readings detected. End reading must be greater than or equal to start reading.`)
       return
     }
-    
-          // Validate end time is after start time
-      if (!endTime) {
-        setError('Please select an end time')
-        return
-      }
 
-      // Validate pumper-wise data exists
-      if (pumperBreakdowns.length === 0) {
-        setError('Please enter declared amounts for at least one pumper.')
-        return
-      }
+    // Validate end time is after start time
+    if (!endTime) {
+      setError('Please select an end time')
+      return
+    }
 
-      // Aggregate totals from pumper-wise breakdown
-      const totalCash = pumperBreakdowns.reduce((sum, b) => sum + b.declaredCash, 0)
-      const totalCard = pumperBreakdowns.reduce((sum, b) => 
-        sum + Object.values(b.declaredCardAmounts).reduce((cardSum, amount) => cardSum + amount, 0), 0
-      )
-      const totalCredit = pumperBreakdowns.reduce((sum, b) => 
-        sum + Object.values(b.declaredCreditAmounts).reduce((creditSum, amount) => creditSum + amount, 0), 0
-      )
-      const totalCheque = pumperBreakdowns.reduce((sum, b) => sum + b.declaredCheque, 0)
+    // Validate pumper-wise data exists
+    if (pumperBreakdowns.length === 0) {
+      setError('Please enter declared amounts for at least one pumper.')
+      return
+    }
 
-      // Validate credit limits for all customers across all pumpers
-      if (totalCredit > 0) {
-        for (const breakdown of pumperBreakdowns) {
-          for (const [customerId, amount] of Object.entries(breakdown.declaredCreditAmounts)) {
+    // Aggregate totals from pumper-wise breakdown
+    const totalCash = pumperBreakdowns.reduce((sum, b) => sum + b.declaredCash, 0)
+    const totalCard = pumperBreakdowns.reduce((sum, b) =>
+      sum + Object.values(b.declaredCardAmounts).reduce((cardSum, amount) => cardSum + amount, 0), 0
+    )
+    const totalCredit = pumperBreakdowns.reduce((sum, b) =>
+      sum + Object.values(b.declaredCreditAmounts).reduce((creditSum, amount) => creditSum + amount, 0), 0
+    )
+    const totalCheque = pumperBreakdowns.reduce((sum, b) => sum + b.declaredCheque, 0)
+
+    // Validate credit limits for all customers across all pumpers
+    if (totalCredit > 0) {
+      for (const breakdown of pumperBreakdowns) {
+        for (const [customerId, amount] of Object.entries(breakdown.declaredCreditAmounts)) {
           if (amount > 0) {
             const customer = creditCustomers.find(c => c.id === customerId)
             if (customer) {
@@ -1359,50 +1336,50 @@ export default function CloseShiftPage() {
               if (amount > availableCredit) {
                 setError(`Credit amount for ${customer.name} (Rs. ${amount.toLocaleString()}) exceeds available credit (Rs. ${availableCredit.toLocaleString()})`)
                 return
-                }
               }
             }
           }
         }
       }
+    }
 
-      // Validate POS terminal verification for all terminals with card amounts
-      if (totalCard > 0) {
-        const terminalsWithAmounts = new Set<string>()
-        pumperBreakdowns.forEach(breakdown => {
-          Object.keys(breakdown.declaredCardAmounts).forEach(terminalId => {
-            if (breakdown.declaredCardAmounts[terminalId] > 0) {
-              terminalsWithAmounts.add(terminalId)
-            }
-          })
+    // Validate POS terminal verification for all terminals with card amounts
+    if (totalCard > 0) {
+      const terminalsWithAmounts = new Set<string>()
+      pumperBreakdowns.forEach(breakdown => {
+        Object.keys(breakdown.declaredCardAmounts).forEach(terminalId => {
+          if (breakdown.declaredCardAmounts[terminalId] > 0) {
+            terminalsWithAmounts.add(terminalId)
+          }
         })
+      })
 
-        // Validate that slips are added for terminals with card amounts
-        // We'll check if the totals match - this is done per pumper now
-        // The validation will be done when we calculate totals
-      }
-      
-      setLoading(true)
-      setError('')
-      setSuccess('')
+      // Validate that slips are added for terminals with card amounts
+      // We'll check if the totals match - this is done per pumper now
+      // The validation will be done when we calculate totals
+    }
+
+    setLoading(true)
+    setError('')
+    setSuccess('')
 
     try {
       // Use the selected end time, or current time if not set
       const finalEndTime = endTime || new Date()
-      
+
       // Aggregate totals from pumper-wise breakdown
       const totalCash = pumperBreakdowns.reduce((sum, b) => sum + b.declaredCash, 0)
-      const totalCard = pumperBreakdowns.reduce((sum, b) => 
+      const totalCard = pumperBreakdowns.reduce((sum, b) =>
         sum + Object.values(b.declaredCardAmounts).reduce((cardSum, amount) => cardSum + amount, 0), 0
       )
-      const totalCredit = pumperBreakdowns.reduce((sum, b) => 
+      const totalCredit = pumperBreakdowns.reduce((sum, b) =>
         sum + Object.values(b.declaredCreditAmounts).reduce((creditSum, amount) => creditSum + amount, 0), 0
       )
       const totalCheque = pumperBreakdowns.reduce((sum, b) => sum + b.declaredCheque, 0)
-      
+
       console.log('Closing shift:', selectedShift)
       console.log('Assignments to close:', assignments)
-      
+
       // Update assignments with end meter readings
       for (const assignment of assignments) {
         console.log('Closing assignment:', assignment.id, 'with end reading:', assignment.endMeterReading)
@@ -1414,37 +1391,37 @@ export default function CloseShiftPage() {
             endTime: finalEndTime.toISOString()
           })
         })
-        
+
         if (!res.ok) {
           const error = await res.json()
           throw new Error(`Failed to close assignment ${assignment.id}: ${error.error}`)
         }
-        
+
         const result = await res.json()
         console.log('Assignment closed successfully:', result)
       }
 
       // Close shift
       console.log('Closing shift:', selectedShift)
-      
+
       // Ensure end time is after start time
       // Get shift data to check start time
       const shiftResponse = await fetch(`/api/shifts/${selectedShift}`)
       const shiftData = await shiftResponse.json()
       const shiftStartTime = new Date(shiftData.startTime)
       const validatedEndTime = finalEndTime > shiftStartTime ? finalEndTime : new Date()
-      
+
       console.log('🔍 FRONTEND DEBUG:')
       console.log('  Shift start time:', shiftStartTime)
       console.log('  Selected end time:', finalEndTime)
       console.log('  Validated end time:', validatedEndTime)
       console.log('  Final end time ISO:', validatedEndTime.toISOString())
-      
+
       // Prepare pumper-wise breakdown data to save
       // Map terminal IDs to names and customer IDs to names for better display
       const terminalIdToName = new Map(posTerminals.map(t => [t.id, `${t.name} (${t.terminalNumber})`]))
       const customerIdToName = new Map(creditCustomers.map(c => [c.id, c.name]))
-      
+
       const pumperBreakdownData = pumperBreakdowns.map(breakdown => {
         // Convert terminal IDs to terminal names in card amounts
         const cardAmountsWithNames: Record<string, { amount: number; terminalName: string }> = {}
@@ -1454,7 +1431,7 @@ export default function CloseShiftPage() {
             terminalName: terminalIdToName.get(terminalId) || `Terminal ${terminalId}`
           }
         })
-        
+
         // Convert customer IDs to customer names in credit amounts
         const creditAmountsWithNames: Record<string, { amount: number; customerName: string }> = {}
         Object.entries(breakdown.declaredCreditAmounts).forEach(([customerId, amount]) => {
@@ -1463,7 +1440,7 @@ export default function CloseShiftPage() {
             customerName: customerIdToName.get(customerId) || `Customer ${customerId}`
           }
         })
-        
+
         return {
           pumperName: breakdown.pumperName,
           calculatedSales: breakdown.calculatedSales,
@@ -1482,7 +1459,7 @@ export default function CloseShiftPage() {
           varianceStatus: breakdown.varianceStatus
         }
       })
-      
+
       const shiftRes = await fetch(`/api/shifts/${selectedShift}/close`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1503,11 +1480,11 @@ export default function CloseShiftPage() {
           }, {} as Record<string, Array<{ pumperId: string; pumperName: string; amount: number }>>) // Send other pumper advances per pumper
         })
       })
-      
+
       if (!shiftRes.ok) {
         const errorData = await shiftRes.json().catch(() => ({}))
         const errorMessage = errorData.error || errorData.message || `Failed to close shift (${shiftRes.status})`
-        
+
         // Provide specific error messages
         if (errorMessage.includes('open assignments')) {
           throw new Error('Cannot close shift with open assignments. Please close all assignments first.')
@@ -1516,10 +1493,10 @@ export default function CloseShiftPage() {
         } else if (errorMessage.includes('not found')) {
           throw new Error('Shift not found. It may have been deleted.')
         }
-        
+
         throw new Error(errorMessage)
       }
-      
+
       const shiftResult = await shiftRes.json()
       console.log('Shift closed successfully:', shiftResult)
 
@@ -1546,15 +1523,19 @@ export default function CloseShiftPage() {
           const shiftStartTime = new Date(shiftData.startTime || validatedEndTime)
 
           // Fetch current price for the fuel type
+          const fuelType = firstAssignment.nozzle?.tank?.fuel?.name
+          if (!fuelType) {
+            throw new Error('Cannot determine fuel type for credit sale')
+          }
           const priceRes = await fetch(`/api/prices?stationId=${stationId}&fuelType=${fuelType}&isActive=true`)
           let pricePerLiter = 470 // Default fallback price
           if (priceRes.ok) {
             const prices = await priceRes.json()
             if (Array.isArray(prices) && prices.length > 0) {
               // Get the most recent active price that's effective before or on shift start
-              const activePrices = prices.filter((p: any) => 
+              const activePrices = prices.filter((p: { isActive: boolean; effectiveDate: string }) =>
                 p.isActive && new Date(p.effectiveDate) <= shiftStartTime
-              ).sort((a: any, b: any) => 
+              ).sort((a: { effectiveDate: string }, b: { effectiveDate: string }) =>
                 new Date(b.effectiveDate).getTime() - new Date(a.effectiveDate).getTime()
               )
               if (activePrices.length > 0) {
@@ -1643,7 +1624,7 @@ export default function CloseShiftPage() {
           pumperBreakdowns.forEach(breakdown => {
             const pumperSlips = posSlips[breakdown.pumperName] || []
             allSlips.push(...pumperSlips.filter(slip => slip.terminalId && slip.amount > 0))
-            
+
             // Also include missing slips in the batch totals calculation
             const key = `${breakdown.pumperName}-unified`
             const pumperMissingSlips = missingSlips[key] || []
@@ -1707,7 +1688,7 @@ export default function CloseShiftPage() {
           })
 
           // Calculate total amount
-          const batchTotalAmount = terminalEntries.reduce((sum, entry) => 
+          const batchTotalAmount = terminalEntries.reduce((sum, entry) =>
             sum + entry.visaAmount + entry.masterAmount + entry.amexAmount + entry.qrAmount + (entry.dialogTouchAmount || 0), 0
           )
 
@@ -1742,7 +1723,7 @@ export default function CloseShiftPage() {
               const slips = missingSlips[key] || []
               terminalMissingSlips.push(...slips.filter(slip => slip.terminalId === terminalId))
             })
-            
+
             for (const slip of terminalMissingSlips) {
               if (slip.amount > 0 && slip.lastFourDigits.length === 4) {
                 try {
@@ -1780,7 +1761,7 @@ export default function CloseShiftPage() {
 
       // Cash will be added to safe manually by pumpers after shift end
       // Cheques are still automatically tracked for record-keeping
-      
+
       // Add cheques to safe (for tracking purposes - pumpers handle physical cheques)
       if (totalCheque > 0) {
         try {
@@ -1851,19 +1832,19 @@ export default function CloseShiftPage() {
                 console.warn(`Skipping test pour - reason is required for test pour with amount ${testPour.amount}L`)
                 continue
               }
-              
+
               // Get tank ID from assignment's nozzle data (assignments already have nozzle with tank info)
               const assignment = assignments.find(a => a.nozzleId === testPour.nozzleId)
               // Try to get tankId from nozzles state first, then fallback to API
               let tankId: string | undefined = undefined
-              
+
               if (assignment?.nozzle?.id) {
                 const nozzleFromState = nozzles.find(n => n.id === assignment.nozzle?.id)
                 if (nozzleFromState?.tankId) {
                   tankId = nozzleFromState.tankId
                 }
               }
-              
+
               if (!tankId) {
                 console.warn(`Skipping test pour - nozzle ${testPour.nozzleId} not found in assignments or has no tank. Available assignments:`, assignments.map(a => ({ nozzleId: a.nozzleId, hasNozzle: !!a.nozzle, hasTank: !!a.nozzle?.tank })))
                 // Try to fetch tankId from API as fallback
@@ -1885,9 +1866,9 @@ export default function CloseShiftPage() {
                         returned: testPour.returned,
                         notes: testPour.notes || undefined
                       }
-                      
+
                       console.log(`Creating test pour:`, testPourPayload)
-                      
+
                       const testPourRes = await fetch('/api/tests', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -1922,7 +1903,7 @@ export default function CloseShiftPage() {
                 returned: testPour.returned,
                 notes: testPour.notes || undefined
               }
-              
+
               console.log(`Creating test pour:`, testPourPayload)
 
               const testPourRes = await fetch('/api/tests', {
@@ -2009,7 +1990,7 @@ export default function CloseShiftPage() {
       }
 
       setSuccess('Shift closed successfully! Redirecting...')
-      
+
       // Redirect to shifts page after successful closure
       setTimeout(() => {
         router.push('/shifts')
@@ -2157,7 +2138,7 @@ export default function CloseShiftPage() {
             </span>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
           <div className="space-y-2">
@@ -2171,29 +2152,29 @@ export default function CloseShiftPage() {
                   shifts.map((shift) => {
                     // Extract unique pumper names from assignments
                     let pumperDisplay = 'No pumpers'
-                    
+
                     // Check if assignments exist and are an array
                     const assignments = shift.assignments
                     if (assignments && Array.isArray(assignments) && assignments.length > 0) {
                       // Extract pumper names, handling both direct field access and nested structures
                       const pumperNames = Array.from(new Set(
                         assignments
-                          .map((a: any) => {
+                          .map((a: Assignment) => {
                             // Try different possible field paths
-                            return a.pumperName || a.pumper?.name || a.pumperName || ''
+                            return a.pumperName || ''
                           })
-                          .filter((name: any) => name && typeof name === 'string' && name.trim() !== '')
+                          .filter((name: string) => name && typeof name === 'string' && name.trim() !== '')
                       ))
-                      
+
                       if (pumperNames.length > 0) {
                         pumperDisplay = pumperNames.join(', ')
                       }
                     }
-                    
+
                     return (
-                    <SelectItem key={shift.id} value={shift.id}>
+                      <SelectItem key={shift.id} value={shift.id}>
                         {new Date(shift.startTime).toLocaleString()} - {pumperDisplay}
-                    </SelectItem>
+                      </SelectItem>
                     )
                   })
                 ) : (
@@ -2233,29 +2214,28 @@ export default function CloseShiftPage() {
 
       {/* Pumper-wise Sales Breakdown */}
       {selectedShift && pumperBreakdowns.length > 0 && (
-        <FormCard 
-          title="Pumper-wise Sales & Variance" 
+        <FormCard
+          title="Pumper-wise Sales & Variance"
           description="Enter declared amounts per pumper to calculate variance and salary adjustments"
         >
           <div className="space-y-4">
             <Alert className="border-blue-500/20 dark:border-blue-500/30 bg-blue-500/10 dark:bg-blue-500/20">
               <AlertDescription className="text-blue-700 dark:text-blue-300">
-                <strong>Salary Adjustment Rules:</strong> If variance is more than Rs. 20, add to pumper's salary. 
-                If variance is less than -Rs. 20, deduct from pumper's salary. Variance within ±Rs. 20 is normal.
+                <strong>Salary Adjustment Rules:</strong> If variance is more than Rs. 20, add to pumper&apos;s salary.
+                If variance is less than -Rs. 20, deduct from pumper&apos;s salary. Variance within ±Rs. 20 is normal.
               </AlertDescription>
             </Alert>
 
             <div className="space-y-4">
               {pumperBreakdowns.map((breakdown) => (
-                <div 
-                  key={breakdown.pumperName} 
-                  className={`border rounded-lg p-4 ${
-                    breakdown.varianceStatus === 'ADD_TO_SALARY' 
-                      ? 'border-green-500/30 bg-green-500/5' 
-                      : breakdown.varianceStatus === 'DEDUCT_FROM_SALARY'
-                        ? 'border-red-500/30 bg-red-500/5'
-                        : 'border-border'
-                  }`}
+                <div
+                  key={breakdown.pumperName}
+                  className={`border rounded-lg p-4 ${breakdown.varianceStatus === 'ADD_TO_SALARY'
+                    ? 'border-green-500/30 bg-green-500/5'
+                    : breakdown.varianceStatus === 'DEDUCT_FROM_SALARY'
+                      ? 'border-red-500/30 bg-red-500/5'
+                      : 'border-border'
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div>
@@ -2264,24 +2244,24 @@ export default function CloseShiftPage() {
                         {breakdown.assignments.length} assignment{breakdown.assignments.length > 1 ? 's' : ''}
                       </p>
                     </div>
-                    <Badge 
+                    <Badge
                       variant={
-                        breakdown.varianceStatus === 'ADD_TO_SALARY' 
-                          ? 'default' 
+                        breakdown.varianceStatus === 'ADD_TO_SALARY'
+                          ? 'default'
                           : breakdown.varianceStatus === 'DEDUCT_FROM_SALARY'
                             ? 'destructive'
                             : 'outline'
                       }
                       className={
-                        breakdown.varianceStatus === 'ADD_TO_SALARY' 
-                          ? 'bg-green-600 text-white' 
+                        breakdown.varianceStatus === 'ADD_TO_SALARY'
+                          ? 'bg-green-600 text-white'
                           : breakdown.varianceStatus === 'DEDUCT_FROM_SALARY'
                             ? 'bg-red-600 text-white'
                             : ''
                       }
                     >
-                      {breakdown.varianceStatus === 'ADD_TO_SALARY' 
-                        ? 'Add to Salary' 
+                      {breakdown.varianceStatus === 'ADD_TO_SALARY'
+                        ? 'Add to Salary'
                         : breakdown.varianceStatus === 'DEDUCT_FROM_SALARY'
                           ? 'Deduct from Salary'
                           : 'Normal'}
@@ -2302,20 +2282,20 @@ export default function CloseShiftPage() {
                     {/* Declared Amount Breakdown */}
                     <div className="space-y-4">
                       <Label className="text-sm font-medium mb-3 block">Declared Amount Breakdown:</Label>
-                      
+
                       {/* Cash Amount */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
-                Cash Amount
-              </Label>
-              <MoneyInput
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4" />
+                          Cash Amount
+                        </Label>
+                        <MoneyInput
                           value={breakdown.declaredCash}
                           onChange={(value) => handleUpdatePumperCash(breakdown.pumperName, value)}
-                placeholder="0.00"
-                className="w-full"
-              />
-            </div>
+                          placeholder="0.00"
+                          className="w-full"
+                        />
+                      </div>
 
                       {/* POS Terminal Verification & Slip Entry (for this pumper) */}
                       {(() => {
@@ -2337,7 +2317,7 @@ export default function CloseShiftPage() {
 
                         // Get all unique terminals used in slips
                         const usedTerminalIds = Array.from(new Set(pumperSlips.filter(s => s.terminalId).map(s => s.terminalId)))
-                        
+
                         // Get all available terminals (show all, not just ones with amounts)
                         const allTerminalIds = posTerminals.map(t => t.id)
 
@@ -2345,9 +2325,9 @@ export default function CloseShiftPage() {
                           <div className="space-y-4 pt-4 border-t mt-4">
                             <div className="flex items-center justify-between mb-2">
                               <Label className="flex items-center gap-2 text-sm font-semibold">
-                  <CreditCard className="h-4 w-4" />
+                                <CreditCard className="h-4 w-4" />
                                 POS Terminal Verification & Slip Entry
-                </Label>
+                              </Label>
                               <Button
                                 type="button"
                                 variant={isOpen ? "default" : "outline"}
@@ -2382,187 +2362,187 @@ export default function CloseShiftPage() {
                                 <div className="space-y-3">
                                   {pumperSlips.length === 0 ? (
                                     <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">
-                                      No POS slips added yet. Click "Add POS Slip" to start.
+                                      No POS slips added yet. Click &quot;Add POS Slip&quot; to start.
                                     </p>
                                   ) : (
                                     pumperSlips.map((slip) => {
                                       const isMinimized = minimizedPOSSlips[slip.id] || false
                                       const isComplete = isPOSSlipComplete(slip)
                                       const terminal = posTerminals.find(t => t.id === slip.terminalId)
-                                      
+
                                       return (
-                                      <div key={slip.id} className={`border rounded-lg p-3 space-y-3 bg-blue-500/5 dark:bg-blue-500/10 ${isMinimized ? 'cursor-pointer hover:bg-blue-500/10 dark:hover:bg-blue-500/15' : ''}`}>
-                                        <div className="flex items-center justify-between">
-                                          {isMinimized ? (
-                                            <div 
-                                              className="flex-1 cursor-pointer"
-                                              onClick={() => handleExpandPOSSlip(slip.id)}
-                                            >
-                <div className="flex items-center gap-2">
-                                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                                <Label className="text-sm font-medium">POS Slip - {slip.lastFourDigits || 'Incomplete'}</Label>
-                                                {terminal && <span className="text-xs text-muted-foreground">({terminal.name})</span>}
-                                                <span className="text-xs text-green-600 dark:text-green-400">Rs. {slip.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        <div key={slip.id} className={`border rounded-lg p-3 space-y-3 bg-blue-500/5 dark:bg-blue-500/10 ${isMinimized ? 'cursor-pointer hover:bg-blue-500/10 dark:hover:bg-blue-500/15' : ''}`}>
+                                          <div className="flex items-center justify-between">
+                                            {isMinimized ? (
+                                              <div
+                                                className="flex-1 cursor-pointer"
+                                                onClick={() => handleExpandPOSSlip(slip.id)}
+                                              >
+                                                <div className="flex items-center gap-2">
+                                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                                  <Label className="text-sm font-medium">POS Slip - {slip.lastFourDigits || 'Incomplete'}</Label>
+                                                  {terminal && <span className="text-xs text-muted-foreground">({terminal.name})</span>}
+                                                  <span className="text-xs text-green-600 dark:text-green-400">Rs. {slip.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                </div>
+                                              </div>
+                                            ) : (
+                                              <Label className="text-sm font-medium">POS Slip</Label>
+                                            )}
+                                            <div className="flex items-center gap-2">
+                                              {!isMinimized && isComplete && (
+                                                <Button
+                                                  type="button"
+                                                  variant="outline"
+                                                  size="sm"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    handleMinimizePOSSlip(slip.id)
+                                                  }}
+                                                  title="Minimize slip"
+                                                >
+                                                  <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                                </Button>
+                                              )}
+                                              {isMinimized && (
+                                                <Button
+                                                  type="button"
+                                                  variant="outline"
+                                                  size="sm"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    handleExpandPOSSlip(slip.id)
+                                                  }}
+                                                  title="Expand slip"
+                                                >
+                                                  <ChevronUp className="h-4 w-4" />
+                                                </Button>
+                                              )}
+                                              <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={(e) => {
+                                                  e.stopPropagation()
+                                                  handleRemovePOSSlip(breakdown.pumperName, slip.id)
+                                                }}
+                                              >
+                                                <Trash2 className="h-4 w-4" />
+                                              </Button>
+                                            </div>
+                                          </div>
+
+                                          {!isMinimized && (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                              <div>
+                                                <Label className="text-xs text-muted-foreground mb-1 block">POS Machine *</Label>
+                                                <Select
+                                                  value={slip.terminalId}
+                                                  onValueChange={(value) => handleUpdatePOSSlip(breakdown.pumperName, slip.id, 'terminalId', value)}
+                                                >
+                                                  <SelectTrigger className="w-full">
+                                                    <SelectValue placeholder="Select POS machine" />
+                                                  </SelectTrigger>
+                                                  <SelectContent>
+                                                    {posTerminals.map(terminal => (
+                                                      <SelectItem key={terminal.id} value={terminal.id}>
+                                                        {terminal.name} ({terminal.terminalNumber})
+                                                        {terminal.bank && (
+                                                          <span className="ml-2 text-xs text-muted-foreground">- {terminal.bank.name}</span>
+                                                        )}
+                                                      </SelectItem>
+                                                    ))}
+                                                  </SelectContent>
+                                                </Select>
+                                              </div>
+
+                                              <div>
+                                                <Label className="text-xs text-muted-foreground mb-1 block">Card Sale Time *</Label>
+                                                <DateTimePicker
+                                                  value={slip.timestamp}
+                                                  onChange={(date) => handleUpdatePOSSlip(breakdown.pumperName, slip.id, 'timestamp', date || new Date())}
+                                                />
+                                              </div>
+
+                                              <div>
+                                                <Label className="text-xs text-muted-foreground mb-1 block">Card Number (Last 4 Digits) *</Label>
+                                                <Input
+                                                  value={slip.lastFourDigits}
+                                                  onChange={(e) => {
+                                                    const value = e.target.value.replace(/\D/g, '').slice(0, 4)
+                                                    handleUpdatePOSSlip(breakdown.pumperName, slip.id, 'lastFourDigits', value)
+                                                  }}
+                                                  placeholder="1234"
+                                                  maxLength={4}
+                                                  className={`w-full ${duplicateCardErrors[slip.id] ? 'border-red-500 dark:border-red-500 focus-visible:ring-red-500' : ''}`}
+                                                />
+                                                {duplicateCardErrors[slip.id] && (() => {
+                                                  const error = duplicateCardErrors[slip.id]
+                                                  const duplicateSlip = error.duplicateSlip
+                                                  const terminal = posTerminals.find(t => t.id === duplicateSlip.terminalId)
+                                                  const duplicateTime = new Date(duplicateSlip.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                                                  return (
+                                                    <Alert className="mt-2 border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-950/50">
+                                                      <AlertDescription className="text-red-700 dark:text-red-400 text-xs">
+                                                        <div className="font-semibold mb-1">⚠️ DUPLICATE CARD DETECTED - FRAUD ALERT!</div>
+                                                        <div>This card (ending in {error.cardNumber}, {slip.cardType}) was already added today:</div>
+                                                        <div className="mt-1 ml-2">
+                                                          • Time: {duplicateTime}<br />
+                                                          • Amount: Rs. {duplicateSlip.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<br />
+                                                          • Card Type: {duplicateSlip.cardType}<br />
+                                                          {terminal && <span>• Terminal: {terminal.name} ({terminal.terminalNumber})</span>}
+                                                        </div>
+                                                        <div className="mt-2 font-semibold">⚠️ The same card with the same type cannot be used twice on the same terminal in the same day!</div>
+                                                        <div className="mt-1 text-xs">
+                                                          <strong>Note:</strong> Different cards can have the same last 4 digits. If this is a different card,
+                                                          change the card type (VISA/MASTER/AMEX) or use a different terminal.
+                                                        </div>
+                                                      </AlertDescription>
+                                                    </Alert>
+                                                  )
+                                                })()}
+                                              </div>
+
+                                              <div>
+                                                <Label className="text-xs text-muted-foreground mb-1 block">Card Type *</Label>
+                                                <Select
+                                                  value={slip.cardType}
+                                                  onValueChange={(value) => handleUpdatePOSSlip(breakdown.pumperName, slip.id, 'cardType', value)}
+                                                >
+                                                  <SelectTrigger className="w-full">
+                                                    <SelectValue />
+                                                  </SelectTrigger>
+                                                  <SelectContent>
+                                                    <SelectItem value="VISA">Visa</SelectItem>
+                                                    <SelectItem value="MASTER">Master</SelectItem>
+                                                    <SelectItem value="AMEX">Amex</SelectItem>
+                                                    <SelectItem value="QR">QR</SelectItem>
+                                                    <SelectItem value="DIALOG_TOUCH">Dialog Touch ID Card</SelectItem>
+                                                  </SelectContent>
+                                                </Select>
+                                              </div>
+
+                                              <div>
+                                                <Label className="text-xs text-muted-foreground mb-1 block">Amount *</Label>
+                                                <MoneyInput
+                                                  value={slip.amount}
+                                                  onChange={(value) => handleUpdatePOSSlip(breakdown.pumperName, slip.id, 'amount', value)}
+                                                  placeholder="0.00"
+                                                  className="w-full"
+                                                />
+                                              </div>
+
+                                              <div>
+                                                <Label className="text-xs text-muted-foreground mb-1 block">Notes (Optional)</Label>
+                                                <Input
+                                                  value={slip.notes || ''}
+                                                  onChange={(e) => handleUpdatePOSSlip(breakdown.pumperName, slip.id, 'notes', e.target.value)}
+                                                  placeholder="Additional notes"
+                                                  className="w-full"
+                                                />
                                               </div>
                                             </div>
-                                          ) : (
-                                            <Label className="text-sm font-medium">POS Slip</Label>
                                           )}
-                                          <div className="flex items-center gap-2">
-                                            {!isMinimized && isComplete && (
-                                              <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={(e) => {
-                                                  e.stopPropagation()
-                                                  handleMinimizePOSSlip(slip.id)
-                                                }}
-                                                title="Minimize slip"
-                                              >
-                                                <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
-                                              </Button>
-                                            )}
-                                            {isMinimized && (
-                                              <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={(e) => {
-                                                  e.stopPropagation()
-                                                  handleExpandPOSSlip(slip.id)
-                                                }}
-                                                title="Expand slip"
-                                              >
-                                                <ChevronUp className="h-4 w-4" />
-                                              </Button>
-                                            )}
-                                            <Button
-                                              type="button"
-                                              variant="outline"
-                                              size="sm"
-                                              onClick={(e) => {
-                                                e.stopPropagation()
-                                                handleRemovePOSSlip(breakdown.pumperName, slip.id)
-                                              }}
-                                            >
-                                              <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                          </div>
                                         </div>
-
-                                        {!isMinimized && (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                          <div>
-                                            <Label className="text-xs text-muted-foreground mb-1 block">POS Machine *</Label>
-                                            <Select
-                                              value={slip.terminalId}
-                                              onValueChange={(value) => handleUpdatePOSSlip(breakdown.pumperName, slip.id, 'terminalId', value)}
-                                            >
-                                              <SelectTrigger className="w-full">
-                                                <SelectValue placeholder="Select POS machine" />
-                    </SelectTrigger>
-                    <SelectContent>
-                                                {posTerminals.map(terminal => (
-                                    <SelectItem key={terminal.id} value={terminal.id}>
-                                                    {terminal.name} ({terminal.terminalNumber})
-                                      {terminal.bank && (
-                                                      <span className="ml-2 text-xs text-muted-foreground">- {terminal.bank.name}</span>
-                                      )}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                                          </div>
-
-                                          <div>
-                                            <Label className="text-xs text-muted-foreground mb-1 block">Card Sale Time *</Label>
-                                            <DateTimePicker
-                                              value={slip.timestamp}
-                                              onChange={(date) => handleUpdatePOSSlip(breakdown.pumperName, slip.id, 'timestamp', date || new Date())}
-                                            />
-                                          </div>
-
-                                          <div>
-                                            <Label className="text-xs text-muted-foreground mb-1 block">Card Number (Last 4 Digits) *</Label>
-                                            <Input
-                                              value={slip.lastFourDigits}
-                                              onChange={(e) => {
-                                                const value = e.target.value.replace(/\D/g, '').slice(0, 4)
-                                                handleUpdatePOSSlip(breakdown.pumperName, slip.id, 'lastFourDigits', value)
-                                              }}
-                                              placeholder="1234"
-                                              maxLength={4}
-                                              className={`w-full ${duplicateCardErrors[slip.id] ? 'border-red-500 dark:border-red-500 focus-visible:ring-red-500' : ''}`}
-                                            />
-                                            {duplicateCardErrors[slip.id] && (() => {
-                                              const error = duplicateCardErrors[slip.id]
-                                              const duplicateSlip = error.duplicateSlip
-                                              const terminal = posTerminals.find(t => t.id === duplicateSlip.terminalId)
-                                              const duplicateTime = new Date(duplicateSlip.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-                                              return (
-                                                <Alert className="mt-2 border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-950/50">
-                                                  <AlertDescription className="text-red-700 dark:text-red-400 text-xs">
-                                                    <div className="font-semibold mb-1">⚠️ DUPLICATE CARD DETECTED - FRAUD ALERT!</div>
-                                                    <div>This card (ending in {error.cardNumber}, {slip.cardType}) was already added today:</div>
-                                                    <div className="mt-1 ml-2">
-                                                      • Time: {duplicateTime}<br />
-                                                      • Amount: Rs. {duplicateSlip.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<br />
-                                                      • Card Type: {duplicateSlip.cardType}<br />
-                                                      {terminal && <span>• Terminal: {terminal.name} ({terminal.terminalNumber})</span>}
-                                                    </div>
-                                                    <div className="mt-2 font-semibold">⚠️ The same card with the same type cannot be used twice on the same terminal in the same day!</div>
-                                                    <div className="mt-1 text-xs">
-                                                      <strong>Note:</strong> Different cards can have the same last 4 digits. If this is a different card, 
-                                                      change the card type (VISA/MASTER/AMEX) or use a different terminal.
-                                                    </div>
-                                                  </AlertDescription>
-                                                </Alert>
-                                              )
-                                            })()}
-                                          </div>
-
-                                          <div>
-                                            <Label className="text-xs text-muted-foreground mb-1 block">Card Type *</Label>
-                                            <Select
-                                              value={slip.cardType}
-                                              onValueChange={(value) => handleUpdatePOSSlip(breakdown.pumperName, slip.id, 'cardType', value)}
-                            >
-                                              <SelectTrigger className="w-full">
-                                                <SelectValue />
-                                              </SelectTrigger>
-                                              <SelectContent>
-                                                <SelectItem value="VISA">Visa</SelectItem>
-                                                <SelectItem value="MASTER">Master</SelectItem>
-                                                <SelectItem value="AMEX">Amex</SelectItem>
-                                                <SelectItem value="QR">QR</SelectItem>
-                                                <SelectItem value="DIALOG_TOUCH">Dialog Touch ID Card</SelectItem>
-                                              </SelectContent>
-                                            </Select>
-                </div>
-
-                                          <div>
-                                            <Label className="text-xs text-muted-foreground mb-1 block">Amount *</Label>
-                                            <MoneyInput
-                                              value={slip.amount}
-                                              onChange={(value) => handleUpdatePOSSlip(breakdown.pumperName, slip.id, 'amount', value)}
-                                              placeholder="0.00"
-                                              className="w-full"
-                                            />
-              </div>
-
-                                          <div>
-                                            <Label className="text-xs text-muted-foreground mb-1 block">Notes (Optional)</Label>
-                                            <Input
-                                              value={slip.notes || ''}
-                                              onChange={(e) => handleUpdatePOSSlip(breakdown.pumperName, slip.id, 'notes', e.target.value)}
-                                              placeholder="Additional notes"
-                                              className="w-full"
-                                            />
-                                          </div>
-                                        </div>
-                                        )}
-                                      </div>
                                       )
                                     })
                                   )}
@@ -2573,18 +2553,18 @@ export default function CloseShiftPage() {
                                   <div className="mt-6 pt-4 border-t space-y-4">
                                     <div className="p-4 bg-muted/30 dark:bg-muted/20 rounded-lg">
                                       <h5 className="font-semibold text-sm mb-3">Totals Summary</h5>
-                                      
+
                                       {/* Totals by Terminal */}
                                       <div className="mb-4">
                                         <Label className="text-xs font-medium mb-2 block">By POS Terminal:</Label>
                                         <div className="space-y-1">
                                           {usedTerminalIds.map(terminalId => {
-                          const terminal = posTerminals.find(t => t.id === terminalId)
+                                            const terminal = posTerminals.find(t => t.id === terminalId)
                                             const terminalTotal = totalsByTerminal[terminalId] || 0
-                return (
+                                            return (
                                               <div key={terminalId} className="flex justify-between text-xs">
                                                 <span className="text-muted-foreground">
-                                                  {terminal?.name || 'Unknown'}: 
+                                                  {terminal?.name || 'Unknown'}:
                                                 </span>
                                                 <span className="font-mono text-green-600 dark:text-green-400">
                                                   Rs. {terminalTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -2618,7 +2598,7 @@ export default function CloseShiftPage() {
                                             </div>
                                           </div>
                                         </div>
-                                  )}
+                                      )}
                                     </div>
                                   </div>
                                 )}
@@ -2630,8 +2610,8 @@ export default function CloseShiftPage() {
                                       <Label className="flex items-center gap-2 text-sm font-semibold">
                                         <FileText className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                                         Missing Slips (Optional)
-                                </Label>
-                    </div>
+                                      </Label>
+                                    </div>
                                     <Alert className="mb-4 border-orange-500/20 dark:border-orange-500/30 bg-orange-500/10 dark:bg-orange-500/20">
                                       <AlertDescription className="text-orange-700 dark:text-orange-300 text-xs">
                                         <strong>Optional:</strong> Report missing POS slips that were not provided by customers. This helps track discrepancies in card transactions.
@@ -2640,10 +2620,10 @@ export default function CloseShiftPage() {
 
                                     {/* Add Missing Slip Button */}
                                     <div className="flex justify-end mb-4">
-                    <Button
+                                      <Button
                                         type="button"
-                      variant="outline"
-                      size="sm"
+                                        variant="outline"
+                                        size="sm"
                                         onClick={() => handleAddMissingSlip(breakdown.pumperName)}
                                       >
                                         <Plus className="h-4 w-4 mr-1" />
@@ -2665,147 +2645,147 @@ export default function CloseShiftPage() {
                                         <div className="space-y-3">
                                           {allMissingSlips.length === 0 ? (
                                             <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">
-                                              No missing slips reported yet. Click "Add Missing Slip" to start.
+                                              No missing slips reported yet. Click &quot;Add Missing Slip&quot; to start.
                                             </p>
                                           ) : (
                                             allMissingSlips.map(({ slip, terminalId }) => {
                                               const isMinimized = minimizedMissingSlips[slip.id] || false
                                               const isComplete = isMissingSlipComplete(slip)
                                               const terminal = posTerminals.find(t => t.id === slip.terminalId)
-                                              
+
                                               return (
-                                              <div key={slip.id} className={`border rounded-lg p-3 space-y-3 bg-orange-500/5 dark:bg-orange-500/10 ${isMinimized ? 'cursor-pointer hover:bg-orange-500/10 dark:hover:bg-orange-500/15' : ''}`}>
-                                                <div className="flex items-center justify-between">
-                                                  {isMinimized ? (
-                                                    <div 
-                                                      className="flex-1 cursor-pointer"
-                                                      onClick={() => handleExpandMissingSlip(slip.id)}
-                                                    >
-                                                      <div className="flex items-center gap-2">
-                                                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                                        <Label className="text-sm font-medium">Missing Slip - {slip.lastFourDigits || 'Incomplete'}</Label>
-                                                        {terminal && <span className="text-xs text-muted-foreground">({terminal.name})</span>}
-                                                        <span className="text-xs text-orange-600 dark:text-orange-400">Rs. {slip.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                <div key={slip.id} className={`border rounded-lg p-3 space-y-3 bg-orange-500/5 dark:bg-orange-500/10 ${isMinimized ? 'cursor-pointer hover:bg-orange-500/10 dark:hover:bg-orange-500/15' : ''}`}>
+                                                  <div className="flex items-center justify-between">
+                                                    {isMinimized ? (
+                                                      <div
+                                                        className="flex-1 cursor-pointer"
+                                                        onClick={() => handleExpandMissingSlip(slip.id)}
+                                                      >
+                                                        <div className="flex items-center gap-2">
+                                                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                                          <Label className="text-sm font-medium">Missing Slip - {slip.lastFourDigits || 'Incomplete'}</Label>
+                                                          {terminal && <span className="text-xs text-muted-foreground">({terminal.name})</span>}
+                                                          <span className="text-xs text-orange-600 dark:text-orange-400">Rs. {slip.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                        </div>
+                                                      </div>
+                                                    ) : (
+                                                      <Label className="text-sm font-medium">Missing Slip</Label>
+                                                    )}
+                                                    <div className="flex items-center gap-2">
+                                                      {!isMinimized && isComplete && (
+                                                        <Button
+                                                          type="button"
+                                                          variant="outline"
+                                                          size="sm"
+                                                          onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            handleMinimizeMissingSlip(slip.id)
+                                                          }}
+                                                          title="Minimize slip"
+                                                        >
+                                                          <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                                        </Button>
+                                                      )}
+                                                      {isMinimized && (
+                                                        <Button
+                                                          type="button"
+                                                          variant="outline"
+                                                          size="sm"
+                                                          onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            handleExpandMissingSlip(slip.id)
+                                                          }}
+                                                          title="Expand slip"
+                                                        >
+                                                          <ChevronUp className="h-4 w-4" />
+                                                        </Button>
+                                                      )}
+                                                      <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={(e) => {
+                                                          e.stopPropagation()
+                                                          handleRemoveMissingSlip(breakdown.pumperName, terminalId, slip.id)
+                                                        }}
+                                                      >
+                                                        <Trash2 className="h-4 w-4" />
+                                                      </Button>
+                                                    </div>
+                                                  </div>
+
+                                                  {!isMinimized && (
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                      <div>
+                                                        <Label className="text-xs text-muted-foreground mb-1 block">POS Machine *</Label>
+                                                        <Select
+                                                          value={slip.terminalId}
+                                                          onValueChange={(value) => handleUpdateMissingSlip(breakdown.pumperName, terminalId, slip.id, 'terminalId', value)}
+                                                        >
+                                                          <SelectTrigger className="w-full">
+                                                            <SelectValue placeholder="Select POS machine" />
+                                                          </SelectTrigger>
+                                                          <SelectContent>
+                                                            {posTerminals.map(terminal => (
+                                                              <SelectItem key={terminal.id} value={terminal.id}>
+                                                                {terminal.name} ({terminal.terminalNumber})
+                                                                {terminal.bank && (
+                                                                  <span className="ml-2 text-xs text-muted-foreground">- {terminal.bank.name}</span>
+                                                                )}
+                                                              </SelectItem>
+                                                            ))}
+                                                          </SelectContent>
+                                                        </Select>
+                                                      </div>
+
+                                                      <div>
+                                                        <Label className="text-xs text-muted-foreground mb-1 block">Transaction Time *</Label>
+                                                        <DateTimePicker
+                                                          value={slip.timestamp}
+                                                          onChange={(date) => handleUpdateMissingSlip(breakdown.pumperName, terminalId, slip.id, 'timestamp', date || new Date())}
+                                                        />
+                                                      </div>
+
+                                                      <div>
+                                                        <Label className="text-xs text-muted-foreground mb-1 block">Card Number (Last 4 Digits) *</Label>
+                                                        <Input
+                                                          value={slip.lastFourDigits}
+                                                          onChange={(e) => {
+                                                            const value = e.target.value.replace(/\D/g, '').slice(0, 4)
+                                                            handleUpdateMissingSlip(breakdown.pumperName, terminalId, slip.id, 'lastFourDigits', value)
+                                                          }}
+                                                          placeholder="1234"
+                                                          maxLength={4}
+                                                          className="w-full"
+                                                        />
+                                                      </div>
+
+                                                      <div>
+                                                        <Label className="text-xs text-muted-foreground mb-1 block">Amount *</Label>
+                                                        <MoneyInput
+                                                          value={slip.amount}
+                                                          onChange={(value) => handleUpdateMissingSlip(breakdown.pumperName, terminalId, slip.id, 'amount', value)}
+                                                          placeholder="0.00"
+                                                          className="w-full"
+                                                        />
+                                                      </div>
+
+                                                      <div>
+                                                        <Label className="text-xs text-muted-foreground mb-1 block">Notes (Optional)</Label>
+                                                        <Input
+                                                          value={slip.notes || ''}
+                                                          onChange={(e) => handleUpdateMissingSlip(breakdown.pumperName, terminalId, slip.id, 'notes', e.target.value)}
+                                                          placeholder="Additional notes"
+                                                          className="w-full"
+                                                        />
                                                       </div>
                                                     </div>
-                                                  ) : (
-                                                    <Label className="text-sm font-medium">Missing Slip</Label>
                                                   )}
-                                                  <div className="flex items-center gap-2">
-                                                    {!isMinimized && isComplete && (
-                                                      <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={(e) => {
-                                                          e.stopPropagation()
-                                                          handleMinimizeMissingSlip(slip.id)
-                                                        }}
-                                                        title="Minimize slip"
-                                                      >
-                                                        <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
-                                                      </Button>
-                                                    )}
-                                                    {isMinimized && (
-                                                      <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={(e) => {
-                                                          e.stopPropagation()
-                                                          handleExpandMissingSlip(slip.id)
-                                                        }}
-                                                        title="Expand slip"
-                                                      >
-                                                        <ChevronUp className="h-4 w-4" />
-                                                      </Button>
-                                                    )}
-                                                    <Button
-                                                      type="button"
-                                                      variant="outline"
-                                                      size="sm"
-                                                      onClick={(e) => {
-                                                        e.stopPropagation()
-                                                        handleRemoveMissingSlip(breakdown.pumperName, terminalId, slip.id)
-                                                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                                                  </div>
                                                 </div>
-
-                                                {!isMinimized && (
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                  <div>
-                                                    <Label className="text-xs text-muted-foreground mb-1 block">POS Machine *</Label>
-                                                    <Select
-                                                      value={slip.terminalId}
-                                                      onValueChange={(value) => handleUpdateMissingSlip(breakdown.pumperName, terminalId, slip.id, 'terminalId', value)}
-                                                    >
-                                                      <SelectTrigger className="w-full">
-                                                        <SelectValue placeholder="Select POS machine" />
-                                                      </SelectTrigger>
-                                                      <SelectContent>
-                                                        {posTerminals.map(terminal => (
-                                                          <SelectItem key={terminal.id} value={terminal.id}>
-                                                            {terminal.name} ({terminal.terminalNumber})
-                                                            {terminal.bank && (
-                                                              <span className="ml-2 text-xs text-muted-foreground">- {terminal.bank.name}</span>
-                                                            )}
-                                                          </SelectItem>
-                                                        ))}
-                                                      </SelectContent>
-                                                    </Select>
-                                                  </div>
-
-                                                  <div>
-                                                    <Label className="text-xs text-muted-foreground mb-1 block">Transaction Time *</Label>
-                                                    <DateTimePicker
-                                                      value={slip.timestamp}
-                                                      onChange={(date) => handleUpdateMissingSlip(breakdown.pumperName, terminalId, slip.id, 'timestamp', date || new Date())}
-                                                    />
-                                                  </div>
-
-                                                  <div>
-                                                    <Label className="text-xs text-muted-foreground mb-1 block">Card Number (Last 4 Digits) *</Label>
-                                                    <Input
-                                                      value={slip.lastFourDigits}
-                                                      onChange={(e) => {
-                                                        const value = e.target.value.replace(/\D/g, '').slice(0, 4)
-                                                        handleUpdateMissingSlip(breakdown.pumperName, terminalId, slip.id, 'lastFourDigits', value)
-                                                      }}
-                                                      placeholder="1234"
-                                                      maxLength={4}
-                                                      className="w-full"
-                                                    />
-                                                  </div>
-
-                                                  <div>
-                                                    <Label className="text-xs text-muted-foreground mb-1 block">Amount *</Label>
-                                                    <MoneyInput
-                                                      value={slip.amount}
-                                                      onChange={(value) => handleUpdateMissingSlip(breakdown.pumperName, terminalId, slip.id, 'amount', value)}
-                                                      placeholder="0.00"
-                                                      className="w-full"
-                                                    />
-                                                  </div>
-
-                                                  <div>
-                                                    <Label className="text-xs text-muted-foreground mb-1 block">Notes (Optional)</Label>
-                                                    <Input
-                                                      value={slip.notes || ''}
-                                                      onChange={(e) => handleUpdateMissingSlip(breakdown.pumperName, terminalId, slip.id, 'notes', e.target.value)}
-                                                      placeholder="Additional notes"
-                                                      className="w-full"
-                                                    />
-                                                  </div>
-                                                </div>
-                                                )}
-                  </div>
-                )
+                                              )
                                             })
                                           )}
-            </div>
+                                        </div>
                                       )
                                     })()}
                                   </div>
@@ -2817,61 +2797,61 @@ export default function CloseShiftPage() {
                       })()}
 
                       {/* Credit Amounts by Customer */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Credit Amounts by Customer
-                </Label>
-                <div className="flex items-center gap-2">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            Credit Amounts by Customer
+                          </Label>
+                          <div className="flex items-center gap-2">
                             <Select onValueChange={(customerId) => handleAddPumperCreditRow(breakdown.pumperName, customerId)}>
-                    <SelectTrigger className="w-64">
-                      <SelectValue placeholder="Add customer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {creditCustomers
+                              <SelectTrigger className="w-64">
+                                <SelectValue placeholder="Add customer" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {creditCustomers
                                   .filter(customer => !breakdown.declaredCreditAmounts.hasOwnProperty(customer.id))
                                   .map((customer) => (
-                            <SelectItem key={customer.id} value={customer.id}>
+                                    <SelectItem key={customer.id} value={customer.id}>
                                       {customer.name}
-                            </SelectItem>
+                                    </SelectItem>
                                   ))}
-                    </SelectContent>
-                  </Select>
-                  <Button 
-                    size="sm" 
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              size="sm"
                               disabled={creditCustomers.filter(c => !breakdown.declaredCreditAmounts.hasOwnProperty(c.id)).length === 0}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
 
                         {Object.entries(breakdown.declaredCreditAmounts).map(([customerId, amount]) => {
-                const customer = creditCustomers.find(c => c.id === customerId)
+                          const customer = creditCustomers.find(c => c.id === customerId)
                           const availableCredit = customer ? (customer.creditLimit - customer.currentBalance) : 0
-                return (
+                          return (
                             <div key={customerId} className="flex items-center gap-2">
-                      <div className="flex-1">
+                              <div className="flex-1">
                                 <Label className="text-sm text-muted-foreground">
                                   {customer?.name}
                                 </Label>
-                          <MoneyInput
-                            value={amount}
+                                <MoneyInput
+                                  value={amount}
                                   onChange={(value) => handleUpdatePumperCreditAmount(breakdown.pumperName, customerId, value)}
-                            placeholder="0.00"
-                            className="w-full"
-                          />
-                    {amount > 0 && amount > availableCredit && (
-                      <p className="text-xs text-red-600 dark:text-red-400 ml-1">
-                        Warning: Amount exceeds available credit by Rs. {(amount - availableCredit).toLocaleString()}
-                      </p>
-                    )}
-                    {amount > 0 && amount <= availableCredit && (
-                      <p className="text-xs text-muted-foreground ml-1">
-                        Available credit: Rs. {availableCredit.toLocaleString()}
-                      </p>
-                    )}
+                                  placeholder="0.00"
+                                  className="w-full"
+                                />
+                                {amount > 0 && amount > availableCredit && (
+                                  <p className="text-xs text-red-600 dark:text-red-400 ml-1">
+                                    Warning: Amount exceeds available credit by Rs. {(amount - availableCredit).toLocaleString()}
+                                  </p>
+                                )}
+                                {amount > 0 && amount <= availableCredit && (
+                                  <p className="text-xs text-muted-foreground ml-1">
+                                    Available credit: Rs. {availableCredit.toLocaleString()}
+                                  </p>
+                                )}
                               </div>
                               <Button
                                 variant="outline"
@@ -2880,18 +2860,18 @@ export default function CloseShiftPage() {
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
-                  </div>
-                )
-              })}
-            </div>
+                            </div>
+                          )
+                        })}
+                      </div>
 
                       {/* Cheque Details */}
-            <div className="space-y-2">
+                      <div className="space-y-2">
                         <div className="flex items-center justify-between">
-              <Label className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
+                          <Label className="flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
                             Cheques Received
-              </Label>
+                          </Label>
                           <Button
                             type="button"
                             variant="outline"
@@ -2902,7 +2882,7 @@ export default function CloseShiftPage() {
                             Add Cheque
                           </Button>
                         </div>
-                        
+
                         {breakdown.cheques.length === 0 ? (
                           <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">
                             No cheques received
@@ -2922,7 +2902,7 @@ export default function CloseShiftPage() {
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </div>
-                                
+
                                 <div>
                                   <Label className="text-xs text-muted-foreground mb-1 block">Cheque Number *</Label>
                                   <Input
@@ -2932,7 +2912,7 @@ export default function CloseShiftPage() {
                                     className="w-full"
                                   />
                                 </div>
-                                
+
                                 <div>
                                   <Label className="text-xs text-muted-foreground mb-1 block">Received From (Who Gave the Cheque) *</Label>
                                   <Input
@@ -2942,7 +2922,7 @@ export default function CloseShiftPage() {
                                     className="w-full"
                                   />
                                 </div>
-                                
+
                                 <div>
                                   <div>
                                     <div className="flex items-center justify-between mb-1">
@@ -2965,8 +2945,8 @@ export default function CloseShiftPage() {
                                         </DialogTrigger>
                                       </Dialog>
                                     </div>
-                                    <Select 
-                                      value={cheque.bankId || ''} 
+                                    <Select
+                                      value={cheque.bankId || ''}
                                       onValueChange={(value) => {
                                         const selectedBank = banks.find(b => b.id === value)
                                         handleUpdatePumperCheque(breakdown.pumperName, cheque.id, 'bankId', value)
@@ -2981,7 +2961,7 @@ export default function CloseShiftPage() {
                                       <SelectContent>
                                         {banks.length === 0 ? (
                                           <div className="px-2 py-1.5 text-xs text-muted-foreground text-center">
-                                            No banks available. Click "Add Bank" above to create one.
+                                            No banks available. Click &quot;Add Bank&quot; above to create one.
                                           </div>
                                         ) : (
                                           banks.map((bank) => (
@@ -3023,7 +3003,7 @@ export default function CloseShiftPage() {
                                     </Select>
                                     {banks.length > 0 && (
                                       <p className="text-xs text-muted-foreground mt-1">
-                                        Don't see your bank? Click "Add Bank" or{' '}
+                                        Don&apos;t see your bank? Click &quot;Add Bank&quot; or{' '}
                                         <Button variant="link" className="h-auto p-0 text-xs" onClick={() => router.push('/settings/banks')}>
                                           manage all banks
                                         </Button>
@@ -3031,19 +3011,19 @@ export default function CloseShiftPage() {
                                     )}
                                   </div>
                                 </div>
-                                
+
                                 <div>
                                   <Label className="text-xs text-muted-foreground mb-1 block">Amount *</Label>
-              <MoneyInput
+                                  <MoneyInput
                                     value={cheque.amount}
                                     onChange={(value) => handleUpdatePumperCheque(breakdown.pumperName, cheque.id, 'amount', value)}
-                placeholder="0.00"
-                className="w-full"
-              />
-            </div>
-          </div>
+                                    placeholder="0.00"
+                                    className="w-full"
+                                  />
+                                </div>
+                              </div>
                             ))}
-                            
+
                             <div className="flex justify-between items-center pt-2 border-t">
                               <Label className="text-sm font-medium">Total Cheque Amount:</Label>
                               <div className="font-mono font-semibold">
@@ -3075,15 +3055,15 @@ export default function CloseShiftPage() {
                             <Plus className="h-4 w-4 mr-1" />
                             Add Test Pour
                           </Button>
-                  </div>
-                        
+                        </div>
+
                         {breakdown.assignments.length === 0 ? (
                           <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">
                             No nozzles assigned to this pumper
                           </p>
                         ) : (!pumperTestPours[breakdown.pumperName] || pumperTestPours[breakdown.pumperName].length === 0) ? (
                           <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">
-                            No test pours recorded. Click "Add Test Pour" to record test pours for assigned nozzles.
+                            No test pours recorded. Click &quot;Add Test Pour&quot; to record test pours for assigned nozzles.
                           </p>
                         ) : (
                           <div className="space-y-3">
@@ -3092,107 +3072,107 @@ export default function CloseShiftPage() {
                               const assignedNozzles = breakdown.assignments
                                 .filter(a => a.nozzle)
                                 .map(a => a.nozzle!)
-                                .filter((nozzle, index, self) => 
+                                .filter((nozzle, index, self) =>
                                   index === self.findIndex(n => n.id === nozzle.id)
                                 ) // Remove duplicates
-                              
+
                               return (
-                              <div key={testPour.id} className="border rounded-lg p-3 space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <Label className="text-sm font-medium">Test Pour</Label>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleRemovePumperTestPour(breakdown.pumperName, testPour.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                </div>
-                                
-                                <div>
-                                  <Label className="text-xs text-muted-foreground mb-1 block">Nozzle *</Label>
-                                  <Select 
-                                    value={testPour.nozzleId || ''} 
-                                    onValueChange={(value) => handleUpdatePumperTestPour(breakdown.pumperName, testPour.id, 'nozzleId', value)}
-                                  >
-                                    <SelectTrigger className="w-full">
-                                      <SelectValue placeholder="Select assigned nozzle" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {assignedNozzles.length === 0 ? (
-                                        <div className="px-2 py-1.5 text-sm text-muted-foreground">No nozzles assigned</div>
-                                      ) : (
-                                        assignedNozzles.map((nozzle) => {
-                                          const fuelType = nozzle.tank?.fuel?.name || 'Unknown'
-                                          const pumpNumber = nozzle.pump?.pumpNumber || '?'
-                                          return (
-                                            <SelectItem key={nozzle.id} value={nozzle.id}>
-                                              P-{pumpNumber} N-{nozzle.nozzleNumber} ({fuelType.replace(/_/g, ' ')})
-                                            </SelectItem>
-                                          )
-                                        })
-                                      )}
-                                    </SelectContent>
-                                  </Select>
-                  </div>
-                                
-                                <div>
-                                  <Label className="text-xs text-muted-foreground mb-1 block">Amount (L) *</Label>
-                                  <Input
-                                    type="number"
-                                    value={testPour.amount}
-                                    onChange={(e) => handleUpdatePumperTestPour(breakdown.pumperName, testPour.id, 'amount', parseFloat(e.target.value) || 0)}
-                                    placeholder="Enter amount in liters"
-                                    min="0"
-                                    step="0.1"
-                                    className="w-full"
-                                  />
+                                <div key={testPour.id} className="border rounded-lg p-3 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <Label className="text-sm font-medium">Test Pour</Label>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleRemovePumperTestPour(breakdown.pumperName, testPour.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+
+                                  <div>
+                                    <Label className="text-xs text-muted-foreground mb-1 block">Nozzle *</Label>
+                                    <Select
+                                      value={testPour.nozzleId || ''}
+                                      onValueChange={(value) => handleUpdatePumperTestPour(breakdown.pumperName, testPour.id, 'nozzleId', value)}
+                                    >
+                                      <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select assigned nozzle" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {assignedNozzles.length === 0 ? (
+                                          <div className="px-2 py-1.5 text-sm text-muted-foreground">No nozzles assigned</div>
+                                        ) : (
+                                          assignedNozzles.map((nozzle) => {
+                                            const fuelType = nozzle.tank?.fuel?.name || 'Unknown'
+                                            const pumpNumber = nozzle.pump?.pumpNumber || '?'
+                                            return (
+                                              <SelectItem key={nozzle.id} value={nozzle.id}>
+                                                P-{pumpNumber} N-{nozzle.nozzleNumber} ({fuelType.replace(/_/g, ' ')})
+                                              </SelectItem>
+                                            )
+                                          })
+                                        )}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  <div>
+                                    <Label className="text-xs text-muted-foreground mb-1 block">Amount (L) *</Label>
+                                    <Input
+                                      type="number"
+                                      value={testPour.amount}
+                                      onChange={(e) => handleUpdatePumperTestPour(breakdown.pumperName, testPour.id, 'amount', parseFloat(e.target.value) || 0)}
+                                      placeholder="Enter amount in liters"
+                                      min="0"
+                                      step="0.1"
+                                      className="w-full"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <Label className="text-xs text-muted-foreground mb-1 block">Reason *</Label>
+                                    <Select
+                                      value={testPour.reason || ''}
+                                      onValueChange={(value) => handleUpdatePumperTestPour(breakdown.pumperName, testPour.id, 'reason', value)}
+                                    >
+                                      <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select reason" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="daily_check">Daily Check</SelectItem>
+                                        <SelectItem value="customer_complaint">Customer Complaint</SelectItem>
+                                        <SelectItem value="maintenance">Maintenance</SelectItem>
+                                        <SelectItem value="calibration">Calibration</SelectItem>
+                                        <SelectItem value="random_test">Random Test</SelectItem>
+                                        <SelectItem value="other">Other</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <Checkbox
+                                      checked={testPour.returned}
+                                      onCheckedChange={(checked) => handleUpdatePumperTestPour(breakdown.pumperName, testPour.id, 'returned', checked === true)}
+                                    />
+                                    <Label className="text-xs text-muted-foreground cursor-pointer">
+                                      Fuel returned to tank
+                                    </Label>
+                                  </div>
+
+                                  <div>
+                                    <Label className="text-xs text-muted-foreground mb-1 block">Notes (Optional)</Label>
+                                    <Input
+                                      value={testPour.notes || ''}
+                                      onChange={(e) => handleUpdatePumperTestPour(breakdown.pumperName, testPour.id, 'notes', e.target.value)}
+                                      placeholder="Additional notes"
+                                      className="w-full"
+                                    />
+                                  </div>
                                 </div>
-                                
-                                <div>
-                                  <Label className="text-xs text-muted-foreground mb-1 block">Reason *</Label>
-                                  <Select 
-                                    value={testPour.reason || ''} 
-                                    onValueChange={(value) => handleUpdatePumperTestPour(breakdown.pumperName, testPour.id, 'reason', value)}
-                                  >
-                                    <SelectTrigger className="w-full">
-                                      <SelectValue placeholder="Select reason" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="daily_check">Daily Check</SelectItem>
-                                      <SelectItem value="customer_complaint">Customer Complaint</SelectItem>
-                                      <SelectItem value="maintenance">Maintenance</SelectItem>
-                                      <SelectItem value="calibration">Calibration</SelectItem>
-                                      <SelectItem value="random_test">Random Test</SelectItem>
-                                      <SelectItem value="other">Other</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                
-                                <div className="flex items-center gap-2">
-                                  <Checkbox
-                                    checked={testPour.returned}
-                                    onCheckedChange={(checked) => handleUpdatePumperTestPour(breakdown.pumperName, testPour.id, 'returned', checked === true)}
-                                  />
-                                  <Label className="text-xs text-muted-foreground cursor-pointer">
-                                    Fuel returned to tank
-                                  </Label>
-                  </div>
-                                
-                                <div>
-                                  <Label className="text-xs text-muted-foreground mb-1 block">Notes (Optional)</Label>
-                                  <Input
-                                    value={testPour.notes || ''}
-                                    onChange={(e) => handleUpdatePumperTestPour(breakdown.pumperName, testPour.id, 'notes', e.target.value)}
-                                    placeholder="Additional notes"
-                                    className="w-full"
-                                  />
-                </div>
-              </div>
                               )
                             })}
-            </div>
-          )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Advance Taken */}
@@ -3208,7 +3188,7 @@ export default function CloseShiftPage() {
                           className="w-full"
                         />
                         <p className="text-xs text-muted-foreground">
-                          Money taken as advance FROM CASH SALES (will be deducted from cash declared above). 
+                          Money taken as advance FROM CASH SALES (will be deducted from cash declared above).
                           Advance can only be taken from cash, not from card/credit/cheque.
                           {(() => {
                             const pumper = pumpers.find(p => p.name === breakdown.pumperName)
@@ -3216,16 +3196,16 @@ export default function CloseShiftPage() {
                             const monthlyRental = pumperId ? (pumperMonthlyRentals[pumperId] || 0) : 0
                             const ADVANCE_LIMIT = 50000
                             const availableLimit = ADVANCE_LIMIT - monthlyRental
-                            
+
                             return (
                               <>
                                 <span className="block mt-1 text-blue-600 dark:text-blue-400 font-medium">
-                                  💰 Advance Limit: Rs. {availableLimit.toLocaleString()} 
+                                  💰 Advance Limit: Rs. {availableLimit.toLocaleString()}
                                   {monthlyRental > 0 && ` (Limit: Rs. 50,000 - Monthly Rental: Rs. ${monthlyRental.toLocaleString()})`}
                                 </span>
                                 {breakdown.advanceTaken > 0 && breakdown.declaredCash >= 0 && (
                                   <span className="block mt-1 text-orange-600 dark:text-orange-400">
-                                    Cash after advance: Rs. {(breakdown.declaredCash - breakdown.advanceTaken).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 
+                                    Cash after advance: Rs. {(breakdown.declaredCash - breakdown.advanceTaken).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     (Rs. {breakdown.declaredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} declared - Rs. {breakdown.advanceTaken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} advance)
                                   </span>
                                 )}
@@ -3243,7 +3223,7 @@ export default function CloseShiftPage() {
                             )
                           })()}
                         </p>
-                  </div>
+                      </div>
 
                       {/* Other Pumper Advances (Given from this pumper's cash) */}
                       <div className="space-y-3 pt-2 border-t">
@@ -3263,7 +3243,7 @@ export default function CloseShiftPage() {
                             Add
                           </Button>
                         </div>
-                        
+
                         {(() => {
                           const otherAdvances = otherPumperAdvances[breakdown.pumperName] || []
                           const advanceTaken = breakdown.advanceTaken || 0
@@ -3271,7 +3251,7 @@ export default function CloseShiftPage() {
                           const totalAdvances = advanceTaken + otherAdvancesTotal
                           const availableCash = breakdown.declaredCash || 0
                           const cashAfterAllAdvances = availableCash - totalAdvances
-                          
+
                           // Get all pumpers who worked the same shift, EXCEPT the current pumper
                           // Show all other pumpers from this shift (breakdown.pumperName is excluded)
                           const availablePumpers = pumperBreakdowns
@@ -3280,7 +3260,7 @@ export default function CloseShiftPage() {
                               id: b.pumperName, // Use pumperName as both ID and value
                               name: b.pumperName
                             }))
-                          
+
                           return (
                             <div className="space-y-3">
                               {otherAdvances.map((advance, index) => (
@@ -3301,8 +3281,8 @@ export default function CloseShiftPage() {
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <div className="space-y-1">
                                       <Label className="text-xs">Pumper *</Label>
-                                      <Select 
-                                        value={advance.pumperId} 
+                                      <Select
+                                        value={advance.pumperId}
                                         onValueChange={(value) => handleUpdateOtherPumperAdvance(breakdown.pumperName, index, 'pumperId', value)}
                                       >
                                         <SelectTrigger className="h-8 text-xs">
@@ -3379,10 +3359,10 @@ export default function CloseShiftPage() {
                             </div>
                           )
                         })()}
-                  </div>
+                      </div>
 
                       {/* Expenses */}
-            <div className="space-y-4">
+                      <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <Label className="flex items-center gap-2">
                             <FileText className="h-4 w-4" />
@@ -3394,7 +3374,7 @@ export default function CloseShiftPage() {
                                 <SelectValue placeholder="Add expense" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="BANK_DEPOSIT">Bank Deposit (Owner's Account)</SelectItem>
+                                <SelectItem value="BANK_DEPOSIT">Bank Deposit (Owner&apos;s Account)</SelectItem>
                                 <SelectItem value="LOAN_GIVEN">Loan to Pumper</SelectItem>
                                 <SelectItem value="OTHER">Other Expense</SelectItem>
                               </SelectContent>
@@ -3402,16 +3382,16 @@ export default function CloseShiftPage() {
                             <Button size="sm">
                               <Plus className="h-4 w-4" />
                             </Button>
-                </div>
-                  </div>
+                          </div>
+                        </div>
 
                         {breakdown.expenses.map((expense) => (
                           <div key={expense.id} className="border rounded-lg p-3 space-y-3">
                             <div className="flex items-center justify-between">
                               <Label className="text-sm font-medium">
-                                {expense.type === 'BANK_DEPOSIT' ? 'Bank Deposit (Owner\'s Account)' :
-                                 expense.type === 'LOAN_GIVEN' ? 'Loan to Pumper' :
-                                 'Other Expense'}
+                                {expense.type === 'BANK_DEPOSIT' ? 'Bank Deposit (Owner&apos;s Account)' :
+                                  expense.type === 'LOAN_GIVEN' ? 'Loan to Pumper' :
+                                    'Other Expense'}
                               </Label>
                               <Button
                                 variant="outline"
@@ -3420,20 +3400,20 @@ export default function CloseShiftPage() {
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
-                </div>
+                            </div>
 
                             {/* Bank Deposit Fields */}
                             {expense.type === 'BANK_DEPOSIT' && (
                               <>
                                 <div className="mb-2 p-2 bg-blue-500/10 dark:bg-blue-500/20 rounded border border-blue-500/20">
                                   <p className="text-xs text-blue-700 dark:text-blue-300">
-                                    <strong>Note:</strong> Money taken from this pumper's sales and deposited to owner's bank account
+                                    <strong>Note:</strong> Money taken from this pumper&apos;s sales and deposited to owner&apos;s bank account
                                   </p>
-                  </div>
+                                </div>
                                 <div>
                                   <div>
                                     <div className="flex items-center justify-between mb-1">
-                                      <Label className="text-xs text-muted-foreground">Owner's Bank Account *</Label>
+                                      <Label className="text-xs text-muted-foreground">Owner&apos;s Bank Account *</Label>
                                       <Dialog open={addBankDialogOpen} onOpenChange={setAddBankDialogOpen}>
                                         <DialogTrigger asChild>
                                           <Button
@@ -3452,8 +3432,8 @@ export default function CloseShiftPage() {
                                         </DialogTrigger>
                                       </Dialog>
                                     </div>
-                                    <Select 
-                                      value={expense.bankId || ''} 
+                                    <Select
+                                      value={expense.bankId || ''}
                                       onValueChange={(value) => {
                                         const selectedBank = banks.find(b => b.id === value)
                                         handleUpdatePumperExpense(breakdown.pumperName, expense.id, 'bankId', value)
@@ -3470,7 +3450,7 @@ export default function CloseShiftPage() {
                                       <SelectContent>
                                         {banks.length === 0 ? (
                                           <div className="px-2 py-1.5 text-xs text-muted-foreground text-center">
-                                            No banks available. Click "Add Bank" above to create one.
+                                            No banks available. Click &quot;Add Bank&quot; above to create one.
                                           </div>
                                         ) : (
                                           banks.map((bank) => (
@@ -3514,7 +3494,7 @@ export default function CloseShiftPage() {
                                     </Select>
                                     {banks.length > 0 && (
                                       <p className="text-xs text-muted-foreground mt-1">
-                                        Don't see your bank? Click "Add Bank" or{' '}
+                                        Don&apos;t see your bank? Click &quot;Add Bank&quot; or{' '}
                                         <Button variant="link" className="h-auto p-0 text-xs" onClick={() => router.push('/settings/banks')}>
                                           manage all banks
                                         </Button>
@@ -3526,7 +3506,7 @@ export default function CloseShiftPage() {
                                       Account: {banks.find(b => b.id === expense.bankId)?.accountNumber}
                                     </p>
                                   )}
-                  </div>
+                                </div>
                                 <div>
                                   <Label className="text-xs text-muted-foreground mb-1 block">Deposited By (Manager/Owner)</Label>
                                   <Input
@@ -3535,7 +3515,7 @@ export default function CloseShiftPage() {
                                     placeholder="Enter manager/owner name who deposited"
                                     className="w-full"
                                   />
-                </div>
+                                </div>
                               </>
                             )}
 
@@ -3544,8 +3524,8 @@ export default function CloseShiftPage() {
                               <>
                                 <div>
                                   <Label className="text-xs text-muted-foreground mb-1 block">Loan Given To (Pumper) *</Label>
-                                  <Select 
-                                    value={expense.loanGivenTo || ''} 
+                                  <Select
+                                    value={expense.loanGivenTo || ''}
                                     onValueChange={(value) => {
                                       const selectedPumper = pumpers.find(p => p.id === value)
                                       handleUpdatePumperExpense(breakdown.pumperName, expense.id, 'loanGivenTo', value)
@@ -3573,7 +3553,7 @@ export default function CloseShiftPage() {
                                       {expense.loanGivenToName || pumpers.find(p => p.id === expense.loanGivenTo)?.name || 'Pumper selected'}
                                     </p>
                                   )}
-              </div>
+                                </div>
                                 <div>
                                   <Label className="text-xs text-muted-foreground mb-1 block">Loan Given By (Manager) *</Label>
                                   <Input
@@ -3585,7 +3565,7 @@ export default function CloseShiftPage() {
                                   <p className="text-xs text-muted-foreground mt-1">
                                     Manager who authorized the loan
                                   </p>
-            </div>
+                                </div>
                                 <div>
                                   <Label className="text-xs text-muted-foreground mb-1 block">Monthly Rental (Rs.)</Label>
                                   <MoneyInput
@@ -3595,11 +3575,11 @@ export default function CloseShiftPage() {
                                     className="w-full"
                                   />
                                   <p className="text-xs text-muted-foreground mt-1">
-                                    Amount to deduct monthly from pumper's salary (default: 0)
+                                    Amount to deduct monthly from pumper&apos;s salary (default: 0)
                                   </p>
                                 </div>
                               </>
-          )}
+                            )}
 
                             {/* Other Expense Fields */}
                             {expense.type === 'OTHER' && (
@@ -3637,28 +3617,28 @@ export default function CloseShiftPage() {
                           <div className="grid grid-cols-2 gap-2 text-xs">
                             <div className="text-muted-foreground">Cash (full amount):</div>
                             <div className="font-mono text-right">Rs. {breakdown.declaredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                            
+
                             {(() => {
                               const otherAdvances = otherPumperAdvances[breakdown.pumperName] || []
                               const advanceTaken = breakdown.advanceTaken || 0
                               const otherAdvancesTotal = otherAdvances.reduce((sum, a) => sum + a.amount, 0)
                               const totalAdvances = advanceTaken + otherAdvancesTotal
-                              
+
                               if (totalAdvances > 0) {
                                 return (
-                              <>
-                                <div className="text-muted-foreground text-orange-600 dark:text-orange-400">Advance Taken (deducted from cash):</div>
-                                <div className="font-mono text-right text-orange-600 dark:text-orange-400">
+                                  <>
+                                    <div className="text-muted-foreground text-orange-600 dark:text-orange-400">Advance Taken (deducted from cash):</div>
+                                    <div className="font-mono text-right text-orange-600 dark:text-orange-400">
                                       - Rs. {advanceTaken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </div>
+                                    </div>
                                     {otherAdvancesTotal > 0 && (
                                       <>
                                         <div className="text-muted-foreground text-orange-600 dark:text-orange-400">Advances Given (deducted from cash):</div>
                                         <div className="font-mono text-right text-orange-600 dark:text-orange-400">
                                           - Rs. {otherAdvancesTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </div>
-                              </>
-                            )}
+                                        </div>
+                                      </>
+                                    )}
                                     <div className="text-muted-foreground font-medium">Total Advances:</div>
                                     <div className="font-mono text-right font-medium text-orange-600 dark:text-orange-400">
                                       - Rs. {totalAdvances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -3672,20 +3652,20 @@ export default function CloseShiftPage() {
                               }
                               return null
                             })()}
-                            
+
                             <div className="text-muted-foreground">Card:</div>
                             <div className="font-mono text-right">
                               Rs. {Object.values(breakdown.declaredCardAmounts).reduce((sum, amount) => sum + amount, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
-                            
+
                             <div className="text-muted-foreground">Credit:</div>
                             <div className="font-mono text-right">
                               Rs. {Object.values(breakdown.declaredCreditAmounts).reduce((sum, amount) => sum + amount, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
-                            
+
                             <div className="text-muted-foreground">Cheque:</div>
                             <div className="font-mono text-right">Rs. {breakdown.declaredCheque.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                            
+
                             {(() => {
                               const bankDeposits = breakdown.expenses.filter(exp => exp.type === 'BANK_DEPOSIT')
                               const totalBankDeposits = bankDeposits.reduce((sum, exp) => sum + exp.amount, 0)
@@ -3702,7 +3682,7 @@ export default function CloseShiftPage() {
                               return null
                             })()}
                           </div>
-                          
+
                           <div className="flex justify-between items-center pt-2 border-t mt-2">
                             <Label className="text-sm font-semibold">Total Declared:</Label>
                             <div className="font-mono font-bold text-base">
@@ -3713,15 +3693,15 @@ export default function CloseShiftPage() {
                             </div>
                           </div>
                         </div>
-                        
+
                         {/* Advance (shown for info, but NOT included in variance) and Other Expenses */}
                         {(() => {
                           const otherExpenses = breakdown.expenses.filter(exp => exp.type !== 'BANK_DEPOSIT')
                           const totalOtherExpenses = otherExpenses.reduce((sum, exp) => sum + exp.amount, 0)
                           const hasDeductions = breakdown.advanceTaken > 0 || totalOtherExpenses > 0
-                          
+
                           if (!hasDeductions) return null
-                          
+
                           return (
                             <div className="space-y-2 pt-2 border-t mt-2">
                               {breakdown.advanceTaken > 0 && (
@@ -3737,7 +3717,7 @@ export default function CloseShiftPage() {
                                   </p>
                                 </div>
                               )}
-                              
+
                               {totalOtherExpenses > 0 && (
                                 <>
                                   <div className="text-xs text-muted-foreground mb-1">Deductions (Other Expenses):</div>
@@ -3749,7 +3729,7 @@ export default function CloseShiftPage() {
                                   </div>
                                 </>
                               )}
-                              
+
                               <div className="flex justify-between items-center pt-1 border-t mt-1">
                                 <Label className="text-sm font-semibold">Effective Declared Amount (for variance):</Label>
                                 <div className="font-mono font-bold text-base">
@@ -3761,27 +3741,26 @@ export default function CloseShiftPage() {
                               </div>
                             </div>
                           )
-                  })()}
-              </div>
-            </div>
-            
+                        })()}
+                      </div>
+                    </div>
+
                     {/* Variance */}
                     <div>
                       <Label className="text-sm text-muted-foreground mb-1 block">
                         Variance
                       </Label>
-                      <div className={`font-mono font-semibold text-lg ${
-                        breakdown.variance > 20 
-                          ? 'text-red-600 dark:text-red-400' 
-                          : breakdown.variance < -20
-                            ? 'text-green-600 dark:text-green-400'
-                            : 'text-foreground'
-                      }`}>
+                      <div className={`font-mono font-semibold text-lg ${breakdown.variance > 20
+                        ? 'text-red-600 dark:text-red-400'
+                        : breakdown.variance < -20
+                          ? 'text-green-600 dark:text-green-400'
+                          : 'text-foreground'
+                        }`}>
                         {breakdown.variance >= 0 ? '+' : ''}Rs. {breakdown.variance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
+                      </div>
                       {breakdown.varianceStatus !== 'NORMAL' && (
                         <p className="text-xs mt-1">
-                          {breakdown.varianceStatus === 'ADD_TO_SALARY' 
+                          {breakdown.varianceStatus === 'ADD_TO_SALARY'
                             ? `Add Rs. ${Math.abs(breakdown.variance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} to salary`
                             : `Deduct Rs. ${Math.abs(breakdown.variance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} from salary`}
                         </p>
@@ -3800,17 +3779,17 @@ export default function CloseShiftPage() {
                         const canSales = assignment.canSales || 0
                         const pumpSales = assignment.pumpSales || Math.max(0, delta - canSales)
                         const fuelType = assignment.nozzle?.tank?.fuel?.name || 'Unknown'
-                        const nozzleDisplay = assignment.nozzle 
+                        const nozzleDisplay = assignment.nozzle
                           ? `P-${assignment.nozzle.pump?.pumpNumber || '?'} N-${assignment.nozzle.nozzleNumber}`
                           : 'Unknown Nozzle'
-                        
+
                         return (
                           <div key={assignment.id} className="text-xs text-muted-foreground flex items-center justify-between">
                             <span>{nozzleDisplay} ({fuelType})</span>
-                <span className="font-mono">
+                            <span className="font-mono">
                               {pumpSales.toFixed(2)}L
-                </span>
-              </div>
+                            </span>
+                          </div>
                         )
                       })}
                     </div>
@@ -3822,7 +3801,7 @@ export default function CloseShiftPage() {
             {/* Overall Shift Summary */}
             <div className="mt-6 pt-6 border-t">
               <h4 className="font-semibold mb-4">Overall Shift Summary</h4>
-              
+
               {/* Key Metrics */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="text-center p-4 bg-blue-500/10 dark:bg-blue-500/20 rounded-lg border border-blue-500/20">
@@ -3837,23 +3816,21 @@ export default function CloseShiftPage() {
                     Rs. {pumperBreakdowns.reduce((sum, b) => sum + b.declaredAmount, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
-                <div className={`text-center p-4 rounded-lg border ${
-                  pumperBreakdowns.reduce((sum, b) => sum + b.variance, 0) >= 0 
-                    ? 'bg-red-500/10 dark:bg-red-500/20 border-red-500/20' 
-                    : 'bg-green-500/10 dark:bg-green-500/20 border-green-500/20'
-                }`}>
-                  <div className="text-sm text-muted-foreground mb-1">Total Variance</div>
-                  <div className={`font-mono font-bold text-lg ${
-                    pumperBreakdowns.reduce((sum, b) => sum + b.variance, 0) >= 0 
-                      ? 'text-red-700 dark:text-red-300' 
-                      : 'text-green-700 dark:text-green-300'
+                <div className={`text-center p-4 rounded-lg border ${pumperBreakdowns.reduce((sum, b) => sum + b.variance, 0) >= 0
+                  ? 'bg-red-500/10 dark:bg-red-500/20 border-red-500/20'
+                  : 'bg-green-500/10 dark:bg-green-500/20 border-green-500/20'
                   }`}>
+                  <div className="text-sm text-muted-foreground mb-1">Total Variance</div>
+                  <div className={`font-mono font-bold text-lg ${pumperBreakdowns.reduce((sum, b) => sum + b.variance, 0) >= 0
+                    ? 'text-red-700 dark:text-red-300'
+                    : 'text-green-700 dark:text-green-300'
+                    }`}>
                     {pumperBreakdowns.reduce((sum, b) => sum + b.variance, 0) >= 0 ? '+' : ''}
                     Rs. {pumperBreakdowns.reduce((sum, b) => sum + b.variance, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
               </div>
-              
+
               {/* Tender Type Breakdown */}
               <div className="pt-4 border-t">
                 <h5 className="font-semibold mb-3 text-sm">Tender Type Breakdown (All Pumpers)</h5>
@@ -3867,7 +3844,7 @@ export default function CloseShiftPage() {
                   <div className="text-center p-3 bg-green-500/10 dark:bg-green-500/20 rounded-lg border border-green-500/20">
                     <div className="text-xs text-muted-foreground mb-1">Card</div>
                     <div className="font-mono font-semibold text-green-700 dark:text-green-300">
-                      Rs. {pumperBreakdowns.reduce((sum, b) => 
+                      Rs. {pumperBreakdowns.reduce((sum, b) =>
                         sum + Object.values(b.declaredCardAmounts).reduce((cardSum, amount) => cardSum + amount, 0), 0
                       ).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
@@ -3875,7 +3852,7 @@ export default function CloseShiftPage() {
                   <div className="text-center p-3 bg-orange-500/10 dark:bg-orange-500/20 rounded-lg border border-orange-500/20">
                     <div className="text-xs text-muted-foreground mb-1">Credit</div>
                     <div className="font-mono font-semibold text-orange-700 dark:text-orange-300">
-                      Rs. {pumperBreakdowns.reduce((sum, b) => 
+                      Rs. {pumperBreakdowns.reduce((sum, b) =>
                         sum + Object.values(b.declaredCreditAmounts).reduce((creditSum, amount) => creditSum + amount, 0), 0
                       ).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
@@ -3897,7 +3874,7 @@ export default function CloseShiftPage() {
         <Button variant="outline" onClick={() => router.back()}>
           Cancel
         </Button>
-        <Button 
+        <Button
           onClick={handleCloseShiftAndPrint}
           disabled={loading || !selectedShift || !Array.isArray(assignments) || assignments.some(a => !a.endMeterReading)}
           className="bg-purple-600 hover:bg-purple-700"
@@ -3913,7 +3890,7 @@ export default function CloseShiftPage() {
           <DialogHeader>
             <DialogTitle>Add New Bank</DialogTitle>
             <DialogDescription>
-              Add a bank that's not in the list. It will be available immediately after adding and can be used for cheques and bank deposits.
+              Add a bank that&apos;s not in the list. It will be available immediately after adding and can be used for cheques and bank deposits.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

@@ -17,8 +17,14 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    
+    interface ToleranceBody {
+      percentageTolerance?: number
+      flatAmountTolerance?: number
+      useMaximum?: boolean
+      description?: string
+    }
+    const body = await request.json() as ToleranceBody
+
     toleranceConfig = {
       ...toleranceConfig,
       ...body,

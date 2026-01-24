@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     // Salary month runs from 7th of current month to 6th of next month
     let startDate: Date
     let endDate: Date
-    
+
     if (month) {
       const [year, monthNum] = month.split('-').map(Number)
       // Start: 7th of the specified month
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       // If current date is 7th or after, use current month's salary period
       let salaryMonth = now.getMonth()
       let salaryYear = now.getFullYear()
-      
+
       if (now.getDate() < 7) {
         // Use previous month
         salaryMonth = now.getMonth() - 1
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
           salaryYear = now.getFullYear() - 1
         }
       }
-      
+
       startDate = new Date(salaryYear, salaryMonth, 7, 0, 0, 0, 0)
       endDate = new Date(salaryYear, salaryMonth + 1, 6, 23, 59, 59, 999)
     }
@@ -95,9 +95,9 @@ export async function GET(request: NextRequest) {
       where: {
         stationId,
         status: 'ACTIVE', // Only count active (unpaid) loans
-            createdAt: {
+        createdAt: {
           lte: endDate // Loan was created before or during this salary period
-          }
+        }
       },
       select: {
         id: true,
@@ -107,20 +107,21 @@ export async function GET(request: NextRequest) {
         reason: true,
         createdAt: true,
         dueDate: true,
-        status: true
+        status: true,
+        paidAmount: true
       }
     })
-    
+
     // Debug: Log all loans found
     console.log(`[Salary API] Found ${loanPumperRecords.length} active loans for station ${stationId} (created before ${endDate.toISOString()})`)
     if (loanPumperRecords.length > 0) {
       console.log('[Salary API] Loan details:', loanPumperRecords.map(l => ({
         id: l.id,
-        pumperName: l.pumperName,
         amount: l.amount,
         monthlyRental: l.monthlyRental,
         status: l.status,
-        createdAt: l.createdAt
+        createdAt: l.createdAt,
+        paidAmount: l.paidAmount // Ensure paidAmount is logged for debugging
       })))
     }
 
@@ -156,24 +157,36 @@ export async function GET(request: NextRequest) {
     // Process salary data for each pumper
     const salaryData = pumpers.map(pumper => {
       // Filter shifts where this pumper worked
+      interface PumperBreakdown {
+        pumperName: string
+        calculatedSales?: number
+        advanceTaken?: number
+        variance?: number
+        varianceStatus?: string
+      }
+      interface DeclaredAmounts {
+        pumperBreakdown?: PumperBreakdown[]
+      }
+
       const pumperShifts = shifts.filter(shift => {
-        const pumperBreakdown = (shift.declaredAmounts as any)?.pumperBreakdown || []
-        return pumperBreakdown.some((pb: any) => pb.pumperName === pumper.name) ||
-               shift.assignments.some(a => a.pumperName === pumper.name)
+        const declaredAmounts = shift.declaredAmounts as unknown as DeclaredAmounts
+        const pumperBreakdown = declaredAmounts?.pumperBreakdown || []
+        return pumperBreakdown.some(pb => pb.pumperName === pumper.name) ||
+          shift.assignments.some(a => a.pumperName === pumper.name)
       })
 
       // Get base salary (default to 27000 if not set)
-      const baseSalary = (pumper.baseSalary !== null && pumper.baseSalary !== undefined && pumper.baseSalary > 0) 
-        ? pumper.baseSalary 
+      const baseSalary = (pumper.baseSalary !== null && pumper.baseSalary !== undefined && pumper.baseSalary > 0)
+        ? pumper.baseSalary
         : 27000
-      
+
       // Get holiday allowance from pumper settings (default to 4500 if not set)
       const holidayAllowance = (pumper.holidayAllowance !== null && pumper.holidayAllowance !== undefined && pumper.holidayAllowance > 0)
         ? pumper.holidayAllowance
         : 4500
       const restDayDeduction = 900 // Deduction per rest day
       const allowedRestDays = 5 // 5 rest days per month
-      
+
       // Calculate OT rate per hour: ((basic/30) / 8) * 1.5
       const dailySalary = baseSalary / 30
       const hourlyRate = dailySalary / 8
@@ -201,22 +214,23 @@ export async function GET(request: NextRequest) {
       }> = []
 
       pumperShifts.forEach(shift => {
-        const pumperBreakdown = (shift.declaredAmounts as any)?.pumperBreakdown || []
-        const breakdown = pumperBreakdown.find((pb: any) => pb.pumperName === pumper.name)
-        
+        const declaredAmounts = shift.declaredAmounts as unknown as DeclaredAmounts
+        const pumperBreakdown = declaredAmounts?.pumperBreakdown || []
+        const breakdown = pumperBreakdown.find(pb => pb.pumperName === pumper.name)
+
         if (breakdown) {
           const shiftStart = new Date(shift.startTime)
           const shiftEnd = shift.endTime ? new Date(shift.endTime) : new Date()
           const hours = (shiftEnd.getTime() - shiftStart.getTime()) / (1000 * 60 * 60)
-          
+
           // Track worked date (just the date, not time)
           const workedDate = shiftEnd.toISOString().split('T')[0]
           workedDates.add(workedDate)
-          
+
           totalHours += hours
           totalSales += breakdown.calculatedSales || 0
           totalAdvances += breakdown.advanceTaken || 0
-          
+
           // Calculate overtime for this shift (if > 8 hours)
           let shiftOvertimeHours = 0
           let shiftOvertimeAmount = 0
@@ -226,7 +240,7 @@ export async function GET(request: NextRequest) {
             totalOvertimeHours += shiftOvertimeHours
             totalOvertimeAmount += shiftOvertimeAmount
           }
-          
+
           // Handle variance adjustments based on varianceStatus from shift close
           // Variance = Calculated Sales - Effective Declared
           // If |variance| > 20: add/deduct FULL variance amount
@@ -240,9 +254,9 @@ export async function GET(request: NextRequest) {
             totalVarianceDeduct += Math.abs(breakdown.variance || 0)
           }
           // If status is 'NORMAL', no variance adjustment needed (|variance| <= 20)
-          
+
           shiftCount++
-          
+
           shiftDetails.push({
             shiftId: shift.id,
             date: workedDate,
@@ -259,24 +273,24 @@ export async function GET(request: NextRequest) {
 
       // Get loans for this pumper from LoanPumper records
       // Match by exact pumper name (case-insensitive for safety)
-      const pumperLoansFromRecords = loanPumperRecords.filter(loan => 
+      const pumperLoansFromRecords = loanPumperRecords.filter(loan =>
         loan.pumperName.toLowerCase().trim() === pumper.name.toLowerCase().trim()
       )
-      
+
       // Debug: Log loans for this pumper
       if (pumperLoansFromRecords.length > 0) {
-        console.log(`[Salary API] Pumper: ${pumper.name}, Found ${pumperLoansFromRecords.length} loans:`, 
-          pumperLoansFromRecords.map(l => ({ 
-            id: l.id, 
-            amount: l.amount, 
-            monthlyRental: l.monthlyRental, 
+        console.log(`[Salary API] Pumper: ${pumper.name}, Found ${pumperLoansFromRecords.length} loans:`,
+          pumperLoansFromRecords.map(l => ({
+            id: l.id,
+            amount: l.amount,
+            monthlyRental: l.monthlyRental,
             status: l.status,
             createdAt: l.createdAt,
             pumperName: l.pumperName
           }))
         )
       }
-      
+
       // Calculate monthly loan rental deductions (not total loan amount)
       // All loans in pumperLoansFromRecords are already active and created before endDate
       // Sum monthly rental amounts from all active loans
@@ -285,31 +299,31 @@ export async function GET(request: NextRequest) {
         console.log(`[Salary API] Loan ${loan.id}: monthlyRental = ${rental}`)
         return sum + rental
       }, 0)
-      
+
       // Calculate total outstanding loan amount (sum of remaining balances)
       const totalLoanAmount = pumperLoansFromRecords.reduce((sum, loan) => {
         const paidAmount = loan.paidAmount || 0
         const remainingAmount = loan.amount - paidAmount
         return sum + remainingAmount
       }, 0)
-      
+
       // Note: Safe transactions for pumper loans are now tracked via LoanPumper records
       // We no longer count safe transactions separately for monthly rental calculation
       // Loans created from safe page now create LoanPumper records with monthlyRental
-      
+
       const totalLoans = totalMonthlyRental // Use monthly rental instead of loan amount
-      
+
       if (totalLoans > 0) {
         console.log(`[Salary API] Total monthly rental for ${pumper.name}: Rs. ${totalLoans}`)
       } else if (loanPumperRecords.length > 0) {
-        console.log(`[Salary API] Warning: Found ${loanPumperRecords.length} active loans but 0 for pumper ${pumper.name}. Pumper names in loans:`, 
+        console.log(`[Salary API] Warning: Found ${loanPumperRecords.length} active loans but 0 for pumper ${pumper.name}. Pumper names in loans:`,
           loanPumperRecords.map(l => l.pumperName)
         )
       }
 
       // Calculate commission: 1 rs per 1000rs sales
       const commission = Math.floor(totalSales / 1000)
-      
+
       // Calculate rest days deduction
       // Total days in salary period (from 7th to 6th of next month = ~30 days)
       const daysInPeriod = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
@@ -321,17 +335,17 @@ export async function GET(request: NextRequest) {
       // Deduct 900rs for each rest day taken (up to the 5 allowed)
       const restDayDeductionAmount = restDaysTaken * restDayDeduction
       const actualHolidayAllowance = holidayAllowance - restDayDeductionAmount
-      
+
       // Calculate EPF (Employee Provident Fund) - typically 8% of gross salary
       // EPF = 8% of (baseSalary + holidayAllowance + overtime + commission)
       const grossSalary = baseSalary + actualHolidayAllowance + totalOvertimeAmount + commission
       const epf = Math.round(grossSalary * 0.08 * 100) / 100
-      
+
       // Calculate net salary
       // Formula: Base Salary + Holiday Allowance + Overtime + Commission + Variance Bonuses 
       //          - Variance Deductions - Advances - Loans - EPF
       // Net Salary = Base + Allowance + OT + Commission + Additions - Deductions - EPF
-      const netSalary = baseSalary + actualHolidayAllowance + totalOvertimeAmount + commission + totalVarianceAdd 
+      const netSalary = baseSalary + actualHolidayAllowance + totalOvertimeAmount + commission + totalVarianceAdd
         - totalVarianceDeduct - totalAdvances - totalLoans - epf
 
       // Always return data for the pumper, even if they have no shifts
@@ -375,7 +389,7 @@ export async function GET(request: NextRequest) {
 
       if (pumper) {
         // Get loans even if no shifts
-        const pumperLoansFromRecords = loanPumperRecords.filter(loan => 
+        const pumperLoansFromRecords = loanPumperRecords.filter(loan =>
           loan.pumperName.toLowerCase().trim() === pumper.name.toLowerCase().trim()
         )
         // Calculate monthly loan rental deductions (not total loan amount)
@@ -384,10 +398,10 @@ export async function GET(request: NextRequest) {
         const totalMonthlyRental = pumperLoansFromRecords.reduce((sum, loan) => {
           return sum + (loan.monthlyRental || 0)
         }, 0)
-        
+
         const totalLoans = totalMonthlyRental // Use monthly rental instead of loan amount
-        const baseSalary = (pumper.baseSalary !== null && pumper.baseSalary !== undefined && pumper.baseSalary > 0) 
-          ? pumper.baseSalary 
+        const baseSalary = (pumper.baseSalary !== null && pumper.baseSalary !== undefined && pumper.baseSalary > 0)
+          ? pumper.baseSalary
           : 27000
         const holidayAllowance = (pumper.holidayAllowance !== null && pumper.holidayAllowance !== undefined && pumper.holidayAllowance > 0)
           ? pumper.holidayAllowance

@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useStation } from '@/contexts/StationContext'
+import { useToast } from '@/hooks/use-toast'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -28,8 +29,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Truck, AlertCircle, CheckCircle, Plus, ArrowLeft, RefreshCw, Droplets, Clock, Eye } from 'lucide-react'
-import { depthToVolume, getTankCapacityLabel, validateDepth, getMaxDepth } from '@/lib/tank-calibration'
+import { Truck, AlertCircle, CheckCircle, Plus, ArrowLeft, RefreshCw, Droplets, Clock } from 'lucide-react'
+import { depthToVolume, getTankCapacityLabel, validateDepth, getMaxDepth, volumeToDepth, TankCapacity } from '@/lib/tank-calibration'
 
 interface Station {
   id: string
@@ -62,6 +63,7 @@ interface Delivery {
     fuelId: string
     fuel?: Fuel
     currentLevel: number
+    capacity: number
   }
   supplier: string
   invoiceNumber?: string
@@ -71,7 +73,11 @@ interface Delivery {
   afterDipReading?: number
   actualReceived?: number
   fuelSoldDuring?: number
-  beforeMeterReadings?: any
+  beforeMeterReadings?: {
+    assignmentId: string
+    nozzleId: string
+    meterReading: number
+  }[]
   verificationStatus: string
   deliveryDate: string
   receivedBy: string
@@ -91,7 +97,7 @@ interface ActiveShift {
     nozzle: {
       id: string
       nozzleNumber: string
-      tank: { id: string; tankNumber: string; fuelId: string; fuel?: Fuel }
+      tank: { id: string; tankNumber: string; fuelId: string; fuel?: Fuel; name?: string }
     }
     startMeterReading: number
   }>
@@ -121,8 +127,8 @@ export default function TankDeliveriesPage() {
   const [tanks, setTanks] = useState<Tank[]>([])
   const [deliveries, setDeliveries] = useState<Delivery[]>([])
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+
+  const { toast } = useToast()
   const [activeTab, setActiveTab] = useState('new')
 
   // Form state
@@ -160,26 +166,41 @@ export default function TankDeliveriesPage() {
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null)
   const [showDetails, setShowDetails] = useState(false)
 
+  const loadData = useCallback(async () => {
+    try {
+      const [stationsRes, deliveriesRes] = await Promise.all([
+        fetch('/api/stations?active=true'),
+        fetch('/api/deliveries')
+      ])
+
+      const stationsData = await stationsRes.json()
+      const deliveriesData = await deliveriesRes.json()
+
+      if (Array.isArray(stationsData)) {
+        setStations(stationsData)
+      } else {
+        console.error('Stations data mismatch:', stationsData)
+        setStations([])
+      }
+
+      if (Array.isArray(deliveriesData)) {
+        setDeliveries(deliveriesData)
+      } else {
+        console.error('Deliveries data mismatch:', deliveriesData)
+        setDeliveries([])
+      }
+    } catch (_err) {
+      toast({
+        title: "Error",
+        description: "Failed to load data",
+        variant: "destructive"
+      })
+    }
+  }, [toast])
+
   useEffect(() => {
     loadData()
-  }, [])
-
-    const loadData = async () => {
-      try {
-        const [stationsRes, deliveriesRes] = await Promise.all([
-          fetch('/api/stations?active=true'),
-        fetch('/api/deliveries')
-        ])
-
-        const stationsData = await stationsRes.json()
-        const deliveriesData = await deliveriesRes.json()
-
-        setStations(stationsData)
-      setDeliveries(deliveriesData)
-      } catch (err) {
-      setError('Failed to load data')
-      }
-    }
+  }, [loadData])
 
   useEffect(() => {
     if (selectedStation) {
@@ -188,43 +209,35 @@ export default function TankDeliveriesPage() {
           const response = await fetch(`/api/tanks?stationId=${selectedStation}&type=tanks`)
           const tanksData = await response.json()
           setTanks(tanksData)
-        } catch (err) {
-          setError('Failed to load tanks')
+        } catch (_err) {
+          toast({
+            title: "Error",
+            description: "Failed to load tanks",
+            variant: "destructive"
+          })
         }
       }
       loadTanks()
     } else {
       setTanks([])
     }
-  }, [selectedStation])
+  }, [selectedStation, toast])
 
-  useEffect(() => {
-    if (selectedStation && beforeDipTime && showBeforeDip) {
-      loadActiveShifts(beforeDipTime, true)
-    }
-  }, [selectedStation, beforeDipTime, showBeforeDip])
-
-  useEffect(() => {
-    if (verifyingDelivery && afterDipTime) {
-      loadActiveShifts(afterDipTime, false)
-    }
-  }, [verifyingDelivery, afterDipTime])
-
-  const loadActiveShifts = async (time: Date, isBefore: boolean) => {
+  const loadActiveShifts = useCallback(async (time: Date, isBefore: boolean) => {
     if (!selectedStation) return
 
     try {
       setLoadingShifts(true)
       const timeISO = time.toISOString()
-      
+
       const response = await fetch(
         `/api/shifts?stationId=${selectedStation}&activeAt=${timeISO}&includeAssignments=true`
       )
-      
+
       if (response.ok) {
         const data = await response.json()
         const shiftsData = Array.isArray(data) ? data : data.shifts || []
-        
+
         if (isBefore) {
           setActiveShifts(shiftsData)
           const initialReadings: PumpReading[] = []
@@ -264,15 +277,27 @@ export default function TankDeliveriesPage() {
     } finally {
       setLoadingShifts(false)
     }
-  }
+  }, [selectedStation])
+
+  useEffect(() => {
+    if (selectedStation && beforeDipTime && showBeforeDip) {
+      loadActiveShifts(beforeDipTime, true)
+    }
+  }, [selectedStation, beforeDipTime, showBeforeDip, loadActiveShifts])
+
+  useEffect(() => {
+    if (verifyingDelivery && afterDipTime) {
+      loadActiveShifts(afterDipTime, false)
+    }
+  }, [verifyingDelivery, afterDipTime, loadActiveShifts])
 
   const handleMeterChange = (assignmentId: string, value: string, isBefore: boolean, beforeDipMeter?: number) => {
     const setReadings = isBefore ? setPumpReadings : setAfterPumpReadings
-    
+
     setReadings(prev => prev.map(reading => {
       if (reading.assignmentId === assignmentId) {
         const currentMeter = parseFloat(value) || 0
-        
+
         // For after dip, use the provided beforeDipMeter parameter (from stored data)
         let baselineMeter = reading.startMeterReading
         if (!isBefore) {
@@ -287,7 +312,7 @@ export default function TankDeliveriesPage() {
             }
           }
         }
-        
+
         const fuelUsed = Math.max(0, currentMeter - baselineMeter)
         return { ...reading, currentMeter: value, fuelUsed }
       }
@@ -303,7 +328,11 @@ export default function TankDeliveriesPage() {
 
   const handleTakeBeforeDip = () => {
     if (!selectedTank) {
-      setError('Please select a tank first')
+      toast({
+        title: "Error",
+        description: "Please select a tank first",
+        variant: "destructive"
+      })
       return
     }
     setShowBeforeDip(true)
@@ -312,20 +341,26 @@ export default function TankDeliveriesPage() {
 
   const handleRecordDelivery = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!selectedStation || !selectedTank || !supplier || !invoiceQuantity || !receivedBy) {
-      setError('Please fill in all required fields')
-        return
-      }
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      })
+      return
+    }
 
     if (!beforeDipReading) {
-      setError('Please take a before dip reading first')
+      toast({
+        title: "Error",
+        description: "Please take a before dip reading first",
+        variant: "destructive"
+      })
       return
     }
 
     setLoading(true)
-    setError('')
-    setSuccess('')
 
     try {
       const finalSupplier = supplier === 'Other' ? customSupplier : supplier
@@ -364,8 +399,11 @@ export default function TankDeliveriesPage() {
         throw new Error(errorData.error || 'Failed to record delivery')
       }
 
-      setSuccess('Delivery recorded successfully! Please verify with after dip.')
-      
+      toast({
+        title: "Success",
+        description: "Delivery recorded successfully! Please verify with after dip."
+      })
+
       // Reset form
       setSelectedTank('')
       setSupplier('')
@@ -382,8 +420,13 @@ export default function TankDeliveriesPage() {
       // Reload and switch to pending tab
       loadData()
       setActiveTab('pending')
-    } catch (err: any) {
-      setError(err.message || 'Failed to record delivery')
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to record delivery'
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      })
     } finally {
       setLoading(false)
     }
@@ -391,13 +434,15 @@ export default function TankDeliveriesPage() {
 
   const handleVerifyDelivery = async () => {
     if (!verifyingDelivery || !afterDipReading) {
-      setError('After dip reading is required')
+      toast({
+        title: "Error",
+        description: "After dip reading is required",
+        variant: "destructive"
+      })
       return
     }
 
     setVerifyLoading(true)
-    setError('')
-    setSuccess('')
 
     try {
       const additionalSold = calculateTotalFuelSold(afterPumpReadings, verifyingDelivery.tankId)
@@ -419,8 +464,11 @@ export default function TankDeliveriesPage() {
       }
 
       const result = await response.json()
-      setSuccess(result.message || 'Delivery verified successfully!')
-      
+      toast({
+        title: "Success",
+        description: result.message || 'Delivery verified successfully!'
+      })
+
       // Reset
       setVerifyingDelivery(null)
       setAfterDipDepth('')
@@ -431,8 +479,13 @@ export default function TankDeliveriesPage() {
       // Reload
       loadData()
       setActiveTab('verified')
-    } catch (err: any) {
-      setError(err.message || 'Failed to verify delivery')
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to verify delivery'
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      })
     } finally {
       setVerifyLoading(false)
     }
@@ -467,7 +520,7 @@ export default function TankDeliveriesPage() {
       title: 'Invoice Qty',
       render: (value: unknown) => {
         if (value == null) return '-'
-        return <span className="font-mono">{(value as number).toLocaleString()}L</span>
+        return <span>{(value as number).toLocaleString()}L</span>
       }
     },
     {
@@ -475,7 +528,7 @@ export default function TankDeliveriesPage() {
       title: 'Actual Received',
       render: (value: unknown) => {
         if (value == null) return <span className="text-muted-foreground">Pending</span>
-        return <span className="font-mono font-semibold text-green-600">{(value as number).toLocaleString()}L</span>
+        return <span className="font-semibold text-green-600">{(value as number).toLocaleString()}L</span>
       }
     },
     {
@@ -502,11 +555,11 @@ export default function TankDeliveriesPage() {
     <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" onClick={() => router.push('/tanks')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => router.push('/tanks')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
           <div>
             <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
               <Truck className="h-8 w-8 text-blue-600" />
@@ -524,21 +577,9 @@ export default function TankDeliveriesPage() {
       </div>
 
       {/* Alerts */}
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
 
-      {success && (
-        <Alert className="border-green-500/50 bg-green-500/10">
-          <CheckCircle className="h-4 w-4 text-green-600" />
-          <AlertTitle className="text-green-600">Success</AlertTitle>
-          <AlertDescription className="text-green-600">{success}</AlertDescription>
-        </Alert>
-      )}
+
+
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
@@ -565,103 +606,103 @@ export default function TankDeliveriesPage() {
               <form onSubmit={handleRecordDelivery} className="space-y-6">
                 {/* Basic Information */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="station">Station *</Label>
-              <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
-                <SelectTrigger id="station">
+                  <div>
+                    <Label htmlFor="station">Station *</Label>
+                    <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
+                      <SelectTrigger id="station">
                         <SelectValue placeholder="Select station" />
-                </SelectTrigger>
-                <SelectContent>
-                  {stations.map((station) => (
-                    <SelectItem key={station.id} value={station.id}>
-                        {station.name} ({station.city})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stations.map((station) => (
+                          <SelectItem key={station.id} value={station.id}>
+                            {station.name} ({station.city})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-            <div>
-              <Label htmlFor="tank">Tank *</Label>
-              <Select value={selectedTank} onValueChange={setSelectedTank} disabled={loading || !selectedStation}>
-                <SelectTrigger id="tank">
+                  <div>
+                    <Label htmlFor="tank">Tank *</Label>
+                    <Select value={selectedTank} onValueChange={setSelectedTank} disabled={loading || !selectedStation}>
+                      <SelectTrigger id="tank">
                         <SelectValue placeholder="Select tank" />
-                </SelectTrigger>
-                <SelectContent>
+                      </SelectTrigger>
+                      <SelectContent>
                         {tanks.filter(t => t.stationId === selectedStation).map((tank) => (
-                    <SelectItem key={tank.id} value={tank.id}>
+                          <SelectItem key={tank.id} value={tank.id}>
                             Tank {tank.tankNumber} - {tank.fuel?.icon} {tank.fuel?.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   <div>
                     <Label htmlFor="deliveryTime">Delivery Time *</Label>
                     <DateTimePicker
                       value={deliveryTime}
-                      onChange={setDeliveryTime}
+                      onChange={(date) => date && setDeliveryTime(date)}
                       disabled={loading}
                     />
                   </div>
-          </div>
+                </div>
 
-          {/* Supplier Information */}
+                {/* Supplier Information */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="supplier">Supplier *</Label>
-              <Select value={supplier} onValueChange={setSupplier} disabled={loading}>
-                <SelectTrigger id="supplier">
-                  <SelectValue placeholder="Select supplier" />
-                </SelectTrigger>
-                <SelectContent>
+                  <div>
+                    <Label htmlFor="supplier">Supplier *</Label>
+                    <Select value={supplier} onValueChange={setSupplier} disabled={loading}>
+                      <SelectTrigger id="supplier">
+                        <SelectValue placeholder="Select supplier" />
+                      </SelectTrigger>
+                      <SelectContent>
                         {suppliers.map((s) => (
                           <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-            {supplier === 'Other' && (
-              <div>
+                  {supplier === 'Other' && (
+                    <div>
                       <Label htmlFor="customSupplier">Custom Supplier *</Label>
-                <Input
-                  id="customSupplier"
-                  value={customSupplier}
-                  onChange={(e) => setCustomSupplier(e.target.value)}
-                  placeholder="Enter supplier name"
+                      <Input
+                        id="customSupplier"
+                        value={customSupplier}
+                        onChange={(e) => setCustomSupplier(e.target.value)}
+                        placeholder="Enter supplier name"
                         required={supplier === 'Other'}
-                />
-              </div>
-            )}
+                      />
+                    </div>
+                  )}
 
-            <div>
+                  <div>
                     <Label htmlFor="invoiceNumber">Invoice Number</Label>
-              <Input
-                id="invoiceNumber"
-                value={invoiceNumber}
-                onChange={(e) => setInvoiceNumber(e.target.value)}
+                    <Input
+                      id="invoiceNumber"
+                      value={invoiceNumber}
+                      onChange={(e) => setInvoiceNumber(e.target.value)}
                       placeholder="Enter invoice number"
-              />
-            </div>
+                    />
+                  </div>
 
-            <div>
-              <Label htmlFor="invoiceQuantity">Invoice Quantity (L) *</Label>
-              <Input
-                id="invoiceQuantity"
-                type="number"
+                  <div>
+                    <Label htmlFor="invoiceQuantity">Invoice Quantity (L) *</Label>
+                    <Input
+                      id="invoiceQuantity"
+                      type="number"
                       step="0.01"
                       min="0"
-                value={invoiceQuantity}
-                onChange={(e) => setInvoiceQuantity(e.target.value)}
+                      value={invoiceQuantity}
+                      onChange={(e) => setInvoiceQuantity(e.target.value)}
                       placeholder="Enter quantity from invoice"
-                      className="font-mono"
-                required
-              />
-            </div>
+                      className=""
+                      required
+                    />
+                  </div>
 
-            <div>
+                  <div>
                     <Label htmlFor="receivedBy">Received By *</Label>
                     <Input
                       id="receivedBy"
@@ -669,9 +710,9 @@ export default function TankDeliveriesPage() {
                       onChange={(e) => setReceivedBy(e.target.value)}
                       placeholder="Name of person receiving"
                       required
-              />
-            </div>
-          </div>
+                    />
+                  </div>
+                </div>
 
                 {/* Current Tank Level Display */}
                 {selectedTank && (() => {
@@ -681,9 +722,9 @@ export default function TankDeliveriesPage() {
                       <Card className="bg-blue-500/5 border-blue-500/20">
                         <CardContent className="pt-6">
                           <div className="flex items-center justify-between">
-            <div>
+                            <div>
                               <div className="text-sm text-muted-foreground mb-1">Current System Stock</div>
-                              <div className="text-2xl font-bold font-mono">{tank.currentLevel.toLocaleString()}L</div>
+                              <div className="text-2xl font-bold">{tank.currentLevel.toLocaleString()}L</div>
                             </div>
                             <Droplets className="h-12 w-12 text-blue-600 opacity-20" />
                           </div>
@@ -709,9 +750,9 @@ export default function TankDeliveriesPage() {
                           <p className="text-sm text-blue-600/80 mb-4">
                             Before the delivery arrives, measure the physical tank level. This is the starting point for calculating actual received quantity.
                           </p>
-                          <Button 
-                            type="button" 
-                            variant="outline" 
+                          <Button
+                            type="button"
+                            variant="outline"
                             className="border-blue-500/30 hover:bg-blue-500/20"
                             onClick={handleTakeBeforeDip}
                             disabled={!selectedTank}
@@ -752,13 +793,13 @@ export default function TankDeliveriesPage() {
                         </div>
                       ) : activeShifts.length > 0 ? (() => {
                         // Count shifts that have assignments for this tank
-                        const shiftsForSelectedTank = activeShifts.filter(shift => 
+                        const shiftsForSelectedTank = activeShifts.filter(shift =>
                           shift.assignments.some(assignment => {
                             const reading = pumpReadings.find(r => r.assignmentId === assignment.id)
                             return reading && reading.tankId === selectedTank
                           })
                         )
-                        
+
                         if (shiftsForSelectedTank.length === 0) {
                           return (
                             <Alert className="border-green-500/50 bg-green-500/10">
@@ -770,7 +811,7 @@ export default function TankDeliveriesPage() {
                             </Alert>
                           )
                         }
-                        
+
                         return (
                           <div className="space-y-3">
                             <Alert className="border-orange-500/50 bg-orange-500/10">
@@ -780,95 +821,95 @@ export default function TankDeliveriesPage() {
                                 {shiftsForSelectedTank.length} shift(s) running on this tank. Enter current meter readings to account for fuel sold.
                               </AlertDescription>
                             </Alert>
-                            
+
                             {activeShifts.map((shift) => {
-                            // Only show shift if it has assignments for this tank
-                            const shiftsForThisTank = shift.assignments.filter(assignment => {
-                              const reading = pumpReadings.find(r => r.assignmentId === assignment.id)
-                              return reading && reading.tankId === selectedTank
-                            })
-                            
-                            if (shiftsForThisTank.length === 0) return null
-                            
-                            return (
-                              <Card key={shift.id} className="bg-background">
-                                <CardContent className="pt-4">
-                                  <div className="font-medium mb-3 flex items-center gap-2">
-                                    <Clock className="h-4 w-4" />
-                                    {shift.template.name}
-                                  </div>
-                                  <div className="space-y-2">
-                                    {shiftsForThisTank.map((assignment) => {
-                                      const reading = pumpReadings.find(r => r.assignmentId === assignment.id)
-                                    return (
-                                      <div key={assignment.id} className="p-3 bg-muted/50 rounded-lg space-y-3">
-                                        {/* Header: Pumper and Nozzle */}
-                                        <div className="flex items-center justify-between pb-2 border-b">
-                                          <div className="flex items-center gap-2">
-                                            <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center">
-                                              <span className="font-bold text-orange-600 text-sm">{assignment.pumperName.charAt(0)}</span>
+                              // Only show shift if it has assignments for this tank
+                              const shiftsForThisTank = shift.assignments.filter(assignment => {
+                                const reading = pumpReadings.find(r => r.assignmentId === assignment.id)
+                                return reading && reading.tankId === selectedTank
+                              })
+
+                              if (shiftsForThisTank.length === 0) return null
+
+                              return (
+                                <Card key={shift.id} className="bg-background">
+                                  <CardContent className="pt-4">
+                                    <div className="font-medium mb-3 flex items-center gap-2">
+                                      <Clock className="h-4 w-4" />
+                                      {shift.template.name}
+                                    </div>
+                                    <div className="space-y-2">
+                                      {shiftsForThisTank.map((assignment) => {
+                                        const reading = pumpReadings.find(r => r.assignmentId === assignment.id)
+                                        return (
+                                          <div key={assignment.id} className="p-3 bg-muted/50 rounded-lg space-y-3">
+                                            {/* Header: Pumper and Nozzle */}
+                                            <div className="flex items-center justify-between pb-2 border-b">
+                                              <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center">
+                                                  <span className="font-bold text-orange-600 text-sm">{assignment.pumperName.charAt(0)}</span>
+                                                </div>
+                                                <div>
+                                                  <div className="font-semibold">{assignment.pumperName}</div>
+                                                  <div className="text-xs text-muted-foreground">
+                                                    {assignment.nozzle.tank.name} - Nozzle {assignment.nozzle.nozzleNumber}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                              <div className="text-right">
+                                                <div className="text-xs text-muted-foreground">Shift Opening</div>
+                                                <div className="font-mono font-semibold text-sm">{assignment.startMeterReading.toLocaleString()}L</div>
+                                              </div>
                                             </div>
-                                            <div>
-                                              <div className="font-semibold">{assignment.pumperName}</div>
-                                              <div className="text-xs text-muted-foreground">
-                                                {assignment.nozzle.tank.name} - Nozzle {assignment.nozzle.nozzleNumber}
+
+                                            {/* Meter readings */}
+                                            <div className="grid grid-cols-2 gap-3">
+                                              <div>
+                                                <Label htmlFor={`before-${assignment.id}`} className="text-xs text-muted-foreground">Current Meter (Before Dip) *</Label>
+                                                <Input
+                                                  id={`before-${assignment.id}`}
+                                                  type="number"
+                                                  step="0.01"
+                                                  min={assignment.startMeterReading}
+                                                  value={reading?.currentMeter || ''}
+                                                  onChange={(e) => handleMeterChange(assignment.id, e.target.value, true)}
+                                                  placeholder="Enter current reading"
+                                                  className="font-mono h-9"
+                                                />
+                                              </div>
+                                              <div>
+                                                <Label className="text-xs text-muted-foreground">Fuel Sold So Far</Label>
+                                                <div className={`h-9 flex items-center font-mono font-semibold text-lg ${reading?.fuelUsed && reading.fuelUsed > 0 ? 'text-orange-600' : 'text-muted-foreground'}`}>
+                                                  {reading?.fuelUsed && reading.fuelUsed > 0 ? `${reading.fuelUsed.toLocaleString()}L` : '-'}
+                                                </div>
                                               </div>
                                             </div>
                                           </div>
-                                          <div className="text-right">
-                                            <div className="text-xs text-muted-foreground">Shift Opening</div>
-                                            <div className="font-mono font-semibold text-sm">{assignment.startMeterReading.toLocaleString()}L</div>
-                                          </div>
-                                        </div>
-                                        
-                                        {/* Meter readings */}
-                                        <div className="grid grid-cols-2 gap-3">
-                                          <div>
-                                            <Label htmlFor={`before-${assignment.id}`} className="text-xs text-muted-foreground">Current Meter (Before Dip) *</Label>
-              <Input
-                                              id={`before-${assignment.id}`}
-                type="number"
-                                              step="0.01"
-                                              min={assignment.startMeterReading}
-                                              value={reading.currentMeter}
-                                              onChange={(e) => handleMeterChange(assignment.id, e.target.value, true)}
-                                              placeholder="Enter current reading"
-                                              className="font-mono h-9"
-              />
-            </div>
-                                          <div>
-                                            <Label className="text-xs text-muted-foreground">Fuel Sold So Far</Label>
-                                            <div className={`h-9 flex items-center font-mono font-semibold text-lg ${reading.fuelUsed > 0 ? 'text-orange-600' : 'text-muted-foreground'}`}>
-                                              {reading.fuelUsed > 0 ? `${reading.fuelUsed.toLocaleString()}L` : '-'}
-                                            </div>
-                                          </div>
-                                        </div>
-                                        </div>
-                                      )
-                                    })}
-                                  </div>
-                                  <div className="mt-3 pt-3 border-t">
-                                    <div className="flex justify-between items-center text-sm">
-                                      <span className="text-muted-foreground">Shift Total:</span>
-                                      <span className="font-mono font-semibold">{
-                                        shiftsForThisTank
-                                          .map(a => pumpReadings.find(r => r.assignmentId === a.id))
-                                          .filter(r => r && r.tankId === selectedTank)
-                                          .reduce((sum, r) => sum + (r?.fuelUsed || 0), 0)
-                                          .toLocaleString()
-                                      }L</span>
+                                        )
+                                      })}
                                     </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            )
-                          })}
-                          <div className="mt-4 pt-3 border-t">
-                            <div className="flex justify-between items-center">
-                              <span className="font-semibold">Total Fuel Sold:</span>
-                              <span className="font-mono font-bold text-lg">{calculateTotalFuelSold(pumpReadings, selectedTank).toLocaleString()}L</span>
+                                    <div className="mt-3 pt-3 border-t">
+                                      <div className="flex justify-between items-center text-sm">
+                                        <span className="text-muted-foreground">Shift Total:</span>
+                                        <span className="font-mono font-semibold">{
+                                          shiftsForThisTank
+                                            .map(a => pumpReadings.find(r => r.assignmentId === a.id))
+                                            .filter(r => r && r.tankId === selectedTank)
+                                            .reduce((sum, r) => sum + (r?.fuelUsed || 0), 0)
+                                            .toLocaleString()
+                                        }L</span>
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              )
+                            })}
+                            <div className="mt-4 pt-3 border-t">
+                              <div className="flex justify-between items-center">
+                                <span className="font-semibold">Total Fuel Sold:</span>
+                                <span className="font-mono font-bold text-lg">{calculateTotalFuelSold(pumpReadings, selectedTank).toLocaleString()}L</span>
+                              </div>
                             </div>
-                          </div>
                           </div>
                         )
                       })() : (
@@ -886,25 +927,25 @@ export default function TankDeliveriesPage() {
                         {(() => {
                           const tank = tanks.find(t => t.id === selectedTank)
                           if (!tank) return null
-                          
+
                           const tankCapacity = tank.capacity as 9000 | 15000 | 22500
                           const maxDepth = getMaxDepth(tankCapacity)
-                          
+
                           return (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+                              <div>
                                 <Label htmlFor="beforeDipDepth" className="text-base font-semibold">Liquid Depth (cm) *</Label>
-              <Input
+                                <Input
                                   id="beforeDipDepth"
-                type="number"
-                step="0.1"
+                                  type="number"
+                                  step="0.1"
                                   min="0"
                                   max={maxDepth}
                                   value={beforeDipDepth}
                                   onChange={(e) => {
                                     const depth = e.target.value
                                     setBeforeDipDepth(depth)
-                                    
+
                                     if (depth && parseFloat(depth) > 0) {
                                       const validation = validateDepth(parseFloat(depth), tankCapacity)
                                       if (validation.valid) {
@@ -916,15 +957,15 @@ export default function TankDeliveriesPage() {
                                     }
                                   }}
                                   placeholder="Enter depth from dipstick"
-                required
-                                  className="text-lg font-mono mt-2"
-              />
+                                  required
+                                  className="mt-2"
+                                />
                                 <p className="text-xs text-muted-foreground mt-2">
                                   Using {getTankCapacityLabel(tankCapacity)} chart (max: {maxDepth}cm)
                                 </p>
-            </div>
+                              </div>
 
-            <div>
+                              <div>
                                 <Label htmlFor="beforeDipReading" className="text-base font-semibold">Calculated Volume (Litres)</Label>
                                 <Input
                                   id="beforeDipReading"
@@ -932,7 +973,7 @@ export default function TankDeliveriesPage() {
                                   value={beforeDipReading ? parseFloat(beforeDipReading).toLocaleString() : ''}
                                   disabled
                                   placeholder="Auto-calculated from depth"
-                                  className="text-lg font-mono mt-2 bg-muted"
+                                  className="mt-2 bg-muted"
                                 />
                                 <p className="text-xs text-muted-foreground mt-2 flex items-start gap-2">
                                   {beforeDipDepth && beforeDipReading ? (
@@ -946,64 +987,86 @@ export default function TankDeliveriesPage() {
                                     </>
                                   )}
                                 </p>
-                </div>
-              </div>
+                              </div>
+                            </div>
                           )
                         })()}
-          </div>
+                      </div>
 
                       {/* Variance Check */}
                       {beforeDipReading && selectedTank && (() => {
                         const tank = tanks.find(t => t.id === selectedTank)
                         if (!tank) return null
-                        
+
                         const fuelSoldBeforeDip = calculateTotalFuelSold(pumpReadings, selectedTank)
                         const expectedLevel = tank.currentLevel - fuelSoldBeforeDip
+                        // Calculate expected depth from expected level
+                        const tankCapacity = tank.capacity as TankCapacity
+                        const expectedDepth = volumeToDepth(expectedLevel, tankCapacity)
+
                         const physicalDip = parseFloat(beforeDipReading)
+                        const physicalDepth = parseFloat(beforeDipDepth)
+
                         const variance = physicalDip - expectedLevel
-                        const variancePercent = expectedLevel > 0 ? (Math.abs(variance) / expectedLevel) * 100 : 0
-                        
+                        const depthVariance = physicalDepth - expectedDepth
+
+
                         return (
                           <div className="mt-4 p-4 bg-muted/50 rounded-lg border">
                             <div className="font-semibold mb-3 text-sm text-muted-foreground">Before Dip Variance Check:</div>
                             <div className="space-y-2 text-sm">
                               <div className="flex justify-between items-center">
                                 <span>System Stock (Current):</span>
-                                <span className="font-mono font-semibold">{tank.currentLevel.toLocaleString()}L</span>
-            </div>
+                                <span className="font-semibold">{tank.currentLevel.toLocaleString()}L</span>
+                              </div>
                               <div className="flex justify-between items-center text-orange-600">
                                 <span>- Fuel Sold Before Dip:</span>
-                                <span className="font-mono font-semibold">-{fuelSoldBeforeDip.toLocaleString()}L</span>
+                                <span className="font-semibold">-{fuelSoldBeforeDip.toLocaleString()}L</span>
                               </div>
                               <div className="flex justify-between items-center pt-2 border-t font-semibold">
                                 <span>Expected Level:</span>
-                                <span className="font-mono text-purple-600">{expectedLevel.toLocaleString()}L</span>
+                                <span className="text-purple-600">
+                                  {expectedLevel.toLocaleString()}L
+                                  <span className="text-xs text-muted-foreground ml-1">
+                                    (~{expectedDepth.toFixed(1)}cm)
+                                  </span>
+                                </span>
                               </div>
                               <div className="flex justify-between items-center">
                                 <span>Physical Dip:</span>
-                                <span className="font-mono text-green-600 font-semibold">{physicalDip.toLocaleString()}L</span>
+                                <span className="text-green-600 font-semibold">{physicalDip.toLocaleString()}L</span>
                               </div>
                               <div className="flex justify-between items-center pt-2 border-t font-bold">
                                 <span>Variance:</span>
-                                <span className={`font-mono text-lg ${
-                                  variance > 0 ? 'text-green-600' : variance < 0 ? 'text-red-600' : 'text-muted-foreground'
-                                }`}>
+                                <span className={`text-lg ${Math.abs(depthVariance) <= 1 ? 'text-green-600' : 'text-red-600'}`}>
                                   {variance > 0 ? '+' : ''}{variance.toFixed(1)}L
-                                  <span className="text-sm ml-1">({variancePercent.toFixed(2)}%)</span>
+                                  <span className="text-sm ml-1">
+                                    / {depthVariance > 0 ? '+' : ''}{depthVariance.toFixed(1)}cm
+                                  </span>
                                 </span>
                               </div>
                             </div>
-                            {Math.abs(variancePercent) > 1 && (
-                              <Alert className={`mt-3 ${Math.abs(variancePercent) > 5 ? 'border-red-500/50 bg-red-500/10' : 'border-yellow-500/50 bg-yellow-500/10'}`}>
-                                <AlertCircle className={`h-4 w-4 ${Math.abs(variancePercent) > 5 ? 'text-red-600' : 'text-yellow-600'}`} />
-                                <AlertTitle className={Math.abs(variancePercent) > 5 ? 'text-red-600' : 'text-yellow-600'}>
-                                  {Math.abs(variancePercent) > 5 ? 'High Variance Detected' : 'Variance Notice'}
-                                </AlertTitle>
-                                <AlertDescription className={Math.abs(variancePercent) > 5 ? 'text-red-600' : 'text-yellow-600'}>
-                                  {variance > 0 
-                                    ? 'Physical dip is higher than expected - possible meter error or unrecorded sales'
-                                    : 'Physical dip is lower than expected - possible leak, theft, or meter error'
+
+                            {Math.abs(depthVariance) > 1 && (
+                              <Alert className="mt-3 border-red-500/50 bg-red-500/10">
+                                <AlertCircle className="h-4 w-4 text-red-600" />
+                                <AlertTitle className="text-red-600">High Variance Detected</AlertTitle>
+                                <AlertDescription className="text-red-600">
+                                  Physical dip varies by {Math.abs(depthVariance).toFixed(1)}cm (Limit: 1.0cm).
+                                  {variance > 0
+                                    ? ' Possible meter error or unrecorded sales.'
+                                    : ' Possible leak, theft, or meter error.'
                                   }
+                                </AlertDescription>
+                              </Alert>
+                            )}
+
+                            {Math.abs(depthVariance) <= 1 && (
+                              <Alert className="mt-3 border-green-500/50 bg-green-500/10">
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                                <AlertTitle className="text-green-600">Within Tolerance</AlertTitle>
+                                <AlertDescription className="text-green-600">
+                                  Variance is within acceptable limit (1cm).
                                 </AlertDescription>
                               </Alert>
                             )}
@@ -1016,42 +1079,42 @@ export default function TankDeliveriesPage() {
 
                 {/* Notes Section */}
                 {showBeforeDip && (
-            <div>
+                  <div>
                     <Label htmlFor="notes" className="text-base font-semibold">Notes (Optional)</Label>
-              <Textarea
-                id="notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                    <Textarea
+                      id="notes"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
                       placeholder="Additional notes about the delivery (e.g., truck number, driver name, weather conditions)"
-                rows={3}
+                      rows={3}
                       className="mt-2"
-              />
-            </div>
+                    />
+                  </div>
                 )}
 
                 {/* Action Buttons */}
                 <div className="flex justify-end gap-4 pt-4 border-t">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={() => router.push('/tanks')}
                     disabled={loading}
                   >
-              Cancel
-            </Button>
-                  <Button 
-                    type="submit" 
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
                     disabled={loading || !beforeDipReading}
                   >
-              {loading ? 'Recording...' : (
-                <>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Record Delivery
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
+                    {loading ? 'Recording...' : (
+                      <>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Record Delivery
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
             </CardContent>
           </Card>
         </TabsContent>
@@ -1068,7 +1131,7 @@ export default function TankDeliveriesPage() {
                 <div className="text-center py-12 text-muted-foreground">
                   <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>No deliveries pending verification</p>
-                  <p className="text-sm mt-2">Verified deliveries will appear in the "Verified Deliveries" tab</p>
+                  <p className="text-sm mt-2">Verified deliveries will appear in the &quot;Verified Deliveries&quot; tab</p>
                 </div>
               ) : (
                 <>
@@ -1079,7 +1142,7 @@ export default function TankDeliveriesPage() {
                       These deliveries need after-dip verification. Click on a delivery to complete verification.
                     </AlertDescription>
                   </Alert>
-        <DataTable
+                  <DataTable
                     data={pendingDeliveries}
                     columns={columns}
                     onRowClick={(delivery) => {
@@ -1146,7 +1209,7 @@ export default function TankDeliveriesPage() {
                 <div>
                   <div className="text-sm text-muted-foreground">Invoice Quantity</div>
                   <div className="font-mono font-bold text-xl">{verifyingDelivery.invoiceQuantity.toLocaleString()}L</div>
-                  </div>
+                </div>
               </div>
 
               {/* Step 1: Before Delivery - Info Card */}
@@ -1155,12 +1218,12 @@ export default function TankDeliveriesPage() {
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">
                       1
-                </div>
-                <div>
+                    </div>
+                    <div>
                       <CardTitle className="text-blue-600">Before Delivery</CardTitle>
                       <CardDescription>Recorded when delivery truck arrived</CardDescription>
+                    </div>
                   </div>
-                </div>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-3 gap-4">
@@ -1168,7 +1231,7 @@ export default function TankDeliveriesPage() {
                       <div className="text-xs text-muted-foreground mb-1">Tank</div>
                       <div className="font-semibold">Tank {verifyingDelivery.tank?.tankNumber}</div>
                       <div className="text-sm text-muted-foreground">{verifyingDelivery.tank?.fuel?.icon} {verifyingDelivery.tank?.fuel?.name}</div>
-              </div>
+                    </div>
                     <div className="p-3 bg-background rounded-lg">
                       <div className="text-xs text-muted-foreground mb-1">Before Dip Reading</div>
                       <div className="font-mono font-bold text-xl text-blue-600">{verifyingDelivery.beforeDipReading?.toLocaleString() || '-'}L</div>
@@ -1186,16 +1249,16 @@ export default function TankDeliveriesPage() {
                 <div className="text-center py-8">
                   <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-orange-600" />
                   <p className="text-sm text-muted-foreground">Checking for active shifts...</p>
-                  </div>
+                </div>
               ) : afterActiveShifts.length > 0 ? (() => {
                 // Count shifts that have assignments for this tank
-                const shiftsForSelectedTank = afterActiveShifts.filter(shift => 
+                const shiftsForSelectedTank = afterActiveShifts.filter(shift =>
                   shift.assignments.some(assignment => {
                     const reading = afterPumpReadings.find(r => r.assignmentId === assignment.id)
                     return reading && reading.tankId === verifyingDelivery.tankId
                   })
                 )
-                
+
                 if (shiftsForSelectedTank.length === 0) {
                   return (
                     <Alert className="border-green-500/50 bg-green-500/10">
@@ -1207,7 +1270,7 @@ export default function TankDeliveriesPage() {
                     </Alert>
                   )
                 }
-                
+
                 return (
                   <Alert className="border-orange-500/50 bg-orange-500/10">
                     <AlertCircle className="h-4 w-4 text-orange-600" />
@@ -1218,102 +1281,102 @@ export default function TankDeliveriesPage() {
                       </p>
                       <div className="space-y-3">
                         {afterActiveShifts.map((shift) => {
-                        // Only show shift if it has assignments for this tank
-                        const shiftsForThisTank = shift.assignments.filter(assignment => {
-                          const reading = afterPumpReadings.find(r => r.assignmentId === assignment.id)
-                          return reading && reading.tankId === verifyingDelivery.tankId
-                        })
-                        
-                        if (shiftsForThisTank.length === 0) return null
-                        
-                        return (
-                          <div key={shift.id} className="border rounded p-3 bg-background">
-                            <div className="font-medium mb-2 flex items-center gap-2">
-                              <Clock className="h-4 w-4" />
-                              {shift.template.name}
-                </div>
-                            <div className="space-y-2">
-                              {shiftsForThisTank.map((assignment) => {
-                                const reading = afterPumpReadings.find(r => r.assignmentId === assignment.id)
-                              
-                              // Get before dip meter from stored data
-                              const beforeMeterData = verifyingDelivery.beforeMeterReadings as any
-                              let beforeDipMeter = assignment.startMeterReading
-                              
-                              if (beforeMeterData && Array.isArray(beforeMeterData)) {
-                                const stored = beforeMeterData.find((m: any) => m.assignmentId === assignment.id)
-                                if (stored && stored.meterReading) {
-                                  beforeDipMeter = stored.meterReading
-                                }
-                              }
-                              
-                              return (
-                                <div key={assignment.id} className="p-3 bg-muted/50 rounded-lg space-y-3">
-                                  {/* Header: Pumper and Nozzle */}
-                                  <div className="flex items-center justify-between pb-2 border-b">
-                                    <div className="flex items-center gap-2">
-                                      <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center">
-                                        <span className="font-bold text-orange-600 text-sm">{assignment.pumperName.charAt(0)}</span>
-                  </div>
-                                      <div>
-                                        <div className="font-semibold">{assignment.pumperName}</div>
-                                        <div className="text-xs text-muted-foreground">
-                                          {assignment.nozzle.tank.name} - Nozzle {assignment.nozzle.nozzleNumber}
-                </div>
-                  </div>
-                    </div>
-                                    <div className="text-right">
-                                      <div className="text-xs text-muted-foreground">Before Dip Meter</div>
-                                      <div className="font-mono font-semibold text-blue-600">{beforeDipMeter.toLocaleString()}L</div>
-                </div>
-              </div>
+                          // Only show shift if it has assignments for this tank
+                          const shiftsForThisTank = shift.assignments.filter(assignment => {
+                            const reading = afterPumpReadings.find(r => r.assignmentId === assignment.id)
+                            return reading && reading.tankId === verifyingDelivery.tankId
+                          })
 
-                                  {/* Meter readings */}
-                                  <div className="grid grid-cols-2 gap-3">
-                        <div>
-                                      <Label htmlFor={`after-${assignment.id}`} className="text-xs text-muted-foreground">Current Meter (After Dip) *</Label>
-                                      <Input
-                                        id={`after-${assignment.id}`}
-                                        type="number"
-                                        step="0.01"
-                                        min={beforeDipMeter}
-                                        value={reading.currentMeter}
-                                        onChange={(e) => handleMeterChange(assignment.id, e.target.value, false, beforeDipMeter)}
-                                        placeholder="Enter current reading"
-                                        className="font-mono h-9"
-                                      />
-                          </div>
-                                    <div>
-                                      <Label className="text-xs text-muted-foreground">Sold While Delivering</Label>
-                                      <div className={`h-9 flex items-center font-mono font-semibold text-lg ${reading.fuelUsed > 0 ? 'text-orange-600' : 'text-muted-foreground'}`}>
-                                        {reading.fuelUsed > 0 ? `${reading.fuelUsed.toLocaleString()}L` : '-'}
-                          </div>
-                        </div>
-                                  </div>
+                          if (shiftsForThisTank.length === 0) return null
+
+                          return (
+                            <div key={shift.id} className="border rounded p-3 bg-background">
+                              <div className="font-medium mb-2 flex items-center gap-2">
+                                <Clock className="h-4 w-4" />
+                                {shift.template.name}
+                              </div>
+                              <div className="space-y-2">
+                                {shiftsForThisTank.map((assignment) => {
+                                  const reading = afterPumpReadings.find(r => r.assignmentId === assignment.id)
+
+                                  // Get before dip meter from stored data
+                                  const beforeMeterData = verifyingDelivery.beforeMeterReadings
+                                  let beforeDipMeter = assignment.startMeterReading
+
+                                  if (beforeMeterData && Array.isArray(beforeMeterData)) {
+                                    const stored = beforeMeterData.find(m => m.assignmentId === assignment.id)
+                                    if (stored && stored.meterReading) {
+                                      beforeDipMeter = stored.meterReading
+                                    }
+                                  }
+
+                                  return (
+                                    <div key={assignment.id} className="p-3 bg-muted/50 rounded-lg space-y-3">
+                                      {/* Header: Pumper and Nozzle */}
+                                      <div className="flex items-center justify-between pb-2 border-b">
+                                        <div className="flex items-center gap-2">
+                                          <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center">
+                                            <span className="font-bold text-orange-600 text-sm">{assignment.pumperName.charAt(0)}</span>
+                                          </div>
+                                          <div>
+                                            <div className="font-semibold">{assignment.pumperName}</div>
+                                            <div className="text-xs text-muted-foreground">
+                                              {assignment.nozzle.tank.name} - Nozzle {assignment.nozzle.nozzleNumber}
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="text-right">
+                                          <div className="text-xs text-muted-foreground">Before Dip Meter</div>
+                                          <div className="font-semibold text-blue-600">{beforeDipMeter.toLocaleString()}L</div>
+                                        </div>
+                                      </div>
+
+                                      {/* Meter readings */}
+                                      <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                          <Label htmlFor={`after-${assignment.id}`} className="text-xs text-muted-foreground">Current Meter (After Dip) *</Label>
+                                          <Input
+                                            id={`after-${assignment.id}`}
+                                            type="number"
+                                            step="0.01"
+                                            min={beforeDipMeter}
+                                            value={reading?.currentMeter || ''}
+                                            onChange={(e) => handleMeterChange(assignment.id, e.target.value, false, beforeDipMeter)}
+                                            placeholder="Enter current reading"
+                                            className="h-9"
+                                          />
+                                        </div>
+                                        <div>
+                                          <Label className="text-xs text-muted-foreground">Sold While Delivering</Label>
+                                          <div className={`h-9 flex items-center font-semibold text-lg ${reading?.fuelUsed && reading.fuelUsed > 0 ? 'text-orange-600' : 'text-muted-foreground'}`}>
+                                            {reading?.fuelUsed && reading.fuelUsed > 0 ? `${reading.fuelUsed.toLocaleString()}L` : '-'}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                              <div className="mt-3 pt-3 border-t">
+                                <div className="flex justify-between items-center text-sm">
+                                  <span className="text-muted-foreground">Shift Total:</span>
+                                  <span className="font-semibold">{
+                                    shiftsForThisTank
+                                      .map(a => afterPumpReadings.find(r => r.assignmentId === a.id))
+                                      .filter(r => r && r.tankId === verifyingDelivery.tankId)
+                                      .reduce((sum, r) => sum + (r?.fuelUsed || 0), 0)
+                                      .toLocaleString()
+                                  }L</span>
                                 </div>
-                              )
-                              })}
-                            </div>
-                            <div className="mt-3 pt-3 border-t">
-                              <div className="flex justify-between items-center text-sm">
-                                <span className="text-muted-foreground">Shift Total:</span>
-                                <span className="font-mono font-semibold">{
-                                  shiftsForThisTank
-                                    .map(a => afterPumpReadings.find(r => r.assignmentId === a.id))
-                                    .filter(r => r && r.tankId === verifyingDelivery.tankId)
-                                    .reduce((sum, r) => sum + (r?.fuelUsed || 0), 0)
-                                    .toLocaleString()
-                                }L</span>
                               </div>
                             </div>
-                          </div>
-                        )
+                          )
                         })}
                       </div>
                       <div className="mt-4 pt-3 border-t">
                         <div className="flex justify-between items-center">
                           <span className="font-semibold">Total Fuel Sold:</span>
-                          <span className="font-mono font-bold text-lg">{calculateTotalFuelSold(afterPumpReadings, verifyingDelivery.tankId).toLocaleString()}L</span>
+                          <span className="font-bold text-lg">{calculateTotalFuelSold(afterPumpReadings, verifyingDelivery.tankId).toLocaleString()}L</span>
                         </div>
                       </div>
                     </AlertDescription>
@@ -1336,17 +1399,17 @@ export default function TankDeliveriesPage() {
                     <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold">
                       3
                     </div>
-                        <div>
+                    <div>
                       <CardTitle className="text-green-600">After Delivery Complete</CardTitle>
                       <CardDescription>Tank level after fuel has been loaded</CardDescription>
-                          </div>
-                        </div>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {(() => {
-                    const tankCapacity = verifyingDelivery.tank.capacity as 9000 | 15000 | 22500
+                    const tankCapacity = (verifyingDelivery.tank?.capacity || 9000) as 9000 | 15000 | 22500
                     const maxDepth = getMaxDepth(tankCapacity)
-                    
+
                     return (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -1361,7 +1424,7 @@ export default function TankDeliveriesPage() {
                             onChange={(e) => {
                               const depth = e.target.value
                               setAfterDipDepth(depth)
-                              
+
                               if (depth && parseFloat(depth) > 0) {
                                 const validation = validateDepth(parseFloat(depth), tankCapacity)
                                 if (validation.valid) {
@@ -1374,13 +1437,13 @@ export default function TankDeliveriesPage() {
                             }}
                             placeholder="Enter depth from dipstick"
                             required
-                            className="text-xl font-mono font-bold mt-2"
+                            className="mt-2"
                           />
                           <p className="text-xs text-muted-foreground mt-2">
                             Using {getTankCapacityLabel(tankCapacity)} chart (max: {maxDepth}cm)
                           </p>
                         </div>
-                        
+
                         <div>
                           <Label htmlFor="afterDipReading" className="text-base font-semibold">Calculated Volume (Litres)</Label>
                           <Input
@@ -1389,7 +1452,7 @@ export default function TankDeliveriesPage() {
                             value={afterDipReading ? parseFloat(afterDipReading).toLocaleString() : ''}
                             disabled
                             placeholder="Auto-calculated from depth"
-                            className="text-xl font-mono font-bold mt-2 bg-muted"
+                            className="mt-2 bg-muted"
                           />
                           <p className="text-xs text-muted-foreground mt-2 flex items-start gap-2">
                             {afterDipDepth && afterDipReading ? (
@@ -1400,11 +1463,11 @@ export default function TankDeliveriesPage() {
                               <>
                                 <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
                                 <span>Measure after delivery truck has finished loading</span>
-                      </>
-                    )}
+                              </>
+                            )}
                           </p>
-                  </div>
-                </div>
+                        </div>
+                      </div>
                     )
                   })()}
                 </CardContent>
@@ -1416,19 +1479,18 @@ export default function TankDeliveriesPage() {
                 const actualReceived = parseFloat(afterDipReading) - verifyingDelivery.beforeDipReading + fuelSoldDuring
                 const variance = actualReceived - verifyingDelivery.invoiceQuantity
                 const variancePercent = (Math.abs(variance) / verifyingDelivery.invoiceQuantity) * 100
-                
-                // Get current tank level from tank data
-                const currentTankLevel = verifyingDelivery.tank?.currentLevel || 0
-                
+
+
+
                 return (
                   <Card className="bg-purple-500/5 border-purple-500/30">
                     <CardHeader>
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold">
                           ✓
-                  </div>
+                        </div>
                         <CardTitle className="text-purple-600">Verification & Stock Update</CardTitle>
-                </div>
+                      </div>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-5">
@@ -1438,29 +1500,29 @@ export default function TankDeliveriesPage() {
                           <div className="space-y-2 text-sm">
                             <div className="flex justify-between items-center">
                               <span>Before Dip Reading:</span>
-                              <span className="font-mono font-semibold">{verifyingDelivery.beforeDipReading.toLocaleString()}L</span>
-                </div>
+                              <span className="font-semibold">{verifyingDelivery.beforeDipReading.toLocaleString()}L</span>
+                            </div>
                             <div className="flex justify-between items-center text-green-600">
                               <span>+ Invoice Quantity:</span>
                               <span className="font-mono font-semibold">+{verifyingDelivery.invoiceQuantity.toLocaleString()}L</span>
-                  </div>
+                            </div>
                             <div className="flex justify-between items-center text-orange-600">
                               <span>- Fuel Sold During Delivery:</span>
                               <span className="font-mono font-semibold">-{fuelSoldDuring.toLocaleString()}L</span>
-                </div>
+                            </div>
                             <div className="flex justify-between items-center pt-2 border-t font-bold text-base">
                               <span>Expected After Dip:</span>
                               <span className="font-mono text-purple-600">{(verifyingDelivery.beforeDipReading + verifyingDelivery.invoiceQuantity - fuelSoldDuring).toLocaleString()}L</span>
-                  </div>
-                </div>
-              </div>
+                            </div>
+                          </div>
+                        </div>
 
                         {/* Physical Dip vs Expected */}
                         <div className="grid grid-cols-2 gap-3">
                           <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/30">
                             <div className="text-xs text-muted-foreground mb-1">After Dip (Physical)</div>
                             <div className="font-mono font-bold text-2xl text-green-600">{parseFloat(afterDipReading).toLocaleString()}L</div>
-                  </div>
+                          </div>
                           <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/30">
                             <div className="text-xs text-muted-foreground mb-1">Expected After Dip</div>
                             <div className="font-mono font-bold text-2xl text-purple-600">{(verifyingDelivery.beforeDipReading + verifyingDelivery.invoiceQuantity - fuelSoldDuring).toLocaleString()}L</div>
@@ -1498,9 +1560,8 @@ export default function TankDeliveriesPage() {
                           </div>
                           <div className="p-3 bg-background rounded-lg">
                             <div className="text-xs text-muted-foreground mb-1">Variance from Invoice</div>
-                            <div className={`font-mono font-bold text-xl ${
-                              variance > 0 ? 'text-green-600' : variance < 0 ? 'text-red-600' : 'text-muted-foreground'
-                            }`}>
+                            <div className={`font-mono font-bold text-xl ${variance > 0 ? 'text-green-600' : variance < 0 ? 'text-red-600' : 'text-muted-foreground'
+                              }`}>
                               {variance > 0 ? '+' : ''}{variance.toFixed(1)}L
                               <span className="text-sm ml-1">({variancePercent.toFixed(2)}%)</span>
                             </div>
@@ -1511,8 +1572,8 @@ export default function TankDeliveriesPage() {
                   </Card>
                 )
               })()}
-                </div>
-              )}
+            </div>
+          )}
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setVerifyingDelivery(null)} disabled={verifyLoading}>
@@ -1540,27 +1601,27 @@ export default function TankDeliveriesPage() {
 
           {selectedDelivery && (
             <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <Label className="text-xs text-muted-foreground">Tank</Label>
                   <div className="font-semibold">Tank {selectedDelivery.tank?.tankNumber} - {selectedDelivery.tank?.fuel?.icon} {selectedDelivery.tank?.fuel?.name}</div>
-                      </div>
+                </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Supplier</Label>
                   <div className="font-semibold">{selectedDelivery.supplier}</div>
-                    </div>
-                    <div>
+                </div>
+                <div>
                   <Label className="text-xs text-muted-foreground">Invoice Quantity</Label>
                   <div className="font-mono font-semibold">{selectedDelivery.invoiceQuantity.toLocaleString()}L</div>
-                      </div>
+                </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Actual Received</Label>
                   <div className="font-mono font-semibold text-green-600">{selectedDelivery.actualReceived?.toLocaleString() || '-'}L</div>
-                    </div>
+                </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Before Dip</Label>
                   <div className="font-mono">{selectedDelivery.beforeDipReading?.toLocaleString() || '-'}L</div>
-                  </div>
+                </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">After Dip</Label>
                   <div className="font-mono">{selectedDelivery.afterDipReading?.toLocaleString() || '-'}L</div>
@@ -1568,15 +1629,14 @@ export default function TankDeliveriesPage() {
                 <div>
                   <Label className="text-xs text-muted-foreground">Fuel Sold During</Label>
                   <div className="font-mono text-orange-600">{selectedDelivery.fuelSoldDuring?.toLocaleString() || '0'}L</div>
-            </div>
+                </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Variance</Label>
-                  <div className={`font-mono font-semibold ${
-                    selectedDelivery.dipVariance && Math.abs(selectedDelivery.dipVariance) > 50
-                      ? 'text-red-600'
-                      : 'text-green-600'
-                  }`}>
-                    {selectedDelivery.dipVariance != null 
+                  <div className={`font-mono font-semibold ${selectedDelivery.dipVariance && Math.abs(selectedDelivery.dipVariance) > 50
+                    ? 'text-red-600'
+                    : 'text-green-600'
+                    }`}>
+                    {selectedDelivery.dipVariance != null
                       ? `${selectedDelivery.dipVariance > 0 ? '+' : ''}${selectedDelivery.dipVariance.toFixed(1)}L`
                       : '-'
                     }

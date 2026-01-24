@@ -29,29 +29,50 @@ export async function POST(request: NextRequest) {
 
     // Update loan status to PAID and create safe transaction in a single transaction
     const result = await prisma.$transaction(async (tx) => {
-      // Update loan status
+      // 1. Update loan status
       const updatedLoan = await tx.loanPumper.update({
         where: { id: loanId },
         data: {
           status: 'PAID',
           updatedAt: repaymentDate ? new Date(repaymentDate) : new Date()
-        },
-        include: {
-          pumper: true
         }
       })
 
-      // Create safe transaction record for the loan repayment (money returning to safe)
-      await tx.safeTransaction.create({
-        data: {
-          type: 'INCOME',
-          category: 'LOAN_REPAYMENT',
-          amount: loan.amount,
-          description: `Loan repayment from ${updatedLoan.pumper?.name || 'Pumper'} - ${notes || 'Loan fully repaid'}`,
-          performedBy: repaidBy,
-          transactionDate: repaymentDate ? new Date(repaymentDate) : new Date()
+      // 2. Handle Safe Transaction if pumper belongs to a station
+      let safeTransaction = null
+      if (updatedLoan.stationId) {
+        // Find safe for the station
+        const safe = await tx.safe.findUnique({
+          where: { stationId: updatedLoan.stationId }
+        })
+
+        if (safe) {
+          // Calculate new balance
+          const balanceBefore = safe.currentBalance
+          const balanceAfter = balanceBefore + loan.amount
+
+          // Create safe transaction
+          safeTransaction = await tx.safeTransaction.create({
+            data: {
+              safeId: safe.id,
+              type: 'LOAN_REPAID',
+              amount: loan.amount,
+              description: `Loan repayment from ${updatedLoan.pumperName} - ${notes || 'Loan fully repaid'}`,
+              performedBy: repaidBy,
+              timestamp: repaymentDate ? new Date(repaymentDate) : new Date(),
+              balanceBefore,
+              balanceAfter,
+              shiftId: null // Optional: could link to active shift if we wanted to find it
+            }
+          })
+
+          // Update safe balance
+          await tx.safe.update({
+            where: { id: safe.id },
+            data: { currentBalance: balanceAfter }
+          })
         }
-      })
+      }
 
       return updatedLoan
     })

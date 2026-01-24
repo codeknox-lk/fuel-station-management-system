@@ -10,11 +10,28 @@ export async function GET(request: NextRequest) {
     const limit = searchParams.get('limit')
 
     if (id) {
+      // OPTIMIZED: Use select for single batch
       const batch = await prisma.posBatch.findUnique({
         where: { id },
-        include: {
+        select: {
+          id: true,
+          shiftId: true,
+          totalAmount: true,
+          createdAt: true,
+          updatedAt: true,
           terminalEntries: {
-            include: {
+            select: {
+              id: true,
+              terminalId: true,
+              startNumber: true,
+              endNumber: true,
+              transactionCount: true,
+              visaAmount: true,
+              masterAmount: true,
+              amexAmount: true,
+              qrAmount: true,
+              dialogTouchAmount: true,
+              createdAt: true,
               terminal: {
                 select: {
                   id: true,
@@ -32,34 +49,30 @@ export async function GET(request: NextRequest) {
           }
         }
       })
-      
+
       if (!batch) {
         return NextResponse.json({ error: 'POS batch not found' }, { status: 404 })
       }
       return NextResponse.json(batch)
     }
 
-    const where: any = {}
+    interface PosBatchWhereInput {
+      shiftId?: string
+    }
+    const where: PosBatchWhereInput = {}
     if (shiftId) {
       where.shiftId = shiftId
     }
 
+    // OPTIMIZED: Use select for batch list
     const batches = await prisma.posBatch.findMany({
       where,
       include: {
         terminalEntries: {
           include: {
             terminal: {
-              select: {
-                id: true,
-                name: true,
-                terminalNumber: true,
-                bank: {
-                  select: {
-                    id: true,
-                    name: true
-                  }
-                }
+              include: {
+                bank: true
               }
             }
           }
@@ -71,7 +84,7 @@ export async function GET(request: NextRequest) {
 
     // Filter by terminal if specified
     if (terminalId) {
-      const filteredBatches = batches.filter(batch => 
+      const filteredBatches = batches.filter(batch =>
         batch.terminalEntries.some(entry => entry.terminalId === terminalId)
       )
       return NextResponse.json(filteredBatches)
@@ -80,18 +93,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(batches)
   } catch (error) {
     console.error('Error fetching POS batches:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : String(error)
+    }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    
+
     // New format: Accept terminalEntries array OR legacy single terminal format
-    const { 
-      stationId, 
-      shiftId, 
+    const {
+      stationId,
+      shiftId,
       terminalId, // Legacy field
       startNumber, // Legacy fields
       endNumber,
@@ -102,11 +118,11 @@ export async function POST(request: NextRequest) {
       qrAmount,
       dialogTouchAmount,
       terminalEntries, // New field: array of terminal entries
-      totalAmount, 
-      notes, 
-      addToSafe 
+      totalAmount,
+      notes,
+      addToSafe
     } = body
-    
+
     // Support both formats: array of entries OR single terminal
     let entries = []
     if (terminalEntries && Array.isArray(terminalEntries) && terminalEntries.length > 0) {
@@ -274,7 +290,7 @@ export async function POST(request: NextRequest) {
           // Calculate balance before transaction chronologically
           const batchTimestamp = newBatch.createdAt || new Date()
           const allTransactions = await prisma.safeTransaction.findMany({
-            where: { 
+            where: {
               safeId: safe.id,
               timestamp: { lte: batchTimestamp }
             },
@@ -302,10 +318,19 @@ export async function POST(request: NextRequest) {
           const balanceAfter = balanceBefore + newBatch.totalAmount
 
           // Create description from terminal entries
+          interface BatchEntryWithTerminal {
+            terminalNumber?: string
+            terminal?: {
+              terminalNumber: string
+            }
+          }
           const terminalList = newBatch.terminalEntries
-            .map((entry: any) => `${entry.terminal?.terminalNumber || entry.terminalNumber || 'Unknown'}`)
+            .map((entry) => {
+              const e = entry as unknown as BatchEntryWithTerminal
+              return `${e.terminal?.terminalNumber || e.terminalNumber || 'Unknown'}`
+            })
             .join(', ')
-          
+
           // Create safe transaction
           await prisma.safeTransaction.create({
             data: {
@@ -337,7 +362,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newBatch, { status: 201 })
   } catch (error) {
     console.error('Error creating POS batch:', error)
-    
+
     // Handle foreign key constraint violations
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
       return NextResponse.json(
@@ -345,7 +370,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

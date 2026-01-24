@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useToast } from '@/hooks/use-toast'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -26,11 +27,11 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
-import { 
-  Phone, 
-  CreditCard, 
-  AlertCircle, 
-  CheckCircle, 
+import {
+  Phone,
+  CreditCard,
+  AlertCircle,
+  CheckCircle,
   Plus,
   Edit,
   DollarSign,
@@ -79,8 +80,7 @@ interface CreditTransaction {
 export default function CreditCustomersPage() {
   const [customers, setCustomers] = useState<CreditCustomer[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const { toast } = useToast()
   const [userRole, setUserRole] = useState<string>('')
 
   // Dialog state
@@ -108,7 +108,7 @@ export default function CreditCustomersPage() {
     // Get user role from localStorage
     const role = localStorage.getItem('userRole')
     setUserRole(role || '')
-    
+
     fetchCustomers()
     fetchTransactions()
   }, [])
@@ -116,7 +116,7 @@ export default function CreditCustomersPage() {
   const fetchTransactions = async () => {
     try {
       setLoadingTransactions(true)
-      
+
       // Fetch both sales and payments in parallel
       const [salesRes, paymentsRes] = await Promise.all([
         fetch('/api/credit/sales'),
@@ -130,8 +130,30 @@ export default function CreditCustomersPage() {
       const sales = await salesRes.json()
       const payments = await paymentsRes.json()
 
+      interface ApiCreditSale {
+        id: string
+        customerId: string
+        customer?: { name: string; phone?: string }
+        amount: number
+        timestamp: string
+        liters?: number
+        price?: number
+        shiftId?: string
+      }
+
+      interface ApiCreditPayment {
+        id: string
+        customerId: string
+        customer?: { name: string; phone?: string }
+        amount: number
+        paymentDate: string
+        paymentType?: string
+        chequeNumber?: string
+        bank?: { name: string }
+      }
+
       // Transform sales
-      const salesTransactions: CreditTransaction[] = sales.map((sale: any) => ({
+      const salesTransactions: CreditTransaction[] = sales.map((sale: ApiCreditSale) => ({
         id: sale.id,
         type: 'SALE' as const,
         customerId: sale.customerId,
@@ -144,7 +166,7 @@ export default function CreditCustomersPage() {
       }))
 
       // Transform payments
-      const paymentsTransactions: CreditTransaction[] = payments.map((payment: any) => ({
+      const paymentsTransactions: CreditTransaction[] = payments.map((payment: ApiCreditPayment) => ({
         id: payment.id,
         type: 'PAYMENT' as const,
         customerId: payment.customerId,
@@ -159,7 +181,7 @@ export default function CreditCustomersPage() {
       }))
 
       // Combine and sort by timestamp (newest first)
-      const allTransactions = [...salesTransactions, ...paymentsTransactions].sort((a, b) => 
+      const allTransactions = [...salesTransactions, ...paymentsTransactions].sort((a, b) =>
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       )
 
@@ -177,12 +199,28 @@ export default function CreditCustomersPage() {
       const response = await fetch('/api/credit/customers')
       const data = await response.json()
 
+      interface ApiCreditCustomer {
+        id: string
+        name: string
+        company?: string
+        phone: string
+        email?: string
+        address?: string
+        creditLimit: number
+        currentBalance: number
+        isActive: boolean
+        approvedBy?: string
+        approvedAt?: string
+        createdAt: string
+        updatedAt: string
+      }
+
       // Transform the data to include calculated fields and map company to nicOrBrn
-      const transformedCustomers = data.map((customer: any) => ({
+      const transformedCustomers = data.map((customer: ApiCreditCustomer) => ({
         ...customer,
         nicOrBrn: customer.company || '', // Map company to nicOrBrn for frontend
         availableCredit: customer.creditLimit - customer.currentBalance,
-        status: customer.isActive ? 'ACTIVE' : 'INACTIVE' as 'ACTIVE' | 'SUSPENDED' | 'INACTIVE',
+        status: (customer.isActive ? 'ACTIVE' : 'INACTIVE') as 'ACTIVE' | 'SUSPENDED' | 'INACTIVE',
         approvedBy: customer.approvedBy || 'System',
         approvedAt: customer.approvedAt || customer.createdAt || new Date().toISOString()
       }))
@@ -190,7 +228,11 @@ export default function CreditCustomersPage() {
       setCustomers(transformedCustomers)
     } catch (err) {
       console.error('Failed to fetch customers:', err)
-      setError('Failed to load customers data.')
+      toast({
+        title: "Error",
+        description: "Failed to load customers data.",
+        variant: "destructive"
+      })
     } finally {
       setLoading(false)
     }
@@ -198,21 +240,23 @@ export default function CreditCustomersPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!formData.name || !formData.nicOrBrn || !formData.phone || formData.creditLimit <= 0) {
-      setError('Please fill in all required fields')
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      })
       return
     }
 
     setLoading(true)
-    setError('')
-    setSuccess('')
 
     try {
-      const url = editingCustomer 
+      const url = editingCustomer
         ? `/api/credit/customers/${editingCustomer.id}`
         : '/api/credit/customers'
-      
+
       const method = editingCustomer ? 'PUT' : 'POST'
 
       // Map nicOrBrn to company for API
@@ -237,7 +281,7 @@ export default function CreditCustomersPage() {
       }
 
       const savedCustomer = await response.json()
-      
+
       // Transform saved customer to match frontend format (map company to nicOrBrn)
       const transformedCustomer = {
         ...savedCustomer,
@@ -247,11 +291,11 @@ export default function CreditCustomersPage() {
         approvedBy: savedCustomer.approvedBy || 'System',
         approvedAt: savedCustomer.approvedAt || savedCustomer.createdAt || new Date().toISOString()
       }
-      
+
       if (editingCustomer) {
         // Update existing customer in list
-        setCustomers(prev => prev.map(c => 
-          c.id === editingCustomer.id 
+        setCustomers(prev => prev.map(c =>
+          c.id === editingCustomer.id
             ? transformedCustomer
             : c
         ))
@@ -262,7 +306,7 @@ export default function CreditCustomersPage() {
           ...prev
         ])
       }
-      
+
       // Reset form and close dialog
       setFormData({
         name: '',
@@ -275,17 +319,21 @@ export default function CreditCustomersPage() {
       })
       setEditingCustomer(null)
       setIsDialogOpen(false)
-      
-      setSuccess(`Customer ${editingCustomer ? 'updated' : 'created'} successfully!`)
-      
+
+      toast({
+        title: "Success",
+        description: `Customer ${editingCustomer ? 'updated' : 'created'} successfully!`
+      })
+
       // Refresh transactions in case balance changed
       fetchTransactions()
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(''), 3000)
 
     } catch (err) {
-      setError(`Failed to ${editingCustomer ? 'update' : 'create'} customer`)
+      toast({
+        title: "Error",
+        description: `Failed to ${editingCustomer ? 'update' : 'create'} customer`,
+        variant: "destructive"
+      })
     } finally {
       setLoading(false)
     }
@@ -414,7 +462,7 @@ export default function CreditCustomersPage() {
         </Badge>
       )
     },
-          ...(userRole === 'OWNER' ? [{
+    ...(userRole === 'OWNER' ? [{
       key: 'actions' as keyof CreditCustomer,
       title: 'Actions',
       render: (_value: unknown, row: CreditCustomer) => (
@@ -422,7 +470,7 @@ export default function CreditCustomersPage() {
           variant="ghost"
           size="sm"
           onClick={() => handleEdit(row)}
-          className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:text-blue-300"
+          className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
         >
           <Edit className="h-4 w-4 mr-1" />
           Edit
@@ -461,7 +509,7 @@ export default function CreditCustomersPage() {
             ) : (
               <ArrowDownRight className="h-4 w-4 text-green-600 dark:text-green-400" />
             )}
-            <Badge className={isSale 
+            <Badge className={isSale
               ? 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
               : 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
             }>
@@ -530,7 +578,7 @@ export default function CreditCustomersPage() {
                   {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
                 </DialogTitle>
                 <DialogDescription>
-                  {editingCustomer 
+                  {editingCustomer
                     ? 'Update customer information and credit settings.'
                     : 'Create a new credit customer account. All fields marked with * are required.'
                   }
@@ -560,7 +608,7 @@ export default function CreditCustomersPage() {
                       />
                     </div>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="phone">Phone Number *</Label>
@@ -607,9 +655,9 @@ export default function CreditCustomersPage() {
                     </div>
                     <div>
                       <Label htmlFor="status">Status</Label>
-                      <Select 
-                        value={formData.status} 
-                        onValueChange={(value: 'ACTIVE' | 'SUSPENDED' | 'INACTIVE') => 
+                      <Select
+                        value={formData.status}
+                        onValueChange={(value: 'ACTIVE' | 'SUSPENDED' | 'INACTIVE') =>
                           setFormData(prev => ({ ...prev, status: value }))
                         }
                       >
@@ -638,22 +686,6 @@ export default function CreditCustomersPage() {
           </Dialog>
         )}
       </div>
-
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {success && (
-        <Alert>
-          <CheckCircle className="h-4 w-4" />
-          <AlertTitle>Success</AlertTitle>
-          <AlertDescription>{success}</AlertDescription>
-        </Alert>
-      )}
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -731,8 +763,8 @@ export default function CreditCustomersPage() {
               </Select>
             </div>
             <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={fetchTransactions}
                 disabled={loadingTransactions}
               >

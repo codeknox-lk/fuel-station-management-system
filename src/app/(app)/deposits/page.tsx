@@ -20,14 +20,14 @@ import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { FileUploadStub } from '@/components/FileUploadStub'
-import { 
-  Building2, 
-  DollarSign, 
-  Calendar, 
+import {
+  Building2,
+  DollarSign,
+  Calendar,
   User,
   Building,
-  AlertCircle, 
-  CheckCircle, 
+  AlertCircle,
+  CheckCircle,
   Plus,
   Clock,
   FileText,
@@ -113,7 +113,7 @@ export default function DepositsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!selectedStation || !selectedBankAccount || !amount || amount <= 0 || !depositedBy) {
       setError('Please fill in all required fields')
       return
@@ -125,7 +125,7 @@ export default function DepositsPage() {
 
     try {
       const selectedBank = banks.find(b => b.id === selectedBankAccount)
-      
+
       const response = await fetch('/api/deposits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -146,12 +146,12 @@ export default function DepositsPage() {
       }
 
       const newDeposit = await response.json()
-      
+
       // Reload deposits
       const depositsRes = await fetch('/api/deposits?limit=10')
       const depositsData = await depositsRes.json()
       setRecentDeposits(depositsData)
-      
+
       // Reset form
       setSelectedBankAccount('')
       setAmount(undefined)
@@ -160,9 +160,9 @@ export default function DepositsPage() {
       setSlipNumber('')
       setNotes('')
       setSlipPhoto(null)
-      
+
       setSuccess('Deposit recorded successfully! Money has been deducted from safe and added to bank account.')
-      
+
       // Clear success message after 5 seconds
       setTimeout(() => setSuccess(''), 5000)
 
@@ -214,12 +214,12 @@ export default function DepositsPage() {
       key: 'bankName' as keyof Deposit,
       title: 'Bank Account',
       render: (value: unknown, row: Deposit) => {
-        const account = mockBankAccounts.find(acc => acc.id === row.bankAccountId)
+        const account = banks.find(acc => acc.id === row.bankAccountId)
         return (
           <div className="flex items-center gap-2">
             <Building className="h-4 w-4 text-muted-foreground" />
             <div className="flex flex-col">
-              <span className="font-medium">{account?.bankName || (value as string)}</span>
+              <span className="font-medium">{account?.name || (value as string)}</span>
               <span className="text-xs text-muted-foreground">
                 {account?.accountNumber ? `****${account.accountNumber.slice(-4)}` : ''}
               </span>
@@ -322,7 +322,7 @@ export default function DepositsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="station">Station *</Label>
-              <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
+              <Select value={selectedStation} onValueChange={() => { }} disabled={true}>
                 <SelectTrigger id="station">
                   <SelectValue placeholder="Select a station" />
                 </SelectTrigger>
@@ -437,7 +437,7 @@ export default function DepositsPage() {
             <Label>Deposit Slip Photo</Label>
             <FileUploadStub
               onFileSelect={setSlipPhoto}
-              accept="image/*"
+              acceptedTypes={["image/*"]}
               placeholder="Upload photo of deposit slip (recommended)"
             />
             <p className="text-xs text-muted-foreground mt-1">

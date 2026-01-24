@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
           }
         }
       })
-      
+
       if (!customer) {
         return NextResponse.json({ error: 'Credit customer not found' }, { status: 404 })
       }
@@ -44,9 +44,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    
-    const { name, company, address, phone, email, creditLimit, status } = body
-    
+    const { name, company, address, phone, email, creditLimit } = body
+
     if (!name || !phone) {
       return NextResponse.json(
         { error: 'Name and phone are required' },
@@ -60,17 +59,17 @@ export async function POST(request: NextRequest) {
         company: company || null,
         address: address || '',
         phone,
-        email: email || null,
-        creditLimit: creditLimit || 0,
+        email,
+        creditLimit: parseFloat(creditLimit),
         currentBalance: 0,
-        isActive: status === 'ACTIVE' || status === undefined ? true : false
+        isActive: body.isActive !== undefined ? body.isActive : true
       }
     })
 
     return NextResponse.json(newCustomer, { status: 201 })
   } catch (error) {
     console.error('Error creating credit customer:', error)
-    
+
     // Handle unique constraint violations
     if (error instanceof Error && error.message.includes('Unique constraint')) {
       return NextResponse.json(
@@ -78,7 +77,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

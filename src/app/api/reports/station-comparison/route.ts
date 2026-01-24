@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
     const start = new Date(startDate)
     start.setHours(0, 0, 0, 0)
-    
+
     const end = new Date(endDate)
     end.setHours(23, 59, 59, 999)
 
@@ -63,8 +63,15 @@ export async function GET(request: NextRequest) {
           let totalSales = 0
           let totalVolume = 0
 
+          interface ShiftStatistics {
+            cashSales: number
+            posSales: number
+            creditSales: number
+            totalVolume: number
+          }
+
           for (const shift of shifts) {
-            const stats = shift.statistics as any
+            const stats = shift.statistics as unknown as ShiftStatistics
             if (stats) {
               totalSales += (stats.cashSales || 0) + (stats.posSales || 0) + (stats.creditSales || 0)
               totalVolume += stats.totalVolume || 0
@@ -77,7 +84,7 @@ export async function GET(request: NextRequest) {
           const expenses = await prisma.expense.findMany({
             where: {
               stationId: station.id,
-              date: {
+              expenseDate: {
                 gte: start,
                 lte: end
               }
@@ -141,7 +148,7 @@ export async function GET(request: NextRequest) {
     console.error('Error details:', error instanceof Error ? error.message : 'Unknown error')
     console.error('Stack trace:', error instanceof Error ? error.stack : '')
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to fetch station comparison data',
         details: error instanceof Error ? error.message : 'Unknown error'
       },

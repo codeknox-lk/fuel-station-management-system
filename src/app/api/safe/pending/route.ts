@@ -50,8 +50,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Filter shifts that have undeposited cash
+    // Filter shifts that have undeposited cash
+    interface DeclaredAmounts {
+      cash: number
+      [key: string]: any
+    }
+
+    interface ShiftStats {
+      totalSales: number
+      [key: string]: any
+    }
+
     const pendingShifts = shifts.filter(shift => {
-      const declaredAmounts = shift.declaredAmounts as any
+      const declaredAmounts = shift.declaredAmounts as unknown as DeclaredAmounts
       const cashAmount = declaredAmounts?.cash || 0
       const deposited = depositedMap.get(shift.id) || 0
       return cashAmount > 0 && deposited < cashAmount
@@ -59,8 +70,8 @@ export async function GET(request: NextRequest) {
 
     // Calculate pending amounts
     const result = pendingShifts.map(shift => {
-      const declaredAmounts = shift.declaredAmounts as any
-      const statistics = shift.statistics as any
+      const declaredAmounts = shift.declaredAmounts as unknown as DeclaredAmounts
+      const statistics = shift.statistics as unknown as ShiftStats
       const cashAmount = declaredAmounts?.cash || 0
       const deposited = depositedMap.get(shift.id) || 0
       const pending = cashAmount - deposited

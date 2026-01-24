@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
@@ -6,6 +7,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const activeOnly = searchParams.get('active') === 'true'
     const shiftId = searchParams.get('shiftId')
+    const stationId = searchParams.get('stationId')
 
     let pumpers
 
@@ -18,25 +20,77 @@ export async function GET(request: NextRequest) {
         },
         distinct: ['pumperName']
       })
-      
+
       const pumperNames = assignments.map(a => a.pumperName)
-      
-      const where: any = {
+
+      interface PumperWhereInput {
+        name?: { in: string[] }
+        stationId?: string
+        isActive?: boolean
+      }
+      const where: PumperWhereInput = {
         name: { in: pumperNames }
+      }
+      if (stationId) {
+        where.stationId = stationId
       }
       if (activeOnly) {
         where.isActive = true
       }
-      
+
       pumpers = await prisma.pumper.findMany({
         where,
+        select: {
+          id: true,
+          name: true,
+          employeeId: true,
+          phone: true,
+          stationId: true,
+          status: true,
+          shift: true,
+          experience: true,
+          rating: true,
+          specializations: true,
+          isActive: true,
+          baseSalary: true,
+          holidayAllowance: true,
+          hireDate: true,
+          createdAt: true,
+          updatedAt: true
+        },
         orderBy: { name: 'asc' }
       })
     } else {
-      // Get all pumpers with optional active filter
-      const where = activeOnly ? { isActive: true } : {}
+      // OPTIMIZED: Get all pumpers with ALL needed fields
+      interface PumperWhereInput {
+        name?: { in: string[] }
+        stationId?: string
+        isActive?: boolean
+      }
+      const where: PumperWhereInput = activeOnly ? { isActive: true } : {}
+      if (stationId) {
+        where.stationId = stationId
+      }
       pumpers = await prisma.pumper.findMany({
         where,
+        select: {
+          id: true,
+          name: true,
+          employeeId: true,
+          phone: true,
+          stationId: true,
+          status: true,
+          shift: true,
+          experience: true,
+          rating: true,
+          specializations: true,
+          isActive: true,
+          baseSalary: true,
+          holidayAllowance: true,
+          hireDate: true,
+          createdAt: true,
+          updatedAt: true
+        },
         orderBy: { name: 'asc' }
       })
     }
@@ -50,13 +104,29 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    interface PumperBody {
+      name?: string
+      phone?: string
+      phoneNumber?: string
+      employeeId?: string
+      stationId?: string
+      status?: string
+      shift?: string
+      hireDate?: string | Date
+      experience?: string | number
+      rating?: string | number
+      specializations?: string[]
+      baseSalary?: string | number
+      holidayAllowance?: string | number
+      isActive?: boolean
+    }
+    const body = await request.json() as PumperBody
     console.log('🔄 POST /api/pumpers - Creating new pumper')
-    
-    const { 
-      name, 
-      phone, 
-      phoneNumber, 
+
+    const {
+      name,
+      phone,
+      phoneNumber,
       employeeId,
       stationId,
       status,
@@ -69,7 +139,7 @@ export async function POST(request: NextRequest) {
       holidayAllowance,
       isActive
     } = body
-    
+
     if (!name || !name.trim()) {
       return NextResponse.json(
         { error: 'Name is required' },
@@ -99,13 +169,13 @@ export async function POST(request: NextRequest) {
       .filter(n => n > 0)
 
     // Get the next number
-    const nextNumber = employeeNumbers.length > 0 
-      ? Math.max(...employeeNumbers) + 1 
+    const nextNumber = employeeNumbers.length > 0
+      ? Math.max(...employeeNumbers) + 1
       : 1
 
     // ALWAYS generate employee ID with 3-digit padding (EMP001, EMP002, etc.)
     const finalEmployeeId = `EMP${String(nextNumber).padStart(3, '0')}`
-    
+
     console.log(`🆔 Auto-generated employee ID: ${finalEmployeeId}`)
 
     // CRITICAL: Check for duplicates before creating
@@ -116,7 +186,7 @@ export async function POST(request: NextRequest) {
         employeeId: finalEmployeeId
       }
     })
-    
+
     if (existing) {
       return NextResponse.json({
         error: 'Pumper already exists',
@@ -133,7 +203,7 @@ export async function POST(request: NextRequest) {
           phone: phoneToUse
         }
       })
-      
+
       if (existingByPhone) {
         // Only block if it's a true duplicate (same name + phone)
         return NextResponse.json({
@@ -151,8 +221,8 @@ export async function POST(request: NextRequest) {
         phone: phoneToUse,
         employeeId: finalEmployeeId,
         stationId: stationId || null,
-        status: status || 'ACTIVE',
-        shift: shift || 'ANY',
+        status: (status as any) || 'ACTIVE',
+        shift: (shift as any) || 'ANY',
         hireDate: hireDate ? new Date(hireDate) : null,
         experience: experience ? parseFloat(String(experience)) : null,
         rating: rating ? parseFloat(String(rating)) : null,
@@ -164,6 +234,26 @@ export async function POST(request: NextRequest) {
     })
 
     console.log('✅ Pumper created successfully:', newPumper.id)
+
+    // Create audit log for pumper creation
+    try {
+      await prisma.auditLog.create({
+        data: {
+          userId: 'system', // TODO: Extract from JWT token
+          userName: 'System User', // TODO: Extract from JWT token
+          userRole: 'MANAGER', // TODO: Extract from JWT token
+          action: 'CREATE',
+          entity: 'Pumper',
+          entityId: newPumper.id,
+          details: `Created pumper: ${newPumper.name} (${newPumper.employeeId})`,
+          stationId: newPumper.stationId || undefined
+        }
+      })
+    } catch (auditError) {
+      console.error('Failed to create audit log:', auditError)
+      // Don't fail the request if audit logging fails
+    }
+
     return NextResponse.json(newPumper, { status: 201 })
   } catch (error) {
     console.error('❌ Error creating pumper:', error)
@@ -175,7 +265,7 @@ export async function POST(request: NextRequest) {
         }, { status: 400 })
       }
     }
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })

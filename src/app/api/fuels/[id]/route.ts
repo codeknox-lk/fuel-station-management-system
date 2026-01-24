@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/db'
 
 // GET /api/fuels/[id] - Get a specific fuel type
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const fuel = await prisma.fuel.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -38,14 +37,15 @@ export async function GET(
 // PUT /api/fuels/[id] - Update a fuel type
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const body = await request.json()
     const { name, category, description, icon, isActive } = body
 
     const fuel = await prisma.fuel.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         name,
         category,
@@ -68,12 +68,13 @@ export async function PUT(
 // DELETE /api/fuels/[id] - Delete a fuel type
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     // Check if fuel type is being used
     const fuel = await prisma.fuel.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -98,7 +99,7 @@ export async function DELETE(
     }
 
     await prisma.fuel.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({ message: 'Fuel type deleted successfully' })

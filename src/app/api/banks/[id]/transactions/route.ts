@@ -20,47 +20,47 @@ export async function GET(
     } : undefined
 
     // Fetch deposits
-    const deposits = (!type || type === 'all' || type === 'deposit') 
+    const deposits = (!type || type === 'all' || type === 'deposit')
       ? await prisma.deposit.findMany({
-          where: {
-            bankId,
-            ...(stationId && { stationId }),
-            ...(dateFilter && { depositDate: dateFilter })
-          },
-          include: {
-            station: { select: { name: true } }
-          },
-          orderBy: { depositDate: 'desc' }
-        })
+        where: {
+          bankId,
+          ...(stationId && { stationId }),
+          ...(dateFilter && { depositDate: dateFilter })
+        },
+        include: {
+          station: { select: { name: true } }
+        },
+        orderBy: { depositDate: 'desc' }
+      })
       : []
 
     // Fetch cheques
     const cheques = (!type || type === 'all' || type === 'cheque')
       ? await prisma.cheque.findMany({
-          where: {
-            bankId,
-            ...(stationId && { stationId }),
-            ...(dateFilter && { receivedDate: dateFilter })
-          },
-          include: {
-            station: { select: { name: true } }
-          },
-          orderBy: { receivedDate: 'desc' }
-        })
+        where: {
+          bankId,
+          ...(stationId && { stationId }),
+          ...(dateFilter && { receivedDate: dateFilter })
+        },
+        include: {
+          station: { select: { name: true } }
+        },
+        orderBy: { receivedDate: 'desc' }
+      })
       : []
 
     // Fetch credit payments
     const creditPayments = (!type || type === 'all' || type === 'credit_payment')
       ? await prisma.creditPayment.findMany({
-          where: {
-            bankId,
-            ...(dateFilter && { paymentDate: dateFilter })
-          },
-          include: {
-            customer: { select: { name: true } }
-          },
-          orderBy: { paymentDate: 'desc' }
-        })
+        where: {
+          bankId,
+          ...(dateFilter && { paymentDate: dateFilter })
+        },
+        include: {
+          customer: { select: { name: true } }
+        },
+        orderBy: { paymentDate: 'desc' }
+      })
       : []
 
     // Fetch manual bank transactions (deposits made from safe, manual adjustments, etc.)
@@ -113,7 +113,7 @@ export async function GET(
         description: `Credit payment from ${cp.customer.name}`,
         customer: cp.customer.name,
         chequeNumber: cp.chequeNumber,
-        notes: cp.notes || undefined,
+        referenceNumber: cp.referenceNumber,
         createdAt: cp.createdAt
       })),
       ...bankTransactions.map(bt => ({
@@ -132,7 +132,7 @@ export async function GET(
     ]
 
     // Sort by date descending
-    const transactions = allTransactions.sort((a, b) => 
+    const transactions = allTransactions.sort((a, b) =>
       new Date(b.date).getTime() - new Date(a.date).getTime()
     )
 

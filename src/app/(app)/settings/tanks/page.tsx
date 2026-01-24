@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useToast } from '@/hooks/use-toast'
 import {
   Dialog,
   DialogContent,
@@ -26,15 +27,16 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { DataTable, Column } from '@/components/ui/DataTable'
-import { 
-  Fuel, 
-  Plus, 
-  AlertCircle, 
-  CheckCircle,
+import {
+  Fuel,
+  Plus,
+  AlertCircle,
   Droplets,
   Wrench,
   ArrowLeft,
-  Settings
+  Settings,
+  Trash2,
+  Edit
 } from 'lucide-react'
 
 interface Pump {
@@ -57,6 +59,7 @@ interface Fuel {
   code: string
   name: string
   icon?: string | null
+  isActive?: boolean
 }
 
 interface Tank {
@@ -70,26 +73,36 @@ interface Tank {
 
 export default function TanksSettingsPage() {
   const router = useRouter()
-  const { stations } = useStation()
-  
+  const { stations, selectedStation: globalSelectedStation } = useStation()
+  const { toast } = useToast()
+
   // Common state
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [selectedStation, setSelectedStation] = useState('')
-  
-  // Tank creation dialog state
-  const [showCreateTankDialog, setShowCreateTankDialog] = useState(false)
-  const [createTankLoading, setCreateTankLoading] = useState(false)
+
+  // Sync with global station selection
+  useEffect(() => {
+    if (globalSelectedStation) {
+      setSelectedStation(globalSelectedStation)
+    }
+  }, [globalSelectedStation])
+
+  // Tank creation/editing dialog state
+  const [showTankDialog, setShowTankDialog] = useState(false)
+  const [tankLoading, setTankLoading] = useState(false)
+  const [editingTankId, setEditingTankId] = useState<string | null>(null)
+
+  // Tank form state
   const [selectedStationForTank, setSelectedStationForTank] = useState('')
   const [fuelId, setFuelId] = useState('')
   const [fuels, setFuels] = useState<Fuel[]>([])
   const [capacity, setCapacity] = useState('')
-  
+  const [tankNumber, setTankNumber] = useState('')
+
   // Pump state
   const [pumps, setPumps] = useState<Pump[]>([])
   const [pumpNumber, setPumpNumber] = useState('')
   const [pumpLoading, setPumpLoading] = useState(false)
-  
+
   // Nozzle state
   const [nozzles, setNozzles] = useState<Nozzle[]>([])
   const [tanks, setTanks] = useState<Tank[]>([])
@@ -97,7 +110,7 @@ export default function TanksSettingsPage() {
   const [selectedTank, setSelectedTank] = useState('')
   const [nozzleNumber, setNozzleNumber] = useState('')
   const [nozzleLoading, setNozzleLoading] = useState(false)
-  
+
   // Load pumps, nozzles, and fuels when station changes
   useEffect(() => {
     loadFuels()
@@ -152,73 +165,147 @@ export default function TanksSettingsPage() {
     }
   }
 
-  const handleCreateTank = async (e: React.FormEvent) => {
+  const resetTankForm = () => {
+    setEditingTankId(null)
+    setSelectedStationForTank(selectedStation || '')
+    setFuelId('')
+    setCapacity('')
+    setTankNumber('')
+  }
+
+  const handleEditTank = (tank: Tank) => {
+    setEditingTankId(tank.id)
+    setSelectedStationForTank(selectedStation) // Assuming tanks belong to current selected station
+    setFuelId(tank.fuelId)
+    setCapacity(tank.capacity.toString())
+    setTankNumber(tank.tankNumber.replace('TANK-', '')) // effective editing
+    setShowTankDialog(true)
+  }
+
+  const handleSaveTank = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!selectedStationForTank || !fuelId || !capacity) {
-      setError('Please fill in all required fields')
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      })
       return
     }
 
-    setCreateTankLoading(true)
-    setError('')
-    setSuccess('')
+    setTankLoading(true)
 
     try {
-      const response = await fetch('/api/tanks', {
-        method: 'POST',
+      const url = editingTankId ? `/api/tanks/${editingTankId}` : '/api/tanks'
+      const method = editingTankId ? 'PUT' : 'POST'
+
+      // Auto-format tank number if provided
+      let formattedTankNumber = undefined
+      if (tankNumber && tankNumber.trim()) {
+        const rawNumber = tankNumber.trim()
+        if (/^\d+$/.test(rawNumber)) {
+          formattedTankNumber = `TANK-${rawNumber.padStart(2, '0')}`
+        } else {
+          formattedTankNumber = rawNumber
+        }
+      }
+
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           stationId: selectedStationForTank,
           fuelId,
           capacity: parseFloat(capacity),
-          currentLevel: 0
+          tankNumber: formattedTankNumber,
+          ...(editingTankId ? {} : { currentLevel: 0 }) // Only set initial level for new tanks
         })
       })
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create tank')
+        throw new Error(errorData.error || `Failed to ${editingTankId ? 'update' : 'create'} tank`)
       }
 
-      setSuccess('Tank created successfully!')
-      setShowCreateTankDialog(false)
-      setSelectedStationForTank('')
-      setFuelId('')
-      setCapacity('')
-      
+      toast({
+        title: "Success",
+        description: `Tank ${editingTankId ? 'updated' : 'created'} successfully!`
+      })
+      setShowTankDialog(false)
+      resetTankForm()
+
       // Refresh tanks if viewing a station
       if (selectedStation) {
         loadTanks()
       }
-      
-      setTimeout(() => setSuccess(''), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create tank')
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : `Failed to ${editingTankId ? 'update' : 'create'} tank`,
+        variant: "destructive"
+      })
     } finally {
-      setCreateTankLoading(false)
+      setTankLoading(false)
+    }
+  }
+
+  const handleDeleteTank = async (tankId: string) => {
+    if (!confirm('Are you sure you want to delete this tank? This action cannot be undone.')) return
+
+    try {
+      const response = await fetch(`/api/tanks/${tankId}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.details || data.error || 'Failed to delete tank')
+      }
+
+      toast({
+        title: "Success",
+        description: "Tank deleted successfully"
+      })
+      loadTanks()
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to delete tank",
+        variant: "destructive"
+      })
     }
   }
 
   const handleCreatePump = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!selectedStation || !pumpNumber) {
-      setError('Please fill in all required fields')
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      })
       return
     }
 
     setPumpLoading(true)
-    setError('')
-    setSuccess('')
 
     try {
+      // Auto-format pump number
+      let formattedPumpNumber = pumpNumber.trim()
+
+      // If it's just a number (e.g. "1" or "01"), format it as "PUMP-01"
+      if (/^\d+$/.test(formattedPumpNumber)) {
+        formattedPumpNumber = `PUMP-${formattedPumpNumber.padStart(2, '0')}`
+      }
+
       const response = await fetch('/api/pumps', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           stationId: selectedStation,
-          pumpNumber,
+          pumpNumber: formattedPumpNumber,
           isActive: true
         })
       })
@@ -228,12 +315,18 @@ export default function TanksSettingsPage() {
         throw new Error(errorData.error || 'Failed to create pump')
       }
 
-      setSuccess('Pump created successfully!')
+      toast({
+        title: "Success",
+        description: "Pump created successfully!"
+      })
       setPumpNumber('')
       loadPumps()
-      setTimeout(() => setSuccess(''), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create pump')
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : 'Failed to create pump',
+        variant: "destructive"
+      })
     } finally {
       setPumpLoading(false)
     }
@@ -241,24 +334,34 @@ export default function TanksSettingsPage() {
 
   const handleCreateNozzle = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!selectedStation || !selectedPump || !selectedTank || !nozzleNumber) {
-      setError('Please fill in all required fields')
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      })
       return
     }
 
     setNozzleLoading(true)
-    setError('')
-    setSuccess('')
 
     try {
+      // Auto-format nozzle number
+      let formattedNozzleNumber = nozzleNumber.trim()
+
+      // If it's just a number (e.g. "1" or "01"), format it as "NOZZLE-01"
+      if (/^\d+$/.test(formattedNozzleNumber)) {
+        formattedNozzleNumber = `NOZZLE-${formattedNozzleNumber.padStart(2, '0')}`
+      }
+
       const response = await fetch('/api/nozzles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           pumpId: selectedPump,
           tankId: selectedTank,
-          nozzleNumber,
+          nozzleNumber: formattedNozzleNumber,
           isActive: true
         })
       })
@@ -268,18 +371,145 @@ export default function TanksSettingsPage() {
         throw new Error(errorData.error || 'Failed to create nozzle')
       }
 
-      setSuccess('Nozzle created successfully!')
+      toast({
+        title: "Success",
+        description: "Nozzle created successfully!"
+      })
       setSelectedPump('')
       setSelectedTank('')
       setNozzleNumber('')
       loadNozzles()
-      setTimeout(() => setSuccess(''), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create nozzle')
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : 'Failed to create nozzle',
+        variant: "destructive"
+      })
     } finally {
       setNozzleLoading(false)
     }
   }
+
+  const handleDeletePump = async (pumpId: string) => {
+    if (!confirm('Are you sure you want to delete this pump? This action cannot be undone.')) return
+
+    try {
+      const response = await fetch(`/api/pumps/${pumpId}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.details || data.error || 'Failed to delete pump')
+      }
+
+      toast({
+        title: "Success",
+        description: "Pump deleted successfully"
+      })
+      loadPumps()
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to delete pump",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleDeleteNozzle = async (nozzleId: string) => {
+    if (!confirm('Are you sure you want to delete this nozzle? This action cannot be undone.')) return
+
+    try {
+      const response = await fetch(`/api/nozzles/${nozzleId}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.details || data.error || 'Failed to delete nozzle')
+      }
+
+      toast({
+        title: "Success",
+        description: "Nozzle deleted successfully"
+      })
+      loadNozzles()
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to delete nozzle",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const tankColumns: Column<Tank>[] = [
+    {
+      key: 'tankNumber' as keyof Tank,
+      title: 'Tank Number',
+      render: (value: unknown) => <span className="font-semibold">{value as string}</span>
+    },
+    {
+      key: 'fuel' as keyof Tank,
+      title: 'Fuel Type',
+      render: (value: unknown) => (
+        <div className="flex items-center gap-2">
+          <Fuel className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+          <span>{(value as Fuel)?.name || 'Unknown'}</span>
+        </div>
+      )
+    },
+    {
+      key: 'capacity' as keyof Tank,
+      title: 'Capacity',
+      render: (value: unknown) => (
+        <Badge variant="outline">{(value as number).toLocaleString()} L</Badge>
+      )
+    },
+    {
+      key: 'currentLevel' as keyof Tank,
+      title: 'Current Level',
+      render: (value: unknown, row: Tank) => (
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs">
+            <span>{(value as number).toLocaleString()} L</span>
+            <span className="text-muted-foreground">{Math.round(((value as number) / row.capacity) * 100)}%</span>
+          </div>
+          <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+            <div
+              className="h-full bg-orange-500 rounded-full"
+              style={{ width: `${Math.min(100, Math.max(0, ((value as number) / row.capacity) * 100))}%` }}
+            />
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'id' as keyof Tank,
+      title: 'Actions',
+      render: (value: unknown, row: Tank) => (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleEditTank(row)}
+            className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleDeleteTank(row.id)}
+            className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      )
+    }
+  ]
 
   const pumpColumns: Column<Pump>[] = [
     {
@@ -306,10 +536,24 @@ export default function TanksSettingsPage() {
         <div className="flex flex-wrap gap-2">
           {(value as { nozzleNumber: string; tank: { fuelId: string; fuel?: Fuel } }[]).map((nozzle) => (
             <Badge key={nozzle.nozzleNumber} variant="outline">
-              {nozzle.nozzleNumber} → {nozzle.tank.fuel?.name || 'Unknown'}
+              {nozzle.nozzleNumber} â†’ {nozzle.tank.fuel?.name || 'Unknown'}
             </Badge>
           ))}
         </div>
+      )
+    },
+    {
+      key: 'id' as keyof Pump,
+      title: 'Actions',
+      render: (value: unknown, row: Pump) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleDeletePump(row.id)}
+          className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
       )
     }
   ]
@@ -321,7 +565,7 @@ export default function TanksSettingsPage() {
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
           <Wrench className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          <span className="font-medium">{(value as { pumpNumber: string }).pumpNumber}</span>
+          <span className="font-semibold">{(value as { pumpNumber: string }).pumpNumber}</span>
         </div>
       )
     },
@@ -353,6 +597,20 @@ export default function TanksSettingsPage() {
           {value ? 'Active' : 'Inactive'}
         </Badge>
       )
+    },
+    {
+      key: 'id' as keyof Nozzle,
+      title: 'Actions',
+      render: (value: unknown, row: Nozzle) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleDeleteNozzle(row.id)}
+          className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      )
     }
   ]
 
@@ -372,46 +630,26 @@ export default function TanksSettingsPage() {
         </div>
       </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {success && (
-        <Alert>
-          <CheckCircle className="h-4 w-4" />
-          <AlertTitle>Success</AlertTitle>
-          <AlertDescription>{success}</AlertDescription>
-        </Alert>
-      )}
-
-      {/* Add Tank Button */}
-      <div className="flex justify-end">
-        <Button onClick={() => setShowCreateTankDialog(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add New Tank
-        </Button>
-      </div>
-
-      {/* Create Tank Dialog */}
-      <Dialog open={showCreateTankDialog} onOpenChange={setShowCreateTankDialog}>
+      {/* Tank Dialog */}
+      <Dialog open={showTankDialog} onOpenChange={(open) => {
+        setShowTankDialog(open)
+        if (!open) resetTankForm()
+      }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create New Tank</DialogTitle>
+            <DialogTitle>{editingTankId ? 'Edit Tank' : 'Create New Tank'}</DialogTitle>
             <DialogDescription>
-              Add a new fuel storage tank to a station
+              {editingTankId ? 'Update tank details' : 'Add a new fuel storage tank to a station'}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleCreateTank} className="space-y-4">
+          <form onSubmit={handleSaveTank} className="space-y-4">
             <div>
               <Label htmlFor="tank-station">Station *</Label>
-              <Select 
-                value={selectedStationForTank} 
+              <Select
+                value={selectedStationForTank}
                 onValueChange={setSelectedStationForTank}
                 required
+                disabled={!!editingTankId} // Prevent changing station when editing
               >
                 <SelectTrigger id="tank-station" className="mt-2">
                   <SelectValue placeholder="Select station" />
@@ -424,6 +662,18 @@ export default function TanksSettingsPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label htmlFor="tankNumber">Tank Number (Optional)</Label>
+              <Input
+                id="tankNumber"
+                value={tankNumber}
+                onChange={(e) => setTankNumber(e.target.value)}
+                placeholder="01"
+                className="mt-2"
+                disabled={tankLoading}
+              />
+              <p className="text-xs text-muted-foreground mt-1">Leave blank to auto-generate (e.g. TANK-01)</p>
             </div>
             <div>
               <Label htmlFor="fuelId">Fuel Type *</Label>
@@ -451,37 +701,34 @@ export default function TanksSettingsPage() {
                 onChange={(e) => setCapacity(e.target.value)}
                 placeholder="10000"
                 className="mt-2"
-                disabled={createTankLoading}
+                disabled={tankLoading}
                 required
               />
             </div>
             <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setShowCreateTankDialog(false)}
-                disabled={createTankLoading}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowTankDialog(false)}
+                disabled={tankLoading}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={createTankLoading}>
-                {createTankLoading ? 'Creating...' : 'Create Tank'}
+              <Button type="submit" disabled={tankLoading}>
+                {tankLoading ? 'Saving...' : (editingTankId ? 'Update Tank' : 'Create Tank')}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Infrastructure Setup Section */}
-      <FormCard className="p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-xl font-semibold">Infrastructure Setup</h2>
-            <p className="text-sm text-muted-foreground">Manage pumps and nozzles for stations</p>
-          </div>
-          <Settings className="h-5 w-5 text-muted-foreground" />
-        </div>
-        
+      <FormCard
+        title="Infrastructure Setup"
+        description="Manage pumps and nozzles for stations"
+        actions={<Settings className="h-5 w-5 text-muted-foreground" />}
+        className="p-4"
+      >
+
         <div>
           <Label htmlFor="infra-station">Select Station</Label>
           <Select value={selectedStation} onValueChange={setSelectedStation}>
@@ -500,8 +747,12 @@ export default function TanksSettingsPage() {
       </FormCard>
 
       {selectedStation && (
-        <Tabs defaultValue="pumps" className="space-y-6">
+        <Tabs defaultValue="tanks" className="space-y-6">
           <TabsList>
+            <TabsTrigger value="tanks">
+              <Fuel className="mr-2 h-4 w-4" />
+              Tanks
+            </TabsTrigger>
             <TabsTrigger value="pumps">
               <Wrench className="mr-2 h-4 w-4" />
               Pumps
@@ -511,6 +762,26 @@ export default function TanksSettingsPage() {
               Nozzles
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="tanks" className="space-y-4">
+            <div className="flex justify-end">
+              <Button onClick={() => {
+                resetTankForm()
+                setShowTankDialog(true)
+              }}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add New Tank
+              </Button>
+            </div>
+            <FormCard title="Existing Tanks">
+              <DataTable
+                data={tanks}
+                columns={tankColumns}
+                searchPlaceholder="Search tanks..."
+                emptyMessage="No tanks found. Create one to get started!"
+              />
+            </FormCard>
+          </TabsContent>
 
           <TabsContent value="pumps" className="space-y-4">
             <FormCard title="Create New Pump">
@@ -580,6 +851,8 @@ export default function TanksSettingsPage() {
                           <SelectItem key={tank.id} value={tank.id}>
                             <div className="flex items-center gap-2">
                               <Fuel className="h-4 w-4" />
+                              <span className="font-semibold">{tank.tankNumber}</span>
+                              <span className="text-muted-foreground">-</span>
                               <span>{tank.fuel?.name || 'Unknown'}</span>
                               <span className="text-xs text-muted-foreground">
                                 ({tank.capacity.toLocaleString()}L)

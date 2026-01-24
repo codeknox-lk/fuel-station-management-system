@@ -9,10 +9,11 @@ import {
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Search
+import {
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Loader2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -34,6 +35,7 @@ interface DataTableProps<T = Record<string, unknown>> {
   className?: string
   onRowClick?: (row: T) => void
   emptyMessage?: string
+  loading?: boolean
 }
 
 export function DataTable<T = Record<string, unknown>>({
@@ -45,7 +47,8 @@ export function DataTable<T = Record<string, unknown>>({
   pageSize = 10,
   className,
   onRowClick,
-  emptyMessage = 'No data available'
+  emptyMessage = 'No data available',
+  loading = false
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState('')
   const [sortKey, setSortKey] = useState<keyof T | null>(null)
@@ -67,10 +70,10 @@ export function DataTable<T = Record<string, unknown>>({
   // Sort data
   const sortedData = [...filteredData].sort((a, b) => {
     if (!sortKey) return 0
-    
+
     const aValue = a[sortKey]
     const bValue = b[sortKey]
-    
+
     if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
     if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
     return 0
@@ -79,7 +82,7 @@ export function DataTable<T = Record<string, unknown>>({
   // Paginate data
   const totalPages = Math.ceil(sortedData.length / pageSize)
   const startIndex = (currentPage - 1) * pageSize
-  const paginatedData = pagination 
+  const paginatedData = pagination
     ? sortedData.slice(startIndex, startIndex + pageSize)
     : sortedData
 
@@ -140,7 +143,16 @@ export function DataTable<T = Record<string, unknown>>({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedData.length === 0 ? (
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  <div className="flex justify-center items-center gap-2">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <span className="text-muted-foreground">Loading...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : paginatedData.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={columns.length} className="text-center py-8">
                   <div className="text-muted-foreground">{emptyMessage}</div>
@@ -157,7 +169,7 @@ export function DataTable<T = Record<string, unknown>>({
                 >
                   {columns.map((column) => (
                     <TableCell key={String(column.key)}>
-                      {column.render 
+                      {column.render
                         ? column.render(row[column.key], row)
                         : String(row[column.key] ?? '')
                       }
@@ -186,7 +198,7 @@ export function DataTable<T = Record<string, unknown>>({
               <ChevronLeft className="h-4 w-4" />
               Previous
             </Button>
-            
+
             <div className="flex items-center gap-1">
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                 const page = i + 1
