@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { auditOperations } from '@/lib/auditMiddleware'
-import { safeParseFloat, validateAmount, validateRequired, validateDate } from '@/lib/validation'
+import { CreateExpenseSchema } from '@/lib/schemas'
 
 export async function GET(request: NextRequest) {
   try {
@@ -96,53 +96,35 @@ export async function GET(request: NextRequest) {
   }
 }
 
+
+
 export async function POST(request: NextRequest) {
   try {
-    interface ExpenseBody {
-      stationId?: string
-      category?: string
-      description?: string
-      amount?: string | number
-      fromSafe?: boolean
-      paidBy?: string
-      proof?: string
-      expenseDate?: string | Date
-    }
-    const body = await request.json() as ExpenseBody
+    const body = await request.json()
 
-    const { stationId, category, description, amount, fromSafe, paidBy, proof, expenseDate } = body
+    // Zod Validation
+    const result = CreateExpenseSchema.safeParse(body)
 
-    // Validate required fields
-    const errors: string[] = []
-    if (validateRequired(stationId, 'Station ID')) errors.push(validateRequired(stationId, 'Station ID')!)
-    if (validateRequired(category, 'Category')) errors.push(validateRequired(category, 'Category')!)
-    if (validateRequired(description, 'Description')) errors.push(validateRequired(description, 'Description')!)
-    if (validateRequired(paidBy, 'Paid by')) errors.push(validateRequired(paidBy, 'Paid by')!)
-    if (validateDate(String(expenseDate), 'Expense date')) errors.push(validateDate(String(expenseDate), 'Expense date')!)
-
-    // Validate amount
-    const amountError = validateAmount(amount, 'Amount')
-    if (amountError) errors.push(amountError)
-
-    if (errors.length > 0) {
+    if (!result.success) {
       return NextResponse.json(
-        { error: errors.join(', ') },
+        { error: 'Invalid input data', details: result.error.flatten().fieldErrors },
         { status: 400 }
       )
     }
 
-    const validatedAmount = safeParseFloat(amount)
+    const { stationId, category, description, amount, fromSafe, paidBy, proof, expenseDate } = result.data
+    const validatedAmount = amount // Already a number
 
     const newExpense = await prisma.expense.create({
       data: {
-        stationId: stationId!,
-        category: category!,
-        description: description!,
+        stationId,
+        category,
+        description,
         amount: validatedAmount,
-        fromSafe: fromSafe || false,
-        paidBy: paidBy!,
+        fromSafe,
+        paidBy,
         proof: proof || null,
-        expenseDate: new Date(expenseDate!)
+        expenseDate
       },
       include: {
         station: {

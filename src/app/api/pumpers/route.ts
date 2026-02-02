@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { CreatePumperSchema } from '@/lib/schemas'
 
 export async function GET(request: NextRequest) {
   try {
@@ -104,30 +104,24 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    interface PumperBody {
-      name?: string
-      phone?: string
-      phoneNumber?: string
-      employeeId?: string
-      stationId?: string
-      status?: string
-      shift?: string
-      hireDate?: string | Date
-      experience?: string | number
-      rating?: string | number
-      specializations?: string[]
-      baseSalary?: string | number
-      holidayAllowance?: string | number
-      isActive?: boolean
-    }
-    const body = await request.json() as PumperBody
+    const body = await request.json()
     console.log('🔄 POST /api/pumpers - Creating new pumper')
+
+    // Zod Validation
+    const result = CreatePumperSchema.safeParse(body)
+
+    if (!result.success) {
+      console.error('❌ Validation failed:', result.error.flatten())
+      return NextResponse.json(
+        { error: 'Invalid input data', details: result.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
 
     const {
       name,
       phone,
       phoneNumber,
-      employeeId,
       stationId,
       status,
       shift,
@@ -138,14 +132,7 @@ export async function POST(request: NextRequest) {
       baseSalary,
       holidayAllowance,
       isActive
-    } = body
-
-    if (!name || !name.trim()) {
-      return NextResponse.json(
-        { error: 'Name is required' },
-        { status: 400 }
-      )
-    }
+    } = result.data
 
     const phoneToUse = phone || phoneNumber || null
 
@@ -220,15 +207,17 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         phone: phoneToUse,
         employeeId: finalEmployeeId,
-        stationId: stationId || null,
+        stationId: stationId || undefined,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         status: (status as any) || 'ACTIVE',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         shift: (shift as any) || 'ANY',
-        hireDate: hireDate ? new Date(hireDate) : null,
-        experience: experience ? parseFloat(String(experience)) : null,
-        rating: rating ? parseFloat(String(rating)) : null,
-        specializations: Array.isArray(specializations) ? specializations : [],
-        baseSalary: baseSalary !== undefined && baseSalary !== null && baseSalary !== '' ? parseFloat(String(baseSalary)) : 0,
-        holidayAllowance: holidayAllowance !== undefined && holidayAllowance !== null && holidayAllowance !== '' ? parseFloat(String(holidayAllowance)) : 4500,
+        hireDate: hireDate || null,
+        experience: experience || null,
+        rating: rating || null,
+        specializations: specializations,
+        baseSalary: baseSalary,
+        holidayAllowance: holidayAllowance,
         isActive: isActive !== undefined ? isActive : true
       }
     })

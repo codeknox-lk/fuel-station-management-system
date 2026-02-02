@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -14,22 +15,19 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category')
 
     // Build where clause
-    const where: any = {}
+    const where: Prisma.NotificationWhereInput = {}
     if (stationId) where.stationId = stationId
     if (isRead !== null && isRead !== undefined) where.isRead = isRead === 'true'
-    if (type) where.type = type
-    if (priority) where.priority = priority
-    if (category) where.category = category
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (type) where.type = type as any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (priority) where.priority = priority as any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (category) where.category = category as any
 
-    interface PrismaWithNotification {
-      notification: {
-        findMany: (args: any) => Promise<any[]>
-        count: (args: any) => Promise<number>
-      }
-    }
-
+    // Simplified prisma access
     try {
-      const notificationsList = await (prisma as unknown as PrismaWithNotification).notification.findMany({
+      const notificationsList = await prisma.notification.findMany({
         where,
         orderBy: { createdAt: 'desc' },
         skip: offset,
@@ -41,8 +39,8 @@ export async function GET(request: NextRequest) {
         }
       })
 
-      const totalCount = await (prisma as unknown as PrismaWithNotification).notification.count({ where })
-      const unreadCount = await (prisma as unknown as PrismaWithNotification).notification.count({
+      const totalCount = await prisma.notification.count({ where })
+      const unreadCount = await prisma.notification.count({
         where: { ...where, isRead: false }
       })
 
@@ -109,13 +107,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    interface PrismaWithNotification {
-      notification: {
-        create: (args: unknown) => Promise<unknown>
-      }
-    }
-
-    const notification = await (prisma as unknown as PrismaWithNotification).notification.create({
+    const notification = await prisma.notification.create({
       data: {
         stationId: stationId || null,
         title,

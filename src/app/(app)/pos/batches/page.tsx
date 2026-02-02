@@ -17,18 +17,15 @@ import {
 import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { FileUploadStub } from '@/components/FileUploadStub'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
 import {
   CreditCard,
   Calendar,
   Building2,
-  Camera,
   AlertCircle,
   CheckCircle,
   Plus,
   DollarSign,
-  Clock,
   Wallet,
   ArrowLeft
 } from 'lucide-react'
@@ -120,12 +117,13 @@ export default function POSBatchesPage() {
         setStations(stationsData)
         setTerminals(terminalsData)
         setRecentBatches(batchesData)
-      } catch (err) {
+      } catch (error) {
         setError('Failed to load initial data')
       }
     }
 
     loadData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Filter terminals by selected station
@@ -176,13 +174,10 @@ export default function POSBatchesPage() {
         throw new Error('Failed to create POS batch')
       }
 
-      const newBatch = await response.json()
-
-      // Reload batches to get proper data
       const batchesRes = await fetch('/api/pos/batches?limit=10')
       if (batchesRes.ok) {
-        const batchesData = await batchesRes.json()
-        setRecentBatches(batchesData)
+        const data = await batchesRes.json()
+        setRecentBatches(data)
       }
 
       // Reset form
@@ -200,8 +195,7 @@ export default function POSBatchesPage() {
 
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000)
-
-    } catch (err) {
+    } catch (error) {
       setError('Failed to create POS batch')
     } finally {
       setLoading(false)

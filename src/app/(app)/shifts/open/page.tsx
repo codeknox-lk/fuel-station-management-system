@@ -20,9 +20,9 @@ import { DateTimePicker } from '@/components/inputs/DateTimePicker'
 import { DataTable } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Clock, Fuel, User, Plus, Building2 } from 'lucide-react'
+import { Clock, Fuel, User, Plus } from 'lucide-react'
 import { getCurrentUserName } from '@/lib/auth'
-import { getNozzleFullName, getNozzleShortName, getNozzleCompactName, getNozzleDisplayWithBadge, formatFuelType, formatNozzleNumber } from '@/lib/nozzleUtils'
+import { getNozzleShortName, getNozzleDisplayWithBadge } from '@/lib/nozzleUtils'
 
 // Component for Start Meter Reading cell with last reading display
 const StartMeterCell = ({
@@ -42,7 +42,7 @@ const StartMeterCell = ({
     fetch(`/api/nozzles/${row.nozzleId}/last-reading`)
       .then(res => res.json())
       .then(data => {
-        if (data.lastEndMeterReading !== null && data.lastEndMeterReading !== undefined) {
+        if (data && typeof data.lastEndMeterReading === 'number') {
           setLastReading(data.lastEndMeterReading)
         }
         setLoading(false)
@@ -97,8 +97,6 @@ interface ShiftTemplate {
   duration: number
 }
 
-import { TankWithDetails } from '@/types/db'
-
 interface Fuel {
   id: string
   code: string
@@ -141,15 +139,17 @@ interface Assignment {
   startMeterReading: number
 }
 
+interface ShiftAssignment {
+  id?: string
+  nozzleId: string
+  status?: string
+  pumperName?: string
+}
+
 interface ActiveShift {
   id: string
   status: string
-  assignments?: {
-    id?: string
-    nozzleId: string
-    status?: string
-    pumperName?: string
-  }[]
+  assignments?: ShiftAssignment[]
 }
 
 export default function OpenShiftPage() {
@@ -236,7 +236,17 @@ export default function OpenShiftPage() {
           } else {
             const rawNozzlesData = await nozzlesRes.json()
             // Transform API response to flatten nested structure
-            nozzlesData = rawNozzlesData.map((nozzle: { id: string; pumpId: string; tankId: string; nozzleNumber: string; fuelId?: string; tank?: any; fuel?: any; pump?: any; pumpNumber?: string }) => ({
+            nozzlesData = rawNozzlesData.map((nozzle: {
+              id: string
+              pumpId: string
+              tankId: string
+              nozzleNumber: string
+              fuelId?: string
+              tank?: { fuelId: string; fuel?: { id: string; code?: string; name: string; icon?: string | null } }
+              fuel?: { id: string; code?: string; name: string; icon?: string | null }
+              pump?: { pumpNumber: string }
+              pumpNumber?: string
+            }) => ({
               id: nozzle.id,
               pumpId: nozzle.pumpId,
               tankId: nozzle.tankId,
@@ -244,10 +254,10 @@ export default function OpenShiftPage() {
               fuelId: nozzle.tank?.fuelId || nozzle.fuelId || '',
               // Ensure fuel has all required properties for Fuel interface
               fuel: (nozzle.tank?.fuel || nozzle.fuel) ? {
-                id: (nozzle.tank?.fuel || nozzle.fuel).id,
-                code: (nozzle.tank?.fuel || nozzle.fuel).code || 'UNK', // Default code if missing
-                name: (nozzle.tank?.fuel || nozzle.fuel).name,
-                icon: (nozzle.tank?.fuel || nozzle.fuel).icon
+                id: (nozzle.tank?.fuel || nozzle.fuel)!.id,
+                code: (nozzle.tank?.fuel || nozzle.fuel)!.code || 'UNK', // Default code if missing
+                name: (nozzle.tank?.fuel || nozzle.fuel)!.name,
+                icon: (nozzle.tank?.fuel || nozzle.fuel)!.icon
               } : undefined,
               pumpNumber: nozzle.pump?.pumpNumber || nozzle.pumpNumber || '?'
             }))
@@ -438,7 +448,7 @@ export default function OpenShiftPage() {
         // Check if nozzle is assigned to any active shift
         for (const shift of activeShifts) {
           if (shift.status === 'OPEN' && shift.assignments && Array.isArray(shift.assignments)) {
-            const isAssigned = shift.assignments.some((a: any) =>
+            const isAssigned = shift.assignments.some((a: ShiftAssignment) =>
               a.nozzleId === nozzleId && (a.status === 'ACTIVE' || !a.status)
             )
             if (isAssigned) {

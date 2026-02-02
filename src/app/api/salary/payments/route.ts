@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 
 // GET: Get salary payment history
 export async function GET(request: NextRequest) {
@@ -13,7 +14,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Station ID is required' }, { status: 400 })
     }
 
-    const where: any = { stationId }
+    const where: Prisma.SalaryPaymentWhereInput = { stationId }
     if (pumperId) {
       where.pumperId = pumperId
     }

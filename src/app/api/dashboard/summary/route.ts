@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -110,19 +111,26 @@ export async function GET(request: NextRequest) {
       s.status === 'CLOSED' && new Date(s.startTime).toDateString() === today
     )
 
+    interface ShiftStatistics {
+      totalSales?: number
+      cashSales?: number
+      totalTransactions?: number
+      creditSales?: number
+    }
+
     interface ShiftWithStats {
       startTime: Date
       status: string
-      statistics: any
+      statistics: Prisma.JsonValue
     }
 
     const todaySales = todayShifts.reduce((sum, s: ShiftWithStats) => {
-      const stats = s.statistics
+      const stats = s.statistics as ShiftStatistics | null
       return sum + (stats?.totalSales || stats?.cashSales || 0)
     }, 0)
 
     const todayTransactions = todayShifts.reduce((sum, s: ShiftWithStats) => {
-      const stats = s.statistics
+      const stats = s.statistics as ShiftStatistics | null
       return sum + (stats?.totalTransactions || 0)
     }, 0)
 
@@ -164,9 +172,10 @@ export async function GET(request: NextRequest) {
     }, [])
 
     // Get credit outstanding from shifts statistics
+    // Get credit outstanding from shifts statistics
     let creditOutstanding = 0
     shifts.forEach((s: ShiftWithStats) => {
-      const stats = s.statistics
+      const stats = s.statistics as ShiftStatistics | null
       if (stats?.creditSales) {
         creditOutstanding += stats.creditSales
       }

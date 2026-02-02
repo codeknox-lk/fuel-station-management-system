@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
+import { CreateDeliverySchema } from '@/lib/schemas'
 
 export async function GET(request: NextRequest) {
   try {
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
       where.tankId = tankId
     }
     if (status) {
-      where.verificationStatus = status as any
+      where.verificationStatus = status as 'PENDING_VERIFICATION' | 'VERIFIED' | 'DISCREPANCY'
     }
     if (startDate && endDate) {
       where.deliveryDate = {
@@ -139,56 +140,42 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    interface DeliveryBody {
-      stationId?: string
-      tankId?: string
-      invoiceQuantity?: number | string
-      supplier?: string
-      deliveryDate?: string | Date
-      receivedBy?: string
-      invoiceNumber?: string
-      notes?: string
-      beforeDipReading?: number | string
-      beforeDipTime?: string | Date
-      fuelSoldDuring?: number | string
-      beforeMeterReadings?: Record<string, any>
-    }
-    const body = await request.json() as DeliveryBody
+    const body = await request.json()
     console.log('[API] 📦 Delivery request body:', JSON.stringify(body, null, 2))
+
+    // Zod Validation for core fields
+    const result = CreateDeliverySchema.safeParse(body)
+
+    if (!result.success) {
+      console.error('[API] ❌ Validation failed:', result.error.flatten())
+      return NextResponse.json(
+        { error: 'Invalid input data', details: result.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
 
     const {
       stationId,
       tankId,
       invoiceQuantity,
       supplier,
-      deliveryDate,
+      deliveryTime,
       receivedBy,
       invoiceNumber,
-      notes,
+      notes
+    } = result.data
+
+    const deliveryDate = deliveryTime || new Date()
+
+    // Extract extra fields not yet in Zod schema
+    const {
       beforeDipReading,
       beforeDipTime,
       fuelSoldDuring,
       beforeMeterReadings
     } = body
 
-    console.log('[API] 🔍 Validation check:', {
-      stationId: !!stationId,
-      tankId: !!tankId,
-      invoiceQuantity: !!invoiceQuantity,
-      supplier: !!supplier,
-      receivedBy: !!receivedBy,
-      beforeDipReading: !!beforeDipReading
-    })
-
-    if (!stationId || !tankId || !invoiceQuantity || !supplier || !receivedBy) {
-      console.log('[API] ❌ Validation failed - missing required fields')
-      return NextResponse.json(
-        { error: 'Station ID, tank ID, invoice quantity, supplier, and received by are required' },
-        { status: 400 }
-      )
-    }
-
-    const deliveryDateObj = deliveryDate ? new Date(deliveryDate) : new Date()
+    const deliveryDateObj = deliveryDate // Already Date from Zod
 
     // Check tank exists
     const tank = await prisma.tank.findUnique({
@@ -204,7 +191,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate: Ensure quantity is positive
-    if (parseFloat(String(invoiceQuantity)) <= 0) {
+    if (invoiceQuantity <= 0) {
       return NextResponse.json(
         { error: 'Invoice quantity must be greater than zero' },
         { status: 400 }
@@ -212,13 +199,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate: Check if tank level would exceed capacity (based on invoice)
-    const estimatedNewLevel = tank.currentLevel + parseFloat(String(invoiceQuantity))
+    const estimatedNewLevel = tank.currentLevel + invoiceQuantity
     if (estimatedNewLevel > tank.capacity * 1.05) { // Allow 5% tolerance
       const availableSpace = tank.capacity - tank.currentLevel
       return NextResponse.json(
         {
           error: 'Delivery may exceed tank capacity',
-          details: `Tank capacity: ${tank.capacity.toLocaleString()}L, Current: ${tank.currentLevel.toLocaleString()}L, Invoice: ${parseFloat(String(invoiceQuantity)).toLocaleString()}L. Available space: ${availableSpace.toFixed(1)}L`
+          details: `Tank capacity: ${tank.capacity.toLocaleString()}L, Current: ${tank.currentLevel.toLocaleString()}L, Invoice: ${invoiceQuantity.toLocaleString()}L. Available space: ${availableSpace.toFixed(1)}L`
         },
         { status: 400 }
       )
@@ -230,17 +217,18 @@ export async function POST(request: NextRequest) {
       data: {
         stationId,
         tankId,
-        quantity: parseFloat(String(invoiceQuantity)), // Temporary, will be updated after verification
-        invoiceQuantity: parseFloat(String(invoiceQuantity)),
-        supplier,
+        quantity: invoiceQuantity, // Temporary, will be updated after verification
+        invoiceQuantity: invoiceQuantity,
+        supplier: supplier || 'Unknown',
         deliveryDate: deliveryDateObj,
-        receivedBy,
+        receivedBy: receivedBy || 'System',
         invoiceNumber: invoiceNumber || null,
         notes: notes || null,
         beforeDipReading: beforeDipReading ? parseFloat(String(beforeDipReading)) : null,
         beforeDipTime: beforeDipTime ? new Date(String(beforeDipTime)) : null,
         fuelSoldDuring: fuelSoldDuring ? parseFloat(String(fuelSoldDuring)) : null,
-        beforeMeterReadings: beforeMeterReadings as any || null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        beforeMeterReadings: beforeMeterReadings ? beforeMeterReadings as any : null,
         verificationStatus: 'PENDING_VERIFICATION'
       },
       include: {

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
+import { CreateOfficeStaffSchema } from '@/lib/schemas'
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,7 +10,7 @@ export async function GET(request: NextRequest) {
     const activeOnly = searchParams.get('active') === 'true'
     const role = searchParams.get('role')
 
-    const where: any = {}
+    const where: Prisma.OfficeStaffWhereInput = {}
 
     if (stationId) {
       where.stationId = stationId
@@ -19,7 +21,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (role) {
-      where.role = role
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      where.role = role as any
     }
 
     const officeStaff = await prisma.officeStaff.findMany({
@@ -47,24 +50,19 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    interface OfficeStaffBody {
-      name?: string
-      employeeId?: string
-      stationId?: string
-      role?: string
-      phone?: string
-      email?: string
-      baseSalary?: string | number
-      specialAllowance?: string | number
-      otherAllowances?: string | number
-      medicalAllowance?: string | number
-      holidayAllowance?: string | number
-      fuelAllowance?: string | number
-      hireDate?: string | Date
-      isActive?: boolean
-    }
-    const body = await request.json() as OfficeStaffBody
+    const body = await request.json()
     console.log('🔄 POST /api/office-staff - Creating new office staff:', body)
+
+    // Zod Validation
+    const result = CreateOfficeStaffSchema.safeParse(body)
+
+    if (!result.success) {
+      console.error('❌ Validation failed:', result.error.flatten())
+      return NextResponse.json(
+        { error: 'Invalid input data', details: result.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
 
     const {
       name,
@@ -81,24 +79,9 @@ export async function POST(request: NextRequest) {
       fuelAllowance,
       hireDate,
       isActive
-    } = body
+    } = result.data
 
-    if (!name || !name.trim()) {
-      return NextResponse.json(
-        { error: 'Name is required' },
-        { status: 400 }
-      )
-    }
-
-    if (!stationId) {
-      console.error('❌ Station ID is missing')
-      return NextResponse.json(
-        { error: 'Station ID is required' },
-        { status: 400 }
-      )
-    }
-
-    console.log('✅ Validation passed:', { name, stationId, role })
+    console.log('✅ Validation passed using Zod')
 
     // Auto-generate employee ID if not provided
     let finalEmployeeId = employeeId?.trim() || null
@@ -150,7 +133,7 @@ export async function POST(request: NextRequest) {
 
     // Create new office staff
     const finalFuelAllowance = (role === 'MANAGER')
-      ? (fuelAllowance !== undefined && fuelAllowance !== null && fuelAllowance !== '' ? parseFloat(String(fuelAllowance)) : 0)
+      ? (fuelAllowance !== undefined && fuelAllowance !== null && fuelAllowance !== 0 ? fuelAllowance : 0)
       : 0 // Only managers can have fuel allowance
 
     console.log('📝 Creating office staff with data:', {
@@ -160,13 +143,13 @@ export async function POST(request: NextRequest) {
       role: role || 'OFFICE_STAFF',
       phone: phone?.trim() || null,
       email: email?.trim() || null,
-      baseSalary: baseSalary !== undefined && baseSalary !== null && baseSalary !== '' ? parseFloat(String(baseSalary)) : 0,
-      specialAllowance: specialAllowance !== undefined && specialAllowance !== null && specialAllowance !== '' ? parseFloat(String(specialAllowance)) : 0,
-      otherAllowances: otherAllowances !== undefined && otherAllowances !== null && otherAllowances !== '' ? parseFloat(String(otherAllowances)) : 0,
-      medicalAllowance: medicalAllowance !== undefined && medicalAllowance !== null && medicalAllowance !== '' ? parseFloat(String(medicalAllowance)) : 0,
-      holidayAllowance: holidayAllowance !== undefined && holidayAllowance !== null && holidayAllowance !== '' ? parseFloat(String(holidayAllowance)) : 0,
+      baseSalary: baseSalary,
+      specialAllowance,
+      otherAllowances,
+      medicalAllowance,
+      holidayAllowance,
       fuelAllowance: finalFuelAllowance,
-      hireDate: hireDate ? new Date(hireDate) : null,
+      hireDate: hireDate || null,
       isActive: isActive !== undefined ? isActive : true
     })
 
@@ -175,16 +158,17 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         employeeId: finalEmployeeId,
         stationId,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         role: (role as any) || 'OFFICE_STAFF',
         phone: phone?.trim() || null,
         email: email?.trim() || null,
-        baseSalary: baseSalary !== undefined && baseSalary !== null && baseSalary !== '' ? parseFloat(String(baseSalary)) : 0,
-        specialAllowance: specialAllowance !== undefined && specialAllowance !== null && specialAllowance !== '' ? parseFloat(String(specialAllowance)) : 0,
-        otherAllowances: otherAllowances !== undefined && otherAllowances !== null && otherAllowances !== '' ? parseFloat(String(otherAllowances)) : 0,
-        medicalAllowance: medicalAllowance !== undefined && medicalAllowance !== null && medicalAllowance !== '' ? parseFloat(String(medicalAllowance)) : 0,
-        holidayAllowance: holidayAllowance !== undefined && holidayAllowance !== null && holidayAllowance !== '' ? parseFloat(String(holidayAllowance)) : 0,
+        baseSalary: baseSalary,
+        specialAllowance: specialAllowance,
+        otherAllowances: otherAllowances,
+        medicalAllowance: medicalAllowance,
+        holidayAllowance: holidayAllowance,
         fuelAllowance: finalFuelAllowance,
-        hireDate: hireDate ? new Date(hireDate) : null,
+        hireDate: hireDate || null,
         isActive: isActive !== undefined ? isActive : true
       },
       include: {

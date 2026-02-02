@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { useStation } from '@/contexts/StationContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -10,8 +9,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import {
   Building2,
   DollarSign,
@@ -77,7 +74,6 @@ interface TransactionSummary {
 }
 
 export default function BankAccountsPage() {
-  const router = useRouter()
   const { selectedStation } = useStation()
   const { toast } = useToast()
 
@@ -108,6 +104,7 @@ export default function BankAccountsPage() {
 
   useEffect(() => {
     fetchBankAccounts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedStation])
 
   const fetchBankAccounts = async () => {
@@ -320,7 +317,7 @@ export default function BankAccountsPage() {
     {
       key: 'amount' as keyof Transaction,
       title: 'Amount',
-      render: (value: unknown, row: Transaction) => (
+      render: (value: unknown) => (
         <div className="flex items-center gap-1 justify-end">
           <span className="font-mono font-semibold">
             Rs. {(value as number).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

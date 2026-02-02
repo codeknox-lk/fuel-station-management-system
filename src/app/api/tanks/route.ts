@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { auditOperations } from '@/lib/auditMiddleware'
+import { CreateTankSchema } from '@/lib/schemas'
 
 export async function GET(request: NextRequest) {
   try {
@@ -241,15 +242,18 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    const { stationId, fuelId, capacity, currentLevel } = body
+    // Zod Validation
+    const result = CreateTankSchema.safeParse(body)
 
-    // Validation
-    if (!stationId || !fuelId || !capacity) {
+    if (!result.success) {
+      console.error('❌ Validation failed:', result.error.flatten())
       return NextResponse.json(
-        { error: 'Station ID, fuel ID, and capacity are required' },
+        { error: 'Invalid input data', details: result.error.flatten().fieldErrors },
         { status: 400 }
       )
     }
+
+    const { stationId, fuelId, capacity, currentLevel, tankNumber: inputTankNumber } = result.data
 
     if (capacity <= 0) {
       return NextResponse.json(
@@ -287,7 +291,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate unique tank number if not provided
-    let tankNumber = body.tankNumber
+    let tankNumber = inputTankNumber
     if (!tankNumber) {
       // Find highest tank number for this station (regardless of fuel type)
       // because tankNumber must be unique per station
@@ -330,8 +334,8 @@ export async function POST(request: NextRequest) {
         stationId,
         tankNumber,
         fuelId,
-        capacity: parseFloat(capacity),
-        currentLevel: parseFloat(initialLevel),
+        capacity,
+        currentLevel: initialLevel,
         isActive: true
       },
       include: {

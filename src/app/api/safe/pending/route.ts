@@ -53,12 +53,17 @@ export async function GET(request: NextRequest) {
     // Filter shifts that have undeposited cash
     interface DeclaredAmounts {
       cash: number
-      [key: string]: any
+      credit?: number
+      cheque?: number
+      card?: number
+      expenses?: number
     }
 
     interface ShiftStats {
       totalSales: number
-      [key: string]: any
+      totalTransactions?: number
+      stockVariance?: number
+      cashSales?: number
     }
 
     const pendingShifts = shifts.filter(shift => {

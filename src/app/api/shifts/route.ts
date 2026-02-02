@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { auditOperations } from '@/lib/auditMiddleware'
+import { CreateShiftSchema } from '@/lib/schemas'
 
 export async function GET(request: NextRequest) {
   try {
@@ -71,7 +72,7 @@ export async function GET(request: NextRequest) {
       where.status = 'OPEN'
     }
     if (status) {
-      where.status = status as any
+      where.status = status as import('@prisma/client').ShiftStatus
     }
 
     // Find shifts that were active at a specific time
@@ -107,7 +108,7 @@ export async function GET(request: NextRequest) {
     }
     if (endDate && !activeAt) {
       where.startTime = {
-        ...(where.startTime as any),
+        ...(where.startTime as Prisma.DateTimeFilter),
         lte: new Date(endDate)
       }
     }
@@ -225,25 +226,24 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    interface ShiftBody {
-      stationId?: string
-      templateId?: string
-      startTime?: string
-      assignments?: { nozzleId: string; status?: string }[]
-      openedBy?: string
-    }
-    const body = await request.json() as ShiftBody
+    const body = await request.json()
 
-    // Validate required fields
-    if (!body.stationId || !body.templateId || !body.startTime) {
-      return NextResponse.json({
-        error: 'Missing required fields: stationId, templateId, startTime'
-      }, { status: 400 })
+    // Zod Validation
+    const result = CreateShiftSchema.safeParse(body)
+
+    if (!result.success) {
+      console.error('❌ Validation failed:', result.error.flatten())
+      return NextResponse.json(
+        { error: 'Invalid input data', details: result.error.flatten().fieldErrors },
+        { status: 400 }
+      )
     }
+
+    const { stationId, templateId, startTime, openedBy } = result.data
 
     // Validate station exists and is active
     const station = await prisma.station.findUnique({
-      where: { id: body.stationId }
+      where: { id: stationId }
     })
     if (!station || !station.isActive) {
       return NextResponse.json({
@@ -252,22 +252,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate template exists
-    const template = await prisma.shiftTemplate.findUnique({
-      where: { id: body.templateId }
-    })
-    if (!template) {
-      return NextResponse.json({
-        error: 'Shift template not found'
-      }, { status: 400 })
+    if (templateId) {
+      const template = await prisma.shiftTemplate.findUnique({
+        where: { id: templateId }
+      })
+      if (!template) {
+        return NextResponse.json({
+          error: 'Shift template not found'
+        }, { status: 400 })
+      }
     }
 
     // Create the shift
     const newShift = await prisma.shift.create({
       data: {
-        stationId: body.stationId,
-        templateId: body.templateId,
-        startTime: new Date(body.startTime),
-        openedBy: body.openedBy || 'System',
+        stationId: stationId,
+        templateId: templateId,
+        startTime: startTime || new Date(),
+        openedBy: openedBy || 'System',
         status: 'OPEN'
       },
       include: {

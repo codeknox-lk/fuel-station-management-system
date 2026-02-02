@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { CreateBankTransactionSchema } from '@/lib/schemas'
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,6 +45,18 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+
+    // Zod Validation
+    const result = CreateBankTransactionSchema.safeParse(body)
+
+    if (!result.success) {
+      console.error('❌ Validation failed:', result.error.flatten())
+      return NextResponse.json(
+        { error: 'Invalid input data', details: result.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
+
     const {
       bankId,
       stationId,
@@ -54,15 +67,7 @@ export async function POST(request: NextRequest) {
       transactionDate,
       createdBy,
       notes
-    } = body
-
-    // Validation
-    if (!bankId || !type || !amount || !description || !transactionDate || !createdBy) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
-    }
+    } = result.data
 
     if (amount <= 0) {
       return NextResponse.json(
@@ -88,11 +93,12 @@ export async function POST(request: NextRequest) {
       data: {
         bankId,
         stationId: stationId || null,
-        type,
-        amount: parseFloat(amount),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        type: type as any,
+        amount: amount,
         description,
         referenceNumber: referenceNumber || null,
-        transactionDate: new Date(transactionDate),
+        transactionDate: transactionDate,
         createdBy,
         notes: notes || null
       },

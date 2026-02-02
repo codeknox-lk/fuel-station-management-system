@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { safeParseFloat } from '@/lib/validation'
+import { CreateOilSaleSchema } from '@/lib/schemas'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const stationId = searchParams.get('stationId')
-    const shiftId = searchParams.get('shiftId')
+    // const shiftId = searchParams.get('shiftId') // Unused for now
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
     const summary = searchParams.get('summary')
@@ -85,42 +85,32 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    interface OilSaleBody {
-      stationId?: string
-      productName?: string
-      quantity?: number | string
-      unit?: string
-      price?: number | string
-      totalAmount?: number
-      customerName?: string
-      saleDate?: string | Date
-    }
-    const body = await request.json() as OilSaleBody
+    const body = await request.json()
 
-    const { stationId, productName, quantity, unit, price, totalAmount, customerName, saleDate } = body
+    // Zod Validation
+    const result = CreateOilSaleSchema.safeParse(body)
 
-    // Validate required fields
-    if (!stationId || !productName || quantity === undefined || price === undefined) {
-      return NextResponse.json({
-        error: 'Station ID, product name, quantity, and price are required'
-      }, { status: 400 })
+    if (!result.success) {
+      return NextResponse.json(
+        { error: 'Invalid input data', details: result.error.flatten().fieldErrors },
+        { status: 400 }
+      )
     }
 
-    const quantityNum = safeParseFloat(quantity)
-    const priceNum = safeParseFloat(price)
-    const calculatedTotal = totalAmount || (quantityNum * priceNum)
-    const saleDateObj = saleDate ? new Date(saleDate) : new Date()
+    const { stationId, productName, quantity, unit, price, totalAmount, customerName, saleDate } = result.data
+
+    const calculatedTotal = totalAmount || (quantity * price) // quantity and price are numbers
 
     const newSale = await prisma.oilSale.create({
       data: {
         stationId,
         productName,
-        quantity: quantityNum,
+        quantity,
         unit: unit || 'liters',
-        price: priceNum,
+        price,
         totalAmount: calculatedTotal,
         customerName: customerName || null,
-        saleDate: saleDateObj
+        saleDate
       },
       include: {
         station: {

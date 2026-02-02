@@ -217,8 +217,17 @@ export async function GET(request: NextRequest) {
       select: { name: true }
     })
 
+    interface InflowDetail {
+      id: string
+      type: string
+      description: string
+      amount: number
+      time: string
+      reference?: string
+    }
+
     // Get inflow details
-    const inflowDetails: any[] = dayTransactions
+    const inflowDetails: InflowDetail[] = dayTransactions
       .filter(tx => [
         'CASH_FUEL_SALES',
         'POS_CARD_PAYMENT',
@@ -239,8 +248,18 @@ export async function GET(request: NextRequest) {
         reference: tx.shiftId || tx.creditSaleId || tx.batchId || tx.loanId || undefined
       }))
 
+    interface OutflowDetail {
+      id: string
+      type: string
+      description: string
+      amount: number
+      time: string
+      reference?: string
+      approvedBy?: string
+    }
+
     // Get outflow details
-    const outflowDetails: any[] = dayTransactions
+    const outflowDetails: OutflowDetail[] = dayTransactions
       .filter(tx => [
         'EXPENSE',
         'BANK_DEPOSIT',

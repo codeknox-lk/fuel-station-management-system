@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       where.stationId = stationId
     }
     if (status) {
-      where.status = status as any
+      where.status = status as 'ACTIVE' | 'PAID' | 'OVERDUE'
     }
 
     const loans = await prisma.loanOfficeStaff.findMany({

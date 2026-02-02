@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { UpdateTankSchema } from '@/lib/schemas'
 
 export async function PUT(
   request: NextRequest,
@@ -9,7 +10,17 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
 
-    const { capacity, currentLevel, isActive, tankNumber } = body
+    // Zod Validation
+    const result = UpdateTankSchema.safeParse(body)
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: 'Invalid input data', details: result.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
+
+    const { capacity, currentLevel, isActive, tankNumber } = result.data
 
     // Check if tank exists
     const existingTank = await prisma.tank.findUnique({
@@ -66,8 +77,8 @@ export async function PUT(
     const updatedTank = await prisma.tank.update({
       where: { id },
       data: {
-        ...(capacity !== undefined && { capacity: parseFloat(capacity) }),
-        ...(currentLevel !== undefined && { currentLevel: parseFloat(currentLevel) }),
+        ...(capacity !== undefined && { capacity }),
+        ...(currentLevel !== undefined && { currentLevel }),
         ...(isActive !== undefined && { isActive }),
         ...(tankNumber !== undefined && { tankNumber })
       },

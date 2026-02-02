@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 
 /**
  * DELETE /api/shifts/cleanup
@@ -23,7 +24,7 @@ export async function DELETE(request: NextRequest) {
     const allParam = searchParams.get('all')
 
     // Determine which shifts to delete
-    let whereClause: any = {}
+    let whereClause: Prisma.ShiftWhereInput = {}
     let statusType = 'CLOSED'
 
     if (allParam === 'true') {
@@ -152,7 +153,7 @@ export async function DELETE(request: NextRequest) {
       message: `Successfully deleted ${deleteResult.count} ${statusType.toLowerCase()} shift(s)`,
       deleted: deleteResult.count,
       status: statusType,
-      shifts: shifts.map((shift: any) => ({
+      shifts: shifts.map(shift => ({
         id: shift.id,
         station: shift.station.name,
         template: shift.template.name,

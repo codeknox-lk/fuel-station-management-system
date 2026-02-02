@@ -15,7 +15,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
 import { DateTimePicker } from '@/components/inputs/DateTimePicker'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -30,35 +29,17 @@ import {
   DollarSign,
   CreditCard,
   FileText,
-  TrendingUp,
-  TrendingDown,
-  Calendar,
   Clock,
-  AlertCircle,
-  CheckCircle,
   ArrowUpRight,
   ArrowDownRight,
-  ArrowUpCircle,
-  Building2,
   Users,
   ShoppingCart,
-  AlertTriangle,
-  ArrowLeft,
-  Download,
-  BarChart3
+  TrendingUp,
+  Building2,
+  Calendar,
+  AlertCircle,
+  ArrowUpCircle
 } from 'lucide-react'
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer
-} from 'recharts'
 
 interface Safe {
   id: string
@@ -181,13 +162,6 @@ const INCOME_TYPES = [
   'OPENING_BALANCE'
 ]
 
-const EXPENSE_TYPES = [
-  'EXPENSE',
-  'LOAN_GIVEN',
-  'BANK_DEPOSIT',
-  'CASH_TRANSFER'
-]
-
 // Group transactions by shift closure
 function groupTransactionsByShift(transactions: SafeTransaction[]): (SafeTransaction | GroupedTransaction)[] {
   const shiftGroups = new Map<string, SafeTransaction[]>()
@@ -241,10 +215,6 @@ function groupTransactionsByShift(transactions: SafeTransaction[]): (SafeTransac
     }
 
     const shiftName = shift?.template?.name || 'Shift'
-    const pumpers = shift?.assignments
-      ?.map(a => a.pumper?.name || a.pumperName)
-      .filter((name, index, arr) => name && arr.indexOf(name) === index)
-      .join(', ') || 'Unknown'
 
     grouped.push({
       id: `shift-${shiftId}`,
@@ -287,26 +257,11 @@ export default function SafePage() {
   const router = useRouter()
   const { selectedStation, setSelectedStation, stations } = useStation()
   const [safe, setSafe] = useState<Safe | null>(null)
-  const [transactions, setTransactions] = useState<SafeTransaction[]>([])
   const [groupedTransactions, setGroupedTransactions] = useState<(SafeTransaction | GroupedTransaction)[]>([])
   const [outstandingCredit, setOutstandingCredit] = useState(0)
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
-  const [cashFlowData, setCashFlowData] = useState<Array<{
-    date: string
-    income: number
-    expenses: number
-    balance: number
-  }>>([])
-
-  const [topTransactions, setTopTransactions] = useState<{
-    largestIncome: SafeTransaction | null
-    largestExpense: SafeTransaction | null
-  }>({
-    largestIncome: null,
-    largestExpense: null
-  })
 
   // Dialog states
   const [addDialogOpen, setAddDialogOpen] = useState(false)
@@ -316,7 +271,6 @@ export default function SafePage() {
   const [bankDepositDialogOpen, setBankDepositDialogOpen] = useState(false)
 
   // Form states
-  const [transactionType, setTransactionType] = useState('CASH_FUEL_SALES')
   const [amount, setAmount] = useState<number | undefined>(undefined)
   const [description, setDescription] = useState('')
   const [sourceOfIncome, setSourceOfIncome] = useState('')
@@ -349,6 +303,7 @@ export default function SafePage() {
       fetchSafe()
       fetchPumpersAndBanks()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedStation])
 
   const fetchPumpersAndBanks = async () => {
@@ -369,8 +324,8 @@ export default function SafePage() {
         const banksData = await banksRes.json()
         setBanks(Array.isArray(banksData) ? banksData : [])
       }
-    } catch (err) {
-      console.error('Failed to fetch pumpers/banks:', err)
+    } catch (error) {
+      console.error('Failed to fetch pumpers/banks:', error)
     }
   }
 
@@ -387,6 +342,7 @@ export default function SafePage() {
     return () => {
       window.removeEventListener('focus', handleFocus)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedStation])
 
   const fetchSafe = async () => {
@@ -420,7 +376,6 @@ export default function SafePage() {
       }
 
       setSafe(safeData)
-      setTransactions(transactionsData)
       setOutstandingCredit(creditData.totalOutstanding || 0)
 
       // Group transactions by shift closure for better display
@@ -639,8 +594,20 @@ export default function SafePage() {
       const username = typeof window !== 'undefined' ? localStorage.getItem('username') || 'System' : 'System'
 
       let apiUrl = ''
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let bodyData: any = {
+      let bodyData: {
+        stationId: string
+        amount: number
+        monthlyRental: number
+        givenBy: string
+        dueDate: string
+        fromSafe: boolean
+        pumperName?: string
+        staffName?: string
+        borrowerName?: string
+        borrowerPhone?: string
+        reason?: string
+        notes?: string
+      } = {
         stationId: selectedStation,
         amount: loanAmount || 0,
         monthlyRental: loanMonthlyRental || 0,
@@ -830,7 +797,7 @@ export default function SafePage() {
     {
       key: 'type',
       title: 'Type',
-      render: (value: unknown, row: SafeTransaction | GroupedTransaction) => {
+      render: (value: unknown) => {
         const type = value as string
         if (type === 'SHIFT_CLOSURE') {
           return (
@@ -860,7 +827,6 @@ export default function SafePage() {
 
         // Show shift closure breakdown
         if ('isGrouped' in row && row.isGrouped && row.type === 'SHIFT_CLOSURE') {
-          const shiftName = row.shift?.template?.name || 'Shift'
           const pumpers = row.shift?.assignments
             ?.map((a) => a.pumper?.name || a.pumperName)
             .filter((name, index, arr) => name && arr.indexOf(name) === index)
@@ -1241,7 +1207,7 @@ export default function SafePage() {
       <div className="flex flex-wrap gap-4">
         <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setTransactionType('CASH_FUEL_SALES')}>
+            <Button onClick={() => { }}>
               <Plus className="mr-2 h-4 w-4" />
               Add Money
             </Button>
@@ -1335,7 +1301,7 @@ export default function SafePage() {
         {/* Continue with Remove Money, Give Loan, Bank Deposit buttons... */}
         <Dialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline" onClick={() => setTransactionType('EXPENSE')}>
+            <Button variant="outline" onClick={() => { }}>
               <Minus className="mr-2 h-4 w-4" />
               Remove Money
             </Button>

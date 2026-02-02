@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { CreateBankSchema } from '@/lib/schemas'
 
 export async function GET(request: NextRequest) {
   try {
@@ -83,30 +84,23 @@ export async function GET(request: NextRequest) {
   }
 }
 
+
+
 export async function POST(request: NextRequest) {
   try {
-    interface BankBody {
-      code?: string
-      name?: string
-      branch?: string
-      accountNumber?: string
-      accountName?: string
-      swiftCode?: string
-      contactPerson?: string
-      phone?: string
-      email?: string
-      status?: string
-    }
-    const body = await request.json() as BankBody
+    const body = await request.json()
 
-    const { code, name, branch, accountNumber, accountName, swiftCode, contactPerson, phone, email, status } = body
+    // Zod Validation
+    const result = CreateBankSchema.safeParse(body)
 
-    if (!name) {
+    if (!result.success) {
       return NextResponse.json(
-        { error: 'Bank name is required' },
+        { error: 'Invalid input data', details: result.error.flatten().fieldErrors },
         { status: 400 }
       )
     }
+
+    const { code, name, branch, accountNumber, accountName, swiftCode, contactPerson, phone, email, status } = result.data
 
     const newBank = await prisma.bank.create({
       data: {

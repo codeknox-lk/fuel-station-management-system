@@ -4,13 +4,12 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useStation } from '@/contexts/StationContext'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { FormCard } from '@/components/ui/FormCard'
 import {
-  Fuel, CreditCard, DollarSign, TrendingUp, TrendingDown,
-  AlertTriangle, Clock, Activity, FileText, Wallet, Users,
-  Droplet, Building2, ArrowRight, CheckCircle2, Package, Zap
+  Fuel, CreditCard, DollarSign,
+  AlertTriangle, Clock, Activity, FileText, Wallet,
+  Building2, CheckCircle2, Package
 } from 'lucide-react'
 
 interface FuelStock {
@@ -20,15 +19,34 @@ interface FuelStock {
   percentage: number
 }
 
+interface ActiveShiftDetail {
+  id: string
+  template?: {
+    name: string
+  }
+}
+
+interface ActivityItem {
+  action: string
+  entity: string
+  userName: string
+  userRole: string
+  timestamp: string
+}
+
+interface AlertItem {
+  message: string
+  createdAt: string
+}
+
 export default function DashboardPage() {
   const router = useRouter()
   const { selectedStation, isAllStations } = useStation()
-  const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({
     todaySales: 0,
     todayTransactions: 0,
     activeShifts: 0,
-    activeShiftDetails: [] as any[],
+    activeShiftDetails: [] as ActiveShiftDetail[],
     safeBalance: 0,
     creditOutstanding: 0,
     todayPOSSales: 0,
@@ -38,24 +56,22 @@ export default function DashboardPage() {
     pendingDeliveries: 0
   })
   const [fuelStock, setFuelStock] = useState<FuelStock[]>([])
-  const [recentActivity, setRecentActivity] = useState<any[]>([])
-  const [alerts, setAlerts] = useState<any[]>([])
+  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
+  const [alerts, setAlerts] = useState<AlertItem[]>([])
 
   useEffect(() => {
     loadDashboardData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedStation])
 
   const loadDashboardData = async () => {
-    setLoading(true)
     try {
-      // Single optimized API call instead of 4 separate calls
       const params = selectedStation && selectedStation !== 'all' ? `?stationId=${selectedStation}` : ''
       const response = await fetch(`/api/dashboard/summary${params}`)
 
       if (response.ok) {
         const data = await response.json()
 
-        // Update all state from single response
         setStats({
           todaySales: data.stats.todaySales || 0,
           todayTransactions: data.stats.todayTransactions || 0,
@@ -76,8 +92,6 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -122,7 +136,7 @@ export default function DashboardPage() {
         {/* Today's Revenue */}
         <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/reports/daily-sales')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium">Today&apos;s Revenue</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>

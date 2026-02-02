@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { safeParseFloat, validateAmount, validateRequired, validateDate } from '@/lib/validation'
+import { CreateCreditPaymentSchema } from '@/lib/schemas'
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
           }
         }
       })
-      
+
       if (!payment) {
         return NextResponse.json({ error: 'Credit payment not found' }, { status: 404 })
       }
@@ -67,27 +67,30 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     console.log('Credit payment request body:', body)
-    
-    const { customerId, amount, paymentType, referenceNumber, chequeNumber, bankId, paymentDate, receivedBy, stationId } = body
-    
-    // Validate required fields
-    const errors: string[] = []
-    if (validateRequired(customerId, 'Customer ID')) errors.push(validateRequired(customerId, 'Customer ID')!)
-    if (validateRequired(paymentType, 'Payment type')) errors.push(validateRequired(paymentType, 'Payment type')!)
-    if (validateRequired(receivedBy, 'Received by')) errors.push(validateRequired(receivedBy, 'Received by')!)
-    
-    // Validate amount
-    const amountError = validateAmount(amount, 'Amount')
-    if (amountError) errors.push(amountError)
-    
-    if (errors.length > 0) {
+
+    // Zod Validation
+    const result = CreateCreditPaymentSchema.safeParse(body)
+
+    if (!result.success) {
       return NextResponse.json(
-        { error: errors.join(', ') },
+        { error: 'Invalid input data', details: result.error.flatten().fieldErrors },
         { status: 400 }
       )
     }
-    
-    const validatedAmount = safeParseFloat(amount)
+
+    const {
+      customerId,
+      amount,
+      paymentType,
+      referenceNumber,
+      chequeNumber,
+      bankId,
+      paymentDate,
+      receivedBy,
+      stationId
+    } = result.data
+
+    const validatedAmount = amount
 
     // Get customer
     const customer = await prisma.creditCustomer.findUnique({
@@ -99,7 +102,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create payment, update customer balance, and create safe transaction in a single transaction
-    const result = await prisma.$transaction(async (tx) => {
+    const transactionResult = await prisma.$transaction(async (tx) => {
       // Create the payment
       const payment = await tx.creditPayment.create({
         data: {
@@ -122,17 +125,17 @@ export async function POST(request: NextRequest) {
       // Update customer balance (decrease)
       await tx.creditCustomer.update({
         where: { id: customerId },
-          data: {
-            currentBalance: {
-              decrement: validatedAmount
-            }
+        data: {
+          currentBalance: {
+            decrement: validatedAmount
           }
+        }
       })
 
       // Create safe transaction for CASH payments only
       if (stationId && paymentType === 'CASH') {
         console.log('Creating safe transaction for CASH payment, stationId:', stationId)
-        
+
         // Get or create safe
         let safe = await tx.safe.findUnique({
           where: { stationId }
@@ -152,7 +155,7 @@ export async function POST(request: NextRequest) {
         // Calculate balance before transaction chronologically
         const paymentTimestamp = paymentDate ? new Date(paymentDate) : new Date()
         const allTransactions = await tx.safeTransaction.findMany({
-          where: { 
+          where: {
             safeId: safe.id,
             timestamp: { lte: paymentTimestamp }
           },
@@ -214,10 +217,10 @@ export async function POST(request: NextRequest) {
       return payment
     })
 
-    return NextResponse.json(result, { status: 201 })
+    return NextResponse.json(transactionResult, { status: 201 })
   } catch (error) {
     console.error('Error creating credit payment:', error)
-    
+
     // Handle foreign key constraint violations
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
       return NextResponse.json(
@@ -225,14 +228,14 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     // Return detailed error for debugging
     const errorMessage = error instanceof Error ? error.message : 'Internal server error'
     console.error('Detailed error:', errorMessage)
-    
-    return NextResponse.json({ 
-      error: 'Internal server error', 
-      details: errorMessage 
+
+    return NextResponse.json({
+      error: 'Internal server error',
+      details: errorMessage
     }, { status: 500 })
   }
 }

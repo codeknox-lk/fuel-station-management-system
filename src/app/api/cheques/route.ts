@@ -35,14 +35,15 @@ export async function GET(request: NextRequest) {
 
     interface ChequeWhereInput {
       stationId?: string
-      status?: any
+      status?: 'PENDING' | 'CLEARED' | 'BOUNCED' | 'CANCELLED'
     }
     const where: ChequeWhereInput = {}
     if (stationId) {
       where.stationId = stationId
     }
     if (status) {
-      where.status = status
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      where.status = status as any
     }
 
     const cheques = await prisma.cheque.findMany({

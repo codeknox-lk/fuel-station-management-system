@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
+import { UpdateShiftSchema } from '@/lib/schemas'
 
 export async function GET(
   request: NextRequest,
@@ -98,6 +99,18 @@ export async function PATCH(
     const { id } = await params
     const body = await request.json()
 
+    // Zod Validation
+    const result = UpdateShiftSchema.safeParse(body)
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: 'Invalid input data', details: result.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
+
+    const { startTime, templateId, openedBy } = result.data
+
     const shift = await prisma.shift.findUnique({
       where: { id }
     })
@@ -111,25 +124,24 @@ export async function PATCH(
     }
 
     // Validate start time if provided
-    if (body.startTime) {
-      const newStartTime = new Date(body.startTime)
+    if (startTime) {
       const now = new Date()
 
-      if (newStartTime > now) {
+      if (startTime > now) {
         return NextResponse.json({ error: 'Start time cannot be in the future' }, { status: 400 })
       }
 
       const sevenDaysAgo = new Date()
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-      if (newStartTime < sevenDaysAgo) {
+      if (startTime < sevenDaysAgo) {
         return NextResponse.json({ error: 'Start time cannot be more than 7 days ago' }, { status: 400 })
       }
     }
 
     // Validate template if provided
-    if (body.templateId) {
+    if (templateId) {
       const template = await prisma.shiftTemplate.findUnique({
-        where: { id: body.templateId }
+        where: { id: templateId }
       })
       if (!template) {
         return NextResponse.json({ error: 'Shift template not found' }, { status: 400 })
@@ -138,14 +150,14 @@ export async function PATCH(
 
     // Build update data
     const updateData: Prisma.ShiftUpdateInput = {}
-    if (body.startTime) {
-      updateData.startTime = new Date(body.startTime)
+    if (startTime) {
+      updateData.startTime = startTime
     }
-    if (body.templateId) {
-      updateData.template = { connect: { id: body.templateId } }
+    if (templateId) {
+      updateData.template = { connect: { id: templateId } }
     }
-    if (body.openedBy) {
-      updateData.openedBy = body.openedBy
+    if (openedBy) {
+      updateData.openedBy = openedBy
     }
 
     // Update shift

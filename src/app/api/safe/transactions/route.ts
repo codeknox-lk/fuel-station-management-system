@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
+import { CreateSafeTransactionSchema } from '@/lib/schemas'
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,7 +34,9 @@ export async function GET(request: NextRequest) {
       }
 
       // Enrich transaction with related data (same logic as below)
-      const enriched: any = { ...transaction }
+      // Enrich transaction with related data (same logic as below)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const enriched = { ...transaction } as any
 
       // OPTIMIZED: Fetch minimal shift data with select
       if (transaction.shiftId) {
@@ -187,12 +191,13 @@ export async function GET(request: NextRequest) {
       safeIds = [safe.id]
     }
 
-    const where: any = {
+    const where: Prisma.SafeTransactionWhereInput = {
       safeId: safeIds.length === 1 ? safeIds[0] : { in: safeIds }
     }
 
     if (type) {
-      where.type = type
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      where.type = type as any
     }
 
     if (startDate && endDate) {
@@ -261,6 +266,18 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+
+    // Zod Validation
+    const result = CreateSafeTransactionSchema.safeParse(body)
+
+    if (!result.success) {
+      console.error('❌ Validation failed:', result.error.flatten())
+      return NextResponse.json(
+        { error: 'Invalid input data', details: result.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
+
     const {
       stationId,
       type,
@@ -275,14 +292,7 @@ export async function POST(request: NextRequest) {
       depositId,
       performedBy,
       timestamp
-    } = body
-
-    if (!stationId || !type || amount === undefined || !description) {
-      return NextResponse.json(
-        { error: 'Station ID, type, amount, and description are required' },
-        { status: 400 }
-      )
-    }
+    } = result.data
 
     // Get or create safe
     let safe = await prisma.safe.findUnique({
@@ -339,7 +349,7 @@ export async function POST(request: NextRequest) {
     // For OPENING_BALANCE, the balanceAfter should be the amount (it sets the balance)
     let balanceAfter: number
     if (type === 'OPENING_BALANCE') {
-      balanceAfter = parseFloat(amount) // Opening balance sets the balance to this value
+      balanceAfter = amount // Opening balance sets the balance to this value
     } else {
       const isIncome = [
         'CASH_FUEL_SALES',
@@ -349,7 +359,7 @@ export async function POST(request: NextRequest) {
         'LOAN_REPAID'
       ].includes(type)
 
-      balanceAfter = balanceBefore + (isIncome ? parseFloat(amount) : -parseFloat(amount))
+      balanceAfter = balanceBefore + (isIncome ? amount : -amount)
     }
 
     // Validate: Log warning for negative balance (allowing overdraft scenarios)
@@ -359,7 +369,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate: Ensure amount is positive
-    if (parseFloat(amount) < 0) {
+    if (amount < 0) {
       return NextResponse.json(
         { error: 'Transaction amount must be positive' },
         { status: 400 }
@@ -370,8 +380,9 @@ export async function POST(request: NextRequest) {
     const transaction = await prisma.safeTransaction.create({
       data: {
         safeId: safe.id,
-        type,
-        amount: parseFloat(amount),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        type: type as any,
+        amount: amount,
         balanceBefore,
         balanceAfter,
         shiftId: shiftId || null,

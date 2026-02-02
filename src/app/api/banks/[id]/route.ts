@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
+import { UpdateBankSchema } from '@/lib/schemas'
 
 export async function GET(
   request: NextRequest,
@@ -7,7 +9,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    
+
     const bank = await prisma.bank.findUnique({
       where: { id },
       include: {
@@ -20,7 +22,7 @@ export async function GET(
         }
       }
     })
-    
+
     if (!bank) {
       return NextResponse.json({ error: 'Bank not found' }, { status: 404 })
     }
@@ -32,6 +34,8 @@ export async function GET(
   }
 }
 
+
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -39,62 +43,44 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    
-    console.log('=== BANK UPDATE API ===')
-    console.log('Bank ID:', id)
-    console.log('Request body:', JSON.stringify(body, null, 2))
-    
+
+    // Zod Validation
+    const result = UpdateBankSchema.safeParse(body)
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: 'Invalid input data', details: result.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
+
+    const { code, name, branch, accountNumber, accountName, swiftCode, contactPerson, phone, email, status } = result.data
+
     const bank = await prisma.bank.findUnique({
       where: { id }
     })
-    
+
     if (!bank) {
       return NextResponse.json({ error: 'Bank not found' }, { status: 404 })
     }
 
-    const { code, name, branch, accountNumber, accountName, swiftCode, contactPerson, phone, email, status } = body
-    
-    const updateData: any = {}
-    
-    // Always update these fields
-    if (name !== undefined && name) updateData.name = name
+    const updateData: Prisma.BankUpdateInput = {}
+
+    if (name !== undefined) updateData.name = name
     if (status !== undefined) updateData.isActive = status === 'active'
-    
-    // For optional fields, set to null if empty, otherwise set the value
-    if (code !== undefined) {
-      updateData.code = code && code.trim() ? code.trim() : null
-    }
-    if (branch !== undefined) {
-      updateData.branch = branch && branch.trim() ? branch.trim() : null
-    }
-    if (accountNumber !== undefined) {
-      updateData.accountNumber = accountNumber && accountNumber.trim() ? accountNumber.trim() : null
-    }
-    if (accountName !== undefined) {
-      updateData.accountName = accountName && accountName.trim() ? accountName.trim() : null
-    }
-    if (swiftCode !== undefined) {
-      updateData.swiftCode = swiftCode && swiftCode.trim() ? swiftCode.trim() : null
-    }
-    if (contactPerson !== undefined) {
-      updateData.contactPerson = contactPerson && contactPerson.trim() ? contactPerson.trim() : null
-    }
-    if (phone !== undefined) {
-      updateData.phone = phone && phone.trim() ? phone.trim() : null
-    }
-    if (email !== undefined) {
-      updateData.email = email && email.trim() ? email.trim() : null
-    }
-    
-    console.log('Update data:', JSON.stringify(updateData, null, 2))
-    
+    if (code !== undefined) updateData.code = code
+    if (branch !== undefined) updateData.branch = branch
+    if (accountNumber !== undefined) updateData.accountNumber = accountNumber
+    if (accountName !== undefined) updateData.accountName = accountName
+    if (swiftCode !== undefined) updateData.swiftCode = swiftCode
+    if (contactPerson !== undefined) updateData.contactPerson = contactPerson
+    if (phone !== undefined) updateData.phone = phone
+    if (email !== undefined) updateData.email = email
+
     const updatedBank = await prisma.bank.update({
       where: { id },
       data: updateData
     })
-
-    console.log('Updated bank:', JSON.stringify(updatedBank, null, 2))
-    console.log('======================')
 
     return NextResponse.json(updatedBank)
   } catch (error) {
@@ -109,11 +95,11 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    
+
     const bank = await prisma.bank.findUnique({
       where: { id }
     })
-    
+
     if (!bank) {
       return NextResponse.json({ error: 'Bank not found' }, { status: 404 })
     }
@@ -122,10 +108,10 @@ export async function DELETE(
     const hasDeposits = await prisma.deposit.count({ where: { bankId: id } }) > 0
     const hasCheques = await prisma.cheque.count({ where: { bankId: id } }) > 0
     const hasCreditPayments = await prisma.creditPayment.count({ where: { bankId: id } }) > 0
-    
+
     if (hasDeposits || hasCheques || hasCreditPayments) {
-      return NextResponse.json({ 
-        error: 'Cannot delete bank with existing deposits, cheques, or credit payments' 
+      return NextResponse.json({
+        error: 'Cannot delete bank with existing deposits, cheques, or credit payments'
       }, { status: 400 })
     }
 

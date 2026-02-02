@@ -24,14 +24,11 @@ import {
 } from '@/components/ui/dialog'
 import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
 import {
   Phone,
   CreditCard,
-  AlertCircle,
-  CheckCircle,
   Plus,
   Edit,
   DollarSign,
@@ -111,6 +108,7 @@ export default function CreditCustomersPage() {
 
     fetchCustomers()
     fetchTransactions()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const fetchTransactions = async () => {
@@ -186,8 +184,8 @@ export default function CreditCustomersPage() {
       )
 
       setTransactions(allTransactions)
-    } catch (err) {
-      console.error('Failed to fetch transactions:', err)
+    } catch (error) {
+      console.error('Failed to fetch transactions:', error)
     } finally {
       setLoadingTransactions(false)
     }
@@ -226,8 +224,8 @@ export default function CreditCustomersPage() {
       }))
 
       setCustomers(transformedCustomers)
-    } catch (err) {
-      console.error('Failed to fetch customers:', err)
+    } catch (error) {
+      console.error('Failed to fetch customers:', error)
       toast({
         title: "Error",
         description: "Failed to load customers data.",
@@ -328,7 +326,7 @@ export default function CreditCustomersPage() {
       // Refresh transactions in case balance changed
       fetchTransactions()
 
-    } catch (err) {
+    } catch (error) {
       toast({
         title: "Error",
         description: `Failed to ${editingCustomer ? 'update' : 'create'} customer`,

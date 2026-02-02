@@ -283,7 +283,7 @@ export async function GET(
 
     if (shiftAssignments.length > 0) {
       // Get prices for fuel IDs
-      const fuelIds = [...new Set(shiftAssignments.map((a: any) => a.fuelId).filter(Boolean))] as string[]
+      const fuelIds = [...new Set(shiftAssignments.map((a: { fuelId?: string | null }) => a.fuelId).filter(Boolean))] as string[]
       const prices = await Promise.all(
         fuelIds.map(async (fuelId) => {
           const price = await prisma.price.findFirst({

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 
 export async function GET(
   request: NextRequest,
@@ -7,7 +8,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    
+
     const loan = await prisma.loanPumper.findUnique({
       where: { id },
       include: {
@@ -19,7 +20,7 @@ export async function GET(
         }
       }
     })
-    
+
     if (!loan) {
       return NextResponse.json({ error: 'Pumper loan not found' }, { status: 404 })
     }
@@ -38,20 +39,20 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    
+
     console.log('🔄 PUT /api/loans/pumper/[id] - Updating loan:', id)
     console.log('📦 Request body:', JSON.stringify(body, null, 2))
-    
+
     const loan = await prisma.loanPumper.findUnique({
       where: { id }
     })
-    
+
     if (!loan) {
       return NextResponse.json({ error: 'Pumper loan not found' }, { status: 404 })
     }
 
     const { status, monthlyRental } = body
-    
+
     // Validate status
     const validStatuses = ['ACTIVE', 'PAID', 'OVERDUE']
     if (status && !validStatuses.includes(status)) {
@@ -72,7 +73,7 @@ export async function PUT(
       }
     }
 
-    const updateData: any = {}
+    const updateData: Prisma.LoanPumperUpdateInput = {}
     if (status !== undefined) {
       updateData.status = status
     }
@@ -125,11 +126,11 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    
+
     const loan = await prisma.loanPumper.findUnique({
       where: { id }
     })
-    
+
     if (!loan) {
       return NextResponse.json({ error: 'Pumper loan not found' }, { status: 404 })
     }

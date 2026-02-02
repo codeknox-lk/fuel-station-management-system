@@ -1,17 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
+import { BulkCloseShiftSchema } from '@/lib/schemas'
 
 export async function POST(request: NextRequest) {
   try {
-    interface BulkCloseBody {
-      closedBy?: string
-      stationId?: string
+    const body = await request.json()
+
+    // Zod Validation
+    const result = BulkCloseShiftSchema.safeParse(body)
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: 'Invalid input data', details: result.error.flatten().fieldErrors },
+        { status: 400 }
+      )
     }
-    const body = await request.json() as BulkCloseBody
-    const { closedBy, stationId } = body
+
+    const { closedBy, stationId } = result.data
 
     // Find all active shifts
-    const whereClause: any = { status: 'OPEN' }
+    const whereClause: Prisma.ShiftWhereInput = { status: 'OPEN' }
     if (stationId) {
       whereClause.stationId = stationId
     }
@@ -186,16 +195,16 @@ export async function POST(request: NextRequest) {
 
         results.push({
           shiftId: shift.id,
-          shiftName: (shift as any).template?.name || 'Shift',
-          stationName: (shift as any).station?.name || 'Unknown Station',
+          shiftName: shift.template?.name || 'Shift',
+          stationName: shift.station?.name || 'Unknown Station',
           success: true
         })
       } catch (error) {
         console.error(`Error closing shift ${shift.id}:`, error)
         errors.push({
           shiftId: shift.id,
-          shiftName: (shift as any).template?.name || 'Shift',
-          stationName: (shift as any).station?.name || 'Unknown Station',
+          shiftName: shift.template?.name || 'Shift',
+          stationName: shift.station?.name || 'Unknown Station',
           error: error instanceof Error ? error.message : 'Unknown error'
         })
       }

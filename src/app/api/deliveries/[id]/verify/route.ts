@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { VerifyDeliverySchema } from '@/lib/schemas'
 
 export async function POST(
   request: NextRequest,
@@ -8,21 +9,24 @@ export async function POST(
   try {
     const { id } = await params
     const body = await request.json()
-    
-    const { 
+
+    // Zod Validation
+    const result = VerifyDeliverySchema.safeParse(body)
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: 'Invalid input data', details: result.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
+
+    const {
       afterDipReading,
       afterDipTime,
       additionalFuelSold,
       verifiedBy,
       notes
-    } = body
-    
-    if (!afterDipReading || !verifiedBy) {
-      return NextResponse.json(
-        { error: 'After dip reading and verified by are required' },
-        { status: 400 }
-      )
-    }
+    } = result.data
 
     // Get delivery with tank info
     const delivery = await prisma.delivery.findUnique({
@@ -58,16 +62,16 @@ export async function POST(
     // IMPORTANT: Only add fuel sold DURING delivery (additionalFuelSold)
     // Do NOT add fuelSoldDuring - it's already reflected in beforeDipReading!
     const actualReceived = parseFloat(afterDipReading) - delivery.beforeDipReading + (additionalFuelSold || 0)
-    
+
     // Track total fuel sold for record keeping
     const totalFuelSold = (delivery.fuelSoldDuring || 0) + (additionalFuelSold || 0)
 
     // Determine verification status based on variance
     const invoiceVariance = actualReceived - (delivery.invoiceQuantity || 0)
-    const variancePercentage = delivery.invoiceQuantity 
-      ? Math.abs(invoiceVariance) / delivery.invoiceQuantity * 100 
+    const variancePercentage = delivery.invoiceQuantity
+      ? Math.abs(invoiceVariance) / delivery.invoiceQuantity * 100
       : 0
-    
+
     let verificationStatus: 'VERIFIED' | 'DISCREPANCY'
     if (variancePercentage <= 0.5) {
       verificationStatus = 'VERIFIED' // Within 0.5% tolerance
@@ -78,7 +82,7 @@ export async function POST(
     // Validate tank won't exceed capacity
     if (parseFloat(afterDipReading) > delivery.tank.capacity) {
       return NextResponse.json(
-        { 
+        {
           error: 'After dip reading exceeds tank capacity',
           details: `Tank capacity: ${delivery.tank.capacity.toLocaleString()}L, After dip: ${parseFloat(afterDipReading).toLocaleString()}L`
         },
@@ -87,7 +91,7 @@ export async function POST(
     }
 
     // Update delivery and tank level in transaction
-    const result = await prisma.$transaction(async (tx) => {
+    const transactionResult = await prisma.$transaction(async (tx) => {
       // Update delivery record
       const updatedDelivery = await tx.delivery.update({
         where: { id },
@@ -126,7 +130,7 @@ export async function POST(
       // This is the TRUTH - use absolute value, not increment
       await tx.tank.update({
         where: { id: delivery.tankId },
-        data: { 
+        data: {
           currentLevel: parseFloat(afterDipReading)
         }
       })
@@ -137,11 +141,11 @@ export async function POST(
     console.log(`[API] ✅ Delivery ${id} verified: ${actualReceived.toFixed(1)}L received (Invoice: ${delivery.invoiceQuantity}L, Variance: ${invoiceVariance > 0 ? '+' : ''}${invoiceVariance.toFixed(1)}L)`)
 
     return NextResponse.json({
-      ...result,
+      ...transactionResult,
       invoiceVariance,
       variancePercentage,
-      message: verificationStatus === 'VERIFIED' 
-        ? 'Delivery verified successfully' 
+      message: verificationStatus === 'VERIFIED'
+        ? 'Delivery verified successfully'
         : 'Delivery verified with discrepancy - please review'
     })
   } catch (error) {

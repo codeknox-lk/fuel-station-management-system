@@ -62,7 +62,7 @@ export async function PUT(
 
     // Update office staff
     const finalFuelAllowance = (role !== undefined ? role : existing.role) === 'MANAGER'
-      ? (fuelAllowance !== undefined && fuelAllowance !== null && fuelAllowance !== '' ? parseFloat(String(fuelAllowance)) : ((existing as Record<string, any>).fuelAllowance || 0))
+      ? (fuelAllowance !== undefined && fuelAllowance !== null && fuelAllowance !== '' ? parseFloat(String(fuelAllowance)) : ((existing as { fuelAllowance?: number }).fuelAllowance || 0))
       : 0 // Only managers can have fuel allowance
 
     const updated = await prisma.officeStaff.update({
@@ -75,10 +75,10 @@ export async function PUT(
         phone: phone !== undefined ? (phone?.trim() || null) : existing.phone,
         email: email !== undefined ? (email?.trim() || null) : existing.email,
         baseSalary: baseSalary !== undefined && baseSalary !== null && baseSalary !== '' ? parseFloat(String(baseSalary)) : existing.baseSalary,
-        specialAllowance: specialAllowance !== undefined && specialAllowance !== null && specialAllowance !== '' ? parseFloat(String(specialAllowance)) : ((existing as Record<string, any>).specialAllowance || 0),
-        otherAllowances: otherAllowances !== undefined && otherAllowances !== null && otherAllowances !== '' ? parseFloat(String(otherAllowances)) : ((existing as Record<string, any>).otherAllowances || 0),
-        medicalAllowance: medicalAllowance !== undefined && medicalAllowance !== null && medicalAllowance !== '' ? parseFloat(String(medicalAllowance)) : ((existing as Record<string, any>).medicalAllowance || 0),
-        holidayAllowance: holidayAllowance !== undefined && holidayAllowance !== null && holidayAllowance !== '' ? parseFloat(String(holidayAllowance)) : ((existing as Record<string, any>).holidayAllowance || 0),
+        specialAllowance: specialAllowance !== undefined && specialAllowance !== null && specialAllowance !== '' ? parseFloat(String(specialAllowance)) : ((existing as { specialAllowance?: number }).specialAllowance || 0),
+        otherAllowances: otherAllowances !== undefined && otherAllowances !== null && otherAllowances !== '' ? parseFloat(String(otherAllowances)) : ((existing as { otherAllowances?: number }).otherAllowances || 0),
+        medicalAllowance: medicalAllowance !== undefined && medicalAllowance !== null && medicalAllowance !== '' ? parseFloat(String(medicalAllowance)) : ((existing as { medicalAllowance?: number }).medicalAllowance || 0),
+        holidayAllowance: holidayAllowance !== undefined && holidayAllowance !== null && holidayAllowance !== '' ? parseFloat(String(holidayAllowance)) : ((existing as { holidayAllowance?: number }).holidayAllowance || 0),
         fuelAllowance: finalFuelAllowance,
         hireDate: hireDate !== undefined ? (hireDate ? new Date(hireDate) : null) : existing.hireDate,
         isActive: isActive !== undefined ? isActive : existing.isActive

@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
           balanceBefore,
           balanceAfter,
           depositId: deposit.id,
-          description: `Bank deposit - ${(deposit as any).bank.name} (${accountId})${depositSlip ? ` - Slip: ${depositSlip}` : ''}`,
+          description: `Bank deposit - ${deposit.bank.name} (${accountId})${depositSlip ? ` - Slip: ${depositSlip}` : ''}`,
           performedBy: depositedBy!,
           timestamp: depositTimestamp
         }
@@ -236,7 +236,7 @@ export async function POST(request: NextRequest) {
           action: 'CREATE',
           entity: 'Deposit',
           entityId: result.id,
-          details: `Deposited Rs. ${validatedAmount.toLocaleString()} to ${(result as any).bank.name}`,
+          details: `Deposited Rs. ${validatedAmount.toLocaleString()} to ${result.bank.name}`,
           stationId: stationId!
         }
       })

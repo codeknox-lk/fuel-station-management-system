@@ -115,7 +115,11 @@ async function getUserIdFromToken(token: string): Promise<string | null> {
         const jwt = (await import('jsonwebtoken')).default
 
         // Verify and decode token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any as any
+        interface DecodedToken {
+            userId?: string
+            id?: string
+        }
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as DecodedToken
         return decoded.userId || decoded.id || null
     } catch (error) {
         console.error('Token verification error:', error)

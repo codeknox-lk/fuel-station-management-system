@@ -43,7 +43,7 @@ interface Notification {
   category: 'SYSTEM' | 'OPERATIONS' | 'FINANCIAL' | 'MAINTENANCE' | 'TANK' | 'SHIFT' | 'CREDIT' | 'POS'
   isRead: boolean
   actionUrl?: string | null
-  metadata?: any
+  metadata?: Record<string, unknown> | null
   createdAt: string
   readAt?: string | null
   station?: {

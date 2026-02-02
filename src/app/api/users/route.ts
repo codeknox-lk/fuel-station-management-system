@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import bcrypt from 'bcrypt'
+import { CreateUserSchema } from '@/lib/schemas'
 
 export async function GET(request: NextRequest) {
   try {
@@ -54,25 +55,20 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    interface UserBody {
-      name?: string
-      username?: string
-      email?: string
-      password?: string
-      role?: string
-      stationId?: string
-      status?: string
-    }
-    const body = await request.json() as UserBody
-    const { name, username, email, password, role, stationId, status } = body
+    const body = await request.json()
 
-    // Validation
-    if (!username || !email || !password || !role) {
+    // Zod Validation
+    const result = CreateUserSchema.safeParse(body)
+
+    if (!result.success) {
+      console.error('❌ Validation failed:', result.error.flatten())
       return NextResponse.json(
-        { error: 'Username, email, password, and role are required' },
+        { error: 'Invalid input data', details: result.error.flatten().fieldErrors },
         { status: 400 }
       )
     }
+
+    const { username, email, password, role, stationId, status } = result.data
 
     // Check for duplicate username or email
     const existingUser = await prisma.user.findFirst({
@@ -100,9 +96,10 @@ export async function POST(request: NextRequest) {
         username: username.trim(),
         email: email.trim(),
         password: hashedPassword,
-        role: (role as any) || 'MANAGER',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        role: (role as any),
         stationId: stationId || null,
-        isActive: status === 'active' || status === undefined ? true : false
+        isActive: status === 'active'
       },
       select: {
         id: true,

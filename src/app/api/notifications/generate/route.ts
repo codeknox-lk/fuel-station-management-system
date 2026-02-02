@@ -32,15 +32,8 @@ export async function POST(request: NextRequest) {
         const fillPercentage = (tank.currentLevel / tank.capacity) * 100
 
         if (fillPercentage < 30) {
-          // Check if notification model exists
-          if (!('notification' in prisma)) {
-            errors.push('Prisma client not regenerated - skipping notification generation')
-            continue
-          }
-
           // Check if notification already exists (within last 24 hours)
-          const prismaWithNotif = prisma as unknown as { notification: { findFirst: (args: unknown) => Promise<any>, create: (args: unknown) => Promise<any> } }
-          const existingNotification = await prismaWithNotif.notification.findFirst({
+          const existingNotification = await prisma.notification.findFirst({
             where: {
               stationId: tank.stationId,
               category: 'TANK',
@@ -55,7 +48,7 @@ export async function POST(request: NextRequest) {
           })
 
           if (!existingNotification) {
-            const notification = await prismaWithNotif.notification.create({
+            const notification = await prisma.notification.create({
               data: {
                 stationId: tank.stationId,
                 title: fillPercentage < 15
@@ -138,8 +131,7 @@ export async function POST(request: NextRequest) {
 
           if (daysSinceLastSale > 7 && customer.currentBalance > 0) {
             // Check if notification already exists (within last 7 days)
-            const prismaWithNotif = prisma as unknown as { notification: { findFirst: (args: unknown) => Promise<any>, create: (args: unknown) => Promise<any> } }
-            const existingNotification = await prismaWithNotif.notification.findFirst({
+            const existingNotification = await prisma.notification.findFirst({
               where: {
                 category: 'CREDIT',
                 type: 'ERROR',
@@ -153,7 +145,7 @@ export async function POST(request: NextRequest) {
             })
 
             if (!existingNotification) {
-              const notification = await prismaWithNotif.notification.create({
+              const notification = await prisma.notification.create({
                 data: {
                   stationId: lastSale.shift?.stationId || null,
                   title: 'Credit Payment Overdue',
@@ -202,14 +194,13 @@ export async function POST(request: NextRequest) {
       })
 
       for (const shift of recentShifts) {
-        const statistics = shift.statistics as any
+        const statistics = shift.statistics as { variancePercentage?: number; variance?: number } | null
         if (statistics && statistics.variancePercentage) {
           const variancePercentage = Math.abs(statistics.variancePercentage)
 
           if (variancePercentage > 1.0) {
             // Check if notification already exists for this shift
-            const prismaWithNotif = prisma as unknown as { notification: { findFirst: (args: unknown) => Promise<any>, create: (args: unknown) => Promise<any> } }
-            const existingNotification = await prismaWithNotif.notification.findFirst({
+            const existingNotification = await prisma.notification.findFirst({
               where: {
                 stationId: shift.stationId,
                 category: 'SHIFT',
@@ -223,7 +214,7 @@ export async function POST(request: NextRequest) {
             })
 
             if (!existingNotification) {
-              const notification = await prismaWithNotif.notification.create({
+              const notification = await prisma.notification.create({
                 data: {
                   stationId: shift.stationId,
                   title: 'Shift Variance Alert',
@@ -277,8 +268,7 @@ export async function POST(request: NextRequest) {
 
       if (unreconciledBatches.length > 0) {
         // Check if notification already exists (within last 24 hours)
-        const prismaWithNotif = prisma as unknown as { notification: { findFirst: (args: unknown) => Promise<any>, create: (args: unknown) => Promise<any> } }
-        const existingNotification = await prismaWithNotif.notification.findFirst({
+        const existingNotification = await prisma.notification.findFirst({
           where: {
             category: 'POS',
             type: 'WARNING',
@@ -292,7 +282,7 @@ export async function POST(request: NextRequest) {
         })
 
         if (!existingNotification) {
-          const notification = await prismaWithNotif.notification.create({
+          const notification = await prisma.notification.create({
             data: {
               stationId: unreconciledBatches[0].shift.stationId,
               title: 'POS Reconciliation Pending',

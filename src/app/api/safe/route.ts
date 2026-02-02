@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
         const transaction = await tx.safeTransaction.create({
           data: {
             safeId: safe.id,
-            type: type as any,
+            type: type as import('@prisma/client').SafeTransactionType,
             amount: amountVal,
             balanceBefore,
             balanceAfter,
@@ -232,7 +232,7 @@ export async function POST(request: NextRequest) {
     const transaction = await prisma.safeTransaction.create({
       data: {
         safeId: safe.id,
-        type: type as any,
+        type: type as import('@prisma/client').SafeTransactionType,
         amount: amountVal,
         balanceBefore,
         balanceAfter,

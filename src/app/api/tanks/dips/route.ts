@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { auditOperations } from '@/lib/auditMiddleware'
+import { CreateTankDipSchema } from '@/lib/schemas'
 
 export async function GET(request: NextRequest) {
   try {
@@ -122,24 +123,20 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    interface TankDipBody {
-      stationId?: string
-      tankId?: string
-      reading?: number | string
-      recordedBy?: string
-      dipDate?: string | Date
-      notes?: string
-    }
-    const body = await request.json() as TankDipBody
+    const body = await request.json()
 
-    const { stationId, tankId, reading, recordedBy, dipDate, notes } = body
+    // Zod Validation
+    const result = CreateTankDipSchema.safeParse(body)
 
-    if (!stationId || !tankId || reading === undefined || !recordedBy || !dipDate) {
+    if (!result.success) {
+      console.error('❌ Validation failed:', result.error.flatten())
       return NextResponse.json(
-        { error: 'Station ID, tank ID, reading, recorded by, and dip date are required' },
+        { error: 'Invalid input data', details: result.error.flatten().fieldErrors },
         { status: 400 }
       )
     }
+
+    const { stationId, tankId, reading, recordedBy, dipDate, notes } = result.data
 
     // Get tank and station info for audit logging
     const tank = await prisma.tank.findUnique({
@@ -153,9 +150,9 @@ export async function POST(request: NextRequest) {
       data: {
         stationId,
         tankId,
-        reading: parseFloat(String(reading)),
+        reading,
         recordedBy,
-        dipDate: new Date(dipDate),
+        dipDate,
         notes: notes || null
       },
       include: {
@@ -179,7 +176,7 @@ export async function POST(request: NextRequest) {
 
     // Audit logging
     if (tank && tank.station) {
-      await auditOperations.tankDipRecorded(request, tankId, Number(reading), tank.station.id, tank.station.name)
+      await auditOperations.tankDipRecorded(request, tankId, reading, tank.station.id, tank.station.name)
     }
 
     return NextResponse.json(newDip, { status: 201 })
