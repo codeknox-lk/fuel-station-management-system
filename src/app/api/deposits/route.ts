@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { safeParseFloat, validateAmount, validateRequired, validateDate } from '@/lib/validation'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -226,13 +227,16 @@ export async function POST(request: NextRequest) {
       return deposit
     })
 
+    // Get current user for audit log
+    const currentUser = await getServerUser()
+
     // Create audit log for deposit
     try {
       await prisma.auditLog.create({
         data: {
-          userId: 'system',
-          userName: depositedBy!,
-          userRole: 'MANAGER',
+          userId: currentUser?.userId || 'system',
+          userName: currentUser?.username || depositedBy!,
+          userRole: currentUser?.role || 'MANAGER',
           action: 'CREATE',
           entity: 'Deposit',
           entityId: result.id,

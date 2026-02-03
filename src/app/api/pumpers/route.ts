@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { CreatePumperSchema } from '@/lib/schemas'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -224,13 +225,16 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Pumper created successfully:', newPumper.id)
 
+    // Get current user for audit log
+    const currentUser = await getServerUser()
+
     // Create audit log for pumper creation
     try {
       await prisma.auditLog.create({
         data: {
-          userId: 'system', // TODO: Extract from JWT token
-          userName: 'System User', // TODO: Extract from JWT token
-          userRole: 'MANAGER', // TODO: Extract from JWT token
+          userId: currentUser?.userId || 'system',
+          userName: currentUser?.username || 'System User',
+          userRole: currentUser?.role || 'MANAGER',
           action: 'CREATE',
           entity: 'Pumper',
           entityId: newPumper.id,

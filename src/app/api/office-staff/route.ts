@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { CreateOfficeStaffSchema } from '@/lib/schemas'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -183,13 +184,16 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Office staff created successfully:', newOfficeStaff.id)
 
+    // Get current user for audit log
+    const currentUser = await getServerUser()
+
     // Create audit log for office staff creation
     try {
       await prisma.auditLog.create({
         data: {
-          userId: 'system',
-          userName: 'System User',
-          userRole: 'MANAGER',
+          userId: currentUser?.userId || 'system',
+          userName: currentUser?.username || 'System User',
+          userRole: currentUser?.role || 'MANAGER',
           action: 'CREATE',
           entity: 'Office Staff',
           entityId: newOfficeStaff.id,
