@@ -249,8 +249,8 @@ export default function BankAccountsPage() {
 
   const getTransactionTypeColor = (type: string) => {
     switch (type) {
-      case 'DEPOSIT': return 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
-      case 'CHEQUE': return 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
+      case 'DEPOSIT': return 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20'
+      case 'CHEQUE': return 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20'
       case 'CREDIT_PAYMENT': return 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20'
       case 'WITHDRAWAL': return 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'
       case 'TRANSFER_IN': return 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
@@ -335,7 +335,7 @@ export default function BankAccountsPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 dark:border-purple-400"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 dark:border-orange-400"></div>
       </div>
     )
   }
@@ -346,7 +346,7 @@ export default function BankAccountsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <Landmark className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+            <Landmark className="h-8 w-8 text-orange-600 dark:text-orange-400" />
             Bank Accounts
           </h1>
           <p className="text-muted-foreground mt-1">
@@ -604,10 +604,10 @@ export default function BankAccountsPage() {
 
             {/* New Balance Preview */}
             {manualTransactionForm.amount && selectedBankForTransaction && (
-              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-muted-foreground">New Balance (After Transaction)</div>
-                  <div className="text-lg font-bold text-blue-600">
+                  <div className="text-lg font-bold text-orange-600">
                     Rs. {(
                       selectedBankForTransaction.currentBalance +
                       (['DEPOSIT', 'TRANSFER_IN', 'INTEREST', 'ADJUSTMENT'].includes(manualTransactionForm.type) ? 1 : -1) *
@@ -758,7 +758,7 @@ export default function BankAccountsPage() {
               {/* Transactions Table */}
               {loadingTransactions ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
                 </div>
               ) : (
                 <DataTable

@@ -1,6 +1,6 @@
-﻿'use client'
+'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStation } from '@/contexts/StationContext'
 import { FormCard } from '@/components/ui/FormCard'
@@ -112,6 +112,49 @@ export default function TanksSettingsPage() {
   const [nozzleLoading, setNozzleLoading] = useState(false)
 
   // Load pumps, nozzles, and fuels when station changes
+
+
+  const loadFuels = useCallback(async () => {
+    try {
+      const response = await fetch('/api/fuels')
+      const data = await response.json()
+      setFuels(data.filter((f: Fuel) => f.isActive))
+    } catch (err) {
+      console.error('Failed to load fuels:', err)
+    }
+  }, [])
+
+  const loadPumps = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/pumps?stationId=${selectedStation}`)
+      const data = await response.json()
+      setPumps(data)
+    } catch (err) {
+      console.error('Failed to load pumps:', err)
+    }
+  }, [selectedStation])
+
+  const loadNozzles = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/nozzles?stationId=${selectedStation}`)
+      const data = await response.json()
+      setNozzles(data)
+    } catch (err) {
+      console.error('Failed to load nozzles:', err)
+    }
+  }, [selectedStation])
+
+  const loadTanks = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/tanks?stationId=${selectedStation}&type=tanks`)
+      const data = await response.json()
+      setTanks(data)
+    } catch (err) {
+      console.error('Failed to load tanks:', err)
+    }
+  }, [selectedStation])
+
+  // Load pumps, nozzles, and fuels when station changes
   useEffect(() => {
     loadFuels()
     if (selectedStation) {
@@ -123,47 +166,7 @@ export default function TanksSettingsPage() {
       setNozzles([])
       setTanks([])
     }
-  }, [selectedStation])
-
-  const loadFuels = async () => {
-    try {
-      const response = await fetch('/api/fuels')
-      const data = await response.json()
-      setFuels(data.filter((f: Fuel) => f.isActive))
-    } catch (err) {
-      console.error('Failed to load fuels:', err)
-    }
-  }
-
-  const loadPumps = async () => {
-    try {
-      const response = await fetch(`/api/pumps?stationId=${selectedStation}`)
-      const data = await response.json()
-      setPumps(data)
-    } catch (err) {
-      console.error('Failed to load pumps:', err)
-    }
-  }
-
-  const loadNozzles = async () => {
-    try {
-      const response = await fetch(`/api/nozzles?stationId=${selectedStation}`)
-      const data = await response.json()
-      setNozzles(data)
-    } catch (err) {
-      console.error('Failed to load nozzles:', err)
-    }
-  }
-
-  const loadTanks = async () => {
-    try {
-      const response = await fetch(`/api/tanks?stationId=${selectedStation}&type=tanks`)
-      const data = await response.json()
-      setTanks(data)
-    } catch (err) {
-      console.error('Failed to load tanks:', err)
-    }
-  }
+  }, [selectedStation, loadFuels, loadPumps, loadNozzles, loadTanks])
 
   const resetTankForm = () => {
     setEditingTankId(null)
@@ -494,7 +497,7 @@ export default function TanksSettingsPage() {
             variant="ghost"
             size="sm"
             onClick={() => handleEditTank(row)}
-            className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+            className="text-orange-500 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950/20"
           >
             <Edit className="h-4 w-4" />
           </Button>
@@ -517,7 +520,7 @@ export default function TanksSettingsPage() {
       title: 'Pump Number',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <Wrench className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <Wrench className="h-4 w-4 text-orange-600 dark:text-orange-400" />
           <span className="font-semibold">{value as string}</span>
         </div>
       )
@@ -536,7 +539,7 @@ export default function TanksSettingsPage() {
         <div className="flex flex-wrap gap-2">
           {(value as { nozzleNumber: string; tank: { fuelId: string; fuel?: Fuel } }[]).map((nozzle) => (
             <Badge key={nozzle.nozzleNumber} variant="outline">
-              {nozzle.nozzleNumber} â†’ {nozzle.tank.fuel?.name || 'Unknown'}
+              {nozzle.nozzleNumber} → {nozzle.tank.fuel?.name || 'Unknown'}
             </Badge>
           ))}
         </div>
@@ -564,7 +567,7 @@ export default function TanksSettingsPage() {
       title: 'Pump',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <Wrench className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <Wrench className="h-4 w-4 text-orange-600 dark:text-orange-400" />
           <span className="font-semibold">{(value as { pumpNumber: string }).pumpNumber}</span>
         </div>
       )

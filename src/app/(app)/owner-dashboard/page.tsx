@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { FormCard } from '@/components/ui/FormCard'
+
 import { Button } from '@/components/ui/button'
 import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
 import {
   BarChart,
   Bar,
@@ -18,25 +18,17 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell,
-  LineChart,
-  Line
+  Cell
 } from 'recharts'
 import {
-  Building2,
-  DollarSign,
-  TrendingUp,
-  TrendingDown,
-  AlertTriangle,
-  AlertCircle,
-  RefreshCw,
-  Users,
-  Fuel,
-  CreditCard,
-  Shield,
   Calendar,
   Eye,
-  EyeOff
+  EyeOff,
+  Building2,
+  AlertTriangle,
+  AlertCircle,
+  TrendingDown,
+  RefreshCw
 } from 'lucide-react'
 
 interface Station {
@@ -96,7 +88,6 @@ interface Exception {
   status: 'OPEN' | 'INVESTIGATING' | 'RESOLVED'
 }
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
 export default function OwnerDashboardPage() {
   const [stationSummaries, setStationSummaries] = useState<StationSummary[]>([])
@@ -107,7 +98,6 @@ export default function OwnerDashboardPage() {
 
   // View state
   const [showIndividualStations, setShowIndividualStations] = useState(true)
-  const [selectedView, setSelectedView] = useState<'combined' | 'individual'>('combined')
 
   // Load dashboard data
   useEffect(() => {
@@ -288,6 +278,7 @@ export default function OwnerDashboardPage() {
       setTopExceptions(topExceptions)
 
     } catch (err) {
+      console.error(err)
       setError('Failed to load dashboard data')
     } finally {
       setLoading(false)
@@ -297,7 +288,7 @@ export default function OwnerDashboardPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'EXCELLENT': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
-      case 'GOOD': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'GOOD': return 'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300'
       case 'NEEDS_ATTENTION': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
       case 'CRITICAL': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
       default: return 'bg-muted text-foreground'
@@ -308,7 +299,7 @@ export default function OwnerDashboardPage() {
     switch (severity) {
       case 'HIGH': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
       case 'MEDIUM': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
-      case 'LOW': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'LOW': return 'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300'
       default: return 'bg-muted text-foreground'
     }
   }
@@ -349,7 +340,7 @@ export default function OwnerDashboardPage() {
       key: 'todayProfit' as keyof StationSummary,
       title: 'Today Profit',
       render: (value: unknown) => (
-        <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
+        <span className="font-mono font-semibold text-orange-600 dark:text-orange-400">
           Rs. {(value as number)?.toLocaleString() || 0}
         </span>
       )
@@ -528,10 +519,10 @@ export default function OwnerDashboardPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-blue-600 dark:text-blue-400">Total Profit</CardTitle>
+                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Total Profit</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-700">
+                <div className="text-2xl font-bold text-orange-700">
                   Rs. {combinedStats.totalProfit.toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground">
@@ -542,10 +533,10 @@ export default function OwnerDashboardPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-purple-600 dark:text-purple-400">Total Variance</CardTitle>
+                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Total Variance</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-purple-700">
+                <div className="text-2xl font-bold text-orange-700">
                   Rs. {combinedStats.totalVariance.toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground">Absolute variance</div>

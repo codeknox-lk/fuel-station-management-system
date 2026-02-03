@@ -179,17 +179,17 @@ export default function TolerancePage() {
 
       {/* Current Configuration Alert */}
       {config && (
-        <Alert className="border-blue-500/20 dark:border-blue-500/30 bg-blue-500/10 dark:bg-blue-500/20">
-          <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        <Alert className="border-orange-500/20 dark:border-orange-500/30 bg-orange-500/10 dark:bg-orange-500/20">
+          <Info className="h-4 w-4 text-orange-600 dark:text-orange-400" />
           <AlertDescription>
             <div className="flex items-center justify-between">
               <div>
-                <strong className="text-blue-700 dark:text-blue-300">Current Tolerance:</strong>
-                <span className="ml-2 text-blue-700 dark:text-blue-300">
+                <strong className="text-orange-700 dark:text-orange-300">Current Tolerance:</strong>
+                <span className="ml-2 text-orange-700 dark:text-orange-300">
                   Flat {formatCurrency(config.flatAmountTolerance)} for any sale
                 </span>
               </div>
-              <div className="text-xs text-blue-600 dark:text-blue-400">
+              <div className="text-xs text-orange-600 dark:text-orange-400">
                 Last updated: {new Date(config.updatedAt).toLocaleString()} by {config.updatedBy}
               </div>
             </div>
@@ -216,9 +216,9 @@ export default function TolerancePage() {
                 </p>
               </div>
 
-              <Alert className="border-blue-500/20 dark:border-blue-500/30 bg-blue-500/10 dark:bg-blue-500/20">
-                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                <AlertDescription className="text-blue-700 dark:text-blue-300">
+              <Alert className="border-orange-500/20 dark:border-orange-500/30 bg-orange-500/10 dark:bg-orange-500/20">
+                <Info className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                <AlertDescription className="text-orange-700 dark:text-orange-300">
                   <strong>Note:</strong> The system now uses a flat tolerance amount only.
                   Percentage tolerance is no longer used. Any variance within Rs. {formData.flatAmountTolerance.toLocaleString()}
                   is considered normal.
@@ -282,7 +282,7 @@ export default function TolerancePage() {
                   <div className="font-medium">
                     Sales: {formatCurrency(example.salesAmount)}
                   </div>
-                  <Badge className="bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300">
+                  <Badge className="bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Within Tolerance
                   </Badge>
@@ -310,7 +310,7 @@ export default function TolerancePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div>
               <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-                <Calculator className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <Calculator className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                 Calculation Method
               </h4>
               <ul className="text-sm text-muted-foreground space-y-1">

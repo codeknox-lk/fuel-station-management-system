@@ -108,7 +108,7 @@ export default function ChequesPage() {
 
         setStations(stationsData)
         setRecentCheques(chequesData)
-      } catch (_err) {
+      } catch {
         setError('Failed to load initial data')
       }
     }
@@ -180,7 +180,7 @@ export default function ChequesPage() {
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000)
 
-    } catch (_err) {
+    } catch {
       setError('Failed to record cheque')
     } finally {
       setLoading(false)
@@ -189,7 +189,7 @@ export default function ChequesPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'RECEIVED': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'RECEIVED': return 'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300'
       case 'DEPOSITED': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
       case 'RETURNED': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
       default: return 'bg-muted text-foreground'

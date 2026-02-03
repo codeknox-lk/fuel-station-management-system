@@ -326,7 +326,7 @@ export default function CreditCustomersPage() {
       // Refresh transactions in case balance changed
       fetchTransactions()
 
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: `Failed to ${editingCustomer ? 'update' : 'create'} customer`,
@@ -420,8 +420,8 @@ export default function CreditCustomersPage() {
       title: 'Credit Limit',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <CreditCard className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          <span className="font-mono font-semibold text-blue-700">
+          <CreditCard className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+          <span className="font-mono font-semibold text-orange-700">
             Rs. {(value as number)?.toLocaleString() || 0}
           </span>
         </div>
@@ -468,7 +468,7 @@ export default function CreditCustomersPage() {
           variant="ghost"
           size="sm"
           onClick={() => handleEdit(row)}
-          className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+          className="text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300"
         >
           <Edit className="h-4 w-4 mr-1" />
           Edit
@@ -561,7 +561,10 @@ export default function CreditCustomersPage() {
   return (
     <div className="space-y-6 p-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-foreground">Credit Customers</h1>
+        <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+          <CreditCard className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+          Credit Customers
+        </h1>
         {userRole === 'OWNER' && (
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
@@ -689,7 +692,7 @@ export default function CreditCustomersPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4">
           <h3 className="text-lg font-semibold text-foreground">Total Customers</h3>
-          <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">{customers.length}</p>
+          <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">{customers.length}</p>
         </Card>
         <Card className="p-4">
           <h3 className="text-lg font-semibold text-foreground">Active Customers</h3>
@@ -699,7 +702,7 @@ export default function CreditCustomersPage() {
         </Card>
         <Card className="p-4">
           <h3 className="text-lg font-semibold text-foreground">Total Credit Limit</h3>
-          <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+          <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
             Rs. {customers.reduce((sum, c) => sum + c.creditLimit, 0).toLocaleString()}
           </p>
         </Card>
@@ -801,7 +804,7 @@ export default function CreditCustomersPage() {
           {/* Transactions Table */}
           {loadingTransactions ? (
             <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 dark:border-purple-400"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 dark:border-orange-400"></div>
             </div>
           ) : (
             <DataTable

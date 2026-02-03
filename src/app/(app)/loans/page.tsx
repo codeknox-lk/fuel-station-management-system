@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback } from 'react'
+
 import { useStation } from '@/contexts/StationContext'
 import { useToast } from '@/hooks/use-toast'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,15 +14,11 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
 import {
+  RefreshCw,
+  Eye,
   CreditCard,
   DollarSign,
-  User,
-  Building2,
-  Calendar,
-  CheckCircle,
-  AlertCircle,
-  RefreshCw,
-  Eye
+  Handshake
 } from 'lucide-react'
 
 interface PumperLoan {
@@ -82,7 +78,7 @@ interface LoanPayment {
 }
 
 export default function LoansPage() {
-  const router = useRouter()
+
   const { selectedStation } = useStation()
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
@@ -101,18 +97,11 @@ export default function LoansPage() {
   const [paymentNotes, setPaymentNotes] = useState('')
   const [processingPayment, setProcessingPayment] = useState(false)
 
-  useEffect(() => {
-    if (selectedStation) {
-      fetchAllLoans()
-    }
-  }, [selectedStation])
-
-  const fetchAllLoans = async () => {
+  const fetchAllLoans = useCallback(async () => {
     if (!selectedStation) return
 
     try {
       setLoading(true)
-
 
       const [pumperRes, externalRes, officeRes] = await Promise.all([
         fetch(`/api/loans/pumper?stationId=${selectedStation}`),
@@ -144,7 +133,13 @@ export default function LoansPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedStation, toast])
+
+  useEffect(() => {
+    if (selectedStation) {
+      fetchAllLoans()
+    }
+  }, [selectedStation, fetchAllLoans])
 
   const fetchLoanPayments = async (loanId: string, loanType: 'PUMPER' | 'EXTERNAL' | 'OFFICE') => {
     try {
@@ -286,7 +281,10 @@ export default function LoansPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Loans Management</h1>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Handshake className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+            Loans Management
+          </h1>
           <p className="text-muted-foreground mt-1">View and manage all loans and payments</p>
         </div>
         <Button onClick={fetchAllLoans} variant="outline" disabled={loading}>
@@ -824,7 +822,7 @@ export default function LoansPage() {
           </DialogHeader>
           {selectedLoanForPayment && (
             <div className="space-y-4 py-4">
-              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
                 <div className="text-sm font-medium mb-2">Loan Details</div>
                 <div className="text-sm space-y-1 text-muted-foreground">
                   <div>Loan Amount: Rs. {selectedLoanForPayment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>

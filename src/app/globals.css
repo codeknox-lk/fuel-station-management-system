@@ -165,7 +165,7 @@ h1::before {
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.6 0.22 35);
+  --primary: oklch(0.69 0.22 27);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -176,8 +176,8 @@ h1::before {
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.6 0.22 35);
-  --chart-1: oklch(0.646 0.222 41.116);
+  --ring: oklch(0.69 0.22 27);
+  --chart-1: oklch(0.69 0.22 27);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
@@ -205,9 +205,9 @@ h1::before {
   --popover: oklch(0.26 0 0);
   --popover-foreground: oklch(0.95 0 0);
   
-  /* Primary: Desaturated blue for dark mode */
-  --primary: oklch(0.6 0.22 35);
-  --primary-foreground: oklch(0.95 0 0);
+  /* Primary: Vibrant Orange for dark mode high contrast */
+  --primary: oklch(0.69 0.22 27);
+  --primary-foreground: oklch(0.98 0 0);
   
   /* Secondary: Muted gray */
   --secondary: oklch(0.30 0 0);
@@ -228,7 +228,7 @@ h1::before {
   /* Borders: Subtle but visible */
   --border: oklch(1 0 0 / 15%);
   --input: oklch(1 0 0 / 20%);
-  --ring: oklch(0.60 0 0);
+  --ring: oklch(0.69 0.22 27);
   
   /* Charts: Desaturated for dark mode */
   --chart-1: oklch(0.55 0.20 264);

@@ -19,7 +19,7 @@ import {
   DollarSign,
   Clock
 } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 
 interface POSTerminal {
   id: string
@@ -197,7 +197,7 @@ export default function POSPage() {
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'BATCH': return <CreditCard className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+      case 'BATCH': return <CreditCard className="h-4 w-4 text-orange-600 dark:text-orange-400" />
       case 'MISSING_SLIP': return <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
       case 'RECONCILIATION': return <Calculator className="h-4 w-4 text-green-600 dark:text-green-400" />
       default: return <FileText className="h-4 w-4 text-muted-foreground" />
@@ -242,7 +242,7 @@ export default function POSPage() {
       title: 'Today&apos;s Transactions',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <TrendingUp className="h-4 w-4 text-orange-600 dark:text-orange-400" />
           <span className="">{(value as number)?.toLocaleString() || 0}</span>
         </div>
       )
@@ -344,13 +344,13 @@ export default function POSPage() {
         </Card>
         <Card className="p-4">
           <h3 className="text-lg font-semibold text-foreground">Today&apos;s Transactions</h3>
-          <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+          <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
             {stats.totalTransactions.toLocaleString()}
           </p>
         </Card>
         <Card className="p-4">
           <h3 className="text-lg font-semibold text-foreground">Today&apos;s Amount</h3>
-          <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+          <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
             Rs. {stats.totalAmount.toLocaleString()}
           </p>
           <p className="text-sm text-muted-foreground">
@@ -387,6 +387,7 @@ export default function POSPage() {
           columns={terminalColumns}
           searchPlaceholder="Search terminals..."
           emptyMessage="No POS terminals found."
+          loading={loading}
         />
       </FormCard>
 
@@ -398,6 +399,7 @@ export default function POSPage() {
           searchPlaceholder="Search activity..."
           pagination={false}
           emptyMessage="No recent activity."
+          loading={loading}
         />
       </FormCard>
     </div>

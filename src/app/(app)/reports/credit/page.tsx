@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useStation } from '@/contexts/StationContext'
 import { useRouter } from 'next/navigation'
 import { getCurrentBusinessMonth, formatBusinessMonthRange } from '@/lib/businessMonth'
@@ -164,13 +164,7 @@ export default function CreditReportPage() {
     exportCreditCustomerReportExcel(exportData, stationName, monthLabel)
   }
 
-  useEffect(() => {
-    if (selectedStation) {
-      fetchReport()
-    }
-  }, [selectedStation, selectedYear, selectedMonth])
-
-  const fetchReport = async () => {
+  const fetchReport = useCallback(async () => {
     if (!selectedStation) {
       setError('Please select a station')
       return
@@ -178,25 +172,18 @@ export default function CreditReportPage() {
 
     try {
       setLoading(true)
-      setError('')
+      const params = new URLSearchParams()
+      params.append('stationId', selectedStation)
+      params.append('year', selectedYear)
+      params.append('month', selectedMonth)
 
-      // Calculate business month date range
-      const year = parseInt(selectedYear)
-      const month = parseInt(selectedMonth)
-      const startDate = new Date(year, month - 1, 7)
-      const endDate = new Date(year, month, 6, 23, 59, 59)
+      const response = await fetch(`/api/reports/credit?${params.toString()}`)
+      const data = await response.json()
 
-      const res = await fetch(
-        `/api/reports/credit-summary?stationId=${selectedStation}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
-      )
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        console.error('Credit Summary API Error:', errorData)
-        throw new Error(errorData.details || errorData.error || 'Failed to fetch credit customer report')
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch report')
       }
 
-      const data = await res.json()
       setReportData(data)
     } catch (err) {
       console.error('Error fetching credit customer report:', err)
@@ -204,19 +191,25 @@ export default function CreditReportPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedStation, selectedYear, selectedMonth])
+
+  useEffect(() => {
+    if (selectedStation) {
+      fetchReport()
+    }
+  }, [selectedStation, selectedYear, selectedMonth, fetchReport])
 
   if (loading && !reportData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 dark:border-orange-400"></div>
       </div>
     )
   }
 
   // Prepare pie chart data
   const agingPieData = reportData ? Object.entries(reportData.agingBreakdown)
-    .filter(([_, data]) => data.amount > 0)
+    .filter(([, data]) => data.amount > 0)
     .map(([category, data]) => ({
       name: category,
       value: data.amount,
@@ -325,10 +318,10 @@ export default function CreditReportPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <Users className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                   <h3 className="text-sm font-semibold text-muted-foreground">Total Customers</h3>
                 </div>
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                   {reportData.summary.totalCustomers}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">

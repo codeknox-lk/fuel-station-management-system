@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useStation } from '@/contexts/StationContext'
 import { useRouter } from 'next/navigation'
-import { getCurrentBusinessMonth, getBusinessMonth, getBusinessMonthDateRange, formatBusinessMonthRange } from '@/lib/businessMonth'
+import { getCurrentBusinessMonth, getBusinessMonth, formatBusinessMonthRange } from '@/lib/businessMonth'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -109,13 +109,7 @@ export default function DailySalesLitersReportPage() {
     return { value: year.toString(), label: year.toString() }
   })
 
-  useEffect(() => {
-    if (selectedStation) {
-      fetchSalesData()
-    }
-  }, [selectedStation, selectedYear, selectedMonth])
-
-  const fetchSalesData = async () => {
+  const fetchSalesData = useCallback(async () => {
     if (!selectedStation) {
       setError('Please select a station')
       return
@@ -141,7 +135,13 @@ export default function DailySalesLitersReportPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedStation, selectedYear, selectedMonth])
+
+  useEffect(() => {
+    if (selectedStation) {
+      fetchSalesData()
+    }
+  }, [selectedStation, selectedYear, selectedMonth, fetchSalesData])
 
   // Prepare chart data
   interface ChartDataPoint {
@@ -208,7 +208,7 @@ export default function DailySalesLitersReportPage() {
   if (loading && !salesData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 dark:border-purple-400"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 dark:border-orange-400"></div>
       </div>
     )
   }
@@ -224,7 +224,7 @@ export default function DailySalesLitersReportPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-              <BarChart3 className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+              <BarChart3 className="h-8 w-8 text-orange-600 dark:text-orange-400" />
               Daily Sales Report by Fuel Type (Liters)
             </h1>
             <p className="text-muted-foreground mt-1">
@@ -357,12 +357,12 @@ export default function DailySalesLitersReportPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-blue-600" />
+                <TrendingUp className="h-4 w-4 text-orange-600" />
                 Total Volume
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold text-orange-600">
                 {salesData.dailySales.reduce((sum, day) => sum + day.totalLiters, 0).toLocaleString()} L
               </div>
               <div className="text-xs text-muted-foreground mt-1">
@@ -448,7 +448,7 @@ export default function DailySalesLitersReportPage() {
                       {formatFuelType(fuelType)} (L)
                     </th>
                   ))}
-                  <th className="text-right p-3 font-semibold text-blue-600 dark:text-blue-400">Daily Total (L)</th>
+                  <th className="text-right p-3 font-semibold text-orange-600 dark:text-orange-400">Daily Total (L)</th>
                 </tr>
               </thead>
               <tbody>
@@ -460,19 +460,19 @@ export default function DailySalesLitersReportPage() {
                         {(day.liters[fuelType] || 0).toLocaleString()} L
                       </td>
                     ))}
-                    <td className="text-right p-3 font-semibold text-blue-600 dark:text-blue-400">
+                    <td className="text-right p-3 font-semibold text-orange-600 dark:text-orange-400">
                       {day.totalLiters.toLocaleString()} L
                     </td>
                   </tr>
                 ))}
-                <tr className="border-t-4 font-bold bg-blue-50 dark:bg-blue-950/20">
+                <tr className="border-t-4 font-bold bg-orange-50 dark:bg-orange-950/20">
                   <td className="p-3 text-lg">TOTAL</td>
                   {salesData.fuelTypes.map(fuelType => (
                     <td key={fuelType} className="text-right p-3 text-base" style={{ color: fuelTypeColors[fuelType] || '#666' }}>
                       {(salesData.totalLitersByFuelType[fuelType] || 0).toLocaleString()} L
                     </td>
                   ))}
-                  <td className="text-right p-3 text-lg text-blue-600 dark:text-blue-400">
+                  <td className="text-right p-3 text-lg text-orange-600 dark:text-orange-400">
                     {salesData.dailySales.reduce((sum, day) => sum + day.totalLiters, 0).toLocaleString()} L
                   </td>
                 </tr>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { FormCard } from '@/components/ui/FormCard'
 import { DataTable } from '@/components/ui/DataTable'
 import { Button } from '@/components/ui/button'
@@ -63,19 +63,17 @@ export default function PumpersPage() {
   })
   const { toast } = useToast()
 
-  useEffect(() => {
-    fetchPumpers()
-    fetchStations()
-    // Update formData stationId when selectedStation changes
-    if (selectedStation && !isAllStations) {
-      setFormData(prev => ({
-        ...prev,
-        stationId: selectedStation
-      }))
+  const fetchStations = useCallback(async () => {
+    try {
+      const response = await fetch('/api/stations')
+      const data = await response.json()
+      setStations(data)
+    } catch (error) {
+      console.error('Failed to fetch stations:', error)
     }
-  }, [selectedStation, isAllStations])
+  }, [])
 
-  const fetchPumpers = async () => {
+  const fetchPumpers = useCallback(async () => {
     try {
       const url = isAllStations
         ? '/api/pumpers'
@@ -130,20 +128,20 @@ export default function PumpersPage() {
         description: "Failed to fetch pumpers",
         variant: "destructive"
       })
-    } finally {
-      // setLoading(false)
     }
-  }
+  }, [isAllStations, selectedStation, toast])
 
-  const fetchStations = async () => {
-    try {
-      const response = await fetch('/api/stations')
-      const data = await response.json()
-      setStations(data)
-    } catch (error) {
-      console.error('Failed to fetch stations:', error)
+  useEffect(() => {
+    fetchPumpers()
+    fetchStations()
+    // Update formData stationId when selectedStation changes
+    if (selectedStation && !isAllStations) {
+      setFormData(prev => ({
+        ...prev,
+        stationId: selectedStation
+      }))
     }
-  }
+  }, [selectedStation, isAllStations, fetchPumpers, fetchStations])
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -366,9 +364,9 @@ export default function PumpersPage() {
 
   const getShiftColor = (shift: Pumper['shift']) => {
     switch (shift) {
-      case 'MORNING': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'MORNING': return 'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300'
       case 'EVENING': return 'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300'
-      case 'NIGHT': return 'bg-purple-500/20 text-purple-400 dark:bg-purple-600/30 dark:text-purple-300'
+      case 'NIGHT': return 'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300'
       case 'ANY': return 'bg-muted text-foreground'
       default: return 'bg-muted text-foreground'
     }
@@ -527,7 +525,7 @@ export default function PumpersPage() {
       title: 'Total Pumpers',
       value: pumpers.length.toString(),
       description: 'Registered pumpers',
-      icon: <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+      icon: <Users className="h-5 w-5 text-orange-600 dark:text-orange-400" />
     },
     {
       title: 'Active',
@@ -812,4 +810,3 @@ export default function PumpersPage() {
     </div>
   )
 }
-

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -58,7 +57,7 @@ export default function ReportsPage() {
         'Revenue trend analysis',
         'Export to PDF/Excel'
       ],
-      color: 'text-purple-600 dark:text-purple-400'
+      color: 'text-orange-600 dark:text-orange-400'
     },
     {
       title: 'Daily Sales Report (Liters)',
@@ -72,7 +71,7 @@ export default function ReportsPage() {
         'Volume trend analysis',
         'Export to PDF/Excel'
       ],
-      color: 'text-blue-600 dark:text-blue-400'
+      color: 'text-orange-600 dark:text-orange-400'
     },
     {
       title: 'Daily Profit Report',
@@ -100,7 +99,7 @@ export default function ReportsPage() {
         'Missing slip tracking',
         'Daily settlement report'
       ],
-      color: 'text-purple-600 dark:text-purple-400'
+      color: 'text-orange-600 dark:text-orange-400'
     },
     {
       title: 'Credit Customer Reports',
@@ -157,7 +156,7 @@ export default function ReportsPage() {
         'Best & worst performers',
         'Monthly trends comparison'
       ],
-      color: 'text-indigo-600 dark:text-indigo-400',
+      color: 'text-orange-600 dark:text-orange-400',
       minRole: 'OWNER'
     }
   ]
@@ -169,43 +168,9 @@ export default function ReportsPage() {
     return true
   })
 
-  const quickStats = [
-    {
-      title: 'Reports Available',
-      value: '5',
-      description: 'Comprehensive reporting modules',
-      icon: <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-    },
-    {
-      title: 'Data Sources',
-      value: '12+',
-      description: 'Integrated data points',
-      icon: <BarChart3 className="h-5 w-5 text-green-600 dark:text-green-400" />
-    },
-    {
-      title: 'Export Formats',
-      value: '4',
-      description: 'PDF, Excel, Print, Email',
-      icon: <DollarSign className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-    },
-    {
-      title: 'Real-time',
-      value: 'Live',
-      description: 'Up-to-date information',
-      icon: <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-    }
-  ]
 
-  const getRoleStyle = (minRole?: string) => {
-    switch (minRole) {
-      case 'DEVELOPER':
-        return 'border-rose-500/20 dark:border-rose-500/30 bg-rose-500/10 dark:bg-rose-500/20'
-      case 'OWNER':
-        return 'border-orange-500/20 dark:border-orange-500/30 bg-orange-500/10 dark:bg-orange-500/20'
-      default:
-        return ''
-    }
-  }
+
+
 
   const getRoleBadge = (minRole?: string) => {
     switch (minRole) {
@@ -230,7 +195,10 @@ export default function ReportsPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Reports & Analytics</h1>
+          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+            <BarChart3 className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+            Reports & Analytics
+          </h1>
           <p className="text-muted-foreground mt-2">
             Comprehensive reporting suite for business intelligence and operational insights
           </p>
@@ -252,7 +220,7 @@ export default function ReportsPage() {
                 <div className="text-xs text-muted-foreground">Comprehensive reporting modules</div>
               </div>
               <div className="flex-shrink-0">
-                <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <FileText className="h-5 w-5 text-orange-600 dark:text-orange-400" />
               </div>
             </div>
           </CardContent>
@@ -280,7 +248,7 @@ export default function ReportsPage() {
                 <div className="text-xs text-muted-foreground">PDF, Excel</div>
               </div>
               <div className="flex-shrink-0">
-                <DollarSign className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                <DollarSign className="h-5 w-5 text-orange-600 dark:text-orange-400" />
               </div>
             </div>
           </CardContent>

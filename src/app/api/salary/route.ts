@@ -125,34 +125,7 @@ export async function GET(request: NextRequest) {
       })))
     }
 
-    // Also get loans from safe transactions (loans given from safe page)
-    // Get ALL loan transactions up to end of month - loans should be tracked until paid
-    const safe = await prisma.safe.findUnique({
-      where: { stationId }
-    })
 
-    // Get all loan transactions up to end of month
-    // Note: This is a limitation - we can't track if safe loan was repaid without a separate model
-    // For now, we'll only count loans given during or before the month
-    const safeLoanTransactions = safe ? await prisma.safeTransaction.findMany({
-      where: {
-        safeId: safe.id,
-        type: 'LOAN_GIVEN',
-        timestamp: {
-          lte: endDate // Include loans given up to end of month
-        },
-        description: {
-          contains: 'pumper' // Filter for pumper loans only
-        }
-      },
-      select: {
-        id: true,
-        amount: true,
-        description: true,
-        timestamp: true,
-        loanId: true // Link to LoanPumper if exists
-      }
-    }) : []
 
     // Process salary data for each pumper
     const salaryData = pumpers.map(pumper => {

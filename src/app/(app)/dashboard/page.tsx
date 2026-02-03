@@ -100,11 +100,11 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 p-6">
       {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg p-6 text-white">
+      <div className="bg-gradient-to-r from-orange-600 to-orange-700 rounded-lg p-6 text-white">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
-            <p className="text-purple-100">
+            <p className="text-orange-100">
               {isAllStations ? 'All Stations Overview' : 'Station Operations Overview'}
             </p>
           </div>
@@ -140,7 +140,7 @@ export default function DashboardPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600">Rs. {stats.todaySales.toLocaleString()}</div>
+            <div className="text-3xl font-bold text-orange-600">Rs. {stats.todaySales.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {stats.todayTransactions} transactions
             </p>
@@ -184,7 +184,7 @@ export default function DashboardPage() {
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">Rs. {stats.safeBalance.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-orange-600">Rs. {stats.safeBalance.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground mt-1">Safe balance</p>
             <div className="mt-2 pt-2 border-t">
               <p className="text-xs font-medium text-orange-600">
@@ -237,7 +237,7 @@ export default function DashboardPage() {
             )}
             {alerts.slice(0, 5).map((alert, idx) => (
               <div key={idx} className="flex items-start gap-2 p-2 border rounded">
-                <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5" />
+                <CheckCircle2 className="h-4 w-4 text-orange-600 mt-0.5" />
                 <div className="flex-1">
                   <p className="text-sm">{alert.message}</p>
                   <p className="text-xs text-muted-foreground">{new Date(alert.createdAt).toLocaleString()}</p>
@@ -267,24 +267,24 @@ export default function DashboardPage() {
           </Button>
           <Button
             variant="outline"
-            className="h-24 flex flex-col gap-2 hover:bg-blue-50 hover:border-blue-300 dark:hover:bg-blue-950"
+            className="h-24 flex flex-col gap-2 hover:bg-orange-50 hover:border-orange-300 dark:hover:bg-orange-950"
             onClick={(e) => {
               e.preventDefault()
               router.push('/shifts/close')
             }}
           >
-            <CheckCircle2 className="h-6 w-6 text-blue-600" />
+            <CheckCircle2 className="h-6 w-6 text-orange-600" />
             <span className="text-sm font-medium">Close Shift</span>
           </Button>
           <Button
             variant="outline"
-            className="h-24 flex flex-col gap-2 hover:bg-purple-50 hover:border-purple-300 dark:hover:bg-purple-950"
+            className="h-24 flex flex-col gap-2 hover:bg-orange-50 hover:border-orange-300 dark:hover:bg-orange-950"
             onClick={(e) => {
               e.preventDefault()
               router.push('/banks')
             }}
           >
-            <CreditCard className="h-6 w-6 text-purple-600" />
+            <CreditCard className="h-6 w-6 text-orange-600" />
             <span className="text-sm font-medium">Banks</span>
           </Button>
           <Button
@@ -311,13 +311,13 @@ export default function DashboardPage() {
           </Button>
           <Button
             variant="outline"
-            className="h-24 flex flex-col gap-2 hover:bg-indigo-50 hover:border-indigo-300 dark:hover:bg-indigo-950"
+            className="h-24 flex flex-col gap-2 hover:bg-orange-50 hover:border-orange-300 dark:hover:bg-orange-950"
             onClick={(e) => {
               e.preventDefault()
               router.push('/reports')
             }}
           >
-            <FileText className="h-6 w-6 text-indigo-600" />
+            <FileText className="h-6 w-6 text-orange-600" />
             <span className="text-sm font-medium">Reports</span>
           </Button>
         </div>

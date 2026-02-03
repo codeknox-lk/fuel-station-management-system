@@ -421,7 +421,7 @@ export default function ShiftReportsPage() {
       render: (value: unknown) => {
         const numValue = typeof value === 'number' ? value : 0
         return (
-          <span className="font-semibold text-blue-600 dark:text-blue-400">
+          <span className="font-semibold text-orange-600 dark:text-orange-400">
             {numValue.toFixed(1)}L
           </span>
         )
@@ -591,10 +591,10 @@ export default function ShiftReportsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-blue-600 dark:text-blue-400">Total Sales</CardTitle>
+                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Total Sales</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-700">
+                <div className="text-2xl font-bold text-orange-700">
                   Rs. {shiftReport.nozzleReports.reduce((sum, report) => sum + report.salesAmount, 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground">
@@ -619,7 +619,7 @@ export default function ShiftReportsPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-purple-600 dark:text-purple-400">Total Variance</CardTitle>
+                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Total Variance</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className={`text-2xl font-bold ${getVarianceColor(shiftReport.variancePercentage)}`}>
@@ -710,7 +710,7 @@ export default function ShiftReportsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="text-center">
                     <div className="text-sm text-muted-foreground">Total Declared</div>
-                    <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                    <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
                       Rs. {shiftReport.tenderSummary.totalDeclared.toLocaleString()}
                     </div>
                   </div>

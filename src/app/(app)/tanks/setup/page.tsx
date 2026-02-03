@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStation } from '@/contexts/StationContext'
 import { FormCard } from '@/components/ui/FormCard'
@@ -19,7 +19,6 @@ import {
 } from '@/components/ui/select'
 import { DataTable, Column } from '@/components/ui/DataTable'
 import {
-  Settings,
   Plus,
   AlertCircle,
   CheckCircle,
@@ -75,6 +74,39 @@ export default function InfrastructureSetupPage() {
   const [nozzleLoading, setNozzleLoading] = useState(false)
 
   // Load pumps and nozzles when station changes
+
+
+  const loadPumps = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/pumps?stationId=${selectedStation}`)
+      const data = await response.json()
+      setPumps(data)
+    } catch (err) {
+      console.error('Failed to load pumps:', err)
+    }
+  }, [selectedStation])
+
+  const loadNozzles = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/nozzles?stationId=${selectedStation}`)
+      const data = await response.json()
+      setNozzles(data)
+    } catch (err) {
+      console.error('Failed to load nozzles:', err)
+    }
+  }, [selectedStation])
+
+  const loadTanks = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/tanks?stationId=${selectedStation}&type=tanks`)
+      const data = await response.json()
+      setTanks(data)
+    } catch (err) {
+      console.error('Failed to load tanks:', err)
+    }
+  }, [selectedStation])
+
+  // Load pumps and nozzles when station changes
   useEffect(() => {
     if (selectedStation) {
       loadPumps()
@@ -85,37 +117,7 @@ export default function InfrastructureSetupPage() {
       setNozzles([])
       setTanks([])
     }
-  }, [selectedStation])
-
-  const loadPumps = async () => {
-    try {
-      const response = await fetch(`/api/pumps?stationId=${selectedStation}`)
-      const data = await response.json()
-      setPumps(data)
-    } catch (err) {
-      console.error('Failed to load pumps:', err)
-    }
-  }
-
-  const loadNozzles = async () => {
-    try {
-      const response = await fetch(`/api/nozzles?stationId=${selectedStation}`)
-      const data = await response.json()
-      setNozzles(data)
-    } catch (err) {
-      console.error('Failed to load nozzles:', err)
-    }
-  }
-
-  const loadTanks = async () => {
-    try {
-      const response = await fetch(`/api/tanks?stationId=${selectedStation}&type=tanks`)
-      const data = await response.json()
-      setTanks(data)
-    } catch (err) {
-      console.error('Failed to load tanks:', err)
-    }
-  }
+  }, [selectedStation, loadPumps, loadNozzles, loadTanks])
 
   const handleCreatePump = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -204,7 +206,7 @@ export default function InfrastructureSetupPage() {
       title: 'Pump Number',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <Wrench className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <Wrench className="h-4 w-4 text-orange-600 dark:text-orange-400" />
           <span className="font-semibold">{value as string}</span>
         </div>
       )
@@ -237,7 +239,7 @@ export default function InfrastructureSetupPage() {
       title: 'Pump',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <Wrench className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <Wrench className="h-4 w-4 text-orange-600 dark:text-orange-400" />
           <span className="font-medium">{(value as { pumpNumber: string }).pumpNumber}</span>
         </div>
       )

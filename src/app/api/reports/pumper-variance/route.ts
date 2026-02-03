@@ -120,7 +120,6 @@ export async function GET(request: NextRequest) {
         pumperData.totalShifts += 1
 
         const variance = breakdown.variance || 0
-        const varianceStatus = breakdown.varianceStatus || 'NORMAL'
         const varianceThreshold = 20 // Threshold for considering it a variance
 
         if (Math.abs(variance) > varianceThreshold) {

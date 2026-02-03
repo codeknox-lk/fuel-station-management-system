@@ -2,11 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
     CreateUserSchema,
     CreatePumperSchema,
-    CreateOfficeStaffSchema,
-    CreateSafeTransactionSchema,
-    RoleEnum,
-    PumperStatusEnum,
-    SafeTransactionTypeEnum
+    CreateSafeTransactionSchema
 } from './schemas'
 
 describe('Zod Schema Validation', () => {

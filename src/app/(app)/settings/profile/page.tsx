@@ -240,8 +240,8 @@ export default function ProfilePage() {
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'OWNER': return 'bg-purple-500/20 text-purple-400 dark:bg-purple-600/30 dark:text-purple-300'
-      case 'MANAGER': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'OWNER': return 'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300'
+      case 'MANAGER': return 'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300'
       case 'ACCOUNTS': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
       default: return 'bg-muted text-foreground'
     }
@@ -264,7 +264,10 @@ export default function ProfilePage() {
           Back
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Profile Settings</h1>
+          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+            <User className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+            Profile Settings
+          </h1>
           <p className="text-muted-foreground mt-1">
             Manage your account information and security settings
           </p>

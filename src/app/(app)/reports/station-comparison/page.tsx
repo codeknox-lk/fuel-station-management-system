@@ -287,7 +287,7 @@ export default function StationComparisonPage() {
             </p>
           </div>
         </div>
-        <Badge variant="default" className="bg-indigo-600">Owner Only</Badge>
+        <Badge variant="default" className="bg-orange-600">Owner Only</Badge>
       </div>
 
       {/* Error Display */}
@@ -399,7 +399,7 @@ export default function StationComparisonPage() {
                 <p className="text-sm text-muted-foreground">Total Stations</p>
                 <p className="text-2xl font-bold">{stations.length}</p>
               </div>
-              <Building2 className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+              <Building2 className="h-8 w-8 text-orange-600 dark:text-orange-400" />
             </div>
           </CardContent>
         </Card>
@@ -435,7 +435,7 @@ export default function StationComparisonPage() {
                 <p className="text-sm text-muted-foreground">Total Profit</p>
                 <p className="text-2xl font-bold">Rs. {totalAcrossStations.profit.toLocaleString()}</p>
               </div>
-              <TrendingUp className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+              <TrendingUp className="h-8 w-8 text-orange-600 dark:text-orange-400" />
             </div>
           </CardContent>
         </Card>
@@ -554,11 +554,11 @@ export default function StationComparisonPage() {
       </FormCard>
 
       {/* Info Box */}
-      <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+      <Card className="bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-blue-900 dark:text-blue-100">
+            <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-orange-900 dark:text-orange-100">
               <p className="font-semibold mb-1">About This Report:</p>
               <ul className="list-disc list-inside space-y-1">
                 <li>Shows real-time data from your database</li>

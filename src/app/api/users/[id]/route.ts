@@ -61,7 +61,7 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { name, username, email, password, role, stationId, status } = body
+    const { username, email, password, role, stationId, status } = body
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({

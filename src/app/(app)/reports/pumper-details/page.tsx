@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useStation } from '@/contexts/StationContext'
 import { useRouter } from 'next/navigation'
-import { getCurrentBusinessMonth, formatBusinessMonthRange } from '@/lib/businessMonth'
+import { getCurrentBusinessMonth } from '@/lib/businessMonth'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -25,15 +25,12 @@ import {
   Users,
   TrendingUp,
   Fuel,
-  AlertCircle,
   ArrowLeft,
   RefreshCw,
   Download,
   AlertTriangle,
-  Clock,
   DollarSign,
   Award,
-  CreditCard,
   FileText,
   FileSpreadsheet
 } from 'lucide-react'
@@ -49,69 +46,78 @@ interface ActiveLoan {
   createdAt: string
 }
 
-interface PumperReport {
+interface PumperDetail {
+  id: string
+  name: string
+  code: string
+  status: string
+  employeeId: string
+  phoneNumber: string
+  address: string
+  nic: string
+  baseSalary: number
+  holidayAllowance: number
+  epfNumber: string
+  totalShifts: number
+  totalSales: number
+  totalLiters: number
+  averageSalesPerShift: number
+  averageLitersPerShift: number
+  totalVariance: number
+  shiftsWithVariance: number
+  varianceRate: number
+  performanceRating: 'EXCELLENT' | 'GOOD' | 'NEEDS_IMPROVEMENT' | 'CRITICAL'
+  totalLoanBalance: number
+  totalMonthlyRental: number
+  advanceLimit: number
+  activeLoansCount: number
+  totalSalaryPaid: number
+  totalShortage: number
+  shortageCount: number
+  totalAllowance: number
+  totalAdvances: number
+  activeLoans: ActiveLoan[]
+  loanTotal: number
+  attendanceDays: number
+  performanceScore: number
+  lastActive: string
+  fuelTypeBreakdown: Array<{
+    fuelName: string
+    liters: number
+    shifts: number
+  }>
+  recentSalaryPayments: Array<{
+    id: string
+    paymentDate: string
+    baseSalary: number
+    varianceAdd: number
+    varianceDeduct: number
+    advances: number
+    loans: number
+    netSalary: number
+  }>
+}
+
+interface ReportData {
   summary: {
-    // ... (unchanged)
     totalPumpers: number
+    activePumpers: number
     totalShifts: number
     totalSales: number
     totalLiters: number
-    averageSalesPerPumper: number
+    totalShortages: number
+    totalAllowances: number
+    avgPerformance: number
+    activeLoansCount: number
+    totalSalaryPaid: number
     excellentPerformers: number
     goodPerformers: number
     needsImprovement: number
     criticalPerformers: number
     totalActiveLoans: number
     totalLoanBalance: number
-    totalSalaryPaid: number
   }
-  pumperDetails: Array<{
-    id: string
-    name: string
-    employeeId: string
-    phoneNumber: string
-    address: string
-    nic: string
-    baseSalary: number
-    holidayAllowance: number
-    epfNumber: string
-    totalShifts: number
-    totalSales: number
-    totalLiters: number
-    averageSalesPerShift: number
-    averageLitersPerShift: number
-    totalVariance: number
-    shiftsWithVariance: number
-    varianceRate: number
-    performanceRating: 'EXCELLENT' | 'GOOD' | 'NEEDS_IMPROVEMENT' | 'CRITICAL'
-    totalLoanBalance: number
-    totalMonthlyRental: number
-    advanceLimit: number
-    activeLoansCount: number
-    totalSalaryPaid: number
-    totalAdvances: number
-    totalLoanDeductions: number
-    recentSalaryPayments: Array<{
-      id: string
-      paymentDate: string
-      baseSalary: number
-      varianceAdd: number
-      varianceDeduct: number
-      advances: number
-      loans: number
-      netSalary: number
-    }>
-    activeLoans: Array<ActiveLoan>
-    fuelTypeBreakdown: Array<{
-      fuelName: string
-      liters: number
-      shifts: number
-    }>
-  }>
-  dateRange: {
-    start: string
-    end: string
-  }
+  pumperDetails: PumperDetail[]
 }
 
 const months = [
@@ -129,9 +135,9 @@ const months = [
   { value: '12', label: 'December' }
 ]
 
-const performanceColors = {
+const performanceColors: Record<PumperDetail['performanceRating'], string> = {
   EXCELLENT: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400',
-  GOOD: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400',
+  GOOD: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-400',
   NEEDS_IMPROVEMENT: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-400',
   CRITICAL: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400'
 }
@@ -143,12 +149,12 @@ const formatFuelName = (fuelName: string): string => {
     .join(' ')
 }
 
-export default function PumperDetailsReportPage() {
+export default function PumperDetailsReport() {
+  const { stations, selectedStation } = useStation()
   const router = useRouter()
-  const { selectedStation, stations } = useStation()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [reportData, setReportData] = useState<PumperReport | null>(null)
+  const [reportData, setReportData] = useState<ReportData | null>(null)
   const [selectedPumper, setSelectedPumper] = useState<string>('all')
 
   // Month selection
@@ -189,13 +195,7 @@ export default function PumperDetailsReportPage() {
     exportPumperDetailsReportExcel(exportData, stationName, monthLabel)
   }
 
-  useEffect(() => {
-    if (selectedStation) {
-      fetchReport()
-    }
-  }, [selectedStation, selectedYear, selectedMonth])
-
-  const fetchReport = async () => {
+  const fetchReport = useCallback(async () => {
     if (!selectedStation) {
       setError('Please select a station')
       return
@@ -216,24 +216,29 @@ export default function PumperDetailsReportPage() {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
-        console.error('API Error:', errorData)
-        throw new Error(errorData.details || errorData.error || 'Failed to fetch pumper report')
+        throw new Error(errorData.error || 'Failed to fetch report')
       }
 
       const data = await res.json()
       setReportData(data)
     } catch (err) {
-      console.error('Error fetching pumper report:', err)
+      console.error('Error fetching pumper details:', err)
       setError(err instanceof Error ? err.message : 'Failed to load report')
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedStation, selectedYear, selectedMonth])
+
+  useEffect(() => {
+    if (selectedStation) {
+      fetchReport()
+    }
+  }, [selectedStation, selectedYear, selectedMonth, fetchReport])
 
   if (loading && !reportData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 dark:border-orange-400"></div>
       </div>
     )
   }
@@ -360,10 +365,10 @@ export default function PumperDetailsReportPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <Users className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                   <h3 className="text-sm font-semibold text-muted-foreground">Total Pumpers</h3>
                 </div>
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                   {reportData.summary.totalPumpers}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -390,14 +395,14 @@ export default function PumperDetailsReportPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Award className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  <Award className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                   <h3 className="text-sm font-semibold text-muted-foreground">Performance</h3>
                 </div>
                 <div className="flex gap-1 mt-2">
                   <Badge className="bg-green-100 text-green-700 text-xs">
                     {reportData.summary.excellentPerformers} Excellent
                   </Badge>
-                  <Badge className="bg-blue-100 text-blue-700 text-xs">
+                  <Badge className="bg-orange-100 text-orange-700 text-xs">
                     {reportData.summary.goodPerformers} Good
                   </Badge>
                 </div>
@@ -450,7 +455,7 @@ export default function PumperDetailsReportPage() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Advance Limit</Label>
-                <p className="font-medium text-blue-600">Rs. {selectedPumperData.advanceLimit.toLocaleString()}</p>
+                <p className="font-medium text-orange-600">Rs. {selectedPumperData.advanceLimit.toLocaleString()}</p>
               </div>
             </div>
           </FormCard>
@@ -475,7 +480,7 @@ export default function PumperDetailsReportPage() {
             <Card>
               <CardContent className="p-4">
                 <h3 className="text-sm font-semibold text-muted-foreground mb-2">Total Liters</h3>
-                <p className="text-3xl font-bold text-blue-600">{selectedPumperData.totalLiters.toLocaleString()} L</p>
+                <p className="text-3xl font-bold text-orange-600">{selectedPumperData.totalLiters.toLocaleString()} L</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Avg: {selectedPumperData.averageLitersPerShift.toLocaleString()} L/shift
                 </p>
@@ -501,7 +506,7 @@ export default function PumperDetailsReportPage() {
                 <Card key={fuel.fuelName}>
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-2">
-                      <Fuel className="h-4 w-4 text-purple-600" />
+                      <Fuel className="h-4 w-4 text-orange-600" />
                       <h3 className="text-sm font-semibold">{formatFuelName(fuel.fuelName)}</h3>
                     </div>
                     <p className="text-2xl font-bold">{fuel.liters.toLocaleString()} L</p>
@@ -606,7 +611,7 @@ export default function PumperDetailsReportPage() {
                         <td className="text-right p-3 text-red-600">
                           -Rs. {payment.loans.toLocaleString()}
                         </td>
-                        <td className="text-right p-3 font-semibold text-blue-600">
+                        <td className="text-right p-3 font-semibold text-orange-600">
                           Rs. {payment.netSalary.toLocaleString()}
                         </td>
                       </tr>

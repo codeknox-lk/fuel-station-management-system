@@ -236,7 +236,7 @@ export default function PumperVariancePage() {
   const getPerformanceColor = (rating: string) => {
     switch (rating) {
       case 'EXCELLENT': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
-      case 'GOOD': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'GOOD': return 'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300'
       case 'NEEDS_IMPROVEMENT': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
       case 'CRITICAL': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
       default: return 'bg-muted text-foreground'
@@ -255,7 +255,7 @@ export default function PumperVariancePage() {
 
   const getVarianceRateColor = (rate: number) => {
     if (rate <= 5) return 'text-green-600 dark:text-green-400'
-    if (rate <= 15) return 'text-blue-600 dark:text-blue-400'
+    if (rate <= 15) return 'text-orange-600 dark:text-orange-400'
     if (rate <= 30) return 'text-yellow-600 dark:text-yellow-400'
     return 'text-red-600 dark:text-red-400'
   }
@@ -472,10 +472,10 @@ export default function PumperVariancePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-blue-600 dark:text-blue-400">Total Pumpers</CardTitle>
+                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Total Pumpers</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-700">{totalPumpers}</div>
+                <div className="text-2xl font-bold text-orange-700">{totalPumpers}</div>
                 <div className="text-xs text-muted-foreground">Active this month</div>
               </CardContent>
             </Card>
@@ -502,10 +502,10 @@ export default function PumperVariancePage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-purple-600 dark:text-purple-400">Total Variance</CardTitle>
+                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Total Variance</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-purple-700">
+                <div className="text-2xl font-bold text-orange-700">
                   Rs. {totalVarianceAmount.toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground">All pumpers combined</div>
@@ -545,7 +545,7 @@ export default function PumperVariancePage() {
                     <Badge className="bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300">
                       {excellentPumpers} Excellent
                     </Badge>
-                    <Badge className="bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300">
+                    <Badge className="bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300">
                       {pumperVariances.filter(p => p.performanceRating === 'GOOD').length} Good
                     </Badge>
                     <Badge className="bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300">
@@ -558,7 +558,7 @@ export default function PumperVariancePage() {
                 </div>
                 <div className="text-center">
                   <div className="text-lg font-semibold text-muted-foreground">Recovery Rate</div>
-                  <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                  <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">
                     {((totalDueAmount / totalVarianceAmount) * 100).toFixed(0)}%
                   </div>
                   <div className="text-sm text-muted-foreground">Expected recovery</div>

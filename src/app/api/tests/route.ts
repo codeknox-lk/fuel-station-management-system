@@ -7,7 +7,6 @@ export async function POST(request: NextRequest) {
         const {
             shiftId,
             nozzleId,
-            tankId,
             litres,
             reason,
             testTime,

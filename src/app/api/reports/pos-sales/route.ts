@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     // Parse dates or use defaults (current business month)
     let dateStart: Date
     let dateEnd: Date
-    
+
     if (startDate && endDate) {
       dateStart = new Date(startDate)
       dateStart.setHours(0, 0, 0, 0)
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
       // Default to current business month (7th to 6th)
       const now = new Date()
       const currentDay = now.getDate()
-      
+
       if (currentDay < 7) {
         dateStart = new Date(now.getFullYear(), now.getMonth() - 1, 7, 0, 0, 0, 0)
         dateEnd = new Date(now.getFullYear(), now.getMonth(), 6, 23, 59, 59, 999)
@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
     // Calculate statistics
     let totalSales = 0
     let totalTransactions = 0
-    
+
     const bankSales = new Map<string, {
       bankName: string
       totalAmount: number
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
       qr: number
       dialogTouch: number
     }>()
-    
+
     const terminalSales = new Map<string, {
       terminalId: string
       terminalName: string
@@ -138,13 +138,13 @@ export async function GET(request: NextRequest) {
       })
       currentDate.setDate(currentDate.getDate() + 1)
     }
-    
+
     // Daily breakdown by Bank (for multi-line chart)
     const dailyByBank = new Map<string, Map<string, number>>() // bankId -> date -> amount
-    
+
     // Daily breakdown by Terminal/POS Machine
     const dailyByTerminal = new Map<string, Map<string, number>>() // terminalId -> date -> amount
-    
+
     // Get unique banks from terminals
     const uniqueBanks = new Map<string, string>() // bankId -> bankName
     for (const terminal of posTerminals) {
@@ -152,9 +152,9 @@ export async function GET(request: NextRequest) {
         uniqueBanks.set(terminal.bankId, terminal.bank.name)
       }
     }
-    
+
     // Initialize daily by bank maps for all banks
-    for (const [bankId, bankName] of uniqueBanks.entries()) {
+    for (const [bankId] of uniqueBanks.entries()) {
       const bankDailyMap = new Map<string, number>()
       const currentDate = new Date(dateStart)
       while (currentDate <= dateEnd) {
@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
       }
       dailyByBank.set(bankId, bankDailyMap)
     }
-    
+
     // Initialize daily by terminal maps for all terminals
     for (const terminal of posTerminals) {
       const terminalDailyMap = new Map<string, number>()
@@ -181,7 +181,7 @@ export async function GET(request: NextRequest) {
     for (const batch of batches) {
       const batchDate = new Date(batch.shift.endTime || batch.shift.startTime)
       const dateKey = `${batchDate.getFullYear()}-${String(batchDate.getMonth() + 1).padStart(2, '0')}-${String(batchDate.getDate()).padStart(2, '0')}`
-      
+
       for (const entry of batch.terminalEntries) {
         const entryTotal = entry.visaAmount + entry.masterAmount + entry.amexAmount + entry.qrAmount + entry.dialogTouchAmount
         totalSales += entryTotal
@@ -193,7 +193,7 @@ export async function GET(request: NextRequest) {
           dayData.totalAmount += entryTotal
           dayData.transactionCount += entry.transactionCount
         }
-        
+
         // Daily breakdown by bank
         const bankId = entry.terminal.bankId || 'unknown'
         if (dailyByBank.has(bankId)) {
@@ -203,7 +203,7 @@ export async function GET(request: NextRequest) {
             bankDaily.set(dateKey, currentAmount + entryTotal)
           }
         }
-        
+
         // Daily breakdown by terminal
         if (dailyByTerminal.has(entry.terminalId)) {
           const terminalDaily = dailyByTerminal.get(entry.terminalId)!
@@ -215,7 +215,7 @@ export async function GET(request: NextRequest) {
 
         // By bank (for summary)
         const bankName = entry.terminal.bank?.name || 'Unknown Bank'
-        
+
         if (!bankSales.has(bankId)) {
           bankSales.set(bankId, {
             bankName,
@@ -228,7 +228,7 @@ export async function GET(request: NextRequest) {
             dialogTouch: 0
           })
         }
-        
+
         const bankData = bankSales.get(bankId)!
         bankData.totalAmount += entryTotal
         bankData.transactionCount += entry.transactionCount
@@ -255,7 +255,7 @@ export async function GET(request: NextRequest) {
             dialogTouch: 0
           })
         }
-        
+
         const terminalData = terminalSales.get(terminalKey)!
         terminalData.totalAmount += entryTotal
         terminalData.transactionCount += entry.transactionCount
@@ -275,13 +275,13 @@ export async function GET(request: NextRequest) {
     // Convert maps to arrays
     const bankBreakdown = Array.from(bankSales.values())
       .sort((a, b) => b.totalAmount - a.totalAmount)
-    
+
     const terminalBreakdown = Array.from(terminalSales.values())
       .sort((a, b) => b.totalAmount - a.totalAmount)
 
     const dailyBreakdownArray = Array.from(dailyBreakdown.values())
       .sort((a, b) => a.date.localeCompare(b.date))
-    
+
     // Build daily by bank array (for multi-line chart)
     const dailyByBankArray = Array.from(uniqueBanks.entries()).map(([bankId, bankName]) => ({
       bankId,
@@ -290,7 +290,7 @@ export async function GET(request: NextRequest) {
         .map(([date, amount]) => ({ date, amount }))
         .sort((a, b) => a.date.localeCompare(b.date))
     }))
-    
+
     // Build daily by terminal array (for daily table view)
     const dailyByTerminalArray = Array.from(terminalSales.values()).map(terminal => ({
       terminalId: terminal.terminalId,
@@ -334,7 +334,7 @@ export async function GET(request: NextRequest) {
     console.error('[POS Sales] ERROR:', error)
     console.error('[POS Sales] Stack:', error instanceof Error ? error.stack : 'No stack trace')
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to fetch POS sales report',
         details: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined

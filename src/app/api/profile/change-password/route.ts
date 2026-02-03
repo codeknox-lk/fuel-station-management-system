@@ -8,7 +8,7 @@ export async function PUT(request: NextRequest) {
   try {
     // Get authorization header
     const authHeader = request.headers.get('authorization')
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
         { detail: 'Authorization header missing or invalid' },
@@ -23,7 +23,7 @@ export async function PUT(request: NextRequest) {
     let decoded: JwtPayload | string
     try {
       decoded = jwt.verify(token, getJwtSecret()) as JwtPayload
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { detail: 'Invalid or expired token' },
         { status: 401 }
@@ -62,7 +62,7 @@ export async function PUT(request: NextRequest) {
 
     // Verify current password
     let passwordValid = false
-    
+
     // Check if password is hashed (bcrypt hashes start with $2a$, $2b$, or $2y$)
     if (user.password.startsWith('$2')) {
       // Password is hashed with bcrypt

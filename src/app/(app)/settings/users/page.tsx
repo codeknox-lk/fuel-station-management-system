@@ -33,6 +33,8 @@ interface Station {
   name: string
 }
 
+
+
 export default function UsersPage() {
   const router = useRouter()
   const [users, setUsers] = useState<SystemUser[]>([])
@@ -77,10 +79,7 @@ export default function UsersPage() {
   // Filter users based on current user's role
   const filteredUsers = users.filter(user => manageableRoles.includes(user.role))
 
-  useEffect(() => {
-    fetchUsers()
-    fetchStations()
-  }, [])
+
 
   const fetchStations = useCallback(async () => {
     try {
@@ -196,7 +195,8 @@ export default function UsersPage() {
       })
 
       fetchUsers()
-    } catch (_error) {
+    } catch (error) {
+      console.error('Failed to delete user:', error)
       toast({
         title: "Error",
         description: "Failed to delete user",
@@ -282,8 +282,8 @@ export default function UsersPage() {
   const getRoleColor = (role: SystemUser['role']) => {
     switch (role) {
       case 'DEVELOPER': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
-      case 'OWNER': return 'bg-purple-500/20 text-purple-400 dark:bg-purple-600/30 dark:text-purple-300'
-      case 'MANAGER': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'OWNER': return 'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300'
+      case 'MANAGER': return 'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300'
       case 'ACCOUNTS': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
       default: return 'bg-muted text-foreground'
     }
@@ -432,7 +432,7 @@ export default function UsersPage() {
       title: 'Total Users',
       value: filteredUsers.length.toString(),
       description: 'System users',
-      icon: <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+      icon: <Users className="h-5 w-5 text-orange-600 dark:text-orange-400" />
     },
     {
       title: 'Active',
@@ -444,13 +444,13 @@ export default function UsersPage() {
       title: 'Owners',
       value: filteredUsers.filter(u => u.role === 'OWNER').length.toString(),
       description: 'System owners',
-      icon: <Crown className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+      icon: <Crown className="h-5 w-5 text-orange-600 dark:text-orange-400" />
     },
     {
       title: 'Managers',
       value: filteredUsers.filter(u => u.role === 'MANAGER').length.toString(),
       description: 'Station managers',
-      icon: <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+      icon: <Shield className="h-5 w-5 text-orange-600 dark:text-orange-400" />
     }
   ]
 

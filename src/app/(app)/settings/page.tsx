@@ -7,7 +7,7 @@ import {
   Building2,
   CreditCard,
   Clock,
-  DollarSign,
+
   Monitor,
   Users,
   Settings as SettingsIcon,
@@ -36,7 +36,7 @@ export default function SettingsPage() {
   const userRole = typeof window !== 'undefined' ? localStorage.getItem('userRole') : null
   const isDeveloper = userRole === 'DEVELOPER'
   const isOwner = userRole === 'OWNER' || isDeveloper // Developer provides Owner access too
-  const isManager = userRole === 'MANAGER' || isOwner
+
 
   const settings: SettingCard[] = [
     {
@@ -51,7 +51,7 @@ export default function SettingsPage() {
         'Location and contact details',
         'Operating hours configuration'
       ],
-      color: 'text-blue-600 dark:text-blue-400',
+      color: 'text-orange-600 dark:text-orange-400',
       minRole: 'DEVELOPER'
     },
     {
@@ -65,7 +65,7 @@ export default function SettingsPage() {
         'Shift preferences and assignments',
         'Performance ratings and specializations'
       ],
-      color: 'text-indigo-600'
+      color: 'text-orange-600'
     },
     {
       title: 'Office Staff',
@@ -104,7 +104,7 @@ export default function SettingsPage() {
         'Break configurations',
         'Template assignments'
       ],
-      color: 'text-purple-600 dark:text-purple-400'
+      color: 'text-orange-600 dark:text-orange-400'
     },
     {
       title: 'Fuels',
@@ -157,7 +157,7 @@ export default function SettingsPage() {
         'Combined tolerance rules',
         'Alert configurations'
       ],
-      color: 'text-indigo-600',
+      color: 'text-orange-600',
       minRole: 'OWNER'
     },
     {
@@ -216,7 +216,10 @@ export default function SettingsPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">System Settings</h1>
+          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+            <SettingsIcon className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+            System Settings
+          </h1>
           <p className="text-muted-foreground mt-2">
             Configure system parameters, manage master data, and control access permissions
           </p>
@@ -289,7 +292,7 @@ export default function SettingsPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-                <Database className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <Database className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                 Data Management
               </h4>
               <ul className="text-sm text-muted-foreground space-y-1">

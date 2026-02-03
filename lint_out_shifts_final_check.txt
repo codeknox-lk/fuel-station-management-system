@@ -1,0 +1,4 @@
+﻿
+> shed-admin@0.1.0 lint
+> eslint src/app/(app)/shifts/[id]/page.tsx
+

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useStation } from '@/contexts/StationContext'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -197,15 +197,13 @@ export default function ShiftsPage() {
     return Object.values(filters).filter(value => value !== '' && value !== 'all').length
   }
 
-  useEffect(() => {
-    fetchShifts()
-  }, [selectedStation])
+
 
   useEffect(() => {
     setFilteredShifts(shifts)
   }, [shifts])
 
-  const fetchShifts = async () => {
+  const fetchShifts = useCallback(async () => {
     try {
       setLoading(true)
       const url = isAllStations
@@ -284,7 +282,11 @@ export default function ShiftsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [isAllStations, selectedStation])
+
+  useEffect(() => {
+    fetchShifts()
+  }, [selectedStation, fetchShifts])
 
   const shiftColumns = [
     {
@@ -292,7 +294,7 @@ export default function ShiftsPage() {
       title: 'Station',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <div className="h-2 w-2 bg-blue-600 dark:bg-blue-400 rounded-full"></div>
+          <div className="h-2 w-2 bg-orange-600 dark:bg-orange-400 rounded-full"></div>
           <span className="font-medium">{value as string}</span>
         </div>
       )
@@ -388,7 +390,7 @@ export default function ShiftsPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 dark:border-purple-400"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 dark:border-orange-400"></div>
       </div>
     )
   }
@@ -398,7 +400,10 @@ export default function ShiftsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Shift Management</h1>
+          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+            <Clock className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+            Shift Management
+          </h1>
           <p className="text-muted-foreground mt-1">
             {isAllStations
               ? 'Manage shifts across all stations, assignments, and operations'
@@ -438,7 +443,7 @@ export default function ShiftsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Today&apos;s Shifts</CardTitle>
-            <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <Calendar className="h-4 w-4 text-orange-600 dark:text-orange-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.todayShifts}</div>
@@ -449,7 +454,7 @@ export default function ShiftsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
-            <TrendingUp className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+            <TrendingUp className="h-4 w-4 text-orange-600 dark:text-orange-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">Rs. {stats.totalSales.toLocaleString()}</div>

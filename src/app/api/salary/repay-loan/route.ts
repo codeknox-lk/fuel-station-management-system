@@ -38,8 +38,7 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      // 2. Handle Safe Transaction if pumper belongs to a station
-      let safeTransaction = null
+      // 2. Handle Safe Transaction if pumper belongs to      // 2. Handle Safe Transaction if pumper belongs to a station
       if (updatedLoan.stationId) {
         // Find safe for the station
         const safe = await tx.safe.findUnique({
@@ -52,7 +51,7 @@ export async function POST(request: NextRequest) {
           const balanceAfter = balanceBefore + loan.amount
 
           // Create safe transaction
-          safeTransaction = await tx.safeTransaction.create({
+          await tx.safeTransaction.create({
             data: {
               safeId: safe.id,
               type: 'LOAN_REPAID',

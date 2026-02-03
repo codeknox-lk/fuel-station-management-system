@@ -100,22 +100,22 @@ interface PumpReading {
 
 export default function TankDipsPage() {
   const router = useRouter()
-  const { selectedStation, isAllStations } = useStation()
+  const { selectedStation } = useStation()
   const { toast } = useToast()
 
   const [tanks, setTanks] = useState<Tank[]>([])
   const [recentDips, setRecentDips] = useState<TankDip[]>([])
   const [loading, setLoading] = useState(true)
-  const [date, setDate] = useState<Date>(new Date())
+  // const [date, setDate] = useState<Date>(new Date())
 
   // Tip: dipDepth was missing
   const [selectedTank, setSelectedTank] = useState<string>('')
   const [dipDepth, setDipDepth] = useState('')
 
   // Dialog states
-  const [isAddDipOpen, setIsAddDipOpen] = useState(false)
-  const [isEditDipOpen, setIsEditDipOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  // const [isAddDipOpen, setIsAddDipOpen] = useState(false)
+  // const [isEditDipOpen, setIsEditDipOpen] = useState(false)
+  // const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   const [dipLitres, setDipLitres] = useState('')
   const [dipTime, setDipTime] = useState<Date | undefined>(new Date())
@@ -510,7 +510,7 @@ export default function TankDipsPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-              <Droplets className="h-8 w-8 text-blue-600" />
+              <Droplets className="h-8 w-8 text-orange-600" />
               Tank Dips
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
@@ -567,7 +567,7 @@ export default function TankDipsPage() {
               if (selectedTankData) {
                 const systemLevel = selectedTankData.currentLevel || 0
                 return (
-                  <Card key={`tank-stock-${selectedTankData.id}-${systemLevel}`} className="bg-blue-500/5 border-blue-500/20">
+                  <Card key={`tank-stock-${selectedTankData.id}-${systemLevel}`} className="bg-orange-500/5 border-orange-500/20">
                     <CardContent className="pt-6">
                       <div className="flex items-center justify-between">
                         <div>
@@ -582,7 +582,7 @@ export default function TankDipsPage() {
                             </div>
                           )}
                         </div>
-                        <Droplets className="h-12 w-12 text-blue-600 opacity-20" />
+                        <Droplets className="h-12 w-12 text-orange-600 opacity-20" />
                       </div>
                     </CardContent>
                   </Card>

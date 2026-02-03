@@ -73,10 +73,10 @@ interface POSBatch {
 }
 
 const cardSchemes = [
-  { key: 'visa', label: 'Visa', color: 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300' },
+  { key: 'visa', label: 'Visa', color: 'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300' },
   { key: 'mastercard', label: 'Mastercard', color: 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300' },
   { key: 'amex', label: 'American Express', color: 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300' },
-  { key: 'qr', label: 'QR Payments', color: 'bg-purple-500/20 text-purple-400 dark:bg-purple-600/30 dark:text-purple-300' }
+  { key: 'qr', label: 'QR Payments', color: 'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300' }
 ]
 
 export default function POSBatchesPage() {
@@ -118,12 +118,13 @@ export default function POSBatchesPage() {
         setTerminals(terminalsData)
         setRecentBatches(batchesData)
       } catch (error) {
+        console.error(error)
         setError('Failed to load initial data')
       }
     }
 
     loadData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [])
 
   // Filter terminals by selected station
@@ -196,6 +197,7 @@ export default function POSBatchesPage() {
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000)
     } catch (error) {
+      console.error(error)
       setError('Failed to create POS batch')
     } finally {
       setLoading(false)
@@ -251,7 +253,7 @@ export default function POSBatchesPage() {
       title: 'Visa',
       render: (value: unknown) => (
         <div className="flex items-center gap-1">
-          <Badge className="bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300 text-xs">VISA</Badge>
+          <Badge className="bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300 text-xs">VISA</Badge>
           <span className="font-mono text-xs">
             {(value as number)?.toLocaleString() || '0'}
           </span>
@@ -275,7 +277,7 @@ export default function POSBatchesPage() {
       title: 'QR',
       render: (value: unknown) => (
         <div className="flex items-center gap-1">
-          <Badge className="bg-purple-500/20 text-purple-400 dark:bg-purple-600/30 dark:text-purple-300 text-xs">QR</Badge>
+          <Badge className="bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300 text-xs">QR</Badge>
           <span className="font-mono text-xs">
             {(value as number)?.toLocaleString() || '0'}
           </span>

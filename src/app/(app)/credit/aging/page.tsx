@@ -87,7 +87,7 @@ export default function CreditAgingPage() {
         const response = await fetch('/api/stations?active=true')
         const stationsData = await response.json()
         setStations(stationsData)
-      } catch (err) {
+      } catch {
         setError('Failed to load stations')
       }
     }
@@ -145,7 +145,7 @@ export default function CreditAgingPage() {
 
       setSummary(agingSummary)
 
-    } catch (err) {
+    } catch {
       setError('Failed to generate aging report')
     } finally {
       setLoading(false)
@@ -255,8 +255,8 @@ export default function CreditAgingPage() {
           <div className="flex items-center gap-1">
             <Clock className="h-4 w-4 text-muted-foreground" />
             <span className={`font-semibold ${days > 90 ? 'text-red-600 dark:text-red-400' :
-                days > 60 ? 'text-orange-600 dark:text-orange-400' :
-                  days > 30 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'
+              days > 60 ? 'text-orange-600 dark:text-orange-400' :
+                days > 30 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'
               }`}>
               {days} days
             </span>
@@ -340,6 +340,7 @@ export default function CreditAgingPage() {
               value={reportDate}
               onChange={(e) => setReportDate(e.target.value)}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              title="Report Date"
               disabled={loading}
             />
           </div>

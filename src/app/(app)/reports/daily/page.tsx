@@ -346,7 +346,7 @@ export default function DailyReportsPage() {
       key: 'visaAmount' as keyof POSTerminalBreakdown,
       title: 'Visa',
       render: (value: unknown) => (
-        <span className="text-sm text-blue-600">
+        <span className="text-sm text-orange-600">
           Rs. {(value as number).toLocaleString()}
         </span>
       )
@@ -373,7 +373,7 @@ export default function DailyReportsPage() {
       key: 'qrAmount' as keyof POSTerminalBreakdown,
       title: 'QR',
       render: (value: unknown) => (
-        <span className="text-sm text-purple-600">
+        <span className="text-sm text-orange-600">
           Rs. {(value as number).toLocaleString()}
         </span>
       )
@@ -477,7 +477,7 @@ export default function DailyReportsPage() {
       key: 'paymentReceived' as keyof CreditCustomerBreakdown,
       title: 'Payment Received',
       render: (value: unknown) => (
-        <span className="font-semibold text-blue-600">
+        <span className="font-semibold text-orange-600">
           Rs. {(value as number).toLocaleString()}
         </span>
       )
@@ -600,7 +600,7 @@ export default function DailyReportsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <BarChart3 className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+            <BarChart3 className="h-8 w-8 text-orange-600 dark:text-orange-400" />
             Daily Sales Report
           </h1>
           <p className="text-muted-foreground mt-1">
@@ -721,12 +721,12 @@ export default function DailyReportsPage() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-blue-600" />
+                  <Clock className="h-4 w-4 text-orange-600" />
                   Shifts Closed
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-blue-600">
+                <div className="text-3xl font-bold text-orange-600">
                   {dailyReport.shiftCount}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
@@ -737,12 +737,12 @@ export default function DailyReportsPage() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-purple-600" />
+                  <TrendingUp className="h-4 w-4 text-orange-600" />
                   Avg Transaction
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-purple-600">
+                <div className="text-3xl font-bold text-orange-600">
                   Rs. {Math.round(dailyReport.averageTransaction).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
@@ -779,9 +779,9 @@ export default function DailyReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                <div className="p-4 bg-orange-500/10 rounded-lg border border-orange-500/20">
                   <div className="text-sm text-muted-foreground mb-1">Petrol 92</div>
-                  <div className="text-xl font-bold text-blue-600">
+                  <div className="text-xl font-bold text-orange-600">
                     Rs. {dailyReport.petrolSales.toLocaleString()}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
@@ -806,9 +806,9 @@ export default function DailyReportsPage() {
                     {((dailyReport.superDieselSales / dailyReport.totalSales) * 100).toFixed(1)}%
                   </div>
                 </div>
-                <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                <div className="p-4 bg-orange-500/10 rounded-lg border border-orange-500/20">
                   <div className="text-sm text-muted-foreground mb-1">Oil & Can</div>
-                  <div className="text-xl font-bold text-purple-600">
+                  <div className="text-xl font-bold text-orange-600">
                     Rs. {(dailyReport.oilSales + dailyReport.canSales).toLocaleString()}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
@@ -851,12 +851,12 @@ export default function DailyReportsPage() {
                     {dailyReport.cashPercentage.toFixed(1)}% of total
                   </div>
                 </div>
-                <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                <div className="p-4 bg-orange-500/10 rounded-lg border border-orange-500/20">
                   <div className="flex items-center gap-2 mb-2">
-                    <CreditCard className="h-4 w-4 text-blue-600" />
+                    <CreditCard className="h-4 w-4 text-orange-600" />
                     <span className="text-sm font-medium">Card (POS)</span>
                   </div>
-                  <div className="text-2xl font-bold text-blue-600">
+                  <div className="text-2xl font-bold text-orange-600">
                     Rs. {dailyReport.cardAmount.toLocaleString()}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
@@ -875,12 +875,12 @@ export default function DailyReportsPage() {
                     {dailyReport.creditPercentage.toFixed(1)}% of total
                   </div>
                 </div>
-                <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                <div className="p-4 bg-orange-500/10 rounded-lg border border-orange-500/20">
                   <div className="flex items-center gap-2 mb-2">
-                    <Receipt className="h-4 w-4 text-purple-600" />
+                    <Receipt className="h-4 w-4 text-orange-600" />
                     <span className="text-sm font-medium">Cheque</span>
                   </div>
-                  <div className="text-2xl font-bold text-purple-600">
+                  <div className="text-2xl font-bold text-orange-600">
                     Rs. {dailyReport.chequeAmount.toLocaleString()}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
@@ -912,9 +912,9 @@ export default function DailyReportsPage() {
               {/* POS Summary */}
               <div className="mt-4 pt-4 border-t">
                 <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                  <div className="text-center p-3 bg-blue-500/10 rounded-lg">
+                  <div className="text-center p-3 bg-orange-500/10 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">Total Visa</div>
-                    <div className="font-bold text-blue-600">
+                    <div className="font-bold text-orange-600">
                       Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.visaAmount, 0).toLocaleString()}
                     </div>
                   </div>
@@ -930,9 +930,9 @@ export default function DailyReportsPage() {
                       Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.amexAmount, 0).toLocaleString()}
                     </div>
                   </div>
-                  <div className="text-center p-3 bg-purple-500/10 rounded-lg">
+                  <div className="text-center p-3 bg-orange-500/10 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">Total QR</div>
-                    <div className="font-bold text-purple-600">
+                    <div className="font-bold text-orange-600">
                       Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.qrAmount, 0).toLocaleString()}
                     </div>
                   </div>
@@ -980,15 +980,15 @@ export default function DailyReportsPage() {
                       Rs. {dailyReport.totalCreditSales.toLocaleString()}
                     </div>
                   </div>
-                  <div className="p-3 bg-blue-500/10 rounded-lg">
+                  <div className="p-3 bg-orange-500/10 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">Total Payments Received</div>
-                    <div className="font-bold text-blue-600 text-lg">
+                    <div className="font-bold text-orange-600 text-lg">
                       Rs. {dailyReport.creditCustomers.reduce((sum, c) => sum + c.paymentReceived, 0).toLocaleString()}
                     </div>
                   </div>
-                  <div className="p-3 bg-purple-500/10 rounded-lg">
+                  <div className="p-3 bg-orange-500/10 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">Active Customers</div>
-                    <div className="font-bold text-purple-600 text-lg">
+                    <div className="font-bold text-orange-600 text-lg">
                       {dailyReport.creditCustomers.length}
                     </div>
                   </div>
@@ -1024,9 +1024,9 @@ export default function DailyReportsPage() {
               {/* Cheque Summary */}
               <div className="mt-4 pt-4 border-t">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-3 bg-purple-500/10 rounded-lg">
+                  <div className="p-3 bg-orange-500/10 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">Total Cheques</div>
-                    <div className="font-bold text-purple-600 text-lg">
+                    <div className="font-bold text-orange-600 text-lg">
                       Rs. {dailyReport.totalChequeAmount.toLocaleString()}
                     </div>
                   </div>
@@ -1071,15 +1071,15 @@ export default function DailyReportsPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-blue-500/20 bg-blue-500/5">
+            <Card className="border-orange-500/20 bg-orange-500/5">
               <CardHeader>
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-blue-600" />
+                  <Building2 className="h-4 w-4 text-orange-600" />
                   Bank Deposits
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-600">
+                <div className="text-2xl font-bold text-orange-600">
                   Rs. {dailyReport.totalDeposits.toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">

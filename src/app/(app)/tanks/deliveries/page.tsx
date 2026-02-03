@@ -195,7 +195,8 @@ export default function TankDeliveriesPage() {
           const response = await fetch(`/api/tanks?stationId=${selectedStation}&type=tanks`)
           const tanksData = await response.json()
           setTanks(tanksData)
-        } catch (_err) {
+        } catch (err) {
+          console.error('Failed to load tanks:', err)
           toast({
             title: "Error",
             description: "Failed to load tanks",
@@ -548,7 +549,7 @@ export default function TankDeliveriesPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-              <Truck className="h-8 w-8 text-blue-600" />
+              <Truck className="h-8 w-8 text-orange-600" />
               Fuel Deliveries
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
@@ -701,14 +702,14 @@ export default function TankDeliveriesPage() {
                   const tank = tanks.find(t => t.id === selectedTank)
                   if (tank) {
                     return (
-                      <Card className="bg-blue-500/5 border-blue-500/20">
+                      <Card className="bg-orange-500/5 border-orange-500/20">
                         <CardContent className="pt-6">
                           <div className="flex items-center justify-between">
                             <div>
                               <div className="text-sm text-muted-foreground mb-1">Current System Stock</div>
                               <div className="text-2xl font-bold">{tank.currentLevel.toLocaleString()}L</div>
                             </div>
-                            <Droplets className="h-12 w-12 text-blue-600 opacity-20" />
+                            <Droplets className="h-12 w-12 text-orange-600 opacity-20" />
                           </div>
                         </CardContent>
                       </Card>
@@ -719,23 +720,23 @@ export default function TankDeliveriesPage() {
 
                 {/* Before Dip Section */}
                 {!showBeforeDip ? (
-                  <Card className="border-blue-500/50 bg-blue-500/10">
+                  <Card className="border-orange-500/50 bg-orange-500/10">
                     <CardContent className="pt-6">
                       <div className="flex items-start gap-4">
                         <div className="flex-shrink-0">
-                          <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
-                            <Droplets className="h-5 w-5 text-blue-600" />
+                          <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center">
+                            <Droplets className="h-5 w-5 text-orange-600" />
                           </div>
                         </div>
                         <div className="flex-1">
-                          <h3 className="text-lg font-semibold text-blue-600 mb-2">Step 1: Take Before Dip</h3>
-                          <p className="text-sm text-blue-600/80 mb-4">
+                          <h3 className="text-lg font-semibold text-orange-600 mb-2">Step 1: Take Before Dip</h3>
+                          <p className="text-sm text-orange-600/80 mb-4">
                             Before the delivery arrives, measure the physical tank level. This is the starting point for calculating actual received quantity.
                           </p>
                           <Button
                             type="button"
                             variant="outline"
-                            className="border-blue-500/30 hover:bg-blue-500/20"
+                            className="border-orange-500/30 hover:bg-orange-500/20"
                             onClick={handleTakeBeforeDip}
                             disabled={!selectedTank}
                           >
@@ -752,14 +753,14 @@ export default function TankDeliveriesPage() {
                     </CardContent>
                   </Card>
                 ) : (
-                  <Card className="border-blue-500/30 bg-blue-500/5">
+                  <Card className="border-orange-500/30 bg-orange-500/5">
                     <CardHeader>
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-sm font-bold text-blue-600">
+                        <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center text-sm font-bold text-orange-600">
                           1
                         </div>
                         <div>
-                          <CardTitle className="text-blue-600">Before Delivery Dip Reading</CardTitle>
+                          <CardTitle className="text-orange-600">Before Delivery Dip Reading</CardTitle>
                           <CardDescription>
                             Measured at: {beforeDipTime.toLocaleString()}
                           </CardDescription>
@@ -770,7 +771,7 @@ export default function TankDeliveriesPage() {
                       {/* Active Shifts Check */}
                       {loadingShifts ? (
                         <div className="text-center py-4">
-                          <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-blue-600" />
+                          <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-orange-600" />
                           <p className="text-sm text-muted-foreground">Checking for active shifts...</p>
                         </div>
                       ) : activeShifts.length > 0 ? (() => {
@@ -1007,7 +1008,7 @@ export default function TankDeliveriesPage() {
                               </div>
                               <div className="flex justify-between items-center pt-2 border-t font-semibold">
                                 <span>Expected Level:</span>
-                                <span className="text-purple-600">
+                                <span className="text-orange-600">
                                   {expectedLevel.toLocaleString()}L
                                   <span className="text-xs text-muted-foreground ml-1">
                                     (~{expectedDepth.toFixed(1)}cm)
@@ -1195,14 +1196,14 @@ export default function TankDeliveriesPage() {
               </div>
 
               {/* Step 1: Before Delivery - Info Card */}
-              <Card className="border-blue-500/50 bg-blue-500/5">
+              <Card className="border-orange-500/50 bg-orange-500/5">
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">
+                    <div className="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold">
                       1
                     </div>
                     <div>
-                      <CardTitle className="text-blue-600">Before Delivery</CardTitle>
+                      <CardTitle className="text-orange-600">Before Delivery</CardTitle>
                       <CardDescription>Recorded when delivery truck arrived</CardDescription>
                     </div>
                   </div>
@@ -1216,7 +1217,7 @@ export default function TankDeliveriesPage() {
                     </div>
                     <div className="p-3 bg-background rounded-lg">
                       <div className="text-xs text-muted-foreground mb-1">Before Dip Reading</div>
-                      <div className="font-mono font-bold text-xl text-blue-600">{verifyingDelivery.beforeDipReading?.toLocaleString() || '-'}L</div>
+                      <div className="font-mono font-bold text-xl text-orange-600">{verifyingDelivery.beforeDipReading?.toLocaleString() || '-'}L</div>
                     </div>
                     <div className="p-3 bg-background rounded-lg">
                       <div className="text-xs text-muted-foreground mb-1">Fuel Sold (Before Dip)</div>
@@ -1309,7 +1310,7 @@ export default function TankDeliveriesPage() {
                                         </div>
                                         <div className="text-right">
                                           <div className="text-xs text-muted-foreground">Before Dip Meter</div>
-                                          <div className="font-semibold text-blue-600">{beforeDipMeter.toLocaleString()}L</div>
+                                          <div className="font-semibold text-orange-600">{beforeDipMeter.toLocaleString()}L</div>
                                         </div>
                                       </div>
 
@@ -1465,13 +1466,13 @@ export default function TankDeliveriesPage() {
 
 
                 return (
-                  <Card className="bg-purple-500/5 border-purple-500/30">
+                  <Card className="bg-orange-500/5 border-orange-500/30">
                     <CardHeader>
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold">
+                        <div className="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold">
                           ✓
                         </div>
-                        <CardTitle className="text-purple-600">Verification & Stock Update</CardTitle>
+                        <CardTitle className="text-orange-600">Verification & Stock Update</CardTitle>
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -1494,7 +1495,7 @@ export default function TankDeliveriesPage() {
                             </div>
                             <div className="flex justify-between items-center pt-2 border-t font-bold text-base">
                               <span>Expected After Dip:</span>
-                              <span className="font-mono text-purple-600">{(verifyingDelivery.beforeDipReading + verifyingDelivery.invoiceQuantity - fuelSoldDuring).toLocaleString()}L</span>
+                              <span className="font-mono text-orange-600">{(verifyingDelivery.beforeDipReading + verifyingDelivery.invoiceQuantity - fuelSoldDuring).toLocaleString()}L</span>
                             </div>
                           </div>
                         </div>
@@ -1505,14 +1506,14 @@ export default function TankDeliveriesPage() {
                             <div className="text-xs text-muted-foreground mb-1">After Dip (Physical)</div>
                             <div className="font-mono font-bold text-2xl text-green-600">{parseFloat(afterDipReading).toLocaleString()}L</div>
                           </div>
-                          <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/30">
+                          <div className="p-4 bg-orange-500/10 rounded-lg border border-orange-500/30">
                             <div className="text-xs text-muted-foreground mb-1">Expected After Dip</div>
-                            <div className="font-mono font-bold text-2xl text-purple-600">{(verifyingDelivery.beforeDipReading + verifyingDelivery.invoiceQuantity - fuelSoldDuring).toLocaleString()}L</div>
+                            <div className="font-mono font-bold text-2xl text-orange-600">{(verifyingDelivery.beforeDipReading + verifyingDelivery.invoiceQuantity - fuelSoldDuring).toLocaleString()}L</div>
                           </div>
                         </div>
 
                         {/* Actual Received Calculation */}
-                        <div className="bg-blue-500/10 p-4 rounded-lg border-2 border-blue-500/30">
+                        <div className="bg-orange-500/10 p-4 rounded-lg border-2 border-orange-500/30">
                           <div className="text-sm font-semibold text-muted-foreground mb-3">Actual Quantity Received:</div>
                           <div className="space-y-1 text-sm mb-3">
                             <div className="flex justify-between">
@@ -1530,7 +1531,7 @@ export default function TankDeliveriesPage() {
                           </div>
                           <div className="flex justify-between items-center pt-3 border-t">
                             <span className="font-bold">Actual Received:</span>
-                            <span className="font-mono font-bold text-3xl text-blue-600">{actualReceived.toLocaleString()}L</span>
+                            <span className="font-mono font-bold text-3xl text-orange-600">{actualReceived.toLocaleString()}L</span>
                           </div>
                         </div>
 

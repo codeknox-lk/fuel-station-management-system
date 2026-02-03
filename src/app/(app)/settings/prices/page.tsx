@@ -428,7 +428,7 @@ export default function FuelsPage() {
         // Future price
         if (priceDate > now) {
           return (
-            <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+            <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300">
               Scheduled
             </Badge>
           )
@@ -564,9 +564,9 @@ export default function FuelsPage() {
                     />
                   </div>
 
-                  <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg">
+                  <div className="bg-orange-50 dark:bg-orange-950/30 p-4 rounded-lg">
                     <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4 text-blue-600" />
+                      <AlertCircle className="h-4 w-4 text-orange-600" />
                       Preview
                     </h4>
                     <div className="flex items-center gap-3 bg-white dark:bg-gray-900 p-3 rounded border">

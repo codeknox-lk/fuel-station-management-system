@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { FormCard } from '@/components/ui/FormCard'
 import { DataTable } from '@/components/ui/DataTable'
 import { Button } from '@/components/ui/button'
@@ -48,11 +48,7 @@ export default function ShiftTemplatesPage() {
   const { toast } = useToast()
   const { selectedStation, isAllStations } = useStation()
 
-  useEffect(() => {
-    fetchTemplates()
-  }, [selectedStation])
-
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     try {
       console.log('Fetching templates for station:', selectedStation)
 
@@ -91,10 +87,12 @@ export default function ShiftTemplatesPage() {
         description: "Failed to fetch shift templates",
         variant: "destructive"
       })
-    } finally {
-      // setLoading(false)
     }
-  }
+  }, [selectedStation, isAllStations, toast])
+
+  useEffect(() => {
+    fetchTemplates()
+  }, [selectedStation, fetchTemplates])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -240,7 +238,7 @@ export default function ShiftTemplatesPage() {
       case 'coffee':
         return <Coffee className="h-4 w-4 text-orange-600 dark:text-orange-400" />
       case 'moon':
-        return <Moon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        return <Moon className="h-4 w-4 text-orange-600 dark:text-orange-400" />
       default:
         return <Sun className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
     }
@@ -357,7 +355,7 @@ export default function ShiftTemplatesPage() {
       title: 'Total Templates',
       value: templates.length.toString(),
       description: 'Shift templates',
-      icon: <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+      icon: <Clock className="h-5 w-5 text-orange-600 dark:text-orange-400" />
     },
     {
       title: 'Active',
@@ -377,7 +375,7 @@ export default function ShiftTemplatesPage() {
         }, 0) / templates.length / 60)}h`
         : '0h',
       description: 'Average shift length',
-      icon: <Coffee className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+      icon: <Coffee className="h-5 w-5 text-orange-600 dark:text-orange-400" />
     }
   ]
 
@@ -508,11 +506,11 @@ export default function ShiftTemplatesPage() {
                     type="button"
                     onClick={() => setFormData({ ...formData, icon: 'moon' })}
                     className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${formData.icon === 'moon'
-                      ? 'border-blue-600 bg-blue-600/10 dark:border-blue-400 dark:bg-blue-400/10'
-                      : 'border-border hover:border-blue-600/50 dark:hover:border-blue-400/50'
+                      ? 'border-orange-600 bg-orange-600/10 dark:border-orange-400 dark:bg-orange-400/10'
+                      : 'border-border hover:border-orange-600/50 dark:hover:border-orange-400/50'
                       }`}
                   >
-                    <Moon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                    <Moon className="h-6 w-6 text-orange-600 dark:text-orange-400" />
                     <span className="text-xs font-medium">Night</span>
                   </button>
                 </div>

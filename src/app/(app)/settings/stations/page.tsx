@@ -246,7 +246,7 @@ export default function StationsPage() {
       title: 'Total Stations',
       value: stationsList.length.toString(),
       description: 'Registered stations',
-      icon: <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+      icon: <Building2 className="h-5 w-5 text-orange-600 dark:text-orange-400" />
     },
     {
       title: 'Active',

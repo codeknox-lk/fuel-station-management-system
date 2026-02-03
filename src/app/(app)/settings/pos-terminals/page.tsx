@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { FormCard } from '@/components/ui/FormCard'
 import { DataTable } from '@/components/ui/DataTable'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Monitor, Plus, Edit, Trash2, Building2, Wifi, CreditCard } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
@@ -63,13 +63,7 @@ export default function POSTerminalsPage() {
   })
   const { toast } = useToast()
 
-  useEffect(() => {
-    fetchTerminals()
-    fetchStations()
-    fetchBanks()
-  }, [selectedStation]) // Re-fetch when station changes
-
-  const fetchTerminals = async () => {
+  const fetchTerminals = useCallback(async () => {
     try {
       // Build URL with stationId filter
       const url = isAllStations
@@ -88,9 +82,9 @@ export default function POSTerminalsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [isAllStations, selectedStation, toast])
 
-  const fetchStations = async () => {
+  const fetchStations = useCallback(async () => {
     try {
       const response = await fetch('/api/stations')
       const data = await response.json()
@@ -98,9 +92,9 @@ export default function POSTerminalsPage() {
     } catch (error) {
       console.error('Failed to fetch stations:', error)
     }
-  }
+  }, [])
 
-  const fetchBanks = async () => {
+  const fetchBanks = useCallback(async () => {
     try {
       const response = await fetch('/api/banks')
       const data = await response.json()
@@ -109,7 +103,13 @@ export default function POSTerminalsPage() {
       console.error('Failed to fetch banks:', error)
       setBanks([])
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchTerminals()
+    fetchStations()
+    fetchBanks()
+  }, [selectedStation, fetchTerminals, fetchStations, fetchBanks])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -135,6 +135,7 @@ export default function POSTerminalsPage() {
       resetForm()
       fetchTerminals()
     } catch (error) {
+      console.error('Failed to save terminal:', error)
       toast({
         title: "Error",
         description: `Failed to ${editingTerminal ? 'update' : 'create'} POS terminal`,
@@ -172,6 +173,7 @@ export default function POSTerminalsPage() {
 
       fetchTerminals()
     } catch (error) {
+      console.error('Failed to delete terminal:', error)
       toast({
         title: "Error",
         description: "Failed to delete POS terminal",
@@ -288,7 +290,7 @@ export default function POSTerminalsPage() {
       title: 'Total Terminals',
       value: safeTerminals.length.toString(),
       description: 'Registered terminals',
-      icon: <Monitor className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+      icon: <Monitor className="h-5 w-5 text-orange-600 dark:text-orange-400" />
     },
     {
       title: 'Active',
@@ -452,6 +454,7 @@ export default function POSTerminalsPage() {
           data={safeTerminals}
           columns={columns}
           searchPlaceholder="Search terminals..."
+          loading={loading}
         />
       </FormCard>
     </div>

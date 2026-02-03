@@ -318,7 +318,7 @@ export default function TankReportPage() {
                     {/* Opening Stock */}
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-1 mb-1">
-                        <Droplets className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <Droplets className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                         <span className="font-medium">Opening</span>
                       </div>
                       <div className="text-lg">{tank.openingStock.toLocaleString()}L</div>
@@ -345,10 +345,10 @@ export default function TankReportPage() {
                     {/* Test Returns */}
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-1 mb-1">
-                        <TestTube className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                        <TestTube className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                         <span className="font-medium">Test Returns</span>
                       </div>
-                      <div className="text-lg text-purple-600 dark:text-purple-400">+{tank.testReturns.toLocaleString()}L</div>
+                      <div className="text-lg text-orange-600 dark:text-orange-400">+{tank.testReturns.toLocaleString()}L</div>
                     </div>
 
                     {/* Book Stock */}
@@ -363,7 +363,7 @@ export default function TankReportPage() {
                     {/* Dip Stock */}
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-1 mb-1">
-                        <Droplets className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <Droplets className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                         <span className="font-medium">Dip Stock</span>
                       </div>
                       <div className="text-lg font-semibold">{tank.closingDipStock.toLocaleString()}L</div>

@@ -11,15 +11,11 @@ import {
   Briefcase,
   ArrowLeft,
   Download,
-  CheckCircle,
+
   CreditCard,
   Settings
 } from 'lucide-react'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+
 
 interface OfficeStaffSalaryData {
   id: string
@@ -75,13 +71,9 @@ export default function OfficeStaffSalaryDetailsPage() {
   const [success, setSuccess] = useState('')
   const [salaryData, setSalaryData] = useState<OfficeStaffSalaryData | null>(null)
 
-  useEffect(() => {
-    if (selectedStation && staffId && month) {
-      fetchSalaryData()
-    }
-  }, [selectedStation, staffId, month])
 
-  const fetchSalaryData = async () => {
+
+  const fetchSalaryData = useCallback(async () => {
     if (!selectedStation || !staffId || !month) return
 
     try {
@@ -135,7 +127,13 @@ export default function OfficeStaffSalaryDetailsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedStation, staffId, month, staffName, employeeId])
+
+  useEffect(() => {
+    if (selectedStation && staffId && month) {
+      fetchSalaryData()
+    }
+  }, [selectedStation, staffId, month, fetchSalaryData])
 
   // Parse month safely (format: YYYY-MM)
   const monthParts = month.split('-')
@@ -146,7 +144,7 @@ export default function OfficeStaffSalaryDetailsPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 dark:border-purple-400"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 dark:border-orange-400"></div>
       </div>
     )
   }
@@ -186,7 +184,7 @@ export default function OfficeStaffSalaryDetailsPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-              <Briefcase className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+              <Briefcase className="h-8 w-8 text-orange-600 dark:text-orange-400" />
               Monthly Salary Report
             </h1>
             <p className="text-muted-foreground mt-1">
@@ -217,12 +215,12 @@ export default function OfficeStaffSalaryDetailsPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-blue-600" />
+              <DollarSign className="h-4 w-4 text-orange-600" />
               Base Salary
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-2xl font-bold text-orange-600">
               Rs. {salaryData.baseSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </CardContent>

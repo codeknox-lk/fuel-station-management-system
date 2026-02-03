@@ -28,13 +28,7 @@ interface Bank {
   isActive: boolean
 }
 
-interface BankAccount {
-  id: string
-  bankId: string
-  accountNumber: string
-  accountName: string
-  isActive: boolean
-}
+
 
 interface BankSelectorProps {
   selectedBankId?: string

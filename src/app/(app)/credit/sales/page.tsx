@@ -30,7 +30,7 @@ import {
   AlertCircle,
   CheckCircle,
   Plus,
-  Clock
+
 } from 'lucide-react'
 
 interface Station {
@@ -120,7 +120,7 @@ export default function CreditSalesPage() {
           availableCredit: customer.creditLimit - customer.currentBalance
         })))
         setRecentSales(salesData)
-      } catch (err) {
+      } catch {
         setError('Failed to load initial data')
       }
     }
@@ -199,7 +199,7 @@ export default function CreditSalesPage() {
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000)
 
-    } catch (err) {
+    } catch {
       setError('Failed to record credit sale')
     } finally {
       setLoading(false)
@@ -373,8 +373,8 @@ export default function CreditSalesPage() {
                 </SelectContent>
               </Select>
               {selectedCustomerData && (
-                <div className="mt-2 p-2 bg-blue-500/10 dark:bg-blue-500/20 rounded-md">
-                  <div className="text-xs text-blue-700">
+                <div className="mt-2 p-2 bg-orange-500/10 dark:bg-orange-500/20 rounded-md">
+                  <div className="text-xs text-orange-700">
                     <div>Credit Limit: Rs. {selectedCustomerData.creditLimit.toLocaleString()}</div>
                     <div>Current Balance: Rs. {selectedCustomerData.currentBalance.toLocaleString()}</div>
                     <div className="font-semibold">Available: Rs. {selectedCustomerData.availableCredit.toLocaleString()}</div>

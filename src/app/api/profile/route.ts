@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import jwt, { JwtPayload } from 'jsonwebtoken'
-import bcrypt from 'bcrypt'
+
 import { getJwtSecret } from '@/lib/jwt'
 
 export async function GET(request: NextRequest) {
   try {
     // Get authorization header
     const authHeader = request.headers.get('authorization')
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
         { detail: 'Authorization header missing or invalid' },
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     let decoded: JwtPayload | string
     try {
       decoded = jwt.verify(token, getJwtSecret()) as JwtPayload
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { detail: 'Invalid or expired token' },
         { status: 401 }
@@ -81,7 +81,7 @@ export async function PUT(request: NextRequest) {
   try {
     // Get authorization header
     const authHeader = request.headers.get('authorization')
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
         { detail: 'Authorization header missing or invalid' },
@@ -96,7 +96,7 @@ export async function PUT(request: NextRequest) {
     let decoded: JwtPayload | string
     try {
       decoded = jwt.verify(token, getJwtSecret()) as JwtPayload
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { detail: 'Invalid or expired token' },
         { status: 401 }

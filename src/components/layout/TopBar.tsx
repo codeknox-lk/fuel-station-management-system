@@ -1,6 +1,7 @@
+
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { useStation } from '@/contexts/StationContext'
@@ -19,10 +20,7 @@ import {
   ChevronDown,
   Building2,
   AlertTriangle,
-  Fuel,
-  CreditCard,
   Clock,
-  TrendingDown,
   Sun,
   Moon,
   Monitor,
@@ -63,8 +61,7 @@ export function TopBar({ userRole }: TopBarProps) {
   const { theme, setTheme } = useTheme()
   const router = useRouter()
 
-  // Load notifications from API
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     try {
       setIsLoadingNotifications(true)
       const params = new URLSearchParams()
@@ -183,7 +180,7 @@ export function TopBar({ userRole }: TopBarProps) {
       setTotalUnreadCount(0)
       setIsLoadingNotifications(false)
     }
-  }
+  }, [selectedStation])
 
   // Load notifications on mount and when station changes
   useEffect(() => {
@@ -192,7 +189,7 @@ export function TopBar({ userRole }: TopBarProps) {
     // Auto-refresh every 30 seconds (for real-time updates)
     const interval = setInterval(loadNotifications, 30 * 1000)
     return () => clearInterval(interval)
-  }, [selectedStation])
+  }, [selectedStation, loadNotifications])
 
   // Listen for notification updates from other pages
   useEffect(() => {
@@ -207,7 +204,7 @@ export function TopBar({ userRole }: TopBarProps) {
       window.removeEventListener('notificationRead', handleNotificationUpdate)
       window.removeEventListener('notificationUpdated', handleNotificationUpdate)
     }
-  }, [])
+  }, [loadNotifications])
 
   // Use the total unread count from API, not the count of loaded notifications
   const unreadCount = totalUnreadCount

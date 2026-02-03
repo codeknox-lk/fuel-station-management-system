@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { auditOperations } from '@/lib/auditMiddleware'
+
 import { CreateTankSchema } from '@/lib/schemas'
 
 export async function GET(request: NextRequest) {

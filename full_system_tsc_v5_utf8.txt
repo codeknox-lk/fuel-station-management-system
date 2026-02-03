@@ -1,0 +1,1 @@
+﻿src/app/api/tenders/shift/[shiftId]/route.ts(286,57): error TS7006: Parameter 'a' implicitly has an 'any' type.

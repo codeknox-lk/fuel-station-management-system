@@ -78,26 +78,7 @@ interface PosTerminal {
   }
 }
 
-interface TenderSummary {
-  totalSales: number
-  totalDeclared: number
-  variance: number
-  varianceClassification: {
-    variance: number
-    variancePercentage: number
-    isNormal: boolean
-    tolerance: number
-  }
-  salesBreakdown?: {
-    totalPumpSales: number
-    totalCanSales: number
-    totalLitres: number
-    oilSales?: {
-      totalAmount: number
-      salesCount: number
-    }
-  }
-}
+
 
 interface PumperCheque {
   id: string
@@ -191,7 +172,7 @@ export default function CloseShiftPage() {
   const [creditCustomers, setCreditCustomers] = useState<Array<{ id: string; name: string; creditLimit: number; currentBalance: number }>>([])
   const [banks, setBanks] = useState<Array<{ id: string; name: string; branch?: string; accountNumber?: string }>>([])
   const [pumpers, setPumpers] = useState<Pumper[]>([])
-  const [nozzles, setNozzles] = useState<Array<{ id: string; nozzleNumber: string; pumpNumber?: string; fuelType?: string; pumpId?: string; tankId?: string }>>([])
+  const [nozzles] = useState<Array<{ id: string; nozzleNumber: string; pumpNumber?: string; fuelType?: string; pumpId?: string; tankId?: string }>>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -202,11 +183,11 @@ export default function CloseShiftPage() {
   const [endTime, setEndTime] = useState<Date>(new Date())
 
   // Tender summary (calculated from pumper-wise data)
-  const [tenderSummary, setTenderSummary] = useState<TenderSummary | null>(null)
+
 
   // Pumper-wise breakdown
   const [pumperDeclaredCash, setPumperDeclaredCash] = useState<Record<string, number>>({}) // pumperName -> cash amount
-  const [pumperDeclaredCardAmounts, setPumperDeclaredCardAmounts] = useState<Record<string, Record<string, number>>>({}) // pumperName -> {terminalId -> amount}
+  const [pumperDeclaredCardAmounts] = useState<Record<string, Record<string, number>>>({}) // pumperName -> {terminalId -> amount}
   const [pumperDeclaredCreditAmounts, setPumperDeclaredCreditAmounts] = useState<Record<string, Record<string, number>>>({}) // pumperName -> {customerId -> amount}
   const [pumperDeclaredCheques, setPumperDeclaredCheques] = useState<Record<string, PumperCheque[]>>({}) // pumperName -> cheques array
   const [pumperAdvances, setPumperAdvances] = useState<Record<string, number>>({}) // pumperName -> advance amount
@@ -631,59 +612,7 @@ export default function CloseShiftPage() {
     }
   }, [selectedShift, assignments, selectedStation, pumperDeclaredCash, pumperDeclaredCardAmounts, pumperDeclaredCreditAmounts, pumperDeclaredCheques, pumperAdvances, otherPumperAdvances, pumperExpenses, posSlips, missingSlips])
 
-  // Calculate tender summary from pumper-wise data
-  useEffect(() => {
-    if (selectedShift && assignments.length > 0 && pumperBreakdowns.length > 0) {
-      const calculateSummary = async () => {
-        try {
-          // Aggregate totals from pumper-wise breakdown
-          const totalCash = pumperBreakdowns.reduce((sum, b) => sum + b.declaredCash, 0)
-          const totalCard = pumperBreakdowns.reduce((sum: number, b: PumperBreakdown) => {
-            const amounts = Object.values(b.declaredCardAmounts) as number[]
-            return sum + amounts.reduce((cardSum: number, amount: number) => cardSum + amount, 0)
-          }, 0)
-          const totalCredit = pumperBreakdowns.reduce((sum: number, b: PumperBreakdown) => {
-            const amounts = Object.values(b.declaredCreditAmounts) as number[]
-            return sum + amounts.reduce((creditSum: number, amount: number) => creditSum + amount, 0)
-          }, 0)
-          const totalCheque = pumperBreakdowns.reduce((sum, b) => sum + b.declaredCheque, 0)
-          const totalDeclared = totalCash + totalCard + totalCredit + totalCheque
 
-          // Prepare assignments with all required data for API calculation
-          const assignmentsForApi = assignments.map((assignment) => ({
-            id: assignment.id,
-            nozzleId: assignment.nozzleId,
-            startMeterReading: assignment.startMeterReading,
-            endMeterReading: assignment.endMeterReading,
-            canSales: assignment.canSales || 0,
-            pumpSales: assignment.pumpSales || 0,
-            fuelType: assignment.nozzle?.tank?.fuel?.name || null
-          }))
-
-          const assignmentsParam = encodeURIComponent(JSON.stringify(assignmentsForApi))
-          const res = await fetch(
-            `/api/tenders/shift/${selectedShift}?cashAmount=${totalCash}&cardAmount=${totalCard}&creditAmount=${totalCredit}&chequeAmount=${totalCheque}&assignments=${assignmentsParam}`
-          )
-
-          if (!res.ok) {
-            const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
-            console.error('Failed to fetch summary:', res.status, errorData)
-            return
-          }
-
-          const summary = await res.json()
-          setTenderSummary(summary)
-        } catch (err) {
-          console.error('Failed to calculate summary:', err)
-        }
-      }
-
-      const timeoutId = setTimeout(calculateSummary, 100)
-      return () => clearTimeout(timeoutId)
-    } else {
-      setTenderSummary(null)
-    }
-  }, [selectedShift, assignments, pumperBreakdowns])
 
   const handleUpdateAssignment = (assignmentId: string | number, field: 'endMeterReading' | 'canSales', value: number) => {
     setAssignments(prev =>
@@ -871,24 +800,7 @@ export default function CloseShiftPage() {
   }
 
   // POS Terminal Verification Handlers
-  // Check if a card was already used on the same day with SAME card type AND terminal
-  const checkDuplicateCard = (pumperName: string, lastFourDigits: string, cardType: string, terminalId: string, slipIdToExclude?: string): boolean => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
 
-    const slips = posSlips[pumperName] || []
-    return slips.some(slip => {
-      if (slip.id === slipIdToExclude) return false
-      const slipDate = new Date(slip.timestamp)
-      slipDate.setHours(0, 0, 0, 0)
-
-      // Check for duplicate: same last 4 digits + same card type + same terminal + same day
-      return slip.lastFourDigits === lastFourDigits
-        && slip.cardType === cardType
-        && slip.terminalId === terminalId
-        && slipDate.getTime() === today.getTime()
-    })
-  }
 
   // Get duplicate card details (returns the existing slip if duplicate found)
   const getDuplicateCardDetails = (pumperName: string, lastFourDigits: string, cardType: string, terminalId: string, slipIdToExclude?: string): POSSlipEntry | null => {
@@ -1556,7 +1468,7 @@ export default function CloseShiftPage() {
 
           // Create credit sale for each customer with amount > 0
           const creditSalePromises = Object.entries(allCreditEntries)
-            .filter(([_, amount]) => amount > 0)
+            .filter(([, amount]) => amount > 0)
             .map(async ([customerId, amount]) => {
               // Calculate liters from amount and price
               const liters = pricePerLiter > 0 ? amount / pricePerLiter : 0
@@ -2086,7 +1998,7 @@ export default function CloseShiftPage() {
       render: (_value: unknown, row: Assignment) => {
         const pumpSales = row.pumpSales ?? 0
         return (
-          <span className="font-mono text-blue-600 dark:text-blue-400">
+          <span className="font-mono text-orange-600 dark:text-orange-400">
             {pumpSales.toLocaleString()}
           </span>
         )
@@ -2112,7 +2024,7 @@ export default function CloseShiftPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
-        <Clock className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+        <Clock className="h-6 w-6 text-orange-600 dark:text-orange-400" />
         <h1 className="text-2xl font-bold">Close Shift</h1>
       </div>
 
@@ -2130,10 +2042,10 @@ export default function CloseShiftPage() {
 
       <FormCard title="Shift Selection" description="Select the station and shift to close">
         {/* Display current station */}
-        <div className="mb-4 p-3 bg-blue-500/10 dark:bg-blue-500/20 border border-blue-500/20 dark:border-blue-500/30 rounded-lg">
+        <div className="mb-4 p-3 bg-orange-500/10 dark:bg-orange-500/20 border border-orange-500/20 dark:border-orange-500/30 rounded-lg">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full"></div>
-            <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+            <div className="w-2 h-2 bg-orange-600 dark:bg-orange-400 rounded-full"></div>
+            <span className="text-sm font-medium text-orange-700 dark:text-orange-300">
               Station: {stations.find(s => s.id === selectedStation)?.name || 'No station selected'}
             </span>
           </div>
@@ -2219,8 +2131,8 @@ export default function CloseShiftPage() {
           description="Enter declared amounts per pumper to calculate variance and salary adjustments"
         >
           <div className="space-y-4">
-            <Alert className="border-blue-500/20 dark:border-blue-500/30 bg-blue-500/10 dark:bg-blue-500/20">
-              <AlertDescription className="text-blue-700 dark:text-blue-300">
+            <Alert className="border-orange-500/20 dark:border-orange-500/30 bg-orange-500/10 dark:bg-orange-500/20">
+              <AlertDescription className="text-orange-700 dark:text-orange-300">
                 <strong>Salary Adjustment Rules:</strong> If variance is more than Rs. 20, add to pumper&apos;s salary.
                 If variance is less than -Rs. 20, deduct from pumper&apos;s salary. Variance within ±Rs. 20 is normal.
               </AlertDescription>
@@ -2319,7 +2231,7 @@ export default function CloseShiftPage() {
                         const usedTerminalIds = Array.from(new Set(pumperSlips.filter(s => s.terminalId).map(s => s.terminalId)))
 
                         // Get all available terminals (show all, not just ones with amounts)
-                        const allTerminalIds = posTerminals.map(t => t.id)
+                        // const allTerminalIds = posTerminals.map(t => t.id)
 
                         return (
                           <div className="space-y-4 pt-4 border-t mt-4">
@@ -2337,8 +2249,8 @@ export default function CloseShiftPage() {
                                 {isOpen ? 'Hide Details' : 'Show Verification'}
                               </Button>
                             </div>
-                            <Alert className="mb-4 border-blue-500/20 dark:border-blue-500/30 bg-blue-500/10 dark:bg-blue-500/20">
-                              <AlertDescription className="text-blue-700 dark:text-blue-300 text-xs">
+                            <Alert className="mb-4 border-orange-500/20 dark:border-orange-500/30 bg-orange-500/10 dark:bg-orange-500/20">
+                              <AlertDescription className="text-orange-700 dark:text-orange-300 text-xs">
                                 <strong>Required:</strong> Add individual POS slips one by one. System will automatically calculate totals by terminal and card type. Prevent duplicate card payments on the same day.
                               </AlertDescription>
                             </Alert>
@@ -2371,7 +2283,7 @@ export default function CloseShiftPage() {
                                       const terminal = posTerminals.find(t => t.id === slip.terminalId)
 
                                       return (
-                                        <div key={slip.id} className={`border rounded-lg p-3 space-y-3 bg-blue-500/5 dark:bg-blue-500/10 ${isMinimized ? 'cursor-pointer hover:bg-blue-500/10 dark:hover:bg-blue-500/15' : ''}`}>
+                                        <div key={slip.id} className={`border rounded-lg p-3 space-y-3 bg-orange-500/5 dark:bg-orange-500/10 ${isMinimized ? 'cursor-pointer hover:bg-orange-500/10 dark:hover:bg-orange-500/15' : ''}`}>
                                           <div className="flex items-center justify-between">
                                             {isMinimized ? (
                                               <div
@@ -2991,7 +2903,7 @@ export default function CloseShiftPage() {
                                           </Button>
                                           <Button
                                             variant="ghost"
-                                            className="w-full justify-start text-xs text-blue-600 dark:text-blue-400"
+                                            className="w-full justify-start text-xs text-orange-600 dark:text-orange-400"
                                             type="button"
                                             onClick={() => router.push('/settings/banks')}
                                           >
@@ -3199,7 +3111,7 @@ export default function CloseShiftPage() {
 
                             return (
                               <>
-                                <span className="block mt-1 text-blue-600 dark:text-blue-400 font-medium">
+                                <span className="block mt-1 text-orange-600 dark:text-orange-400 font-medium">
                                   💰 Advance Limit: Rs. {availableLimit.toLocaleString()}
                                   {monthlyRental > 0 && ` (Limit: Rs. 50,000 - Monthly Rental: Rs. ${monthlyRental.toLocaleString()})`}
                                 </span>
@@ -3405,8 +3317,8 @@ export default function CloseShiftPage() {
                             {/* Bank Deposit Fields */}
                             {expense.type === 'BANK_DEPOSIT' && (
                               <>
-                                <div className="mb-2 p-2 bg-blue-500/10 dark:bg-blue-500/20 rounded border border-blue-500/20">
-                                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                                <div className="mb-2 p-2 bg-orange-500/10 dark:bg-orange-500/20 rounded border border-orange-500/20">
+                                  <p className="text-xs text-orange-700 dark:text-orange-300">
                                     <strong>Note:</strong> Money taken from this pumper&apos;s sales and deposited to owner&apos;s bank account
                                   </p>
                                 </div>
@@ -3482,7 +3394,7 @@ export default function CloseShiftPage() {
                                           </Button>
                                           <Button
                                             variant="ghost"
-                                            className="w-full justify-start text-xs text-blue-600 dark:text-blue-400"
+                                            className="w-full justify-start text-xs text-orange-600 dark:text-orange-400"
                                             type="button"
                                             onClick={() => router.push('/settings/banks')}
                                           >
@@ -3673,7 +3585,7 @@ export default function CloseShiftPage() {
                                 return (
                                   <>
                                     <div className="text-muted-foreground">Bank Deposits:</div>
-                                    <div className="font-mono text-right text-blue-600 dark:text-blue-400">
+                                    <div className="font-mono text-right text-orange-600 dark:text-orange-400">
                                       + Rs. {totalBankDeposits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </div>
                                   </>
@@ -3705,14 +3617,14 @@ export default function CloseShiftPage() {
                           return (
                             <div className="space-y-2 pt-2 border-t mt-2">
                               {breakdown.advanceTaken > 0 && (
-                                <div className="mb-2 p-2 bg-blue-500/10 dark:bg-blue-500/20 rounded border border-blue-500/20">
+                                <div className="mb-2 p-2 bg-orange-500/10 dark:bg-orange-500/20 rounded border border-orange-500/20">
                                   <div className="flex justify-between items-center text-xs">
-                                    <span className="text-blue-700 dark:text-blue-300 font-medium">Advance Taken (from cash):</span>
-                                    <span className="font-mono text-blue-700 dark:text-blue-300 font-semibold">
+                                    <span className="text-orange-700 dark:text-orange-300 font-medium">Advance Taken (from cash):</span>
+                                    <span className="font-mono text-orange-700 dark:text-orange-300 font-semibold">
                                       Rs. {breakdown.advanceTaken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
                                   </div>
-                                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
                                     ℹ️ Note: Advance is tracked separately and will be deducted from salary. It does NOT affect variance calculation.
                                   </p>
                                 </div>
@@ -3804,9 +3716,9 @@ export default function CloseShiftPage() {
 
               {/* Key Metrics */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="text-center p-4 bg-blue-500/10 dark:bg-blue-500/20 rounded-lg border border-blue-500/20">
+                <div className="text-center p-4 bg-orange-500/10 dark:bg-orange-500/20 rounded-lg border border-orange-500/20">
                   <div className="text-sm text-muted-foreground mb-1">Total Calculated Sales</div>
-                  <div className="font-mono font-bold text-lg text-blue-700 dark:text-blue-300">
+                  <div className="font-mono font-bold text-lg text-orange-700 dark:text-orange-300">
                     Rs. {pumperBreakdowns.reduce((sum, b) => sum + b.calculatedSales, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
@@ -3835,9 +3747,9 @@ export default function CloseShiftPage() {
               <div className="pt-4 border-t">
                 <h5 className="font-semibold mb-3 text-sm">Tender Type Breakdown (All Pumpers)</h5>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="text-center p-3 bg-blue-500/10 dark:bg-blue-500/20 rounded-lg border border-blue-500/20">
+                  <div className="text-center p-3 bg-orange-500/10 dark:bg-orange-500/20 rounded-lg border border-orange-500/20">
                     <div className="text-xs text-muted-foreground mb-1">Cash</div>
-                    <div className="font-mono font-semibold text-blue-700 dark:text-blue-300">
+                    <div className="font-mono font-semibold text-orange-700 dark:text-orange-300">
                       Rs. {pumperBreakdowns.reduce((sum, b) => sum + b.declaredCash, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
@@ -3857,9 +3769,9 @@ export default function CloseShiftPage() {
                       ).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
-                  <div className="text-center p-3 bg-purple-500/10 dark:bg-purple-500/20 rounded-lg border border-purple-500/20">
+                  <div className="text-center p-3 bg-orange-500/10 dark:bg-orange-500/20 rounded-lg border border-orange-500/20">
                     <div className="text-xs text-muted-foreground mb-1">Cheque</div>
-                    <div className="font-mono font-semibold text-purple-700 dark:text-purple-300">
+                    <div className="font-mono font-semibold text-orange-700 dark:text-orange-300">
                       Rs. {pumperBreakdowns.reduce((sum, b) => sum + b.declaredCheque, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
@@ -3877,7 +3789,7 @@ export default function CloseShiftPage() {
         <Button
           onClick={handleCloseShiftAndPrint}
           disabled={loading || !selectedShift || !Array.isArray(assignments) || assignments.some(a => !a.endMeterReading)}
-          className="bg-purple-600 hover:bg-purple-700"
+          className="bg-orange-600 hover:bg-orange-700"
         >
           <Printer className="h-4 w-4 mr-2" />
           {loading ? 'Closing...' : 'Close Shift & Print'}

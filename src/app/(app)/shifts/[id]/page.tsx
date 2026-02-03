@@ -215,7 +215,7 @@ export default function ShiftDetailsPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 dark:border-purple-400"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 dark:border-orange-400"></div>
       </div>
     )
   }
@@ -420,8 +420,8 @@ export default function ShiftDetailsPage() {
       title: 'Pump Sales',
       render: (value: unknown, row: AssignmentWithDetails) => (
         <div className="flex items-center gap-1">
-          <Fuel className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          <span className="font-semibold text-blue-600 dark:text-blue-400">
+          <Fuel className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+          <span className="font-semibold text-orange-600 dark:text-orange-400">
             {row.actualLiters}L
           </span>
         </div>
@@ -510,7 +510,7 @@ export default function ShiftDetailsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Status</CardTitle>
-            <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <Clock className="h-4 w-4 text-orange-600 dark:text-orange-400" />
           </CardHeader>
           <CardContent>
             <Badge variant={shift.status === 'CLOSED' ? 'default' : 'secondary'} className="text-lg">
@@ -552,7 +552,7 @@ export default function ShiftDetailsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
-            <TrendingUp className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+            <TrendingUp className="h-4 w-4 text-orange-600 dark:text-orange-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -578,11 +578,11 @@ export default function ShiftDetailsPage() {
           <CardContent>
             {/* Sales Breakdown */}
             {tenderSummary?.salesBreakdown && (
-              <div className="bg-blue-500/10 dark:bg-blue-500/20 p-4 rounded-lg mb-6">
-                <h4 className="font-semibold text-blue-700 dark:text-blue-300 mb-3">Sales Breakdown</h4>
+              <div className="bg-orange-500/10 dark:bg-orange-500/20 p-4 rounded-lg mb-6">
+                <h4 className="font-semibold text-orange-700 dark:text-orange-300 mb-3">Sales Breakdown</h4>
                 <div className="grid grid-cols-4 gap-4 text-sm">
                   <div className="text-center">
-                    <div className="text-blue-600 dark:text-blue-400 text-lg">
+                    <div className="text-orange-600 dark:text-orange-400 text-lg">
                       {tenderSummary.salesBreakdown.totalPumpSales.toLocaleString()}L
                     </div>
                     <div className="text-muted-foreground">Pump Sales</div>
@@ -600,7 +600,7 @@ export default function ShiftDetailsPage() {
                     <div className="text-muted-foreground">Oil Sales ({tenderSummary.salesBreakdown.oilSales?.salesCount || 0})</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-purple-600 dark:text-purple-400 text-lg font-bold">
+                    <div className="text-orange-600 dark:text-orange-400 text-lg font-bold">
                       {tenderSummary.salesBreakdown.totalLitres.toLocaleString()}L
                     </div>
                     <div className="text-muted-foreground">Total Fuel</div>
@@ -905,7 +905,7 @@ export default function ShiftDetailsPage() {
                           {(bankDeposits as (Expense & { bankName?: string })[]).map((deposit, depIdx) => (
                             <div key={depIdx} className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Bank Deposit ({deposit.bankName || 'Bank'}):</span>
-                              <span className="font-mono text-blue-600 dark:text-blue-400">+ Rs. {(deposit.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="font-mono text-orange-600 dark:text-orange-400">+ Rs. {(deposit.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                           ))}
                         </div>
@@ -1012,7 +1012,7 @@ export default function ShiftDetailsPage() {
                       {totalBankDeposits > 0 && (
                         <>
                           <div className="text-muted-foreground">Total Bank Deposits:</div>
-                          <div className="font-mono text-right text-blue-600 dark:text-blue-400">+ Rs. {totalBankDeposits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          <div className="font-mono text-right text-orange-600 dark:text-orange-400">+ Rs. {totalBankDeposits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         </>
                       )}
 

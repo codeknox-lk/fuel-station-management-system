@@ -452,7 +452,7 @@ export const captureChartAsImage = async (chartId: string): Promise<string | nul
           rules.forEach(rule => {
             allCSS += rule.cssText + '\n'
           })
-        } catch (e) {
+        } catch {
           // Skip cross-origin stylesheets
         }
       })
@@ -717,11 +717,6 @@ interface SalaryReportData {
   varianceAdd: number
   varianceDeduct: number
   netSalary: number
-}interface SalaryReportResponse {
-  month: string
-  startDate: string
-  endDate: string
-  salaryData: SalaryReportData[]
 }
 
 export const exportSalaryReportPDF = (salaryData: SalaryReportData[], monthLabel: string) => {

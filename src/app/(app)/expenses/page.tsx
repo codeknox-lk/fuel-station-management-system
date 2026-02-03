@@ -25,12 +25,10 @@ import {
   Building2,
   DollarSign,
   Calendar,
-  FileText,
   Camera,
   AlertCircle,
   CheckCircle,
   Plus,
-  Clock,
   Shield,
   User,
   Tag
@@ -107,7 +105,7 @@ export default function ExpensesPage() {
 
         setStations(stationsData)
         setRecentExpenses(expensesData)
-      } catch (_err) {
+      } catch {
         setError('Failed to load initial data')
       }
     }
@@ -174,7 +172,7 @@ export default function ExpensesPage() {
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000)
 
-    } catch (_err) {
+    } catch {
       setError('Failed to record expense')
     } finally {
       setLoading(false)
@@ -192,12 +190,12 @@ export default function ExpensesPage() {
 
   const getCategoryColor = (category: string) => {
     const colors = [
-      'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300',
+      'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300',
       'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300',
-      'bg-purple-500/20 text-purple-400 dark:bg-purple-600/30 dark:text-purple-300',
+      'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300',
       'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300',
       'bg-pink-500/20 text-pink-600 dark:bg-pink-600/30 dark:text-pink-300',
-      'bg-indigo-500/20 text-indigo-600 dark:bg-indigo-600/30 dark:text-indigo-300'
+      'bg-orange-500/20 text-orange-600 dark:bg-orange-600/30 dark:text-orange-300'
     ]
     const index = category.length % colors.length
     return colors[index]

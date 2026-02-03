@@ -29,7 +29,7 @@ import {
   AlertCircle,
   CheckCircle,
   Plus,
-  Clock,
+
   FileText,
   Camera
 } from 'lucide-react'
@@ -84,7 +84,7 @@ export default function DepositsPage() {
   const [depositedBy, setDepositedBy] = useState('')
   const [slipNumber, setSlipNumber] = useState('')
   const [notes, setNotes] = useState('')
-  const [slipPhoto, setSlipPhoto] = useState<File | null>(null)
+  const [, setSlipPhoto] = useState<File | null>(null)
 
   // Load initial data
   useEffect(() => {
@@ -103,7 +103,7 @@ export default function DepositsPage() {
         setStations(stationsData)
         setRecentDeposits(depositsData)
         setBanks(Array.isArray(banksData) ? banksData : [])
-      } catch (err) {
+      } catch {
         setError('Failed to load initial data')
       }
     }
@@ -145,7 +145,7 @@ export default function DepositsPage() {
         throw new Error(errorData.error || 'Failed to record deposit')
       }
 
-      const newDeposit = await response.json()
+      await response.json()
 
       // Reload deposits
       const depositsRes = await fetch('/api/deposits?limit=10')
@@ -181,8 +181,6 @@ export default function DepositsPage() {
       default: return 'bg-muted text-foreground'
     }
   }
-
-  const selectedBankData = banks.find(b => b.id === selectedBankAccount)
 
   const depositColumns: Column<Deposit>[] = [
     {

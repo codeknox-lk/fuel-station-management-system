@@ -59,15 +59,15 @@ export default function AppLayout({
     <StationProvider>
       <div className="min-h-screen bg-background">
         <div className="flex">
-          {/* Sidebar - fixed width */}
-          <div className="flex-shrink-0">
+          {/* Sidebar - sticky */}
+          <div className="sticky top-0 h-screen flex-shrink-0">
             <Sidebar userRole={userRole} />
           </div>
 
           {/* Main content area */}
           <div className="flex-1 flex flex-col min-w-0">
             <TopBar userRole={userRole} />
-            <main className="flex-1 p-6 overflow-auto">
+            <main className="flex-1 p-6">
               {children}
             </main>
           </div>

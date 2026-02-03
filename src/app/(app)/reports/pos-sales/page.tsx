@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useStation } from '@/contexts/StationContext'
 import { useRouter } from 'next/navigation'
 import { getCurrentBusinessMonth, formatBusinessMonthRange } from '@/lib/businessMonth'
@@ -29,9 +29,7 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer,
-  BarChart,
-  Bar
+  ResponsiveContainer
 } from 'recharts'
 import {
   DollarSign,
@@ -181,13 +179,7 @@ export default function POSSalesReportPage() {
     exportPOSSalesReportExcel(exportData, stationName, monthLabel)
   }
 
-  useEffect(() => {
-    if (selectedStation) {
-      fetchReport()
-    }
-  }, [selectedStation, selectedYear, selectedMonth])
-
-  const fetchReport = async () => {
+  const fetchReport = useCallback(async () => {
     if (!selectedStation) {
       setError('Please select a station')
       return
@@ -221,12 +213,18 @@ export default function POSSalesReportPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedStation, selectedYear, selectedMonth])
+
+  useEffect(() => {
+    if (selectedStation) {
+      fetchReport()
+    }
+  }, [selectedStation, selectedYear, selectedMonth, fetchReport])
 
   if (loading && !reportData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 dark:border-purple-400"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 dark:border-orange-400"></div>
       </div>
     )
   }
@@ -333,10 +331,10 @@ export default function POSSalesReportPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <DollarSign className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  <DollarSign className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                   <h3 className="text-sm font-semibold text-muted-foreground">Total POS Sales</h3>
                 </div>
-                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                   Rs. {reportData.summary.totalSales.toLocaleString()}
                 </p>
               </CardContent>
@@ -345,10 +343,10 @@ export default function POSSalesReportPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <CreditCard className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <CreditCard className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                   <h3 className="text-sm font-semibold text-muted-foreground">Card Transactions</h3>
                 </div>
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                   {reportData.summary.totalTransactions.toLocaleString()}
                 </p>
               </CardContent>
@@ -464,8 +462,8 @@ export default function POSSalesReportPage() {
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className="border-b-2 bg-purple-100 dark:bg-purple-900/30">
-                    <th className="text-left p-3 font-bold sticky left-0 bg-purple-100 dark:bg-purple-900/30">Date</th>
+                  <tr className="border-b-2 bg-orange-100 dark:bg-orange-900/30">
+                    <th className="text-left p-3 font-bold sticky left-0 bg-orange-100 dark:bg-orange-900/30">Date</th>
                     {dailyViewMode === 'bank' ? (
                       reportData.dailyByBank.map(bank => (
                         <th key={bank.bankId} className="text-right p-3 font-bold min-w-[150px]">
@@ -479,7 +477,7 @@ export default function POSSalesReportPage() {
                         </th>
                       ))
                     )}
-                    <th className="text-right p-3 font-bold text-purple-600 bg-purple-50 dark:bg-purple-900/40 min-w-[150px]">
+                    <th className="text-right p-3 font-bold text-orange-600 bg-orange-50 dark:bg-orange-900/40 min-w-[150px]">
                       Daily Total
                     </th>
                   </tr>
@@ -507,7 +505,7 @@ export default function POSSalesReportPage() {
                           )
                         })
                       )}
-                      <td className="text-right p-3 font-bold text-purple-600 bg-purple-50 dark:bg-purple-900/20">
+                      <td className="text-right p-3 font-bold text-orange-600 bg-orange-50 dark:bg-orange-900/20">
                         Rs. {day.totalAmount.toLocaleString()}
                       </td>
                     </tr>
@@ -522,7 +520,7 @@ export default function POSSalesReportPage() {
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className="border-b-2 bg-purple-100 dark:bg-purple-900/30">
+                  <tr className="border-b-2 bg-orange-100 dark:bg-orange-900/30">
                     <th className="text-left p-3 font-bold">POS Terminal</th>
                     <th className="text-left p-3 font-bold">Terminal #</th>
                     <th className="text-left p-3 font-bold">Bank</th>
@@ -532,7 +530,7 @@ export default function POSSalesReportPage() {
                     <th className="text-right p-3 font-bold">Amex</th>
                     <th className="text-right p-3 font-bold">QR</th>
                     <th className="text-right p-3 font-bold">Dialog</th>
-                    <th className="text-right p-3 font-bold text-purple-600">Total Sales</th>
+                    <th className="text-right p-3 font-bold text-orange-600">Total Sales</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -545,16 +543,16 @@ export default function POSSalesReportPage() {
                   ) : (
                     reportData.terminalBreakdown.map((terminal, index) => (
                       <tr key={terminal.terminalId} className={index % 2 === 0 ? 'bg-muted/50' : ''}>
-                        <td className="p-3 font-bold text-purple-600">{terminal.terminalName}</td>
+                        <td className="p-3 font-bold text-orange-600">{terminal.terminalName}</td>
                         <td className="p-3 text-sm bg-gray-100 dark:bg-gray-800">{terminal.terminalNumber}</td>
                         <td className="p-3 text-sm">{terminal.bankName}</td>
                         <td className="text-right p-3 font-semibold">{terminal.transactionCount}</td>
-                        <td className="text-right p-3 text-sm text-blue-600">Rs. {terminal.visa.toLocaleString()}</td>
-                        <td className="text-right p-3 text-sm text-purple-600">Rs. {terminal.master.toLocaleString()}</td>
+                        <td className="text-right p-3 text-sm text-orange-600">Rs. {terminal.visa.toLocaleString()}</td>
+                        <td className="text-right p-3 text-sm text-orange-600">Rs. {terminal.master.toLocaleString()}</td>
                         <td className="text-right p-3 text-sm text-green-600">Rs. {terminal.amex.toLocaleString()}</td>
                         <td className="text-right p-3 text-sm text-orange-600">Rs. {terminal.qr.toLocaleString()}</td>
                         <td className="text-right p-3 text-sm text-red-600">Rs. {terminal.dialogTouch.toLocaleString()}</td>
-                        <td className="text-right p-3 font-bold text-lg text-purple-600 bg-purple-50 dark:bg-purple-900/20">
+                        <td className="text-right p-3 font-bold text-lg text-orange-600 bg-orange-50 dark:bg-orange-900/20">
                           Rs. {terminal.totalAmount.toLocaleString()}
                         </td>
                       </tr>
@@ -578,7 +576,7 @@ export default function POSSalesReportPage() {
                     <th className="text-right p-3 font-semibold">Amex</th>
                     <th className="text-right p-3 font-semibold">QR</th>
                     <th className="text-right p-3 font-semibold">Dialog Touch</th>
-                    <th className="text-right p-3 font-semibold text-purple-600">Total</th>
+                    <th className="text-right p-3 font-semibold text-orange-600">Total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -591,7 +589,7 @@ export default function POSSalesReportPage() {
                       <td className="text-right p-3 text-sm">Rs. {bank.amex.toLocaleString()}</td>
                       <td className="text-right p-3 text-sm">Rs. {bank.qr.toLocaleString()}</td>
                       <td className="text-right p-3 text-sm">Rs. {bank.dialogTouch.toLocaleString()}</td>
-                      <td className="text-right p-3 font-semibold text-purple-600">
+                      <td className="text-right p-3 font-semibold text-orange-600">
                         Rs. {bank.totalAmount.toLocaleString()}
                       </td>
                     </tr>

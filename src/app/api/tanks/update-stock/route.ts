@@ -4,9 +4,9 @@ import { prisma } from '@/lib/db'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    
-    const { tankUpdates, performedBy } = body
-    
+
+    const { tankUpdates } = body
+
     if (!tankUpdates || !Array.isArray(tankUpdates) || tankUpdates.length === 0) {
       return NextResponse.json(
         { error: 'Tank updates array is required' },
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 
     // Update all tanks in a transaction
     const results = await prisma.$transaction(
-      tankUpdates.map((update: { tankId: string; newLevel: number }) => 
+      tankUpdates.map((update: { tankId: string; newLevel: number }) =>
         prisma.tank.update({
           where: { id: update.tankId },
           data: {

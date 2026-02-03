@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { Prisma } from '@prisma/client'
+
 
 export async function GET(
   request: NextRequest,
@@ -203,7 +203,7 @@ export async function DELETE(
           activeLoans: activeLoansCount
         }, { status: 400 })
       }
-    } catch (loanError) {
+    } catch {
       // Ignore if loan table doesn't exist
       console.log('ℹ️  Loan check skipped')
     }

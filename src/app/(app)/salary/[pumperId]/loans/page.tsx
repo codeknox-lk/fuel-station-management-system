@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { useParams, useSearchParams, useRouter } from 'next/navigation'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useParams, useSearchParams } from 'next/navigation'
 import { useStation } from '@/contexts/StationContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge'
 import {
   ArrowLeft,
   CreditCard,
-  Edit,
   DollarSign
 } from 'lucide-react'
 import Link from 'next/link'
@@ -22,7 +21,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 export default function PumperLoansPage() {
   const params = useParams()
   const searchParams = useSearchParams()
-  const router = useRouter()
+
   const { selectedStation } = useStation()
 
   const pumperId = useMemo(() => (params?.pumperId as string) || '', [params])
@@ -44,7 +43,7 @@ export default function PumperLoansPage() {
     updatedAt: string
   }
 
-  const [loading, setLoading] = useState(false)
+
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [pumperLoans, setPumperLoans] = useState<Loan[]>([])
@@ -57,13 +56,7 @@ export default function PumperLoansPage() {
   const [loanPaymentNotes, setLoanPaymentNotes] = useState('')
   const [processingLoanPayment, setProcessingLoanPayment] = useState(false)
 
-  useEffect(() => {
-    if (selectedStation && pumperName) {
-      fetchPumperLoans()
-    }
-  }, [selectedStation, pumperName])
-
-  const fetchPumperLoans = async () => {
+  const fetchPumperLoans = useCallback(async () => {
     if (!selectedStation || !pumperName) return
 
     try {
@@ -84,7 +77,13 @@ export default function PumperLoansPage() {
     } finally {
       setLoadingLoans(false)
     }
-  }
+  }, [selectedStation, pumperName])
+
+  useEffect(() => {
+    if (selectedStation && pumperName) {
+      fetchPumperLoans()
+    }
+  }, [selectedStation, pumperName, fetchPumperLoans])
 
   const handleUpdateMonthlyRental = async (loanId: string, newMonthlyRental: number) => {
     try {
@@ -193,7 +192,7 @@ export default function PumperLoansPage() {
   const activeLoans = pumperLoans.filter(loan => loan.status === 'ACTIVE')
   const paidLoans = pumperLoans.filter(loan => loan.status === 'PAID')
   const totalMonthlyRental = activeLoans.reduce((sum, loan) => sum + (loan.monthlyRental || 0), 0)
-  const totalLoanAmount = pumperLoans.reduce((sum, loan) => sum + loan.amount, 0)
+
   const totalPaidAmount = pumperLoans.reduce((sum, loan) => sum + (loan.paidAmount || 0), 0)
   const totalOutstanding = activeLoans.reduce((sum, loan) => {
     const paidAmount = loan.paidAmount || 0
@@ -494,7 +493,7 @@ export default function PumperLoansPage() {
           </DialogHeader>
           {selectedLoanForPayment && (
             <div className="space-y-4 py-4">
-              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
                 <div className="text-sm font-medium mb-2">Loan Details</div>
                 <div className="text-sm space-y-1 text-muted-foreground">
                   <div>Loan Amount: Rs. {selectedLoanForPayment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>

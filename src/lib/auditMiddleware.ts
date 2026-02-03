@@ -44,7 +44,7 @@ export async function auditLog(context: AuditContext, request: NextRequest): Pro
           validUserId = userByUsername.id
         }
       }
-    } catch (userCheckError) {
+    } catch {
       // Continue with original userId - Prisma will handle FK constraint
     }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { useStation } from '@/contexts/StationContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -89,10 +89,8 @@ export default function PumperSalaryDetailsPage() {
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [salaryData, setSalaryData] = useState<SalaryData | null>(null)
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
-  const [loanRepayDialogOpen, setLoanRepayDialogOpen] = useState(false)
   interface PaymentHistoryItem {
     id: string
     paymentDate: string
@@ -114,21 +112,9 @@ export default function PumperSalaryDetailsPage() {
   // Check if payment already exists and is paid
   const hasPaidPayment = paymentHistory.some(p => p.status === 'PAID')
 
-  useEffect(() => {
-    if (selectedStation && pumperId && month) {
-      fetchSalaryData()
-      fetchPaymentHistory()
-    }
-  }, [selectedStation, pumperId, month])
 
-  // Re-fetch payment history when dialog closes to update hasPaidPayment
-  useEffect(() => {
-    if (!paymentDialogOpen && selectedStation && pumperId && month && !isProcessingPayment) {
-      fetchPaymentHistory()
-    }
-  }, [paymentDialogOpen])
 
-  const fetchPaymentHistory = async () => {
+  const fetchPaymentHistory = useCallback(async () => {
     if (!selectedStation || !pumperId || !month) return
 
     try {
@@ -140,7 +126,7 @@ export default function PumperSalaryDetailsPage() {
     } catch (err) {
       console.error('Error fetching payment history:', err)
     }
-  }
+  }, [selectedStation, pumperId, month])
 
   const handleMarkAsPaid = async () => {
     // Prevent multiple clicks
@@ -216,7 +202,7 @@ export default function PumperSalaryDetailsPage() {
     }
   }
 
-  const fetchSalaryData = async () => {
+  const fetchSalaryData = useCallback(async () => {
     if (!selectedStation || !pumperId || !month) return
 
     try {
@@ -267,7 +253,7 @@ export default function PumperSalaryDetailsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedStation, pumperId, month, pumperName])
 
   // Parse month safely (format: YYYY-MM)
   const monthParts = month.split('-')
@@ -275,10 +261,24 @@ export default function PumperSalaryDetailsPage() {
   const monthNum = monthParts[1] || String(new Date().getMonth() + 1).padStart(2, '0')
   const monthLabel = months.find(m => m.value === monthNum)?.label || monthNum
 
+  useEffect(() => {
+    if (selectedStation && pumperId && month) {
+      fetchSalaryData()
+      fetchPaymentHistory()
+    }
+  }, [selectedStation, pumperId, month, fetchSalaryData, fetchPaymentHistory])
+
+  // Re-fetch payment history when dialog closes to update hasPaidPayment
+  useEffect(() => {
+    if (!paymentDialogOpen && selectedStation && pumperId && month && !isProcessingPayment) {
+      fetchPaymentHistory()
+    }
+  }, [paymentDialogOpen, selectedStation, pumperId, month, isProcessingPayment, fetchPaymentHistory])
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 dark:border-purple-400"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 dark:border-orange-400"></div>
       </div>
     )
   }
@@ -318,7 +318,7 @@ export default function PumperSalaryDetailsPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-              <User className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+              <User className="h-8 w-8 text-orange-600 dark:text-orange-400" />
               Monthly Salary Report
             </h1>
             <p className="text-muted-foreground mt-1">
@@ -459,12 +459,12 @@ export default function PumperSalaryDetailsPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Clock className="h-4 w-4 text-blue-600" />
+              <Clock className="h-4 w-4 text-orange-600" />
               Total OT
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-2xl font-bold text-orange-600">
               Rs. {(salaryData.totalOvertimeAmount || 0).toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
@@ -704,7 +704,7 @@ export default function PumperSalaryDetailsPage() {
                       <Clock className="h-4 w-4 mr-1" />
                       {shift.hours.toFixed(1)}h
                       {shift.overtimeHours && shift.overtimeHours > 0 && (
-                        <span className="ml-2 text-blue-600">
+                        <span className="ml-2 text-orange-600">
                           (OT: {shift.overtimeHours.toFixed(1)}h)
                         </span>
                       )}
@@ -713,11 +713,11 @@ export default function PumperSalaryDetailsPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                     {shift.overtimeAmount && shift.overtimeAmount > 0 && (
-                      <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                      <div className="p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
                         <div className="text-xs text-muted-foreground mb-1">Overtime</div>
                         <div className="flex items-center gap-1">
-                          <Clock className="h-4 w-4 text-blue-600" />
-                          <span className="font-semibold text-blue-600 text-lg">
+                          <Clock className="h-4 w-4 text-orange-600" />
+                          <span className="font-semibold text-orange-600 text-lg">
                             Rs. {shift.overtimeAmount.toLocaleString()}
                           </span>
                         </div>
@@ -776,9 +776,9 @@ export default function PumperSalaryDetailsPage() {
                       </div>
                     </div>
 
-                    <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                    <div className="p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
                       <div className="text-xs text-muted-foreground mb-1">Shift Impact</div>
-                      <span className="font-semibold text-blue-600 text-lg">
+                      <span className="font-semibold text-orange-600 text-lg">
                         {(() => {
                           // Calculate net impact: variance adjustment + advance deduction
                           let impact = -shift.advance // Advance is always deducted

@@ -259,7 +259,6 @@ export default function SafePage() {
   const [safe, setSafe] = useState<Safe | null>(null)
   const [groupedTransactions, setGroupedTransactions] = useState<(SafeTransaction | GroupedTransaction)[]>([])
   const [outstandingCredit, setOutstandingCredit] = useState(0)
-  const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
 
@@ -349,8 +348,6 @@ export default function SafePage() {
     if (!selectedStation) return
 
     try {
-      setLoading(true)
-
       // Build API URLs with station filter
       const stationParam = selectedStation === 'all' ? '' : `stationId=${selectedStation}`
       const stationQuery = stationParam ? `?${stationParam}` : ''
@@ -389,7 +386,7 @@ export default function SafePage() {
         variant: "destructive"
       })
     } finally {
-      setLoading(false)
+
     }
   }
 
@@ -439,7 +436,7 @@ export default function SafePage() {
       })
 
       fetchSafe()
-    } catch (err) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to add transaction",
@@ -505,7 +502,7 @@ export default function SafePage() {
       })
 
       fetchSafe()
-    } catch (err) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to record transaction",
@@ -551,7 +548,7 @@ export default function SafePage() {
       })
 
       fetchSafe()
-    } catch (err) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to set opening balance",
@@ -666,7 +663,7 @@ export default function SafePage() {
       })
 
       fetchSafe()
-    } catch (err) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to record loan",
@@ -742,7 +739,7 @@ export default function SafePage() {
       })
 
       fetchSafe()
-    } catch (err) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to record bank deposit",
@@ -802,8 +799,8 @@ export default function SafePage() {
         if (type === 'SHIFT_CLOSURE') {
           return (
             <div className="flex items-center gap-2">
-              <ShoppingCart className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              <Badge className="bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300">
+              <ShoppingCart className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+              <Badge className="bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300">
                 Shift Closure
               </Badge>
             </div>
@@ -947,7 +944,10 @@ export default function SafePage() {
   if (!selectedStation || selectedStation === 'all') {
     return (
       <div className="space-y-6 p-6">
-        <h1 className="text-3xl font-bold text-foreground">Safe Management</h1>
+        <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+          <Wallet className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+          Safe Management
+        </h1>
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>No Station Selected</AlertTitle>
@@ -961,7 +961,10 @@ export default function SafePage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Safe Management</h1>
+          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+            <Wallet className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+            Safe Management
+          </h1>
           <p className="text-muted-foreground mt-2">Track all cash in and out of the safe</p>
         </div>
         <div className="flex gap-2">
@@ -1075,18 +1078,18 @@ export default function SafePage() {
           </div>
         </div>
 
-        <div className="p-4 border rounded-lg bg-card border-purple-500/50">
+        <div className="p-4 border rounded-lg bg-card border-orange-500/50">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <h3 className="text-sm font-medium text-muted-foreground">Total Assets</h3>
-              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1">
+              <p className="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1">
                 Rs. {((safe?.currentBalance || 0) + outstandingCredit).toLocaleString()}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 Cash + Outstanding Credit
               </p>
             </div>
-            <DollarSign className="h-8 w-8 text-purple-600 dark:text-purple-400 ml-2" />
+            <DollarSign className="h-8 w-8 text-orange-600 dark:text-orange-400 ml-2" />
           </div>
         </div>
       </div>
@@ -1156,7 +1159,7 @@ export default function SafePage() {
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <h3 className="text-sm font-medium text-muted-foreground">Bank Deposits (7d)</h3>
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
+              <p className="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1">
                 Rs. {(() => {
                   const weekAgo = new Date()
                   weekAgo.setDate(weekAgo.getDate() - 7)
@@ -1170,7 +1173,7 @@ export default function SafePage() {
                 Banked last 7 days
               </p>
             </div>
-            <Building2 className="h-8 w-8 text-blue-600 dark:text-blue-400 ml-2" />
+            <Building2 className="h-8 w-8 text-orange-600 dark:text-orange-400 ml-2" />
           </div>
         </div>
 
@@ -1417,7 +1420,7 @@ export default function SafePage() {
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <Users className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                 Give Loan from Safe
               </DialogTitle>
               <p className="text-sm text-muted-foreground">Record a loan given from safe cash</p>

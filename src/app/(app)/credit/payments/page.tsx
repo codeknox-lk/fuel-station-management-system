@@ -19,7 +19,7 @@ import { DateTimePicker } from '@/components/inputs/DateTimePicker'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
 import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+
 import {
   Dialog,
   DialogContent,
@@ -31,14 +31,10 @@ import {
   Users,
   DollarSign,
   Calendar,
-  CreditCard,
   Banknote,
   Building,
   FileText,
-  AlertCircle,
-  CheckCircle,
   Plus,
-  Clock,
   Eye
 } from 'lucide-react'
 
@@ -136,7 +132,7 @@ export default function CreditPaymentsPage() {
         })))
         setRecentPayments(paymentsData)
         setBanks(Array.isArray(banksData) ? banksData : [])
-      } catch (err) {
+      } catch {
         toast({
           title: "Error",
           description: "Failed to load initial data",
@@ -146,7 +142,7 @@ export default function CreditPaymentsPage() {
     }
 
     loadData()
-  }, [])
+  }, [toast])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -392,7 +388,7 @@ export default function CreditPaymentsPage() {
             setSelectedPayment(row)
             setIsDetailsOpen(true)
           }}
-          className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+          className="text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300"
         >
           <Eye className="h-4 w-4 mr-1" />
           View
@@ -433,8 +429,8 @@ export default function CreditPaymentsPage() {
               </SelectContent>
             </Select>
             {selectedCustomerData && (
-              <div className="mt-2 p-2 bg-blue-500/10 dark:bg-blue-500/20 rounded-md">
-                <div className="text-xs text-blue-700">
+              <div className="mt-2 p-2 bg-orange-500/10 dark:bg-orange-500/20 rounded-md">
+                <div className="text-xs text-orange-700">
                   <div>Credit Limit: Rs. {selectedCustomerData.creditLimit.toLocaleString()}</div>
                   <div className="font-semibold">Outstanding Balance: Rs. {selectedCustomerData.currentBalance.toLocaleString()}</div>
                 </div>

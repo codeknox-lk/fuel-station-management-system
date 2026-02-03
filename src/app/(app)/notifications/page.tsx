@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStation } from '@/contexts/StationContext'
 import { FormCard } from '@/components/ui/FormCard'
@@ -23,9 +23,7 @@ import {
   Trash2,
   Eye,
   EyeOff,
-  Settings,
-  RefreshCw,
-  Sparkles
+  RefreshCw
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -66,7 +64,7 @@ export default function NotificationsPage() {
   const [filteredNotifications, setFilteredNotifications] = useState<Notification[]>([])
   const [pagination, setPagination] = useState<NotificationPagination | null>(null)
   const [loading, setLoading] = useState(false)
-  const [generating, setGenerating] = useState(false)
+
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
@@ -76,7 +74,7 @@ export default function NotificationsPage() {
   const [activeTab, setActiveTab] = useState('all')
 
   // Load notifications from API
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     try {
       setLoading(true)
       setError('')
@@ -117,12 +115,11 @@ export default function NotificationsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedStation])
 
   // Generate notifications based on system events
-  const generateNotifications = async () => {
+  const generateNotifications = useCallback(async () => {
     try {
-      setGenerating(true)
       setError('')
       setSuccess('')
 
@@ -147,10 +144,8 @@ export default function NotificationsPage() {
     } catch (err) {
       console.error('Failed to generate notifications:', err)
       setError('Failed to generate notifications')
-    } finally {
-      setGenerating(false)
     }
-  }
+  }, [loadNotifications, selectedStation])
 
   // Load notifications on mount and when station changes
   useEffect(() => {
@@ -169,7 +164,7 @@ export default function NotificationsPage() {
     }, 5 * 60 * 1000)
 
     return () => clearInterval(interval)
-  }, [selectedStation])
+  }, [generateNotifications, loadNotifications])
 
   // Filter notifications based on search and filters
   useEffect(() => {
@@ -299,7 +294,7 @@ export default function NotificationsPage() {
     switch (type) {
       case 'WARNING': return <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
       case 'ERROR': return <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
-      case 'INFO': return <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+      case 'INFO': return <Clock className="h-5 w-5 text-orange-600 dark:text-orange-400" />
       case 'SUCCESS': return <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
       default: return <Bell className="h-5 w-5 text-muted-foreground" />
     }
@@ -309,7 +304,7 @@ export default function NotificationsPage() {
     switch (type) {
       case 'WARNING': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
       case 'ERROR': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
-      case 'INFO': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'INFO': return 'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300'
       case 'SUCCESS': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
       default: return 'bg-muted text-foreground'
     }
@@ -350,7 +345,7 @@ export default function NotificationsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Bell className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+            <Bell className="h-8 w-8 text-orange-600 dark:text-orange-400" />
             Notifications
           </h1>
           <p className="text-muted-foreground mt-1">
@@ -371,7 +366,7 @@ export default function NotificationsPage() {
 
       {/* Alerts */}
       {error && (
-        <Alert variant={error.includes('migration') ? "default" : "destructive"} className={error.includes('migration') ? "bg-blue-500/10 border-blue-500/20" : ""}>
+        <Alert variant={error.includes('migration') ? "default" : "destructive"} className={error.includes('migration') ? "bg-orange-500/10 border-orange-500/20" : ""}>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
             {error}
@@ -515,7 +510,7 @@ export default function NotificationsPage() {
                   {filteredNotifications.map((notification) => (
                     <div
                       key={notification.id}
-                      className={`p-4 border rounded-lg transition-colors hover:bg-muted cursor-pointer ${!notification.isRead ? 'bg-blue-500/10 dark:bg-blue-500/20 border-blue-500/20 dark:border-blue-500/30' : 'bg-card border-border'
+                      className={`p-4 border rounded-lg transition-colors hover:bg-muted cursor-pointer ${!notification.isRead ? 'bg-orange-500/10 dark:bg-orange-500/20 border-orange-500/20 dark:border-orange-500/30' : 'bg-card border-border'
                         }`}
                       onClick={() => handleNotificationClick(notification)}
                     >
@@ -531,7 +526,7 @@ export default function NotificationsPage() {
                                 {notification.title}
                               </h3>
                               {!notification.isRead && (
-                                <div className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full"></div>
+                                <div className="w-2 h-2 bg-orange-600 dark:bg-orange-400 rounded-full"></div>
                               )}
                               {notification.station && (
                                 <Badge variant="outline" className="text-xs">

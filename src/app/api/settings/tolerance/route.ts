@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(toleranceConfig)
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to update tolerance configuration' }, { status: 500 })
   }
 }

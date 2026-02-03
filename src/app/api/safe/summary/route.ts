@@ -16,29 +16,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Station ID is required' }, { status: 400 })
     }
 
-    // Get shifts for the day to calculate sales
-    const shifts = await prisma.shift.findMany({
-      where: {
-        stationId,
-        startTime: {
-          gte: startOfDay,
-          lte: endOfDay
-        }
-      },
-      include: {
-        assignments: {
-          include: {
-            nozzle: {
-              include: {
-                tank: true,
-                pump: true
-              }
-            }
-          }
-        }
-      }
-    })
-
     // Get actual safe transactions for the day (not calculated from shifts)
     // This ensures we get the actual cash amounts that were declared/added to safe
     const safe = await prisma.safe.findUnique({
@@ -100,11 +77,6 @@ export async function GET(request: NextRequest) {
       }
     })
     const totalExpenses = totalExpensesFromSafe + expenses.reduce((sum, exp) => sum + exp.amount, 0)
-
-    // Get loans given from safe transactions
-    const totalLoansGiven = dayTransactions
-      .filter(tx => tx.type === 'LOAN_GIVEN')
-      .reduce((sum, tx) => sum + tx.amount, 0)
 
     // Get credit repayments from safe transactions
     const totalCreditRepayments = dayTransactions

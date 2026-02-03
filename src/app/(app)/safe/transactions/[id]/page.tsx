@@ -214,7 +214,7 @@ export default function TransactionDetailsPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 dark:border-purple-400"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 dark:border-orange-400"></div>
       </div>
     )
   }
@@ -381,15 +381,15 @@ export default function TransactionDetailsPage() {
                   Rs. {totalCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
-              <div className="p-4 bg-blue-500/10 dark:bg-blue-500/20 rounded-lg border border-blue-500/30">
+              <div className="p-4 bg-orange-500/10 dark:bg-orange-500/20 rounded-lg border border-orange-500/30">
                 <div className="text-xs text-muted-foreground mb-1">Card (POS)</div>
-                <div className="text-xl font-bold text-blue-600 dark:text-blue-400 font-mono">
+                <div className="text-xl font-bold text-orange-600 dark:text-orange-400 font-mono">
                   Rs. {totalCard.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
-              <div className="p-4 bg-purple-500/10 dark:bg-purple-500/20 rounded-lg border border-purple-500/30">
+              <div className="p-4 bg-orange-500/10 dark:bg-orange-500/20 rounded-lg border border-orange-500/30">
                 <div className="text-xs text-muted-foreground mb-1">Credit</div>
-                <div className="text-xl font-bold text-purple-600 dark:text-purple-400 font-mono">
+                <div className="text-xl font-bold text-orange-600 dark:text-orange-400 font-mono">
                   Rs. {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
@@ -475,7 +475,7 @@ export default function TransactionDetailsPage() {
                           {totalCard > 0 && (
                             <div className="flex justify-between items-center">
                               <span className="text-sm text-muted-foreground">Card (POS):</span>
-                              <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
+                              <span className="font-mono font-semibold text-orange-600 dark:text-orange-400">
                                 Rs. {totalCard.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
@@ -484,7 +484,7 @@ export default function TransactionDetailsPage() {
                           {totalCredit > 0 && (
                             <div className="flex justify-between items-center">
                               <span className="text-sm text-muted-foreground">Credit:</span>
-                              <span className="font-mono font-semibold text-purple-600 dark:text-purple-400">
+                              <span className="font-mono font-semibold text-orange-600 dark:text-orange-400">
                                 Rs. {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
@@ -595,12 +595,12 @@ export default function TransactionDetailsPage() {
                     {/* Bank Deposits (Additions) */}
                     {bankDeposits.length > 0 && (
                       <div className="border-t pt-3 space-y-2">
-                        <div className="text-sm font-semibold text-muted-foreground text-blue-600 dark:text-blue-400">Bank Deposits</div>
-                        <div className="bg-blue-500/10 dark:bg-blue-500/20 rounded p-3 space-y-1">
+                        <div className="text-sm font-semibold text-muted-foreground text-orange-600 dark:text-orange-400">Bank Deposits</div>
+                        <div className="bg-orange-500/10 dark:bg-orange-500/20 rounded p-3 space-y-1">
                           {bankDeposits.map((deposit, depIdx) => (
                             <div key={depIdx} className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Bank Deposit ({deposit.bankName || 'Bank'}):</span>
-                              <span className="font-mono text-blue-600 dark:text-blue-400">
+                              <span className="font-mono text-orange-600 dark:text-orange-400">
                                 + Rs. {(deposit.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
@@ -644,12 +644,12 @@ export default function TransactionDetailsPage() {
                   </div>
 
                   <div className="font-semibold">Total Card Collected:</div>
-                  <div className="font-mono text-right text-blue-600 dark:text-blue-400">
+                  <div className="font-mono text-right text-orange-600 dark:text-orange-400">
                     Rs. {totalCard.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
 
                   <div className="font-semibold">Total Credit:</div>
-                  <div className="font-mono text-right text-purple-600 dark:text-purple-400">
+                  <div className="font-mono text-right text-orange-600 dark:text-orange-400">
                     Rs. {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
 
@@ -688,7 +688,7 @@ export default function TransactionDetailsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <div className="p-3 bg-blue-500/10 dark:bg-blue-500/20 rounded-lg border">
+                <div className="p-3 bg-orange-500/10 dark:bg-orange-500/20 rounded-lg border">
                   <div className="text-base font-bold mb-3">Total POS Amount: Rs. {transaction.batch.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                   {transaction.batch.terminalEntries && transaction.batch.terminalEntries.length > 0 && (
                     <div className="space-y-3 mt-4">
@@ -866,7 +866,7 @@ export default function TransactionDetailsPage() {
             <CardDescription>POS terminal entries and card type breakdown</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="bg-blue-500/10 dark:bg-blue-500/20 p-4 rounded-lg border">
+            <div className="bg-orange-500/10 dark:bg-orange-500/20 p-4 rounded-lg border">
               <div className="text-base font-bold mb-3">Total Batch Amount: Rs. {transaction.batch.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               {transaction.batch.terminalEntries && transaction.batch.terminalEntries.length > 0 && (
                 <div className="space-y-3 mt-4">

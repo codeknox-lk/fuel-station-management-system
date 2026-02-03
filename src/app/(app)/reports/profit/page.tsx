@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useStation } from '@/contexts/StationContext'
 import { useRouter } from 'next/navigation'
 import { getCurrentBusinessMonth, getBusinessMonth, formatBusinessMonthRange } from '@/lib/businessMonth'
@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { DataTable, Column } from '@/components/ui/DataTable'
-import { Badge } from '@/components/ui/badge'
+
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -34,11 +34,9 @@ import {
   ResponsiveContainer
 } from 'recharts'
 import {
-  Building2,
   Calendar,
   TrendingUp,
   TrendingDown,
-  DollarSign,
   AlertCircle,
   Calculator,
   Download,
@@ -236,7 +234,7 @@ export default function ProfitReportsPage() {
 
       setProfitReport(report)
 
-    } catch (_err) {
+    } catch {
       setError('Failed to generate profit report')
     } finally {
       setLoading(false)
@@ -483,10 +481,10 @@ export default function ProfitReportsPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-blue-600 dark:text-blue-400">Net Profit</CardTitle>
+                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Net Profit</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold ${profitReport.totalProfit >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
+                <div className={`text-2xl font-bold ${profitReport.totalProfit >= 0 ? 'text-orange-700' : 'text-red-700'}`}>
                   Rs. {profitReport.totalProfit.toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground">
@@ -497,7 +495,7 @@ export default function ProfitReportsPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-purple-600 dark:text-purple-400">Growth</CardTitle>
+                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Growth</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className={`text-2xl font-bold ${profitReport.profitGrowth >= 0 ? 'text-green-700' : 'text-red-700'}`}>
@@ -594,7 +592,7 @@ export default function ProfitReportsPage() {
                   </div>
                   <div className="flex justify-between border-t pt-2">
                     <span className="font-semibold">Profit:</span>
-                    <span className="font-bold text-blue-600 dark:text-blue-400">Rs. {profitReport.bestDay.profit.toLocaleString()}</span>
+                    <span className="font-bold text-orange-600 dark:text-orange-400">Rs. {profitReport.bestDay.profit.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Margin:</span>
@@ -624,7 +622,7 @@ export default function ProfitReportsPage() {
                   </div>
                   <div className="flex justify-between border-t pt-2">
                     <span className="font-semibold">Profit:</span>
-                    <span className="font-bold text-blue-600 dark:text-blue-400">Rs. {profitReport.worstDay.profit.toLocaleString()}</span>
+                    <span className="font-bold text-orange-600 dark:text-orange-400">Rs. {profitReport.worstDay.profit.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Margin:</span>

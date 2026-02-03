@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
 // GET /api/fuels - Get all fuel types
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const fuels = await prisma.fuel.findMany({
       orderBy: { sortOrder: 'asc' },

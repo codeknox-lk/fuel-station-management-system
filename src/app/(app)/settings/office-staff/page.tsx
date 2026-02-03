@@ -350,7 +350,7 @@ export default function OfficeStaffPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-              <Briefcase className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+              <Briefcase className="h-8 w-8 text-orange-600 dark:text-orange-400" />
               Office Staff Management
             </h1>
             <p className="text-muted-foreground mt-1">
@@ -559,7 +559,7 @@ export default function OfficeStaffPage() {
       >
         {loading ? (
           <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 dark:border-purple-400"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 dark:border-orange-400"></div>
           </div>
         ) : officeStaff.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">

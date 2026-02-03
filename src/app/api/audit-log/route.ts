@@ -14,8 +14,7 @@ export async function POST(request: NextRequest) {
             entityId,
             details,
             stationId,
-            stationName,
-            ipAddress
+            stationName
         } = body
 
         // Validate required fields

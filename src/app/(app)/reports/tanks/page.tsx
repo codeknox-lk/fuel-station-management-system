@@ -409,7 +409,7 @@ export default function TanksReportsPage() {
       key: 'testReturns' as keyof TankMovement,
       title: 'Test Returns',
       render: (value: unknown) => (
-        <div className="font-semibold text-blue-600 dark:text-blue-400">
+        <div className="font-semibold text-orange-600 dark:text-orange-400">
           +{(value as number)?.toLocaleString() || 0}L
         </div>
       )
@@ -547,7 +547,7 @@ export default function TanksReportsPage() {
       key: 'amount' as keyof TestPourDetail,
       title: 'Amount',
       render: (value: unknown) => (
-        <span className="font-semibold text-blue-600">
+        <span className="font-semibold text-orange-600">
           {(value as number)?.toLocaleString() || 0}L
         </span>
       )
@@ -585,7 +585,7 @@ export default function TanksReportsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <Droplets className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+            <Droplets className="h-8 w-8 text-orange-600 dark:text-orange-400" />
             Tank Movement & Variance Report
           </h1>
           <p className="text-muted-foreground mt-1">
@@ -684,12 +684,12 @@ export default function TanksReportsPage() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Droplets className="h-4 w-4 text-blue-600" />
+                  <Droplets className="h-4 w-4 text-orange-600" />
                   Total Tanks
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-blue-600">
+                <div className="text-3xl font-bold text-orange-600">
                   {summary.totalTanks}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
@@ -732,12 +732,12 @@ export default function TanksReportsPage() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-purple-600" />
+                  <Activity className="h-4 w-4 text-orange-600" />
                   Total Variance
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-purple-600">
+                <div className="text-3xl font-bold text-orange-600">
                   {summary.totalVariance.toLocaleString()}L
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
@@ -926,24 +926,24 @@ export default function TanksReportsPage() {
                       {tank.salesTransactionCount} transactions
                     </div>
                   </div>
-                  <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                  <div className="p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
                     <div className="flex items-center gap-2 mb-1">
-                      <Activity className="h-4 w-4 text-blue-600" />
+                      <Activity className="h-4 w-4 text-orange-600" />
                       <span className="text-sm font-medium">Test Returns</span>
                     </div>
-                    <div className="text-xl font-bold text-blue-600">
+                    <div className="text-xl font-bold text-orange-600">
                       +{tank.testReturns.toLocaleString()}L
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {tank.testPourDetails.length} test{tank.testPourDetails.length !== 1 ? 's' : ''}
                     </div>
                   </div>
-                  <div className="p-3 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                  <div className="p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
                     <div className="flex items-center gap-2 mb-1">
-                      <Clock className="h-4 w-4 text-purple-600" />
+                      <Clock className="h-4 w-4 text-orange-600" />
                       <span className="text-sm font-medium">Days Left</span>
                     </div>
-                    <div className="text-xl font-bold text-purple-600">
+                    <div className="text-xl font-bold text-orange-600">
                       {tank.daysUntilEmpty.toFixed(1)}
                     </div>
                     <div className="text-xs text-muted-foreground">

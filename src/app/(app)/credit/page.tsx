@@ -171,7 +171,7 @@ export default function CreditPage() {
       key: 'creditLimit' as keyof CreditCustomer,
       title: 'Credit Limit',
       render: (value: unknown) => (
-        <span className="font-mono text-blue-600 dark:text-blue-400">
+        <span className="font-mono text-orange-600 dark:text-orange-400">
           Rs. {(value as number)?.toLocaleString() || 0}
         </span>
       )
@@ -309,14 +309,14 @@ export default function CreditPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4">
           <h3 className="text-lg font-semibold text-foreground">Total Customers</h3>
-          <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+          <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
             {stats.totalCustomers}
           </p>
           <p className="text-sm text-muted-foreground">{stats.activeCustomers} active</p>
         </Card>
         <Card className="p-4">
           <h3 className="text-lg font-semibold text-foreground">Total Credit Limit</h3>
-          <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+          <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
             Rs. {stats.totalCreditLimit.toLocaleString()}
           </p>
           <p className="text-sm text-muted-foreground">{stats.utilizationRate}% utilized</p>

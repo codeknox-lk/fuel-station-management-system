@@ -114,7 +114,7 @@ export default function SafeSummaryPage() {
         const response = await fetch('/api/stations?active=true')
         const stationsData = await response.json()
         setStations(stationsData)
-      } catch (err) {
+      } catch {
         setError('Failed to load stations')
       }
     }
@@ -233,6 +233,7 @@ export default function SafeSummaryPage() {
             <input
               id="date"
               type="date"
+              aria-label="Filter by date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -272,7 +273,7 @@ export default function SafeSummaryPage() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                  <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">
                     Rs. {safeSummary.actualBalance.toLocaleString()}
                   </div>
                   <div className="text-sm text-muted-foreground">Actual Balance</div>
@@ -280,8 +281,8 @@ export default function SafeSummaryPage() {
                 <div className="text-center">
                   <Badge
                     className={`text-lg py-2 px-4 ${safeSummary.isBalanced
-                        ? 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
-                        : 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+                      ? 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+                      : 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
                       }`}
                   >
                     {safeSummary.isBalanced ? (
@@ -338,10 +339,10 @@ export default function SafeSummaryPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-blue-600 dark:text-blue-400">Expected Balance</CardTitle>
+                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Expected Balance</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-700">
+                <div className="text-2xl font-bold text-orange-700">
                   Rs. {safeSummary.expectedBalance.toLocaleString()}
                 </div>
               </CardContent>
@@ -357,13 +358,13 @@ export default function SafeSummaryPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="text-center">
                   <div className="text-lg font-semibold text-muted-foreground">Expected</div>
-                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                     Rs. {safeSummary.expectedBalance.toLocaleString()}
                   </div>
                 </div>
                 <div className="text-center">
                   <div className="text-lg font-semibold text-muted-foreground">Actual</div>
-                  <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                  <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                     Rs. {safeSummary.actualBalance.toLocaleString()}
                   </div>
                 </div>

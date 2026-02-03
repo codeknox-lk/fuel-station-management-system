@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     // Get authorization header
     const authHeader = request.headers.get('authorization')
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
         { detail: 'Authorization header missing or invalid' },
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     let decoded: JwtPayload | string
     try {
       decoded = jwt.verify(token, getJwtSecret()) as JwtPayload
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { detail: 'Invalid or expired token' },
         { status: 401 }

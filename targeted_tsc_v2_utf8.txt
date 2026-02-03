@@ -1,0 +1,43 @@
+﻿node_modules/@prisma/client/runtime/library.d.ts(73,5): error TS18028: Private identifiers are only available when targeting ECMAScript 2015 and higher.
+node_modules/@prisma/client/runtime/library.d.ts(401,5): error TS18028: Private identifiers are only available when targeting ECMAScript 2015 and higher.
+node_modules/@prisma/client/runtime/library.d.ts(2037,5): error TS18028: Private identifiers are only available when targeting ECMAScript 2015 and higher.
+node_modules/@types/react-dom/static.d.ts(75,17): error TS2552: Cannot find name 'ImportMap'. Did you mean 'ImportMeta'?
+node_modules/next/dist/build/templates/app-page.d.ts(11,25): error TS2307: Cannot find module 'VAR_MODULE_GLOBAL_ERROR' or its corresponding type declarations.
+node_modules/next/dist/build/webpack-config.d.ts(10,104): error TS2694: Namespace '"C:/Users/USER/Desktop/dfs management system/shed-admin/node_modules/next/dist/compiled/webpack/webpack".webpack' has no exported member 'RuleSetUseItem'.
+node_modules/next/dist/build/webpack/loaders/next-app-loader/index.d.ts(1,13): error TS2613: Module '"C:/Users/USER/Desktop/dfs management system/shed-admin/node_modules/next/dist/compiled/webpack/webpack"' has no default export. Did you mean to use 'import { webpack } from "C:/Users/USER/Desktop/dfs management system/shed-admin/node_modules/next/dist/compiled/webpack/webpack"' instead?
+node_modules/next/dist/client/components/error-boundary.d.ts(1,8): error TS1259: Module '"C:/Users/USER/Desktop/dfs management system/shed-admin/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+node_modules/next/dist/client/components/http-access-fallback/error-boundary.d.ts(11,8): error TS1259: Module '"C:/Users/USER/Desktop/dfs management system/shed-admin/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+node_modules/next/dist/client/components/layout-router.d.ts(2,8): error TS1259: Module '"C:/Users/USER/Desktop/dfs management system/shed-admin/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+node_modules/next/dist/client/with-router.d.ts(1,8): error TS1259: Module '"C:/Users/USER/Desktop/dfs management system/shed-admin/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+node_modules/next/dist/lib/metadata/metadata.d.ts(1,8): error TS1259: Module '"C:/Users/USER/Desktop/dfs management system/shed-admin/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+node_modules/next/dist/next-devtools/userspace/pages/pages-dev-overlay-setup.d.ts(1,8): error TS1259: Module '"C:/Users/USER/Desktop/dfs management system/shed-admin/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+node_modules/next/dist/server/app-render/entry-base.d.ts(1,114): error TS2307: Cannot find module 'react-server-dom-webpack/server' or its corresponding type declarations.
+node_modules/next/dist/server/app-render/entry-base.d.ts(2,49): error TS2307: Cannot find module 'react-server-dom-webpack/static' or its corresponding type declarations.
+node_modules/next/dist/server/web/spec-extension/adapters/headers.d.ts(39,16): error TS2304: Cannot find name 'HeadersIterator'.
+node_modules/next/dist/server/web/spec-extension/adapters/headers.d.ts(40,13): error TS2304: Cannot find name 'HeadersIterator'.
+node_modules/next/dist/server/web/spec-extension/adapters/headers.d.ts(41,15): error TS2304: Cannot find name 'HeadersIterator'.
+node_modules/next/dist/server/web/spec-extension/adapters/headers.d.ts(42,26): error TS2304: Cannot find name 'HeadersIterator'.
+node_modules/next/dist/shared/lib/amp-context.shared-runtime.d.ts(1,8): error TS1259: Module '"C:/Users/USER/Desktop/dfs management system/shed-admin/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+node_modules/next/dist/shared/lib/app-router-context.shared-runtime.d.ts(4,8): error TS1259: Module '"C:/Users/USER/Desktop/dfs management system/shed-admin/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+node_modules/next/dist/shared/lib/head-manager-context.shared-runtime.d.ts(1,8): error TS1259: Module '"C:/Users/USER/Desktop/dfs management system/shed-admin/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+node_modules/next/dist/shared/lib/image-config-context.shared-runtime.d.ts(1,8): error TS1259: Module '"C:/Users/USER/Desktop/dfs management system/shed-admin/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+node_modules/next/dist/shared/lib/loadable-context.shared-runtime.d.ts(1,8): error TS1259: Module '"C:/Users/USER/Desktop/dfs management system/shed-admin/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+node_modules/next/dist/shared/lib/loadable.shared-runtime.d.ts(21,8): error TS1259: Module '"C:/Users/USER/Desktop/dfs management system/shed-admin/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+node_modules/next/dist/shared/lib/router-context.shared-runtime.d.ts(1,8): error TS1259: Module '"C:/Users/USER/Desktop/dfs management system/shed-admin/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+node_modules/next/dist/shared/lib/server-inserted-html.shared-runtime.d.ts(1,8): error TS1259: Module '"C:/Users/USER/Desktop/dfs management system/shed-admin/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+node_modules/next/dist/shared/lib/utils.d.ts(10,13): error TS1192: Module '"fs"' has no default export.
+node_modules/next/dist/types.d.ts(8,13): error TS1259: Module '"C:/Users/USER/Desktop/dfs management system/shed-admin/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+src/app/api/loans/pumper/route.ts(2,24): error TS2307: Cannot find module '@/lib/db' or its corresponding type declarations.
+src/app/api/pos/missing-slip/route.ts(2,24): error TS2307: Cannot find module '@/lib/db' or its corresponding type declarations.
+src/app/api/reports/daily-sales/route.ts(2,24): error TS2307: Cannot find module '@/lib/db' or its corresponding type declarations.
+src/app/api/reports/daily/route.ts(2,24): error TS2307: Cannot find module '@/lib/db' or its corresponding type declarations.
+src/app/api/reports/daily/route.ts(3,38): error TS2307: Cannot find module '@/lib/calc' or its corresponding type declarations.
+src/app/api/reports/profit/route.ts(2,24): error TS2307: Cannot find module '@/lib/db' or its corresponding type declarations.
+src/app/api/shifts/[id]/route.ts(2,24): error TS2307: Cannot find module '@/lib/db' or its corresponding type declarations.
+src/app/api/shifts/bulk-close/route.ts(2,24): error TS2307: Cannot find module '@/lib/db' or its corresponding type declarations.
+src/app/api/shifts/bulk-close/route.ts(167,46): error TS2802: Type 'Map<string, number>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+src/app/api/shifts/cleanup/route.ts(2,24): error TS2307: Cannot find module '@/lib/db' or its corresponding type declarations.
+src/app/api/tanks/dips/route.ts(2,24): error TS2307: Cannot find module '@/lib/db' or its corresponding type declarations.
+src/app/api/tanks/dips/route.ts(3,33): error TS2307: Cannot find module '@/lib/auditMiddleware' or its corresponding type declarations.
+src/app/api/tanks/route.ts(2,24): error TS2307: Cannot find module '@/lib/db' or its corresponding type declarations.
+src/app/api/tanks/route.ts(3,33): error TS2307: Cannot find module '@/lib/auditMiddleware' or its corresponding type declarations.

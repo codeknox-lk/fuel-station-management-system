@@ -3,8 +3,7 @@ import {
     classifyVariance,
     tankBookStock,
     priceAt,
-    calculateShiftSummary,
-    TOLERANCE_CONFIG
+    calculateShiftSummary
 } from './calc'
 import { Price } from '@/lib/types'
 

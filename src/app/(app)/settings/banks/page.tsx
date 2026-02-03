@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { FormCard } from '@/components/ui/FormCard'
 import { DataTable } from '@/components/ui/DataTable'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { CreditCard, Plus, Edit, Trash2, Building, Phone } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
@@ -33,7 +33,7 @@ interface Bank {
 export default function BanksPage() {
   const router = useRouter()
   const [banks, setBanks] = useState<Bank[]>([])
-  const [loading, setLoading] = useState(true)
+  // const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingBank, setEditingBank] = useState<Bank | null>(null)
   const [formData, setFormData] = useState({
@@ -50,11 +50,7 @@ export default function BanksPage() {
   })
   const { toast } = useToast()
 
-  useEffect(() => {
-    fetchBanks()
-  }, [])
-
-  const fetchBanks = async () => {
+  const fetchBanks = useCallback(async () => {
     try {
       const response = await fetch('/api/banks')
       const data = await response.json()
@@ -71,15 +67,18 @@ export default function BanksPage() {
       console.log('Mapped banks data:', mappedData)
       setBanks(mappedData)
     } catch (error) {
+      console.error('Failed to fetch banks:', error)
       toast({
         title: "Error",
         description: "Failed to fetch banks",
         variant: "destructive"
       })
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    fetchBanks()
+  }, [fetchBanks])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -156,7 +155,7 @@ export default function BanksPage() {
       })
 
       fetchBanks()
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to delete bank",
@@ -290,7 +289,7 @@ export default function BanksPage() {
       title: 'Total Banks',
       value: banks.length.toString(),
       description: 'Registered banks',
-      icon: <CreditCard className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+      icon: <CreditCard className="h-5 w-5 text-orange-600 dark:text-orange-400" />
     },
     {
       title: 'Active',
@@ -308,7 +307,7 @@ export default function BanksPage() {
       title: 'Accounts',
       value: banks.filter(b => b.accountNumber).length.toString(),
       description: 'With account details',
-      icon: <Building className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+      icon: <Building className="h-5 w-5 text-orange-600 dark:text-orange-400" />
     }
   ]
 

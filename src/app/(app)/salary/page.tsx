@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useStation } from '@/contexts/StationContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -17,7 +17,6 @@ import {
   User,
   Download,
   RefreshCw,
-  AlertCircle,
   Briefcase,
   Users
 } from 'lucide-react'
@@ -128,14 +127,7 @@ export default function SalaryPage() {
     return { value: year.toString(), label: year.toString() }
   })
 
-  useEffect(() => {
-    if (selectedStation) {
-      fetchSalaryData()
-      fetchOfficeStaffSalaryData()
-    }
-  }, [selectedStation, selectedYear, selectedMonth])
-
-  const fetchSalaryData = async () => {
+  const fetchSalaryData = useCallback(async () => {
     if (!selectedStation) return
 
     try {
@@ -163,9 +155,9 @@ export default function SalaryPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedStation, selectedYear, selectedMonth, toast])
 
-  const fetchOfficeStaffSalaryData = async () => {
+  const fetchOfficeStaffSalaryData = useCallback(async () => {
     if (!selectedStation) return
 
     try {
@@ -190,7 +182,14 @@ export default function SalaryPage() {
     } finally {
       setLoadingOfficeStaff(false)
     }
-  }
+  }, [selectedStation, selectedYear, selectedMonth])
+
+  useEffect(() => {
+    if (selectedStation) {
+      fetchSalaryData()
+      fetchOfficeStaffSalaryData()
+    }
+  }, [selectedStation, selectedYear, selectedMonth, fetchSalaryData, fetchOfficeStaffSalaryData])
 
   const handleRowClick = (row: SalaryData) => {
     // Navigate to pumper details page with month and pumper info
@@ -327,7 +326,7 @@ export default function SalaryPage() {
     {
       key: 'netSalary' as keyof SalaryData,
       title: 'Net Salary',
-      render: (value: unknown, row: SalaryData) => {
+      render: (value: unknown) => {
         const net = value as number
         return (
           <div className="flex items-center gap-2">
@@ -415,7 +414,7 @@ export default function SalaryPage() {
   if (loading && !salaryData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 dark:border-purple-400"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 dark:border-orange-400"></div>
       </div>
     )
   }
@@ -426,7 +425,7 @@ export default function SalaryPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <DollarSign className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+            <DollarSign className="h-8 w-8 text-orange-600 dark:text-orange-400" />
             Salary Management
           </h1>
           <p className="text-muted-foreground mt-1">
@@ -584,7 +583,7 @@ export default function SalaryPage() {
           >
             {loadingOfficeStaff ? (
               <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 dark:border-purple-400"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 dark:border-orange-400"></div>
               </div>
             ) : !officeStaffSalaryData || officeStaffSalaryData.salaryData.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
@@ -609,4 +608,3 @@ export default function SalaryPage() {
     </div>
   )
 }
-

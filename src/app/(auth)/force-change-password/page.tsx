@@ -69,37 +69,38 @@ export default function ForceChangePasswordPage() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-8 bg-gray-100">
+        <div className="min-h-screen flex items-center justify-center p-4 md:p-8 bg-gray-50">
             {/* Floating Rounded Container */}
-            <div className="w-full max-w-6xl grid lg:grid-cols-2 rounded-3xl overflow-hidden shadow-2xl bg-white">
+            <div className="w-full max-w-5xl grid lg:grid-cols-2 rounded-[2rem] overflow-hidden shadow-2xl bg-white min-h-[600px]">
 
                 {/* Left: Form */}
-                <div className="flex flex-col justify-center px-8 lg:px-16 xl:px-20 py-12">
-                    <div className="w-full max-w-md">
+                <div className="flex flex-col justify-center px-8 lg:px-16 py-12 order-2 lg:order-1 relative">
+                    <div className="w-full max-w-sm mx-auto">
                         {/* Logo */}
-                        <div className="flex items-center gap-3 mb-12">
+                        <div className="flex items-center gap-3 mb-8">
                             <Image
-                                src="/images/logo-icon.png"
+                                src="/images/fuelsync-logo-full.png"
                                 alt="FuelSync Logo"
-                                width={64}
-                                height={64}
-                                className="w-16 h-16 drop-shadow-md"
+                                width={300}
+                                height={100}
+                                className="h-24 w-auto object-contain"
+                                priority
                             />
                         </div>
 
-                        {/* Welcome Text */}
+                        {/* Heading */}
                         <div className="mb-8">
-                            <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                                Change Your Password
+                            <h1 className="text-3xl font-bold text-gray-900 mb-2 tracking-tight">
+                                Change Password
                             </h1>
-                            <p className="text-gray-500">
-                                For security, please create a new password
+                            <p className="text-gray-500 text-base">
+                                For security, please secure your account.
                             </p>
                         </div>
 
                         {/* Error */}
                         {error && (
-                            <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                            <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm font-medium">
                                 {error}
                             </div>
                         )}
@@ -115,12 +116,12 @@ export default function ForceChangePasswordPage() {
                                     onChange={(e) => setCurrentPassword(e.target.value)}
                                     required
                                     disabled={isLoading}
-                                    className="h-12 border-gray-300 focus:border-orange-500 focus:ring-orange-500 pr-10"
+                                    className="h-14 px-6 rounded-2xl bg-gray-50 border-transparent focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-100 transition-all duration-200 pr-12"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowCurrent(!showCurrent)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                                 >
                                     {showCurrent ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                 </button>
@@ -135,12 +136,12 @@ export default function ForceChangePasswordPage() {
                                     onChange={(e) => setNewPassword(e.target.value)}
                                     required
                                     disabled={isLoading}
-                                    className="h-12 border-gray-300 focus:border-orange-500 focus:ring-orange-500 pr-10"
+                                    className="h-14 px-6 rounded-2xl bg-gray-50 border-transparent focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-100 transition-all duration-200 pr-12"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowNew(!showNew)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                                 >
                                     {showNew ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                 </button>
@@ -155,12 +156,12 @@ export default function ForceChangePasswordPage() {
                                     onChange={(e) => setConfirmPassword(e.target.value)}
                                     required
                                     disabled={isLoading}
-                                    className="h-12 border-gray-300 focus:border-orange-500 focus:ring-orange-500 pr-10"
+                                    className="h-14 px-6 rounded-2xl bg-gray-50 border-transparent focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-100 transition-all duration-200 pr-12"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowConfirm(!showConfirm)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                                 >
                                     {showConfirm ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                 </button>
@@ -168,16 +169,16 @@ export default function ForceChangePasswordPage() {
 
                             {/* Password Requirements */}
                             {newPassword && (
-                                <div className="bg-gray-50 rounded-lg p-3 space-y-1">
-                                    <p className="text-xs font-medium text-gray-700 mb-1">Password must contain:</p>
-                                    <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+                                <div className="bg-orange-50/50 border border-orange-100 rounded-2xl p-4 space-y-2 animate-in fade-in zoom-in-95 duration-200">
+                                    <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Requirements:</p>
+                                    <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
                                         <PasswordRule met={rules.minLength} text="8+ characters" />
                                         <PasswordRule met={rules.hasUppercase} text="Uppercase" />
                                         <PasswordRule met={rules.hasLowercase} text="Lowercase" />
                                         <PasswordRule met={rules.hasNumber} text="Number" />
                                         <PasswordRule met={rules.hasSpecial} text="Special char" />
                                         {confirmPassword && (
-                                            <PasswordRule met={rules.passwordsMatch} text="Match" />
+                                            <PasswordRule met={rules.passwordsMatch} text="Passwords match" />
                                         )}
                                     </div>
                                 </div>
@@ -185,31 +186,28 @@ export default function ForceChangePasswordPage() {
 
                             <Button
                                 type="submit"
-                                className="w-full h-11 bg-orange-600 hover:bg-orange-700 text-white rounded-full"
+                                className="w-full h-14 bg-[#FF4500] hover:bg-[#E03E00] text-white rounded-full text-lg font-semibold shadow-lg shadow-orange-500/20 hover:shadow-orange-500/30 transition-all active:scale-[0.98] mt-4"
                                 disabled={isLoading || !allRulesMet}
                             >
-                                {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Change Password'}
+                                {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : 'Update Password'}
                             </Button>
                         </form>
                     </div>
                 </div>
 
                 {/* Right: Illustration */}
-                <div className="hidden lg:block p-4">
-                    <div className="h-full w-full rounded-3xl bg-gradient-to-br from-orange-500 via-red-500 to-red-700 relative overflow-hidden">
-                        {/* Cloud decorations */}
-                        <div className="absolute top-10 left-10 w-32 h-16 bg-white/20 rounded-full blur-xl" />
-                        <div className="absolute bottom-20 right-20 w-40 h-20 bg-white/20 rounded-full blur-xl" />
-                        <div className="absolute top-1/4 right-1/4 w-24 h-12 bg-white/10 rounded-full blur-lg" />
+                <div className="hidden lg:flex flex-col justify-center items-center bg-white p-0 order-1 lg:order-2 relative overflow-hidden">
+                    {/* Background decoration */}
+                    <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-orange-50/50 via-transparent to-transparent opacity-60"></div>
 
-                        {/* Illustration */}
-                        <div className="relative w-full h-full flex items-center justify-center min-h-[400px]">
-                            <div className="text-white text-center">
-                                <div className="text-6xl mb-4">🔒</div>
-                                <h3 className="text-2xl font-bold">Secure Your Account</h3>
-                                <p className="text-white/80 mt-2">Create a strong password</p>
-                            </div>
-                        </div>
+                    <div className="relative w-full h-full max-h-[600px] flex items-center justify-center">
+                        <Image
+                            src="/images/password-change-illustration.png"
+                            alt="Security Illustration"
+                            fill
+                            className="object-contain"
+                            priority
+                        />
                     </div>
                 </div>
             </div>
@@ -219,13 +217,11 @@ export default function ForceChangePasswordPage() {
 
 function PasswordRule({ met, text }: { met: boolean; text: string }) {
     return (
-        <div className="flex items-center gap-1.5">
-            {met ? (
-                <Check className="h-3 w-3 text-green-600 flex-shrink-0" />
-            ) : (
-                <X className="h-3 w-3 text-gray-400 flex-shrink-0" />
-            )}
-            <span className={`text-xs ${met ? 'text-green-600' : 'text-gray-600'}`}>
+        <div className="flex items-center gap-2 transition-colors duration-200">
+            <div className={`flex items-center justify-center w-4 h-4 rounded-full ${met ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'}`}>
+                {met ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+            </div>
+            <span className={`text-xs font-medium ${met ? 'text-gray-900' : 'text-gray-500'}`}>
                 {text}
             </span>
         </div>

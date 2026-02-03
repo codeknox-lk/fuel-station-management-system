@@ -106,7 +106,6 @@ export async function POST(request: NextRequest) {
 
     // New format: Accept terminalEntries array OR legacy single terminal format
     const {
-      stationId,
       shiftId,
       terminalId, // Legacy field
       startNumber, // Legacy fields

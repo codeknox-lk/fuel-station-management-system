@@ -4,7 +4,7 @@ import { Price } from '@/lib/types'
 export const TOLERANCE_CONFIG = {
   percentage: 0, // Not used anymore - using flat amount only
   flatAmount: 20, // Rs. 20 flat tolerance for any sale
-  getTolerance: (_salesAmount: number) => TOLERANCE_CONFIG.flatAmount // Always return flat Rs. 20
+  getTolerance: () => TOLERANCE_CONFIG.flatAmount // Always return flat Rs. 20
 }
 
 export interface MeterReading {
@@ -42,7 +42,7 @@ export interface SalesDelta {
  */
 export function priceAt(fuelId: string, datetime: string, prices: Price[]): number {
   const targetDate = new Date(datetime)
-  
+
   const price = prices
     .filter(p => p.fuelId === fuelId || p.fuel?.name === fuelId)
     .find(p => {
@@ -50,7 +50,7 @@ export function priceAt(fuelId: string, datetime: string, prices: Price[]): numb
       const effectiveTo = p.effectiveTo ? new Date(p.effectiveTo) : new Date('2099-12-31T23:59:59Z')
       return targetDate >= effectiveFrom && targetDate <= effectiveTo
     })
-  
+
   return price?.price || 0
 }
 
@@ -67,7 +67,7 @@ export function splitIntervalByPrice(
   const intervals: Array<{ startTime: string; endTime: string; price: number }> = []
   const start = new Date(startTime)
   const end = new Date(endTime)
-  
+
   // Get all price changes in the interval
   const relevantPrices = prices
     .filter(p => p.fuelId === fuelId || p.fuel?.name === fuelId)
@@ -77,26 +77,26 @@ export function splitIntervalByPrice(
       return effectiveFrom <= end && effectiveTo >= start
     })
     .sort((a, b) => new Date(a.effectiveFrom).getTime() - new Date(b.effectiveFrom).getTime())
-  
+
   let currentTime = start
   let currentPriceIndex = 0
-  
+
   while (currentTime < end) {
     const nextPriceChange = relevantPrices[currentPriceIndex + 1]
     const nextChangeTime = nextPriceChange ? new Date(nextPriceChange.effectiveFrom) : end
-    
+
     const intervalEnd = nextChangeTime > end ? end : nextChangeTime
-    
+
     intervals.push({
       startTime: currentTime.toISOString(),
       endTime: intervalEnd.toISOString(),
       price: relevantPrices[currentPriceIndex]?.price || 0
     })
-    
+
     currentTime = intervalEnd
     currentPriceIndex++
   }
-  
+
   return intervals
 }
 
@@ -111,50 +111,50 @@ export function computeSalesFromDeltas(
   prices: Price[]
 ): SalesDelta[] {
   const sales: SalesDelta[] = []
-  
+
   // Group readings by nozzle
   const readingsByNozzle = new Map<string, { start?: MeterReading; audits: MeterReading[]; end?: MeterReading }>()
-  
+
   startReadings.forEach(reading => {
     if (!readingsByNozzle.has(reading.nozzleId)) {
       readingsByNozzle.set(reading.nozzleId, { audits: [] })
     }
     readingsByNozzle.get(reading.nozzleId)!.start = reading
   })
-  
+
   auditReadings.forEach(reading => {
     if (!readingsByNozzle.has(reading.nozzleId)) {
       readingsByNozzle.set(reading.nozzleId, { audits: [] })
     }
     readingsByNozzle.get(reading.nozzleId)!.audits.push(reading)
   })
-  
+
   endReadings.forEach(reading => {
     if (!readingsByNozzle.has(reading.nozzleId)) {
       readingsByNozzle.set(reading.nozzleId, { audits: [] })
     }
     readingsByNozzle.get(reading.nozzleId)!.end = reading
   })
-  
+
   // Calculate sales for each nozzle
   readingsByNozzle.forEach((readings, nozzleId) => {
     if (!readings.start || !readings.end) return
-    
+
     const startReading = readings.start.reading
     const endReading = readings.end.reading
     const delta = endReading - startReading
-    
+
     // Get fuel ID from nozzle (would need to look up from tank)
     const fuelId = 'petrol-92-id' // This would be looked up from nozzle -> tank -> fuelId
     const price = priceAt(fuelId, readings.start.timestamp, prices)
-    
+
     // Subtract test pours for this nozzle
     const nozzleTestPours = testPours.filter(tp => tp.nozzleId === nozzleId && tp.returned)
     const testPourAmount = nozzleTestPours.reduce((sum, tp) => sum + tp.amount, 0)
-    
+
     const netDelta = delta - testPourAmount
     const amount = netDelta * price
-    
+
     sales.push({
       nozzleId,
       startReading,
@@ -166,7 +166,7 @@ export function computeSalesFromDeltas(
       endTime: readings.end.timestamp
     })
   })
-  
+
   return sales
 }
 
@@ -189,7 +189,7 @@ export function tankBookStock(
 export function classifyVariance(
   totalSales: number,
   declaredAmount: number,
-  _tolerancePercentage: number = 0, // Not used - kept for backward compatibility
+  // tolerancePercentage removed as it was unused and flat amount is used instead
   toleranceFlat: number = TOLERANCE_CONFIG.flatAmount
 ): {
   variance: number
@@ -201,7 +201,7 @@ export function classifyVariance(
   const variancePercentage = totalSales > 0 ? (Math.abs(variance) / totalSales) * 100 : 0
   // Use flat Rs. 20 tolerance for any sale
   const tolerance = toleranceFlat
-  
+
   return {
     variance,
     variancePercentage,
@@ -240,7 +240,7 @@ export function calculateTankVariance(
   const variance = bookStock - dipStock
   const variancePercentage = bookStock > 0 ? (Math.abs(variance) / bookStock) * 100 : 0
   const tolerance = (bookStock * tolerancePercentage) / 100
-  
+
   return {
     variance,
     variancePercentage,
@@ -270,21 +270,21 @@ export function calculateShiftSummary(
   const validCardAmount = isNaN(cardAmount) || !isFinite(cardAmount) ? 0 : cardAmount
   const validCreditAmount = isNaN(creditAmount) || !isFinite(creditAmount) ? 0 : creditAmount
   const validChequeAmount = isNaN(chequeAmount) || !isFinite(chequeAmount) ? 0 : chequeAmount
-  
+
   // Calculate total sales, ensuring all amounts are valid numbers
   const totalSales = validSales.reduce((sum, sale) => {
     const amount = isNaN(sale.amount) || !isFinite(sale.amount) ? 0 : sale.amount
     return sum + amount
   }, 0)
-  
+
   const totalDeclared = validCashAmount + validCardAmount + validCreditAmount + validChequeAmount
-  
+
   // Validate totalSales and totalDeclared before calling classifyVariance
   const safeTotalSales = isNaN(totalSales) || !isFinite(totalSales) ? 0 : totalSales
   const safeTotalDeclared = isNaN(totalDeclared) || !isFinite(totalDeclared) ? 0 : totalDeclared
-  
+
   const varianceClassification = classifyVariance(safeTotalSales, safeTotalDeclared)
-  
+
   return {
     totalSales: safeTotalSales,
     totalDeclared: safeTotalDeclared,

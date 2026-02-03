@@ -671,10 +671,7 @@ export default function OpenShiftPage() {
     }
   }
 
-  const availableNozzles = nozzles.filter(nozzle =>
-    !assignments.some(assignment => assignment.nozzleId === nozzle.id) &&
-    !activeNozzleIds.has(nozzle.id)
-  )
+
 
   const assignmentColumns = [
     {
@@ -767,7 +764,7 @@ export default function OpenShiftPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
-        <Clock className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+        <Clock className="h-6 w-6 text-orange-600 dark:text-orange-400" />
         <h1 className="text-2xl font-bold">Open Shift</h1>
       </div>
 
@@ -798,10 +795,10 @@ export default function OpenShiftPage() {
 
       <FormCard title="Shift Details" description="Configure the shift parameters">
         {/* Display current station */}
-        <div className="mb-4 p-3 bg-blue-500/10 dark:bg-blue-500/20 border border-blue-500/20 dark:border-blue-500/30 rounded-lg">
+        <div className="mb-4 p-3 bg-orange-500/10 dark:bg-orange-500/20 border border-orange-500/20 dark:border-orange-500/30 rounded-lg">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full"></div>
-            <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+            <div className="w-2 h-2 bg-orange-600 dark:bg-orange-400 rounded-full"></div>
+            <span className="text-sm font-medium text-orange-700 dark:text-orange-300">
               Station: {stations.find(s => s.id === selectedStation)?.name || 'No station selected'}
             </span>
           </div>
@@ -958,7 +955,7 @@ export default function OpenShiftPage() {
         <Button
           onClick={handleOpenShift}
           disabled={loading || !selectedTemplate || assignments.length === 0}
-          className="bg-purple-600 hover:bg-purple-700"
+          className="bg-orange-600 hover:bg-orange-700"
         >
           {loading ? 'Opening...' : 'Open Shift'}
         </Button>
