@@ -79,7 +79,7 @@ export default function POSTerminalsPage() {
       const response = await fetch(url)
       const data = await response.json()
       setTerminals(data)
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to fetch POS terminals",
@@ -359,6 +359,7 @@ export default function POSTerminalsPage() {
                 <Label htmlFor="stationId">Station</Label>
                 <select
                   id="stationId"
+                  aria-label="Station"
                   value={formData.stationId}
                   onChange={(e) => setFormData({ ...formData, stationId: e.target.value })}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -377,6 +378,7 @@ export default function POSTerminalsPage() {
                 <Label htmlFor="bankId">Bank</Label>
                 <select
                   id="bankId"
+                  aria-label="Bank"
                   value={formData.bankId}
                   onChange={(e) => setFormData({ ...formData, bankId: e.target.value })}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -399,6 +401,7 @@ export default function POSTerminalsPage() {
                   <Label htmlFor="isActive">Status</Label>
                   <select
                     id="isActive"
+                    aria-label="Status"
                     value={formData.isActive ? 'true' : 'false'}
                     onChange={(e) => setFormData({ ...formData, isActive: e.target.value === 'true' })}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"

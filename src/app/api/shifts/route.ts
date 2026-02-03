@@ -252,15 +252,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate template exists
-    if (templateId) {
-      const template = await prisma.shiftTemplate.findUnique({
-        where: { id: templateId }
-      })
-      if (!template) {
-        return NextResponse.json({
-          error: 'Shift template not found'
-        }, { status: 400 })
-      }
+    if (!templateId) {
+      return NextResponse.json({
+        error: 'templateId is required'
+      }, { status: 400 })
+    }
+
+    const template = await prisma.shiftTemplate.findUnique({
+      where: { id: templateId }
+    })
+    if (!template) {
+      return NextResponse.json({
+        error: 'Shift template not found'
+      }, { status: 400 })
     }
 
     // Create the shift

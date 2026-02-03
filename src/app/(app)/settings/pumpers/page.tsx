@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Users, Plus, Edit, Trash2, Phone, Star, Building2, Clock, Award, ArrowLeft } from 'lucide-react'
+import { Users, Plus, Edit, Trash2, Phone, Star, Building2, Clock, ArrowLeft } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useRouter } from 'next/navigation'
 import { useStation } from '@/contexts/StationContext'
@@ -43,7 +43,7 @@ export default function PumpersPage() {
   const { selectedStation, isAllStations } = useStation()
   const [pumpers, setPumpers] = useState<Pumper[]>([])
   const [stations, setStations] = useState<Station[]>([])
-  const [loading, setLoading] = useState(true)
+  // const [loading, setLoading] = useState(true) // Removed unused loading state
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingPumper, setEditingPumper] = useState<Pumper | null>(null)
   const [deletingPumperId, setDeletingPumperId] = useState<string | null>(null)
@@ -73,7 +73,7 @@ export default function PumpersPage() {
         stationId: selectedStation
       }))
     }
-  }, [selectedStation])
+  }, [selectedStation, isAllStations])
 
   const fetchPumpers = async () => {
     try {
@@ -124,14 +124,14 @@ export default function PumpersPage() {
       }))
 
       setPumpers(pumpersWithStations)
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to fetch pumpers",
         variant: "destructive"
       })
     } finally {
-      setLoading(false)
+      // setLoading(false)
     }
   }
 
@@ -262,8 +262,7 @@ export default function PumpersPage() {
             try {
               errorData = JSON.parse(text)
               console.log('✅ Parsed error data:', errorData)
-            } catch (jsonError) {
-              console.error('❌ Failed to parse JSON:', jsonError)
+            } catch {
               // If not JSON, treat as plain text error
               errorData = {
                 error: text || `HTTP ${response.status} ${response.statusText}`,
@@ -278,8 +277,7 @@ export default function PumpersPage() {
             }
             console.warn('⚠️  Empty response body from server')
           }
-        } catch (parseError) {
-          console.error('❌ Failed to parse error response:', parseError)
+        } catch {
           errorData = {
             error: `HTTP ${response.status} ${response.statusText}`,
             details: 'Failed to parse error response from server'
@@ -618,6 +616,7 @@ export default function PumpersPage() {
                   <Label htmlFor="stationId">Station</Label>
                   <select
                     id="stationId"
+                    aria-label="Station"
                     value={formData.stationId}
                     onChange={(e) => setFormData({ ...formData, stationId: e.target.value })}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -648,6 +647,7 @@ export default function PumpersPage() {
                   <Label htmlFor="shift">Preferred Shift</Label>
                   <select
                     id="shift"
+                    aria-label="Preferred Shift"
                     value={formData.shift}
                     onChange={(e) => setFormData({ ...formData, shift: e.target.value as Pumper['shift'] })}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -663,6 +663,7 @@ export default function PumpersPage() {
                   <Label htmlFor="status">Status</Label>
                   <select
                     id="status"
+                    aria-label="Status"
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value as Pumper['status'] })}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -754,6 +755,7 @@ export default function PumpersPage() {
                       <input
                         type="checkbox"
                         id={spec}
+                        title={spec.replace('_', ' ')}
                         checked={formData.specializations.includes(spec)}
                         onChange={(e) => handleSpecializationChange(spec, e.target.checked)}
                         className="rounded border-border"

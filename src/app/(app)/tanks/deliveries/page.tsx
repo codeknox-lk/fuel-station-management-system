@@ -29,14 +29,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Truck, AlertCircle, CheckCircle, Plus, ArrowLeft, RefreshCw, Droplets, Clock } from 'lucide-react'
+import { Truck, AlertCircle, CheckCircle, Plus, ArrowLeft, RefreshCw, Droplets, Clock, AlertTriangle } from 'lucide-react'
 import { depthToVolume, getTankCapacityLabel, validateDepth, getMaxDepth, volumeToDepth, TankCapacity } from '@/lib/tank-calibration'
 
-interface Station {
-  id: string
-  name: string
-  city: string
-}
+
 
 interface Fuel {
   id: string
@@ -123,16 +119,15 @@ const suppliers = [
 
 export default function TankDeliveriesPage() {
   const router = useRouter()
-  const [stations, setStations] = useState<Station[]>([])
+  const { selectedStation, isAllStations } = useStation()
+  const { toast } = useToast()
+
   const [tanks, setTanks] = useState<Tank[]>([])
   const [deliveries, setDeliveries] = useState<Delivery[]>([])
-  const [loading, setLoading] = useState(false)
-
-  const { toast } = useToast()
-  const [activeTab, setActiveTab] = useState('new')
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('new') // Restored
 
   // Form state
-  const { selectedStation, setSelectedStation } = useStation()
   const [selectedTank, setSelectedTank] = useState('')
   const [supplier, setSupplier] = useState('')
   const [customSupplier, setCustomSupplier] = useState('')
@@ -153,6 +148,27 @@ export default function TankDeliveriesPage() {
   const [loadingShifts, setLoadingShifts] = useState(false)
   const [pumpReadings, setPumpReadings] = useState<PumpReading[]>([])
 
+  // Defined here to be accessible
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true)
+      const deliveriesRes = await fetch('/api/tanks/deliveries?limit=10')
+      if (deliveriesRes.ok) {
+        const deliveriesData = await deliveriesRes.json()
+        setDeliveries(deliveriesData)
+      }
+    } catch (error) {
+      console.error('Failed to load data', error)
+      toast({
+        title: "Error",
+        description: "Failed to load deliveries",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
+  }, [toast])
+
   // Verification dialog state
   const [verifyingDelivery, setVerifyingDelivery] = useState<Delivery | null>(null)
   const [afterDipDepth, setAfterDipDepth] = useState('')
@@ -166,37 +182,7 @@ export default function TankDeliveriesPage() {
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null)
   const [showDetails, setShowDetails] = useState(false)
 
-  const loadData = useCallback(async () => {
-    try {
-      const [stationsRes, deliveriesRes] = await Promise.all([
-        fetch('/api/stations?active=true'),
-        fetch('/api/deliveries')
-      ])
 
-      const stationsData = await stationsRes.json()
-      const deliveriesData = await deliveriesRes.json()
-
-      if (Array.isArray(stationsData)) {
-        setStations(stationsData)
-      } else {
-        console.error('Stations data mismatch:', stationsData)
-        setStations([])
-      }
-
-      if (Array.isArray(deliveriesData)) {
-        setDeliveries(deliveriesData)
-      } else {
-        console.error('Deliveries data mismatch:', deliveriesData)
-        setDeliveries([])
-      }
-    } catch (_err) {
-      toast({
-        title: "Error",
-        description: "Failed to load data",
-        variant: "destructive"
-      })
-    }
-  }, [toast])
 
   useEffect(() => {
     loadData()
@@ -605,47 +591,43 @@ export default function TankDeliveriesPage() {
             <CardContent>
               <form onSubmit={handleRecordDelivery} className="space-y-6">
                 {/* Basic Information */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="station">Station *</Label>
-                    <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
-                      <SelectTrigger id="station">
-                        <SelectValue placeholder="Select station" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {stations.map((station) => (
-                          <SelectItem key={station.id} value={station.id}>
-                            {station.name} ({station.city})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="flex flex-col md:flex-row gap-4">
+                  {/* Station Warning */}
+                  {isAllStations && (
+                    <div className="w-full flex items-center p-4 text-amber-800 bg-amber-50 rounded-lg dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800 mb-4">
+                      <AlertTriangle className="h-5 w-5 mr-3 flex-shrink-0" />
+                      <span className="font-medium">Please select a specific station from the top menu to record a delivery.</span>
+                    </div>
+                  )}
 
-                  <div>
-                    <Label htmlFor="tank">Tank *</Label>
-                    <Select value={selectedTank} onValueChange={setSelectedTank} disabled={loading || !selectedStation}>
-                      <SelectTrigger id="tank">
-                        <SelectValue placeholder="Select tank" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {tanks.filter(t => t.stationId === selectedStation).map((tank) => (
-                          <SelectItem key={tank.id} value={tank.id}>
-                            Tank {tank.tankNumber} - {tank.fuel?.icon} {tank.fuel?.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {!isAllStations && (
+                    <>
+                      <div className="w-full md:w-1/2">
+                        <Label htmlFor="tank">Tank *</Label>
+                        <Select value={selectedTank} onValueChange={setSelectedTank} disabled={loading}>
+                          <SelectTrigger id="tank">
+                            <SelectValue placeholder="Select tank" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {tanks.filter(t => t.stationId === selectedStation).map((tank) => (
+                              <SelectItem key={tank.id} value={tank.id}>
+                                Tank {tank.tankNumber} - {tank.fuel?.icon} {tank.fuel?.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                  <div>
-                    <Label htmlFor="deliveryTime">Delivery Time *</Label>
-                    <DateTimePicker
-                      value={deliveryTime}
-                      onChange={(date) => date && setDeliveryTime(date)}
-                      disabled={loading}
-                    />
-                  </div>
+                      <div>
+                        <Label htmlFor="deliveryTime">Delivery Time *</Label>
+                        <DateTimePicker
+                          value={deliveryTime}
+                          onChange={(date) => date && setDeliveryTime(date)}
+                          disabled={loading}
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Supplier Information */}

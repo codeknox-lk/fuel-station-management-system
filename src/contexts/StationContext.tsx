@@ -18,6 +18,7 @@ interface StationContextType {
   setSelectedStation: (stationId: string) => void
   getSelectedStation: () => Station | null
   isAllStations: boolean
+  isLoading: boolean
 }
 
 const StationContext = createContext<StationContextType | undefined>(undefined)
@@ -25,40 +26,50 @@ const StationContext = createContext<StationContextType | undefined>(undefined)
 export function StationProvider({ children }: { children: ReactNode }) {
   const [selectedStation, setSelectedStationState] = useState<string>('all')
   const [stations, setStations] = useState<Station[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Load stations on mount
+  // Load stations and hydration
   useEffect(() => {
-    const fetchStations = async () => {
+    const initialize = async () => {
       try {
+        setIsLoading(true)
+
+        // 1. Fetch Stations
         const response = await fetch('/api/stations?active=true')
-        if (!response.ok) {
-          console.error('Failed to fetch stations:', response.status)
-          setStations([])
-          return
+        let fetchedStations: Station[] = []
+        if (response.ok) {
+          const data = await response.json()
+          fetchedStations = Array.isArray(data) ? data : []
+          setStations(fetchedStations)
         }
-        const data = await response.json()
-        setStations(Array.isArray(data) ? data : [])
+
+        // 2. Hydrate Selection from LocalStorage
+        const savedStation = localStorage.getItem('selectedStation')
+        if (savedStation) {
+          // Verify valid station or 'all'
+          if (savedStation === 'all' || fetchedStations.some(s => s.id === savedStation)) {
+            setSelectedStationState(savedStation)
+          } else {
+            // Fallback if saved station no longer exists
+            setSelectedStationState('all')
+            localStorage.setItem('selectedStation', 'all')
+          }
+        }
       } catch (error) {
-        console.error('Failed to fetch stations:', error)
-        setStations([])
+        console.error('Failed to initialize stations:', error)
+      } finally {
+        setIsLoading(false)
       }
     }
-    fetchStations()
-  }, [])
 
-  // Load selected station from localStorage on mount
-  useEffect(() => {
-    const savedStation = localStorage.getItem('selectedStation')
-    if (savedStation) {
-      setSelectedStationState(savedStation)
-    }
+    initialize()
   }, [])
 
   const setSelectedStation = (stationId: string) => {
     setSelectedStationState(stationId)
     localStorage.setItem('selectedStation', stationId)
-    
-    // Emit custom event for backward compatibility
+
+    // Emit custom event for backward compatibility (can likely be removed later)
     window.dispatchEvent(new CustomEvent('stationChanged', { detail: { stationId } }))
   }
 
@@ -76,7 +87,8 @@ export function StationProvider({ children }: { children: ReactNode }) {
         stations,
         setSelectedStation,
         getSelectedStation,
-        isAllStations
+        isAllStations,
+        isLoading // Export loading state
       }}
     >
       {children}

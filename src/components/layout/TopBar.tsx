@@ -59,7 +59,7 @@ export function TopBar({ userRole }: TopBarProps) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [totalUnreadCount, setTotalUnreadCount] = useState(0)
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(true)
-  const { selectedStation, stations, setSelectedStation, getSelectedStation } = useStation()
+  const { selectedStation, stations, setSelectedStation, getSelectedStation, isLoading: isStationLoading } = useStation()
   const { theme, setTheme } = useTheme()
   const router = useRouter()
 
@@ -386,9 +386,9 @@ export function TopBar({ userRole }: TopBarProps) {
           {/* Station Selector */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
+              <Button variant="outline" size="sm" className="gap-2" disabled={isStationLoading}>
                 <Building2 className="h-4 w-4" />
-                {getSelectedStationName()}
+                {isStationLoading ? 'Loading...' : getSelectedStationName()}
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>

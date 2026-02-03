@@ -37,14 +37,6 @@ interface Station {
   city: string
 }
 
-interface Tank {
-  id: string
-  stationId: string
-  tankNumber: string
-  fuelType: string
-  capacity: number
-}
-
 interface TankReport {
   tankId: string
   tankNumber: string
@@ -75,7 +67,6 @@ interface StationReport {
 export default function TankReportPage() {
   const router = useRouter()
   const [stations, setStations] = useState<Station[]>([])
-  const [tanks, setTanks] = useState<Tank[]>([])
   const [report, setReport] = useState<StationReport | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -91,32 +82,15 @@ export default function TankReportPage() {
         const response = await fetch('/api/stations?active=true')
         const stationsData = await response.json()
         setStations(stationsData)
-      } catch (err) {
-        setError('Failed to load stations')
+      } catch {
+        setError('Failed to load stations') // Removed unused err
       }
     }
 
     loadData()
   }, [])
 
-  // Load tanks when station changes
-  useEffect(() => {
-    if (selectedStation) {
-      const loadTanks = async () => {
-        try {
-          const response = await fetch(`/api/tanks?stationId=${selectedStation}&type=tanks`)
-          const tanksData = await response.json()
-          setTanks(tanksData)
-        } catch (err) {
-          setError('Failed to load tanks')
-        }
-      }
 
-      loadTanks()
-    } else {
-      setTanks([])
-    }
-  }, [selectedStation])
 
   const generateReport = async () => {
     if (!selectedStation || !selectedDate) {
@@ -197,8 +171,8 @@ export default function TankReportPage() {
 
       setReport(stationReport)
 
-    } catch (err) {
-      setError('Failed to generate report')
+    } catch {
+      setError('Failed to generate report') // Removed unused err
     } finally {
       setLoading(false)
     }
@@ -264,6 +238,7 @@ export default function TankReportPage() {
             <input
               id="date"
               type="date"
+              title="Report Date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"

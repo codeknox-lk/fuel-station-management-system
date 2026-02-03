@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { FormCard } from '@/components/ui/FormCard'
 import { DataTable } from '@/components/ui/DataTable'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Users, Plus, Edit, Trash2, Mail, Shield, User, Crown, UserCheck, ArrowLeft, Key } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Users, Plus, Edit, Trash2, Mail, Shield, User, Crown, UserCheck, ArrowLeft, Key, Building2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useRouter } from 'next/navigation'
 import { TempPasswordModal } from '@/components/admin/TempPasswordModal'
@@ -21,13 +22,21 @@ interface SystemUser {
   role: 'DEVELOPER' | 'OWNER' | 'MANAGER' | 'ACCOUNTS'
   status: 'active' | 'inactive' | 'suspended'
   lastLogin: string
+  stationId?: string | null
+  stationName?: string | null
   createdAt: string
   updatedAt: string
+}
+
+interface Station {
+  id: string
+  name: string
 }
 
 export default function UsersPage() {
   const router = useRouter()
   const [users, setUsers] = useState<SystemUser[]>([])
+  const [stations, setStations] = useState<Station[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<SystemUser | null>(null)
@@ -36,6 +45,7 @@ export default function UsersPage() {
     email: '',
     password: '',
     role: 'MANAGER' as SystemUser['role'],
+    stationId: undefined as string | undefined, // Add stationId
     status: 'active' as SystemUser['status']
   })
   const { toast } = useToast()
@@ -69,10 +79,24 @@ export default function UsersPage() {
 
   useEffect(() => {
     fetchUsers()
+    fetchStations()
   }, [])
 
-  const fetchUsers = async () => {
+  const fetchStations = useCallback(async () => {
     try {
+      const response = await fetch('/api/stations?active=true')
+      if (response.ok) {
+        const data = await response.json()
+        setStations(Array.isArray(data) ? data : [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch stations', error)
+    }
+  }, [])
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      setLoading(true)
       const response = await fetch('/api/users')
       if (!response.ok) throw new Error('Failed to fetch users')
       const data = await response.json()
@@ -84,6 +108,9 @@ export default function UsersPage() {
         setUsers([])
       }
     } catch (error) {
+      // Silent error or toast? Toast is better but error variable was unused.
+      // We'll keep the toast but use the error content correctly or ignore it clearly
+      console.error(error)
       toast({
         title: "Error",
         description: "Failed to fetch users",
@@ -92,7 +119,12 @@ export default function UsersPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    fetchUsers()
+    fetchStations()
+  }, [fetchUsers, fetchStations])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -142,6 +174,7 @@ export default function UsersPage() {
       email: user.email || '',
       password: '', // Don't populate password when editing
       role: user.role,
+      stationId: user.stationId || undefined,
       status: user.status
     })
     setDialogOpen(true)
@@ -163,7 +196,7 @@ export default function UsersPage() {
       })
 
       fetchUsers()
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Error",
         description: "Failed to delete user",
@@ -232,6 +265,7 @@ export default function UsersPage() {
       email: '',
       password: '',
       role: 'MANAGER',
+      stationId: undefined,
       status: 'active'
     })
   }
@@ -297,6 +331,20 @@ export default function UsersPage() {
             </div>
           </div>
         </div>
+      )
+    },
+    {
+      key: 'stationName' as keyof SystemUser,
+      title: 'Station',
+      render: (value: unknown, row: SystemUser) => (
+        row.stationName ? (
+          <div className="flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+            <span>{row.stationName}</span>
+          </div>
+        ) : (
+          <span className="text-muted-foreground text-sm">-</span>
+        )
       )
     },
     {
@@ -510,6 +558,7 @@ export default function UsersPage() {
                   <Label htmlFor="role">Role</Label>
                   <select
                     id="role"
+                    title="Select User Role"
                     value={formData.role}
                     onChange={(e) => setFormData({ ...formData, role: e.target.value as SystemUser['role'] })}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -526,6 +575,7 @@ export default function UsersPage() {
                   <Label htmlFor="status">Status</Label>
                   <select
                     id="status"
+                    title="Select User Status"
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value as SystemUser['status'] })}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -537,6 +587,33 @@ export default function UsersPage() {
                   </select>
                 </div>
               </div>
+
+              {/* Station Selection - Show for Managers/Staff if stations exist */}
+              {isDeveloper || isOwner && (
+                <div>
+                  <Label htmlFor="station">Assigned Station</Label>
+                  <Select
+                    value={formData.stationId || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, stationId: value === "none" ? undefined : value })}
+                    disabled={stations.length === 0}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a station (Optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None (Global/No Station)</SelectItem>
+                      {stations.map((station) => (
+                        <SelectItem key={station.id} value={station.id}>
+                          {station.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Assigning a station limits the user&apos;s scope to that station (especially for Managers).
+                  </p>
+                </div>
+              )}
 
               {/* Role Permissions Preview */}
               <div className="bg-muted p-4 rounded-lg">
@@ -622,6 +699,7 @@ export default function UsersPage() {
           data={filteredUsers}
           columns={columns}
           searchPlaceholder="Search users..."
+          loading={loading}
         />
       </FormCard>
 

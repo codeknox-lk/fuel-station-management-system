@@ -30,11 +30,7 @@ import {
 import { Droplets, Clock, AlertCircle, CheckCircle, Plus, ArrowLeft, RefreshCw } from 'lucide-react'
 import { depthToVolume, getTankCapacityLabel, validateDepth, getMaxDepth } from '@/lib/tank-calibration'
 
-interface Station {
-  id: string
-  name: string
-  city: string
-}
+
 
 interface Fuel {
   id: string
@@ -104,16 +100,23 @@ interface PumpReading {
 
 export default function TankDipsPage() {
   const router = useRouter()
-  const [stations, setStations] = useState<Station[]>([])
-  const [tanks, setTanks] = useState<Tank[]>([])
-  const [recentDips, setRecentDips] = useState<TankDip[]>([])
-  const [loading, setLoading] = useState(false)
+  const { selectedStation, isAllStations } = useStation()
   const { toast } = useToast()
 
-  // Form state
-  const { selectedStation, setSelectedStation } = useStation()
-  const [selectedTank, setSelectedTank] = useState('')
+  const [tanks, setTanks] = useState<Tank[]>([])
+  const [recentDips, setRecentDips] = useState<TankDip[]>([])
+  const [loading, setLoading] = useState(true)
+  const [date, setDate] = useState<Date>(new Date())
+
+  // Tip: dipDepth was missing
+  const [selectedTank, setSelectedTank] = useState<string>('')
   const [dipDepth, setDipDepth] = useState('')
+
+  // Dialog states
+  const [isAddDipOpen, setIsAddDipOpen] = useState(false)
+  const [isEditDipOpen, setIsEditDipOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+
   const [dipLitres, setDipLitres] = useState('')
   const [dipTime, setDipTime] = useState<Date | undefined>(new Date())
 
@@ -128,24 +131,20 @@ export default function TankDipsPage() {
   const [updatedTankLevels, setUpdatedTankLevels] = useState<Record<string, number>>({})
   const [showUpdatedLevels, setShowUpdatedLevels] = useState(false)
 
-  // Load initial data
+  // Load initial data (recent dips)
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [stationsRes, dipsRes] = await Promise.all([
-          fetch('/api/stations?active=true'),
-          fetch('/api/tanks/dips?limit=10')
-        ])
-
-        const stationsData = await stationsRes.json()
-        const dipsData = await dipsRes.json()
-
-        setStations(stationsData)
-        setRecentDips(dipsData)
-      } catch {
+        const dipsRes = await fetch('/api/tanks/dips?limit=10')
+        if (dipsRes.ok) {
+          const dipsData = await dipsRes.json()
+          setRecentDips(dipsData)
+        }
+      } catch (error) {
+        console.error('Failed to load initial data', error)
         toast({
           title: "Error",
-          description: "Failed to load initial data",
+          description: "Failed to load recent dips",
           variant: "destructive"
         })
       }
@@ -535,23 +534,7 @@ export default function TankDipsPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Basic Info */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="station">Station *</Label>
-                <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
-                  <SelectTrigger id="station">
-                    <SelectValue placeholder="Select a station" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stations.map((station) => (
-                      <SelectItem key={station.id} value={station.id}>
-                        {station.name} ({station.city})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
+            <div className="flex flex-col md:flex-row gap-4">
               <div>
                 <Label htmlFor="tank">Tank *</Label>
                 <Select value={selectedTank} onValueChange={setSelectedTank} disabled={loading || !selectedStation}>

@@ -61,7 +61,7 @@ export async function POST(
     // Calculate actual quantity received
     // IMPORTANT: Only add fuel sold DURING delivery (additionalFuelSold)
     // Do NOT add fuelSoldDuring - it's already reflected in beforeDipReading!
-    const actualReceived = parseFloat(afterDipReading) - delivery.beforeDipReading + (additionalFuelSold || 0)
+    const actualReceived = afterDipReading - delivery.beforeDipReading + (additionalFuelSold || 0)
 
     // Track total fuel sold for record keeping
     const totalFuelSold = (delivery.fuelSoldDuring || 0) + (additionalFuelSold || 0)
@@ -80,11 +80,11 @@ export async function POST(
     }
 
     // Validate tank won't exceed capacity
-    if (parseFloat(afterDipReading) > delivery.tank.capacity) {
+    if (afterDipReading > delivery.tank.capacity) {
       return NextResponse.json(
         {
           error: 'After dip reading exceeds tank capacity',
-          details: `Tank capacity: ${delivery.tank.capacity.toLocaleString()}L, After dip: ${parseFloat(afterDipReading).toLocaleString()}L`
+          details: `Tank capacity: ${delivery.tank.capacity.toLocaleString()}L, After dip: ${afterDipReading.toLocaleString()}L`
         },
         { status: 400 }
       )
@@ -96,7 +96,7 @@ export async function POST(
       const updatedDelivery = await tx.delivery.update({
         where: { id },
         data: {
-          afterDipReading: parseFloat(afterDipReading),
+          afterDipReading: afterDipReading,
           afterDipTime: afterDipTime ? new Date(afterDipTime) : new Date(),
           fuelSoldDuring: totalFuelSold,
           actualReceived,
@@ -131,7 +131,7 @@ export async function POST(
       await tx.tank.update({
         where: { id: delivery.tankId },
         data: {
-          currentLevel: parseFloat(afterDipReading)
+          currentLevel: afterDipReading
         }
       })
 

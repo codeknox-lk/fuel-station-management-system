@@ -48,11 +48,7 @@ import {
 } from 'lucide-react'
 import { exportProfitReportPDF } from '@/lib/exportUtils'
 
-interface Station {
-  id: string
-  name: string
-  city: string
-}
+
 
 interface ProfitData {
   day: number
@@ -139,31 +135,19 @@ const years = Array.from({ length: 5 }, (_, i) => currentYear - i)
 
 export default function ProfitReportsPage() {
   const router = useRouter()
-  const [stations, setStations] = useState<Station[]>([])
+  // REMOVED local stations state
   const [profitReport, setProfitReport] = useState<MonthlyProfitReport | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   // Form state
-  const { selectedStation, setSelectedStation } = useStation()
+  // Use isAllStations from context
+  const { selectedStation, isAllStations } = useStation()
   const currentBusinessMonth = getCurrentBusinessMonth()
   const [selectedMonth, setSelectedMonth] = useState(String(currentBusinessMonth.month).padStart(2, '0'))
   const [selectedYear, setSelectedYear] = useState(String(currentBusinessMonth.year))
 
-  // Load initial data
-  useEffect(() => {
-    const loadStations = async () => {
-      try {
-        const response = await fetch('/api/stations?active=true')
-        const stationsData = await response.json()
-        setStations(stationsData)
-      } catch (_err) {
-        setError('Failed to load stations')
-      }
-    }
-
-    loadStations()
-  }, [])
+  // REMOVED loadStations useEffect
 
   const generateReport = async () => {
     if (!selectedStation || !selectedMonth || !selectedYear) {
@@ -192,7 +176,7 @@ export default function ProfitReportsPage() {
 
       const reportData = await response.json() as ProfitReportResponse
 
-      const station = stations.find(s => s.id === selectedStation)
+      const stationName = 'Current Station' // Simplified as we removed local station list
       const monthName = businessMonth.label
 
       // Transform API data to match frontend interface
@@ -236,7 +220,7 @@ export default function ProfitReportsPage() {
         month: monthName,
         year: parseInt(selectedYear),
         stationId: selectedStation,
-        stationName: station?.name || 'Unknown Station',
+        stationName: stationName,
         totalRevenue,
         totalExpenses,
         totalProfit,
@@ -265,8 +249,7 @@ export default function ProfitReportsPage() {
       return
     }
 
-    const station = stations.find(s => s.id === selectedStation)
-    const stationName = station?.name || 'Unknown Station'
+    const stationName = 'Current Station'
     const monthStr = `${selectedYear}-${selectedMonth}`
 
     exportProfitReportPDF(profitReport, stationName, monthStr)
@@ -389,69 +372,66 @@ export default function ProfitReportsPage() {
 
       <FormCard title="Generate Monthly Profit Report" description="Business month runs from 7th to 6th of next month">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <Label htmlFor="station">Station</Label>
-            <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
-              <SelectTrigger id="station">
-                <SelectValue placeholder="Select a station" />
-              </SelectTrigger>
-              <SelectContent>
-                {stations.map((station) => (
-                  <SelectItem key={station.id} value={station.id}>
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4" />
-                      {station.name} ({station.city})
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
-          <div>
-            <Label htmlFor="month">Month</Label>
-            <Select value={selectedMonth} onValueChange={setSelectedMonth} disabled={loading}>
-              <SelectTrigger id="month">
-                <SelectValue placeholder="Select month" />
-              </SelectTrigger>
-              <SelectContent>
-                {months.map((month) => (
-                  <SelectItem key={month.value} value={month.value}>
-                    {month.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Station Warning */}
+          {isAllStations && (
+            <div className="col-span-full md:col-span-4 flex items-center p-4 text-amber-800 bg-amber-50 rounded-lg dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800 mb-4">
+              <AlertCircle className="h-5 w-5 mr-3 flex-shrink-0" />
+              <span className="font-medium">Please select a specific station from the top menu to generate a report.</span>
+            </div>
+          )}
 
-          <div>
-            <Label htmlFor="year">Year</Label>
-            <Select value={selectedYear} onValueChange={setSelectedYear} disabled={loading}>
-              <SelectTrigger id="year">
-                <SelectValue placeholder="Select year" />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map((year) => (
-                  <SelectItem key={year} value={String(year)}>
-                    {year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {!isAllStations && (
+            <>
+              {/* Station display (read-only or hidden, since it's global) could constitute just removing the selector */}
+              {/* Logic: If specific station selected, just show other filters. Global bar shows current station. */}
 
-          <div className="flex items-end">
-            <Button onClick={generateReport} disabled={loading || !selectedStation || !selectedMonth || !selectedYear}>
-              {loading ? 'Generating...' : (
-                <>
-                  <Calculator className="mr-2 h-4 w-4" />
-                  Generate Report
-                </>
-              )}
-            </Button>
-          </div>
+              <div>
+                <Label htmlFor="month">Month</Label>
+                <Select value={selectedMonth} onValueChange={setSelectedMonth} disabled={loading}>
+                  <SelectTrigger id="month">
+                    <SelectValue placeholder="Select month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {months.map((month) => (
+                      <SelectItem key={month.value} value={month.value}>
+                        {month.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="year">Year</Label>
+                <Select value={selectedYear} onValueChange={setSelectedYear} disabled={loading}>
+                  <SelectTrigger id="year">
+                    <SelectValue placeholder="Select year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((year) => (
+                      <SelectItem key={year} value={String(year)}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-end">
+                <Button onClick={generateReport} disabled={loading || isAllStations || !selectedMonth || !selectedYear}>
+                  {loading ? 'Generating...' : (
+                    <>
+                      <Calculator className="mr-2 h-4 w-4" />
+                      Generate Report
+                    </>
+                  )}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
-      </FormCard>
+      </FormCard >
 
       {profitReport && (
         <div className="space-y-6">
@@ -720,7 +700,8 @@ export default function ProfitReportsPage() {
             </CardContent>
           </Card>
         </div>
-      )}
-    </div>
+      )
+      }
+    </div >
   )
 }
