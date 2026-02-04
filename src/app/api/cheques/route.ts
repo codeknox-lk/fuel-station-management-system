@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -94,6 +95,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Get current user for recordedBy
+    const currentUser = await getServerUser()
+    const recordedBy = currentUser ? currentUser.username : 'System User'
+
     const newCheque = await prisma.cheque.create({
       data: {
         stationId,
@@ -103,7 +108,8 @@ export async function POST(request: NextRequest) {
         receivedFrom,
         receivedDate: new Date(receivedDate),
         notes: notes || null,
-        status: 'PENDING'
+        status: 'PENDING',
+        recordedBy
       },
       include: {
         station: {
@@ -120,6 +126,24 @@ export async function POST(request: NextRequest) {
         }
       }
     })
+
+    // Create audit log for cheque creation
+    try {
+      await prisma.auditLog.create({
+        data: {
+          userId: currentUser?.userId || 'system',
+          userName: currentUser?.username || 'System User',
+          userRole: currentUser?.role || 'MANAGER',
+          action: 'CREATE',
+          entity: 'Cheque',
+          entityId: newCheque.id,
+          details: `Recorded cheque: ${newCheque.chequeNumber} for Rs. ${newCheque.amount.toLocaleString()}`,
+          stationId: newCheque.stationId
+        }
+      })
+    } catch (auditError) {
+      console.error('Failed to create audit log:', auditError)
+    }
 
     return NextResponse.json(newCheque, { status: 201 })
   } catch (error) {

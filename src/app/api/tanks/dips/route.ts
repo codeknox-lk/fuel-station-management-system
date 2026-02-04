@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { auditOperations } from '@/lib/auditMiddleware'
 import { CreateTankDipSchema } from '@/lib/schemas'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -146,12 +147,16 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // Get current user for recordedBy
+    const currentUser = await getServerUser()
+    const secureRecordedBy = currentUser ? currentUser.username : (recordedBy || 'System User')
+
     const newDip = await prisma.tankDip.create({
       data: {
         stationId,
         tankId,
         reading,
-        recordedBy,
+        recordedBy: secureRecordedBy,
         dipDate,
         notes: notes || null
       },

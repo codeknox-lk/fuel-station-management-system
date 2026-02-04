@@ -151,8 +151,7 @@ export default function ChequesPage() {
           status,
           depositReference: depositReference || undefined,
           receivedDate: receivedDate.toISOString(),
-          notes: notes || undefined,
-          recordedBy: typeof window !== 'undefined' ? localStorage.getItem('username') || 'System User' : 'System User'
+          notes: notes || undefined
         })
       })
 

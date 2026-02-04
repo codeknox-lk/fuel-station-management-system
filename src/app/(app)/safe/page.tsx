@@ -588,14 +588,14 @@ export default function SafePage() {
     }
 
     try {
-      const username = typeof window !== 'undefined' ? localStorage.getItem('username') || 'System' : 'System'
+      let apiUrl = ''
 
       let apiUrl = ''
       let bodyData: {
         stationId: string
         amount: number
         monthlyRental: number
-        givenBy: string
+
         dueDate: string
         fromSafe: boolean
         pumperName?: string
@@ -608,7 +608,6 @@ export default function SafePage() {
         stationId: selectedStation,
         amount: loanAmount || 0,
         monthlyRental: loanMonthlyRental || 0,
-        givenBy: username,
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
         fromSafe: true
       }

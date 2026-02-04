@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { CreateCreditPaymentSchema } from '@/lib/schemas'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -92,6 +93,10 @@ export async function POST(request: NextRequest) {
 
     const validatedAmount = amount
 
+    // Get current user for receivedBy (overriding client input for security)
+    const currentUser = await getServerUser()
+    const secureReceivedBy = currentUser ? currentUser.username : (receivedBy || 'System User')
+
     // Get customer
     const customer = await prisma.creditCustomer.findUnique({
       where: { id: customerId }
@@ -113,7 +118,7 @@ export async function POST(request: NextRequest) {
           chequeNumber: chequeNumber || null,
           bankId: bankId || null,
           paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
-          receivedBy,
+          receivedBy: secureReceivedBy,
           status: 'CLEARED'
         },
         include: {

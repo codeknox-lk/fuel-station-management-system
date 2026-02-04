@@ -1858,7 +1858,7 @@ export default function CloseShiftPage() {
 
         // Create LoanPumper records for each loan expense
         if (allLoanExpenses.length > 0) {
-          for (const { expense, pumperName } of allLoanExpenses) {
+          for (const { expense } of allLoanExpenses) {
             try {
               // Get the pumper who received the loan
               const receivingPumper = pumpers.find(p => p.id === expense.loanGivenTo)
@@ -1877,7 +1877,6 @@ export default function CloseShiftPage() {
                   amount: expense.amount,
                   monthlyRental: expense.monthlyRental || 0,
                   reason: expense.description || 'Loan given during shift close',
-                  givenBy: expense.loanGivenBy || pumperName,
                   dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
                   fromSafe: false // This is not from safe, it's from shift expenses
                 })

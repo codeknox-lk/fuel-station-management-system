@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { auditOperations } from '@/lib/auditMiddleware'
 import { CreateExpenseSchema } from '@/lib/schemas'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -115,6 +116,10 @@ export async function POST(request: NextRequest) {
     const { stationId, category, description, amount, fromSafe, paidBy, proof, expenseDate } = result.data
     const validatedAmount = amount // Already a number
 
+    // Get current user for recordedBy
+    const currentUser = await getServerUser()
+    const recordedBy = currentUser ? currentUser.username : 'System User'
+
     const newExpense = await prisma.expense.create({
       data: {
         stationId,
@@ -124,7 +129,8 @@ export async function POST(request: NextRequest) {
         fromSafe,
         paidBy,
         proof: proof || null,
-        expenseDate
+        expenseDate,
+        recordedBy
       },
       include: {
         station: {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -99,6 +100,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Get current user for givenBy
+    const currentUser = await getServerUser()
+    const secureGivenBy = currentUser ? currentUser.username : (givenBy || 'System User')
+
     const newLoan = await prisma.loanPumper.create({
       data: {
         stationId,
@@ -106,7 +111,7 @@ export async function POST(request: NextRequest) {
         amount: parseFloat(String(amount)),
         monthlyRental: monthlyRental !== undefined && monthlyRental !== null ? parseFloat(String(monthlyRental)) : 0,
         reason,
-        givenBy: givenBy || null,
+        givenBy: secureGivenBy,
         dueDate: new Date(dueDate),
         status: 'ACTIVE'
       },

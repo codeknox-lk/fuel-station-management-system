@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { CreateOilSaleSchema } from '@/lib/schemas'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -101,6 +102,10 @@ export async function POST(request: NextRequest) {
 
     const calculatedTotal = totalAmount || (quantity * price) // quantity and price are numbers
 
+    // Get current user for recordedBy
+    const currentUser = await getServerUser()
+    const recordedBy = currentUser ? currentUser.username : 'System User'
+
     const newSale = await prisma.oilSale.create({
       data: {
         stationId,
@@ -110,7 +115,8 @@ export async function POST(request: NextRequest) {
         price,
         totalAmount: calculatedTotal,
         customerName: customerName || null,
-        saleDate
+        saleDate,
+        recordedBy
       },
       include: {
         station: {

@@ -340,6 +340,7 @@ model Expense {
   paidBy      String
   proof       String?
   expenseDate DateTime
+  recordedBy  String   @default("System") // Added for audit trail
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -447,6 +448,7 @@ model Cheque {
   status       ChequeStatus @default(PENDING)
   clearedDate  DateTime?
   notes        String?
+  recordedBy   String       @default("System") // Added for audit trail
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -501,6 +503,7 @@ model CreditSale {
   slipPhoto  String?
   signedBy   String
   timestamp  DateTime
+  recordedBy String         @default("System") // Added for audit trail
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
 
@@ -699,6 +702,7 @@ model Price {
   price         Float
   effectiveDate DateTime
   isActive      Boolean  @default(true)
+  updatedBy     String   @default("System") // Added for audit trail
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -987,6 +991,7 @@ model OilSale {
   totalAmount  Float
   customerName String?
   saleDate     DateTime
+  recordedBy   String   @default("System") // Added for audit trail
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

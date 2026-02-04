@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -330,6 +331,9 @@ export async function POST(request: NextRequest) {
             })
             .join(', ')
 
+          // Get current user for safe transaction
+          const currentUser = await getServerUser()
+
           // Create safe transaction
           await prisma.safeTransaction.create({
             data: {
@@ -341,7 +345,7 @@ export async function POST(request: NextRequest) {
               batchId: newBatch.id,
               shiftId: newBatch.shiftId,
               description: `POS batch (Terminals: ${terminalList})`,
-              performedBy: 'System',
+              performedBy: currentUser?.username || 'System',
               timestamp: batchTimestamp
             }
           })

@@ -15,6 +15,17 @@ const createJsonRequest = (url: string, method: string, body: unknown) => {
     });
 };
 
+// Mock Auth
+import { vi } from 'vitest';
+vi.mock('@/lib/auth-server', () => ({
+    getServerUser: vi.fn().mockResolvedValue({
+        userId: 'test-user-id',
+        username: 'Test Manager',
+        role: 'MANAGER',
+        stationId: 'test-station-id'
+    })
+}));
+
 describe('Integration: Credit Flow (Customer -> Sale -> Payment)', () => {
     let stationId: string;
     let customerId: string;

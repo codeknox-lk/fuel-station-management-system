@@ -365,8 +365,7 @@ export default function TankDipsPage() {
           stationId: selectedStation,
           tankId: selectedTank,
           reading: parseFloat(dipLitres),
-          dipDate: dipTime.toISOString(),
-          recordedBy: typeof window !== 'undefined' ? localStorage.getItem('username') || 'System User' : 'System User'
+          dipDate: dipTime.toISOString()
         })
       })
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -90,6 +91,10 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // Get current user for performedBy
+    const currentUser = await getServerUser()
+    const securePerformedBy = currentUser ? currentUser.username : 'System User'
+
     // Deduct from safe if fromSafe is true
     if (fromSafe && parseFloat(amount) > 0) {
       try {
@@ -148,7 +153,7 @@ export async function POST(request: NextRequest) {
             balanceAfter,
             loanId: newLoan.id,
             description: `External loan given: ${borrowerName}${notes ? ` - ${notes}` : ''}`,
-            performedBy: 'System',
+            performedBy: securePerformedBy,
             timestamp: loanTimestamp
           }
         })

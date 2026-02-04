@@ -143,8 +143,7 @@ export default function ExpensesPage() {
           approvedBy,
           expenseDate: expenseDate.toISOString(),
           description: description || undefined,
-          proofUrl: proofFile ? `uploads/expenses/${proofFile.name}` : undefined,
-          recordedBy: typeof window !== 'undefined' ? localStorage.getItem('username') || 'System User' : 'System User'
+          proofUrl: proofFile ? `uploads/expenses/${proofFile.name}` : undefined
         })
       })
 

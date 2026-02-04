@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { CreateCreditSaleSchema } from '@/lib/schemas'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -115,6 +116,10 @@ export async function POST(request: NextRequest) {
     const calculatedLiters = liters || (price > 0 ? amount / price : 0)
     const calculatedPrice = price || (calculatedLiters > 0 ? amount / calculatedLiters : 0)
 
+    // Get current user for recordedBy
+    const currentUser = await getServerUser()
+    const recordedBy = currentUser ? currentUser.username : 'System User'
+
     // Create credit sale and update customer balance in a transaction
     const transactionResult = await prisma.$transaction(async (tx) => {
       // Create the sale
@@ -128,7 +133,8 @@ export async function POST(request: NextRequest) {
           price: calculatedPrice,
           slipPhoto: slipPhoto || null,
           signedBy,
-          timestamp: timestamp || new Date()
+          timestamp: timestamp || new Date(),
+          recordedBy
         },
         include: {
           customer: true

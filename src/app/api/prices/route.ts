@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -154,13 +155,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Get current user for updatedBy
+    const currentUser = await getServerUser()
+    const updatedBy = currentUser ? currentUser.username : 'System User'
+
     const newPrice = await prisma.price.create({
       data: {
         stationId,
         fuelId,
         price: parseFloat(price),
         effectiveDate: new Date(effectiveDate),
-        isActive: true
+        isActive: true,
+        updatedBy
       },
       include: {
         station: {

@@ -122,8 +122,7 @@ export default function MissingSlipsPage() {
           batchId: selectedBatch,
           amount: amount,
           transactionTime: transactionTime!.toISOString(),
-          lastFourDigits,
-          reportedBy: typeof window !== 'undefined' ? localStorage.getItem('username') || 'System User' : 'System User'
+          lastFourDigits
         })
       })
 

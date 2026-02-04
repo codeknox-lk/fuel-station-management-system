@@ -164,8 +164,7 @@ export default function CreditSalesPage() {
           slipNumber,
           fuelId: fuelId || undefined,
           litres: litres ? parseFloat(litres) : undefined,
-          signedSlipUrl: signedSlipFile ? `uploads/credit-slips/${signedSlipFile.name}` : undefined,
-          recordedBy: typeof window !== 'undefined' ? localStorage.getItem('username') || 'System User' : 'System User'
+          signedSlipUrl: signedSlipFile ? `uploads/credit-slips/${signedSlipFile.name}` : undefined
         })
       })
 

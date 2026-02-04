@@ -209,7 +209,6 @@ export default function CreditPaymentsPage() {
           paymentType: paymentMethod,
           chequeNumber: chequeNumber || null,
           bankId: selectedBank || null,
-          receivedBy: typeof window !== 'undefined' ? localStorage.getItem('username') || 'Manager' : 'Manager',
           stationId: selectedStation !== 'all' ? selectedStation : null
         })
       })

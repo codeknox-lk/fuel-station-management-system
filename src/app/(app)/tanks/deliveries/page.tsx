@@ -371,7 +371,6 @@ export default function TankDeliveriesPage() {
           invoiceQuantity: parseFloat(invoiceQuantity),
           supplier: finalSupplier,
           deliveryDate: deliveryTime.toISOString(),
-          receivedBy,
           invoiceNumber: invoiceNumber || null,
           notes: notes || null,
           beforeDipReading: parseFloat(beforeDipReading),

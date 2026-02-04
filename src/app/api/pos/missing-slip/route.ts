@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -95,10 +96,13 @@ export async function POST(request: NextRequest) {
       notes?: string
     }
     const body = await request.json() as MissingSlipBody
-
     const { terminalId, amount, lastFourDigits, timestamp, reportedBy, notes } = body
 
-    if (!terminalId || amount === undefined || !lastFourDigits || !timestamp || !reportedBy) {
+    // Get current user to override client-provided reportedBy if available
+    const currentUser = await getServerUser()
+    const secureReportedBy = currentUser ? currentUser.username : (reportedBy || 'System User')
+
+    if (!terminalId || amount === undefined || !lastFourDigits || !timestamp || !secureReportedBy) {
       return NextResponse.json(
         { error: 'Terminal ID, amount, last four digits, timestamp, and reported by are required' },
         { status: 400 }
@@ -151,7 +155,7 @@ export async function POST(request: NextRequest) {
           stationId: terminal.stationId,
           templateId: template.id,
           startTime: new Date(timestamp),
-          openedBy: reportedBy,
+          openedBy: secureReportedBy,
           status: 'OPEN'
         }
       })
@@ -164,7 +168,7 @@ export async function POST(request: NextRequest) {
         amount: parseFloat(String(amount)),
         lastFourDigits,
         timestamp: new Date(timestamp),
-        reportedBy,
+        reportedBy: secureReportedBy,
         notes: notes || null
       },
       include: {

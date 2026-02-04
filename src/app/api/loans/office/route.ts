@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -79,6 +80,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Get current user
+    const currentUser = await getServerUser()
+    const secureGivenBy = currentUser ? currentUser.username : (givenBy || 'System User')
+
     const newLoan = await prisma.loanOfficeStaff.create({
       data: {
         stationId,
@@ -86,7 +91,7 @@ export async function POST(request: NextRequest) {
         amount: parseFloat(amount),
         monthlyRental: monthlyRental !== undefined && monthlyRental !== null ? parseFloat(monthlyRental) : 0,
         reason,
-        givenBy: givenBy || null,
+        givenBy: secureGivenBy,
         dueDate: new Date(dueDate),
         status: 'ACTIVE'
       },
@@ -157,7 +162,7 @@ export async function POST(request: NextRequest) {
             balanceAfter,
             loanId: newLoan.id,
             description: `Office staff loan given: ${staffName} - ${reason}`,
-            performedBy: givenBy || 'System',
+            performedBy: secureGivenBy,
             timestamp: loanTimestamp
           }
         })

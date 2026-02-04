@@ -153,8 +153,8 @@ export async function POST(request: NextRequest) {
       { expiresIn: tokenDuration }
     )
 
-    // Return token and user data
-    return NextResponse.json({
+    // Create response
+    const response = NextResponse.json({
       access_token: accessToken,
       token_type: 'bearer',
       requireChangePassword: user.isFirstLogin,
@@ -167,6 +167,19 @@ export async function POST(request: NextRequest) {
         is_active: user.isActive
       }
     })
+
+    // Set secure cookie
+    response.cookies.set({
+      name: 'accessToken',
+      value: accessToken,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: tokenDuration // Uses the duration calculated from rememberMe
+    })
+
+    return response
   } catch (error) {
     console.error('❌ Login error:', error)
 

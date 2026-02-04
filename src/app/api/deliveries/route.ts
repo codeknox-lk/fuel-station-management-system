@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { CreateDeliverySchema } from '@/lib/schemas'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -160,12 +161,12 @@ export async function POST(request: NextRequest) {
       invoiceQuantity,
       supplier,
       deliveryTime,
-      receivedBy,
       invoiceNumber,
       notes
     } = result.data
 
     const deliveryDate = deliveryTime || new Date()
+    const currentUser = await getServerUser()
 
     // Extract extra fields not yet in Zod schema
     const {
@@ -221,7 +222,7 @@ export async function POST(request: NextRequest) {
         invoiceQuantity: invoiceQuantity,
         supplier: supplier || 'Unknown',
         deliveryDate: deliveryDateObj,
-        receivedBy: receivedBy || 'System',
+        receivedBy: currentUser?.username || 'System',
         invoiceNumber: invoiceNumber || null,
         notes: notes || null,
         beforeDipReading: beforeDipReading ? parseFloat(String(beforeDipReading)) : null,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function POST(
   request: NextRequest,
@@ -9,7 +10,7 @@ export async function POST(
     const { id } = await params
     const body = await request.json()
     const { stationId, amount, notes, performedBy } = body
-    
+
     if (!stationId || !amount || !performedBy) {
       return NextResponse.json({
         error: 'Station ID, amount, and performedBy are required'
@@ -27,7 +28,7 @@ export async function POST(
     const loan = await prisma.loanPumper.findUnique({
       where: { id }
     })
-    
+
     if (!loan) {
       return NextResponse.json({ error: 'Pumper loan not found' }, { status: 404 })
     }
@@ -56,7 +57,7 @@ export async function POST(
     // Calculate balance before transaction chronologically
     const paymentTimestamp = new Date()
     const allTransactions = await prisma.safeTransaction.findMany({
-      where: { 
+      where: {
         safeId: safe.id,
         timestamp: { lte: paymentTimestamp }
       },
@@ -83,6 +84,10 @@ export async function POST(
     const balanceAfter = balanceBefore + paymentAmount
 
     // Create safe transaction
+    // Get current user for performedBy
+    const currentUser = await getServerUser()
+    const securePerformedBy = currentUser ? currentUser.username : (performedBy || 'System User')
+
     const safeTransaction = await prisma.safeTransaction.create({
       data: {
         safeId: safe.id,
@@ -92,7 +97,7 @@ export async function POST(
         balanceAfter,
         loanId: loan.id,
         description: `Loan repayment from ${loan.pumperName}${notes ? `: ${notes}` : ''}`,
-        performedBy,
+        performedBy: securePerformedBy,
         timestamp: paymentTimestamp
       }
     })
@@ -129,7 +134,7 @@ export async function POST(
       success: true,
       loan: updatedLoan,
       safeTransaction,
-      message: newPaidAmount >= loan.amount 
+      message: newPaidAmount >= loan.amount
         ? 'Loan fully paid and marked as PAID'
         : `Payment of Rs. ${paymentAmount.toLocaleString()} recorded. Remaining: Rs. ${remainingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     })
