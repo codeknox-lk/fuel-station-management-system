@@ -1,2 +1,0 @@
-﻿src/app/api/notifications/route.ts(132,3): error TS1005: 'try' expected.
-src/app/api/notifications/route.ts(174,1): error TS1128: Declaration or statement expected.

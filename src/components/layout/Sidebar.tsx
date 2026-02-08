@@ -115,7 +115,7 @@ const navigation: NavItem[] = [
     title: 'Settings',
     href: '/settings',
     icon: Settings,
-    roles: ['DEVELOPER', 'OWNER']
+    roles: ['DEVELOPER', 'OWNER', 'MANAGER']
   },
   {
     title: 'Profile',

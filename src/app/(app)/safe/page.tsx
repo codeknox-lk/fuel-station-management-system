@@ -589,8 +589,6 @@ export default function SafePage() {
 
     try {
       let apiUrl = ''
-
-      let apiUrl = ''
       let bodyData: {
         stationId: string
         amount: number

@@ -1,1 +1,0 @@
-ALTER TABLE "ShiftTemplate" ADD COLUMN IF NOT EXISTS "icon" TEXT DEFAULT 'sun';

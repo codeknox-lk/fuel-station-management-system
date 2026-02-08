@@ -75,3 +75,16 @@ next-env.d.ts
 /out/
 /dist/
 /build/
+
+# Calibration generation utilities (temporary scripts)
+read_calibration.js
+generate_calibration.js
+test_calibration.ts
+calibration_data.json
+check_tanks.sql
+*_Tank_Calibration*.xlsx
+verify_calibration.js
+check_excel_structure.js
+analyze_9kl.js
+verification_results.txt
+calibration_verification_report.json

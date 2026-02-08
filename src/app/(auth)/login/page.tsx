@@ -36,6 +36,7 @@ export default function LoginPage() {
           id: string
           username: string
           role: string
+          station_id?: string
         }
         requireChangePassword?: boolean
         detail?: string
@@ -51,6 +52,9 @@ export default function LoginPage() {
       localStorage.setItem('userRole', data.user.role)
       localStorage.setItem('userId', data.user.id)
       localStorage.setItem('username', data.user.username)
+      if (data.user.station_id) {
+        localStorage.setItem('stationId', data.user.station_id)
+      }
 
       // Check if user needs to change password
       if (data.requireChangePassword) {
@@ -112,7 +116,7 @@ export default function LoginPage() {
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   disabled={isLoading}
-                  className="h-14 px-6 rounded-2xl bg-gray-50 border-transparent focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-100 transition-all duration-200"
+                  className="h-14 px-6 rounded-2xl bg-gray-50 border-transparent focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-100 transition-all duration-200 text-gray-900"
                 />
 
                 <Input
@@ -122,7 +126,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={isLoading}
-                  className="h-14 px-6 rounded-2xl bg-gray-50 border-transparent focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-100 transition-all duration-200"
+                  className="h-14 px-6 rounded-2xl bg-gray-50 border-transparent focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-100 transition-all duration-200 text-gray-900"
                 />
               </div>
 

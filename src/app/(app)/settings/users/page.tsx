@@ -128,14 +128,20 @@ export default function UsersPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    const currentStationId = typeof window !== 'undefined' ? localStorage.getItem('stationId') : null
+
     try {
       const url = editingUser ? `/api/users/${editingUser.id}` : '/api/users'
       const method = editingUser ? 'PUT' : 'POST'
 
-      // Prepare request body with username field
+      // Prepare request body
+      // If the current user is restricted to a station, force the new user to be in that station
+      const finalStationId = currentStationId || formData.stationId
+
       const requestBody = {
         ...formData,
-        username: formData.name // API expects 'username' field
+        username: formData.name, // API expects 'username' field
+        stationId: finalStationId
       }
 
       const response = await fetch(url, {

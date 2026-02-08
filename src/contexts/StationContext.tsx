@@ -43,16 +43,32 @@ export function StationProvider({ children }: { children: ReactNode }) {
           setStations(fetchedStations)
         }
 
-        // 2. Hydrate Selection from LocalStorage
-        const savedStation = localStorage.getItem('selectedStation')
-        if (savedStation) {
-          // Verify valid station or 'all'
-          if (savedStation === 'all' || fetchedStations.some(s => s.id === savedStation)) {
-            setSelectedStationState(savedStation)
-          } else {
-            // Fallback if saved station no longer exists
-            setSelectedStationState('all')
-            localStorage.setItem('selectedStation', 'all')
+        // 2. Check User Role & Station Restriction
+        const userRole = localStorage.getItem('userRole')
+        const assignedStationId = localStorage.getItem('stationId')
+
+        if (userRole === 'MANAGER' && assignedStationId) {
+          // MANAGER RESTRICTION:
+          // 1. Filter stations to only the assigned one
+          const managerStations = fetchedStations.filter(s => s.id === assignedStationId)
+          setStations(managerStations)
+
+          // 2. Force select the assigned station
+          setSelectedStationState(assignedStationId)
+          localStorage.setItem('selectedStation', assignedStationId)
+        } else {
+          // DEVELOPER / OWNER / ACCOUNTS:
+          // Hydrate Selection from LocalStorage normally
+          const savedStation = localStorage.getItem('selectedStation')
+          if (savedStation) {
+            // Verify valid station or 'all'
+            if (savedStation === 'all' || fetchedStations.some(s => s.id === savedStation)) {
+              setSelectedStationState(savedStation)
+            } else {
+              // Fallback if saved station no longer exists
+              setSelectedStationState('all')
+              localStorage.setItem('selectedStation', 'all')
+            }
           }
         }
       } catch (error) {
