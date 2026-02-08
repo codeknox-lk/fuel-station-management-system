@@ -18,10 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Building2,
-  Calendar,
   Fuel,
-  TrendingUp,
-  TrendingDown,
   AlertCircle,
   Download,
   FileText,
@@ -32,12 +29,9 @@ import {
   Droplets,
   Package,
   ShoppingCart,
-  BarChart3,
   Activity,
-  ArrowUp,
-  ArrowDown,
-  Clock,
-  Truck
+  Truck,
+  Clock
 } from 'lucide-react'
 import { exportTankReportPDF } from '@/lib/exportUtils'
 
@@ -160,7 +154,7 @@ export default function TanksReportsPage() {
         const response = await fetch('/api/stations?active=true')
         const stationsData = await response.json()
         setStations(stationsData)
-      } catch (_err) {
+      } catch {
         setError('Failed to load stations')
       }
     }
@@ -194,7 +188,7 @@ export default function TanksReportsPage() {
 
       const reportData = await response.json()
 
-      const station = stations.find(s => s.id === selectedStation)
+      // const station = stations.find(s => s.id === selectedStation)
 
       // Transform API data to match frontend interface
       const tankMovements: TankMovement[] = (reportData.tanks || []).map((tank: TankApiResponse, idx: number) => {
@@ -276,7 +270,7 @@ export default function TanksReportsPage() {
       setTankMovements(tankMovements)
       setSummary(reportSummary)
 
-    } catch (_err) {
+    } catch {
       setError('Failed to generate tank movement report')
     } finally {
       setLoading(false)
@@ -628,6 +622,7 @@ export default function TanksReportsPage() {
             <Label htmlFor="date">Date *</Label>
             <input
               id="date"
+              title="Select Date"
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
@@ -848,6 +843,8 @@ export default function TanksReportsPage() {
                 searchPlaceholder="Search tanks..."
                 pagination={false}
                 emptyMessage="No tank movement data available."
+                enableExport={true}
+                exportFileName="tank-report-movements"
               />
             </CardContent>
           </Card>

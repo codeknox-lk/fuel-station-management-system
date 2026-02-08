@@ -25,16 +25,12 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Building2,
-  DollarSign,
   Clock,
   User,
   Fuel,
   AlertCircle,
   FileText,
-  Printer,
   Calculator,
-  TrendingUp,
-  TrendingDown,
   AlertTriangle,
   ArrowLeft,
   Download,
@@ -149,7 +145,7 @@ export default function ShiftReportsPage() {
         const response = await fetch('/api/stations?active=true')
         const stationsData = await response.json()
         setStations(stationsData)
-      } catch (err) {
+      } catch {
         setError('Failed to load stations')
       }
     }
@@ -327,7 +323,7 @@ export default function ShiftReportsPage() {
 
       setShiftReport(report)
 
-    } catch (err) {
+    } catch {
       setError('Failed to generate shift report')
     } finally {
       setLoading(false)

@@ -1,0 +1,737 @@
+
+Route (app)          
+                     
+            Size  
+First Load JS
+??? ??? /            
+                     
+               576 B 
+        102 kB
+??? ??? /_not-found  
+                     
+                1 kB 
+        103 kB
+??? ?? /api/admin/res
+et-password          
+              378 B  
+       102 kB
+??? ?? 
+/api/audit-log       
+                     
+       378 B         
+102 kB
+??? ?? /api/audits/me
+ter/stats            
+              378 B  
+       102 kB
+??? ?? /api/auth/chan
+ge-password          
+              378 B  
+       102 kB
+??? ?? 
+/api/auth/login      
+                     
+       378 B         
+102 kB
+??? ?? /api/auth/me  
+                     
+              378 B  
+       102 kB
+??? ?? /api/banks    
+                     
+              378 B  
+       102 kB
+??? ?? 
+/api/banks/[id]      
+                     
+       378 B         
+102 kB
+??? ?? /api/banks/[id
+]/transactions       
+              378 B  
+       102 kB
+??? ?? 
+/api/banks/accounts  
+                     
+       378 B         
+102 kB
+??? ?? /api/banks/tra
+nsactions            
+              378 B  
+       102 kB
+??? ?? /api/banks/tra
+nsactions/[id]       
+              378 B  
+       102 kB
+??? ?? /api/cheques  
+                     
+              378 B  
+       102 kB
+??? ?? 
+/api/credit/aging    
+                     
+       378 B         
+102 kB
+??? ?? /api/credit/cu
+stomers              
+              378 B  
+       102 kB
+??? ?? /api/credit/cu
+stomers/[id]         
+              378 B  
+       102 kB
+??? ?? 
+/api/credit/payments 
+                     
+       378 B         
+102 kB
+??? ?? 
+/api/credit/sales    
+                     
+       378 B         
+102 kB
+??? ?? /api/dashboard
+/summary             
+              378 B  
+       102 kB
+??? ?? 
+/api/deliveries      
+                     
+       378 B         
+102 kB
+??? ?? /api/deliverie
+s/[id]/verify        
+              378 B  
+       102 kB
+??? ?? /api/deposits 
+                     
+              378 B  
+       102 kB
+??? ?? /api/expenses 
+                     
+              378 B  
+       102 kB
+??? ?? /api/fuels    
+                     
+              378 B  
+       102 kB
+??? ?? 
+/api/fuels/[id]      
+                     
+       378 B         
+102 kB
+??? ?? 
+/api/loans/external  
+                     
+       378 B         
+102 kB
+??? ?? 
+/api/loans/office    
+                     
+       378 B         
+102 kB
+??? ?? /api/loans/off
+ice/[id]             
+              378 B  
+       102 kB
+??? ?? /api/loans/off
+ice/[id]/pay         
+              378 B  
+       102 kB
+??? ?? 
+/api/loans/payments  
+                     
+       378 B         
+102 kB
+??? ?? 
+/api/loans/pumper    
+                     
+       378 B         
+102 kB
+??? ?? /api/loans/pum
+per/[id]             
+              378 B  
+       102 kB
+??? ?? /api/loans/pum
+per/[id]/pay         
+              378 B  
+       102 kB
+??? ?? 
+/api/notifications   
+                     
+       378 B         
+102 kB
+??? ?? /api/notificat
+ions/[id]            
+              378 B  
+       102 kB
+??? ?? /api/notificat
+ions/generate        
+              378 B  
+       102 kB
+??? ?? /api/nozzles  
+                     
+              378 B  
+       102 kB
+??? ?? 
+/api/nozzles/[id]    
+                     
+       378 B         
+102 kB
+??? ?? /api/nozzles/[
+id]/last-reading     
+              378 B  
+       102 kB
+??? ?? 
+/api/office-staff    
+                     
+       378 B         
+102 kB
+??? ?? /api/office-st
+aff/[id]             
+              378 B  
+       102 kB
+??? ?? /api/office-st
+aff/salary           
+              378 B  
+       102 kB
+??? ?? 
+/api/oil-sales       
+                     
+       378 B         
+102 kB
+??? ?? 
+/api/pos/batches     
+                     
+       378 B         
+102 kB
+??? ?? /api/pos/missi
+ng-slip              
+              378 B  
+       102 kB
+??? ?? 
+/api/pos/terminals   
+                     
+       378 B         
+102 kB
+??? ?? /api/pos/termi
+nals/[id]            
+              378 B  
+       102 kB
+??? ?? /api/prices   
+                     
+              378 B  
+       102 kB
+??? ?? 
+/api/prices/[id]     
+                     
+       378 B         
+102 kB
+??? ?? 
+/api/prices/next     
+                     
+       378 B         
+102 kB
+??? ?? /api/profile  
+                     
+              378 B  
+       102 kB
+??? ?? /api/profile/c
+hange-password       
+              378 B  
+       102 kB
+??? ?? /api/pumpers  
+                     
+              378 B  
+       102 kB
+??? ?? 
+/api/pumpers/[id]    
+                     
+       378 B         
+102 kB
+??? ?? /api/pumps    
+                     
+              378 B  
+       102 kB
+??? ?? 
+/api/pumps/[id]      
+                     
+       378 B         
+102 kB
+??? ?? /api/reports/c
+redit-summary        
+              378 B  
+       102 kB
+??? ?? 
+/api/reports/daily   
+                     
+       378 B         
+102 kB
+??? ?? /api/reports/d
+aily-comprehensive   
+              378 B  
+       102 kB
+??? ?? /api/reports/d
+aily-sales           
+              378 B  
+       102 kB
+??? ?? 
+/api/reports/monthly 
+                     
+       378 B         
+102 kB
+??? ?? /api/reports/p
+os-sales             
+              378 B  
+       102 kB
+??? ?? 
+/api/reports/profit  
+                     
+       378 B         
+102 kB
+??? ?? /api/reports/p
+umper-details        
+              378 B  
+       102 kB
+??? ?? /api/reports/p
+umper-variance       
+              378 B  
+       102 kB
+??? ?? /api/reports/s
+tation-comparison    
+              378 B  
+       102 kB
+??? ?? /api/safe     
+                     
+              378 B  
+       102 kB
+??? ?? 
+/api/safe/balance    
+                     
+       378 B         
+102 kB
+??? ?? /api/safe/outs
+tanding-credit       
+              378 B  
+       102 kB
+??? ?? 
+/api/safe/pending    
+                     
+       378 B         
+102 kB
+??? ?? 
+/api/safe/summary    
+                     
+       378 B         
+102 kB
+??? ?? /api/safe/tran
+sactions             
+              378 B  
+       102 kB
+??? ?? /api/salary   
+                     
+              378 B  
+       102 kB
+??? ?? 
+/api/salary/payments 
+                     
+       378 B         
+102 kB
+??? ?? /api/salary/re
+pay-loan             
+              378 B  
+       102 kB
+??? ?? /api/settings/
+tolerance            
+              378 B  
+       102 kB
+??? ?? 
+/api/shift-templates 
+                     
+       378 B         
+102 kB
+??? ?? /api/shift-tem
+plates/[id]          
+              378 B  
+       102 kB
+??? ?? /api/shift-tem
+plates/cleanup       
+              378 B  
+       102 kB
+??? ?? /api/shifts   
+                     
+              378 B  
+       102 kB
+??? ?? 
+/api/shifts/[id]     
+                     
+       378 B         
+102 kB
+??? ?? /api/shifts/[i
+d]/assign            
+              378 B  
+       102 kB
+??? ?? /api/shifts/[i
+d]/assignments       
+              378 B  
+       102 kB
+??? ?? /api/shifts/[i
+d]/assignments/[assig
+nId]/close    378 B  
+       102 kB
+??? ?? /api/shifts/[i
+d]/close             
+              378 B  
+       102 kB
+??? ?? /api/shifts/[i
+d]/report            
+              378 B  
+       102 kB
+??? ?? /api/shifts/[i
+d]/stats             
+              378 B  
+       102 kB
+??? ?? /api/shifts/bu
+lk-close             
+              378 B  
+       102 kB
+??? ?? 
+/api/shifts/cleanup  
+                     
+       378 B         
+102 kB
+??? ?? /api/shifts/un
+processed            
+              378 B  
+       102 kB
+??? ?? /api/stations 
+                     
+              378 B  
+       102 kB
+??? ?? 
+/api/stations/[id]   
+                     
+       378 B         
+102 kB
+??? ?? /api/tanks    
+                     
+              378 B  
+       102 kB
+??? ?? 
+/api/tanks/[id]      
+                     
+       378 B         
+102 kB
+??? ?? 
+/api/tanks/cleanup   
+                     
+       378 B         
+102 kB
+??? ?? 
+/api/tanks/dips      
+                     
+       378 B         
+102 kB
+??? ?? /api/tanks/inf
+rastructure          
+              378 B  
+       102 kB
+??? ?? 
+/api/tanks/report    
+                     
+       378 B         
+102 kB
+??? ?? /api/tanks/upd
+ate-stock            
+              378 B  
+       102 kB
+??? ?? /api/tenders/s
+hift/[shiftId]       
+              378 B  
+       102 kB
+??? ?? /api/tests    
+                     
+              378 B  
+       102 kB
+??? ?? /api/users    
+                     
+              378 B  
+       102 kB
+??? ?? 
+/api/users/[id]      
+                     
+       378 B         
+102 kB
+??? ??? /banks       
+                     
+             10.5 kB 
+        153 kB
+??? ??? /cheques     
+                     
+             3.91 kB 
+        173 kB
+??? ??? /credit      
+                     
+             7.47 kB 
+        118 kB
+??? ??? 
+/credit/aging        
+                     
+     8.21 kB         
+148 kB
+??? ??? 
+/credit/customers    
+                     
+     6.81 kB         
+154 kB
+??? ??? 
+/credit/payments     
+                     
+     6.48 kB         
+177 kB
+??? ??? 
+/credit/sales        
+                     
+     4.71 kB         
+174 kB
+??? ??? /dashboard   
+                     
+             6.16 kB 
+        116 kB
+??? ??? /deposits    
+                     
+             4.67 kB 
+        174 kB
+??? ??? /expenses    
+                     
+             6.49 kB 
+        176 kB
+??? ??? /force-change
+-password            
+             4.73 kB 
+        120 kB
+??? ??? /loans       
+                     
+             10.9 kB 
+        136 kB
+??? ??? /login       
+                     
+             8.47 kB 
+        124 kB
+??? ??? 
+/notifications       
+                     
+     9.44 kB         
+156 kB
+??? ??? 
+/owner-dashboard     
+                     
+     14.9 kB         
+228 kB
+??? ??? /pos         
+                     
+             7.42 kB 
+        118 kB
+??? ??? /pos/batches 
+                     
+             10.9 kB 
+        150 kB
+??? ??? 
+/pos/missing-slips   
+                     
+      6.7 kB         
+172 kB
+??? ??? /reports     
+                     
+             5.45 kB 
+        116 kB
+??? ??? 
+/reports/credit      
+                     
+     4.73 kB         
+503 kB
+??? ??? 
+/reports/daily       
+                     
+     7.38 kB         
+390 kB
+??? ??? 
+/reports/daily-sales 
+                     
+     4.68 kB         
+496 kB
+??? ??? /reports/dail
+y-sales-liters       
+             4.68 kB 
+        496 kB
+??? ??? 
+/reports/pos-sales   
+                     
+     5.13 kB         
+497 kB
+??? ??? 
+/reports/profit      
+                     
+     7.34 kB         
+495 kB
+??? ??? /reports/pump
+er-details           
+             6.07 kB 
+        393 kB
+??? ??? /reports/pump
+er-variance          
+             9.01 kB 
+        226 kB
+??? ??? 
+/reports/shift       
+                     
+     8.08 kB         
+395 kB
+??? ??? /reports/stat
+ion-comparison       
+              5.4 kB 
+        408 kB
+??? ??? 
+/reports/tanks       
+                     
+      9.1 kB         
+389 kB
+??? ??? /safe        
+                     
+             9.37 kB 
+        182 kB
+??? ??? 
+/safe/summary        
+                     
+      8.5 kB         
+148 kB
+??? ?? /safe/transact
+ions/[id]            
+            8.15 kB  
+       118 kB
+??? ??? /salary      
+                     
+             10.2 kB 
+        390 kB
+??? ?? 
+/salary/[pumperId]   
+                     
+     9.45 kB         
+155 kB
+??? ?? /salary/[pumpe
+rId]/loans           
+            6.79 kB  
+       133 kB
+??? ?? /salary/office
+-staff/[id]          
+            5.87 kB  
+       116 kB
+??? ??? /settings    
+                     
+             5.61 kB 
+        116 kB
+??? ??? 
+/settings/banks      
+                     
+     4.23 kB         
+132 kB
+??? ??? /settings/off
+ice-staff            
+             6.65 kB 
+        153 kB
+??? ??? /settings/pos
+-terminals           
+              4.5 kB 
+        132 kB
+??? ??? 
+/settings/prices     
+                     
+     14.2 kB         
+157 kB
+??? ??? 
+/settings/profile    
+                     
+     8.04 kB         
+123 kB
+??? ??? 
+/settings/pumpers    
+                     
+     6.68 kB         
+134 kB
+??? ??? /settings/shi
+ft-templates         
+             5.29 kB 
+        133 kB
+??? ??? 
+/settings/stations   
+                     
+     4.73 kB         
+151 kB
+??? ??? 
+/settings/tanks      
+                     
+     9.78 kB         
+156 kB
+??? ??? 
+/settings/tolerance  
+                     
+     7.67 kB         
+118 kB
+??? ??? 
+/settings/users      
+                     
+     7.52 kB         
+154 kB
+??? ??? /shifts      
+                     
+             9.83 kB 
+        156 kB
+??? ?? /shifts/[id]  
+                     
+            8.16 kB  
+       125 kB
+??? ??? 
+/shifts/close        
+                     
+     20.9 kB         
+192 kB
+??? ??? /shifts/open 
+                     
+             8.07 kB 
+        180 kB
+??? ??? /tanks       
+                     
+             10.2 kB 
+        153 kB
+??? ??? 
+/tanks/deliveries    
+                     
+     12.1 kB         
+194 kB
+??? ??? /tanks/dips  
+                     
+             5.71 kB 
+        188 kB
+??? ??? 
+/tanks/report        
+                     
+     6.85 kB         
+146 kB
+??? ??? /tanks/setup 
+                     
+             11.1 kB 
+        150 kB
++ First Load JS 
+shared by all        
+               102 kB
+  ??? chunks/1255-f6a
+15b87c131d0d2.js     
+           45.4 kB
+  ??? chunks/4bd1b696
+-182b6b13bdad92e3.js 
+           54.2 kB
+  ??? other shared 
+chunks (total)       
+             2.12 kB
+
+

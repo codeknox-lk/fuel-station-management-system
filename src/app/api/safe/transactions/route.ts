@@ -49,16 +49,29 @@ export async function GET(request: NextRequest) {
               startTime: true,
               endTime: true,
               openedBy: true,
+              declaredAmounts: true,
+              statistics: true,
               template: {
                 select: {
                   id: true,
                   name: true
                 }
+              },
+              assignments: {
+                select: {
+                  pumperName: true
+                }
               }
             }
           })
           if (shift) {
-            enriched.shift = shift
+            enriched.shift = {
+              ...shift,
+              assignments: shift.assignments.map(a => ({
+                pumperName: a.pumperName,
+                pumper: { name: a.pumperName }
+              }))
+            }
           }
         } catch (err) {
           console.warn(`Failed to fetch shift ${transaction.shiftId}:`, err)
@@ -309,9 +322,47 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // VALIDATION: Check for potential duplicate transactions
+    const transactionTimestamp = timestamp ? new Date(timestamp) : new Date()
+    const oneMinuteBefore = new Date(transactionTimestamp.getTime() - 60000)
+    const oneMinuteAfter = new Date(transactionTimestamp.getTime() + 60000)
+
+    const recentDuplicate = await prisma.safeTransaction.findFirst({
+      where: {
+        safeId: safe.id,
+        type: type as import('@prisma/client').SafeTransactionType,
+        amount,
+        timestamp: {
+          gte: oneMinuteBefore,
+          lte: oneMinuteAfter
+        }
+      }
+    })
+
+    if (recentDuplicate) {
+      console.warn(`⚠️ Possible duplicate transaction detected: ${type} Rs.${amount} at ${transactionTimestamp.toISOString()}`)
+      // Allow but log warning - user may intentionally create duplicate
+    }
+
+    // VALIDATION: Check for future timestamps (max 1 hour in future)
+    const maxFutureTime = new Date(Date.now() + 3600000) // 1 hour from now
+    if (transactionTimestamp > maxFutureTime) {
+      return NextResponse.json(
+        { error: 'Transaction timestamp cannot be more than 1 hour in the future' },
+        { status: 400 }
+      )
+    }
+
+    // VALIDATION: Check for excessively large amounts (potential data entry error)
+    const MAX_SAFE_AMOUNT = 10000000 // Rs. 10 million
+    if (amount > MAX_SAFE_AMOUNT) {
+      console.warn(`⚠️ Large transaction amount detected: Rs.${amount.toLocaleString()} (${type})`)
+      // Allow but log warning - legitimate large transactions may occur
+    }
+
     // Calculate balance before transaction chronologically
     // Get transaction timestamp (default to now if not provided)
-    const transactionTimestamp = timestamp ? new Date(timestamp) : new Date()
+
 
     // Get all transactions that occurred before or at the same time as this transaction
     // Order by timestamp ASC to calculate balance chronologically
@@ -337,7 +388,6 @@ export async function POST(request: NextRequest) {
           'CASH_FUEL_SALES',
           'POS_CARD_PAYMENT',
           'CREDIT_PAYMENT',
-          'CHEQUE_RECEIVED',
           'LOAN_REPAID'
         ].includes(tx.type)
 
@@ -355,7 +405,6 @@ export async function POST(request: NextRequest) {
         'CASH_FUEL_SALES',
         'POS_CARD_PAYMENT',
         'CREDIT_PAYMENT',
-        'CHEQUE_RECEIVED',
         'LOAN_REPAID'
       ].includes(type)
 

@@ -14,9 +14,7 @@ import {
   ArrowLeft,
   ShoppingCart,
   CreditCard,
-  FileText,
-  AlertCircle,
-  CheckCircle
+  AlertCircle
 } from 'lucide-react'
 
 interface SafeTransaction {
@@ -127,7 +125,7 @@ export default function TransactionDetailsPage() {
   const transactionId = useMemo(() => (params?.id as string) || '', [params])
 
   const [transaction, setTransaction] = useState<SafeTransaction | null>(null)
-  const [relatedTransactions, setRelatedTransactions] = useState<SafeTransaction[]>([])
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -156,12 +154,13 @@ export default function TransactionDetailsPage() {
             // Fetch all transactions for this shift
             const relatedResponse = await fetch(`/api/safe/transactions?shiftId=${currentTransaction.shiftId}`)
             if (relatedResponse.ok) {
-              const allShiftTransactions = await relatedResponse.json()
+              await relatedResponse.json()
+              // const allShiftTransactions = await relatedResponse.json()
               // Exclude the current transaction from the list
-              const related = allShiftTransactions.filter((tx: SafeTransaction) =>
-                tx.id !== currentTransaction.id
-              )
-              setRelatedTransactions(related)
+              // const related = allShiftTransactions.filter((tx: SafeTransaction) =>
+              //   tx.id !== currentTransaction.id
+              // )
+              // setRelatedTransactions(related)
             }
           } catch (err) {
             console.warn('Failed to fetch related transactions:', err)

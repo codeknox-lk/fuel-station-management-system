@@ -625,6 +625,8 @@ export default function ShiftsPage() {
             pageSize={10}
             emptyMessage="No shifts found"
             onRowClick={handleRowClick}
+            enableExport={true}
+            exportFileName="shifts-history"
           />
         </div>
       </FormCard>

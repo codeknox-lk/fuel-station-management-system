@@ -107,12 +107,257 @@ h1::before {
 }
 
 /* Force remove any potential dashes from the div containing the h1 */
-.shift-details-title + * {
+.shift-details-title+* {
   display: none !important;
 }
 
-.shift-details-title + p {
+.shift-details-title+p {
   display: block !important;
+}
+
+/* ============================================
+   PRINT STYLES - Clean professional printing
+   ============================================ */
+@media print {
+
+  /* Page setup */
+  @page {
+    size: A4;
+    margin: 1.5cm 1cm;
+  }
+
+  /* Reset page to white background */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Hide all UI elements */
+  aside,
+  nav,
+  button,
+  .sidebar,
+  [role="navigation"],
+  [data-sidebar],
+  header:not(.print-header),
+  footer:not(.print-footer) {
+    display: none !important;
+  }
+
+  /* Hide specific interactive elements */
+  [aria-label="Back"],
+  [aria-label="Print"],
+  [aria-label="Close Shift"],
+  .no-print {
+    display: none !important;
+  }
+
+  /* Show only main content */
+  main {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Print header - Company branding */
+  .print-header {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #f97316;
+  }
+
+  .print-header-logo {
+    display: flex !important;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .print-header-logo img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .print-header-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #f97316;
+  }
+
+  .print-header-subtitle {
+    font-size: 12px;
+    color: #666;
+  }
+
+  .print-header-info {
+    text-align: right;
+    font-size: 11px;
+    color: #666;
+  }
+
+  /* Cards and content */
+  .space-y-6>div:first-child {
+    display: none !important;
+    /* Hide header with buttons */
+  }
+
+  /* Remove shadows and backgrounds for clean print */
+  div,
+  section,
+  article {
+    box-shadow: none !important;
+    background: white !important;
+  }
+
+  /* Keep card borders for structure */
+  [class*="card"],
+  [class*="Card"] {
+    border: 1px solid #e5e7eb !important;
+    border-radius: 4px !important;
+    page-break-inside: avoid;
+    margin-bottom: 12px !important;
+  }
+
+  /* Tables */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  th,
+  td {
+    border: 1px solid #e5e7eb !important;
+    padding: 8px !important;
+    font-size: 11px !important;
+  }
+
+  th {
+    background: #f9fafb !important;
+    font-weight: 600 !important;
+  }
+
+  /* Badges and status indicators */
+  [class*="badge"],
+  [class*="Badge"] {
+    border: 1px solid #d1d5db !important;
+    padding: 2px 8px !important;
+    border-radius: 4px !important;
+    font-size: 10px !important;
+  }
+
+  /* Typography */
+  h1 {
+    font-size: 22px !important;
+    margin-bottom: 8px !important;
+  }
+
+  h2,
+  [class*="CardTitle"] {
+    font-size: 16px !important;
+    margin-bottom: 6px !important;
+  }
+
+  h3 {
+    font-size: 14px !important;
+  }
+
+  p,
+  span,
+  div {
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Icons - make smaller for print */
+  svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  /* Grid layouts */
+  .grid {
+    display: grid !important;
+  }
+
+  /* Ensure proper spacing */
+  .space-y-4>*+* {
+    margin-top: 12px !important;
+  }
+
+  .space-y-6>*+* {
+    margin-top: 16px !important;
+  }
+
+  /* Page breaks */
+  .page-break-before {
+    page-break-before: always;
+  }
+
+  .page-break-after {
+    page-break-after: always;
+  }
+
+  .page-break-avoid {
+    page-break-inside: avoid;
+  }
+
+  /* Print footer */
+  .print-footer {
+    display: block !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 9px;
+    color: #999;
+    padding: 8px 0;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  /* Force colors for important elements */
+  .text-orange-600,
+  .text-orange-500 {
+    color: #f97316 !important;
+  }
+
+  .text-green-600,
+  .text-green-500 {
+    color: #16a34a !important;
+  }
+
+  .text-red-600,
+  .text-red-500 {
+    color: #dc2626 !important;
+  }
+
+  /* Remove unnecessary spacing */
+  .gap-4 {
+    gap: 8px !important;
+  }
+
+  .gap-2 {
+    gap: 4px !important;
+  }
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -196,47 +441,47 @@ h1::before {
   /* Background: Soft dark gray instead of pure black */
   --background: oklch(0.20 0 0);
   --foreground: oklch(0.95 0 0);
-  
+
   /* Cards: Slightly lighter for depth */
   --card: oklch(0.26 0 0);
   --card-foreground: oklch(0.95 0 0);
-  
+
   /* Popovers: Match card elevation */
   --popover: oklch(0.26 0 0);
   --popover-foreground: oklch(0.95 0 0);
-  
+
   /* Primary: Vibrant Orange for dark mode high contrast */
   --primary: oklch(0.69 0.22 27);
   --primary-foreground: oklch(0.98 0 0);
-  
+
   /* Secondary: Muted gray */
   --secondary: oklch(0.30 0 0);
   --secondary-foreground: oklch(0.95 0 0);
-  
+
   /* Muted: Subdued backgrounds */
   --muted: oklch(0.28 0 0);
   --muted-foreground: oklch(0.65 0 0);
-  
+
   /* Accent: Subtle highlights */
   --accent: oklch(0.30 0 0);
   --accent-foreground: oklch(0.95 0 0);
-  
+
   /* Destructive: Softer red */
   --destructive: oklch(0.60 0.17 27);
   --destructive-foreground: oklch(0.98 0 0);
-  
+
   /* Borders: Subtle but visible */
   --border: oklch(1 0 0 / 15%);
   --input: oklch(1 0 0 / 20%);
   --ring: oklch(0.69 0.22 27);
-  
+
   /* Charts: Desaturated for dark mode */
   --chart-1: oklch(0.55 0.20 264);
   --chart-2: oklch(0.65 0.15 162);
   --chart-3: oklch(0.70 0.15 70);
   --chart-4: oklch(0.60 0.22 84);
   --chart-5: oklch(0.65 0.18 16);
-  
+
   /* Sidebar: Distinct from main background */
   --sidebar: oklch(0.22 0 0);
   --sidebar-foreground: oklch(0.95 0 0);
@@ -252,6 +497,7 @@ h1::before {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }

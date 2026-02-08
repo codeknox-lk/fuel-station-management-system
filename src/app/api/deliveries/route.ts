@@ -228,8 +228,7 @@ export async function POST(request: NextRequest) {
         beforeDipReading: beforeDipReading ? parseFloat(String(beforeDipReading)) : null,
         beforeDipTime: beforeDipTime ? new Date(String(beforeDipTime)) : null,
         fuelSoldDuring: fuelSoldDuring ? parseFloat(String(fuelSoldDuring)) : null,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        beforeMeterReadings: beforeMeterReadings ? beforeMeterReadings as any : null,
+        beforeMeterReadings: beforeMeterReadings ? (beforeMeterReadings as Prisma.InputJsonValue) : null,
         verificationStatus: 'PENDING_VERIFICATION'
       },
       include: {

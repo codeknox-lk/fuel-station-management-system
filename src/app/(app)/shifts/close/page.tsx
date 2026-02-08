@@ -20,6 +20,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
 import { DateTimePicker } from '@/components/inputs/DateTimePicker'
 import { Clock, Fuel, DollarSign, CreditCard, FileText, Plus, Trash2, Printer, Wallet, ExternalLink, Building2, Check, ChevronDown, ChevronUp } from 'lucide-react'
+import { PrintHeader } from '@/components/PrintHeader'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { getCurrentUserName } from '@/lib/auth'
@@ -88,6 +89,7 @@ interface PumperCheque {
   bankName?: string
   status?: 'PENDING' | 'CLEARED' | 'BOUNCED' // Cheque status
   receivedFrom: string // Person/company who gave the cheque
+  chequeDate?: Date
 }
 
 interface POSSlipEntry {
@@ -256,7 +258,7 @@ export default function CloseShiftPage() {
           // Fetch monthly loan rentals for all pumpers
           await fetchPumperMonthlyRentals(pumpersData)
         }
-      } catch (err) {
+      } catch {
         setError('Failed to load data')
       }
     }
@@ -364,7 +366,7 @@ export default function CloseShiftPage() {
           )
 
           setShifts(shiftsWithAssignments)
-        } catch (err) {
+        } catch {
           setError('Failed to load shifts')
         }
       }
@@ -680,7 +682,8 @@ export default function CloseShiftPage() {
       id: `cheque-${Date.now()}-${Math.random()}`,
       chequeNumber: '',
       amount: 0,
-      receivedFrom: ''
+      receivedFrom: '',
+      chequeDate: new Date()
     }
     setPumperDeclaredCheques(prev => ({
       ...prev,
@@ -695,7 +698,7 @@ export default function CloseShiftPage() {
     }))
   }
 
-  const handleUpdatePumperCheque = (pumperName: string, chequeId: string, field: keyof PumperCheque, value: string | number) => {
+  const handleUpdatePumperCheque = (pumperName: string, chequeId: string, field: keyof PumperCheque, value: string | number | Date) => {
     setPumperDeclaredCheques(prev => ({
       ...prev,
       [pumperName]: (prev[pumperName] || []).map(chq =>
@@ -803,21 +806,16 @@ export default function CloseShiftPage() {
 
 
   // Get duplicate card details (returns the existing slip if duplicate found)
-  const getDuplicateCardDetails = (pumperName: string, lastFourDigits: string, cardType: string, terminalId: string, slipIdToExclude?: string): POSSlipEntry | null => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
+  const getDuplicateCardDetails = (pumperName: string, lastFourDigits: string, cardType: string, terminalId: string, timestamp: Date, slipIdToExclude?: string): POSSlipEntry | null => {
+    // Check for duplicate: same last 4 digits + same card type + same terminal + same time
     const slips = posSlips[pumperName] || []
     const duplicate = slips.find(slip => {
       if (slip.id === slipIdToExclude) return false
-      const slipDate = new Date(slip.timestamp)
-      slipDate.setHours(0, 0, 0, 0)
 
-      // Check for duplicate: same last 4 digits + same card type + same terminal + same day
       return slip.lastFourDigits === lastFourDigits
         && slip.cardType === cardType
         && slip.terminalId === terminalId
-        && slipDate.getTime() === today.getTime()
+        && new Date(slip.timestamp).getTime() === new Date(timestamp).getTime()
     })
 
     return duplicate || null
@@ -898,27 +896,27 @@ export default function CloseShiftPage() {
   const handleUpdatePOSSlip = (pumperName: string, slipId: string, field: keyof POSSlipEntry, value: string | number | Date) => {
     // Get current slip to check against
     const currentSlips = posSlips[pumperName] || []
-    const currentSlip = currentSlips.find(s => s.id === slipId)
-
     // Update the slip first to get the new values
     const updatedSlips = currentSlips.map(slip =>
       slip.id === slipId ? { ...slip, [field]: value } : slip
     )
     const updatedSlip = updatedSlips.find(s => s.id === slipId)!
 
-    // Check for duplicate card if updating lastFourDigits, cardType, or terminalId
+    // Check for duplicate card if updating lastFourDigits, cardType, terminalId, or timestamp
     // Only check if we have all required fields (last4, cardType, terminalId)
-    if ((field === 'lastFourDigits' || field === 'cardType' || field === 'terminalId')
+    if ((field === 'lastFourDigits' || field === 'cardType' || field === 'terminalId' || field === 'timestamp')
       && updatedSlip.lastFourDigits
       && updatedSlip.lastFourDigits.length === 4
       && updatedSlip.cardType
-      && updatedSlip.terminalId) {
+      && updatedSlip.terminalId
+      && updatedSlip.timestamp) {
 
       const duplicateSlip = getDuplicateCardDetails(
         pumperName,
         updatedSlip.lastFourDigits,
         updatedSlip.cardType,
         updatedSlip.terminalId,
+        updatedSlip.timestamp,
         slipId
       )
 
@@ -935,7 +933,7 @@ export default function CloseShiftPage() {
         // Also show a global error message
         const terminal = posTerminals.find(t => t.id === duplicateSlip.terminalId)
         const duplicateTime = new Date(duplicateSlip.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-        setError(`⚠️ FRAUD ALERT: Card ending in ${updatedSlip.lastFourDigits} (${updatedSlip.cardType}) was already added today at ${duplicateTime} for Rs. ${duplicateSlip.amount.toLocaleString()} on ${terminal?.name || 'same terminal'}. The same card with same type cannot be used twice on the same terminal in the same day!`)
+        setError(`⚠️ FRAUD ALERT: Card ending in ${updatedSlip.lastFourDigits} (${updatedSlip.cardType}) was already added today at ${duplicateTime} for Rs. ${duplicateSlip.amount.toLocaleString()} on ${terminal?.name || 'same terminal'}. The same card with same type cannot be used twice on the same terminal at the same time!`)
         setTimeout(() => setError(''), 8000)
       } else {
         // Clear error if card number is valid
@@ -945,7 +943,7 @@ export default function CloseShiftPage() {
           return newErrors
         })
       }
-    } else if (field === 'lastFourDigits' || field === 'cardType' || field === 'terminalId') {
+    } else if (field === 'lastFourDigits' || field === 'cardType' || field === 'terminalId' || field === 'timestamp') {
       // Clear error if required fields are not complete yet
       setDuplicateCardErrors(prev => {
         const newErrors = { ...prev }
@@ -982,7 +980,7 @@ export default function CloseShiftPage() {
     const remainingSlips = posSlips[pumperName]?.filter(slip => slip.id !== slipId) || []
     remainingSlips.forEach(slip => {
       if (slip.lastFourDigits && slip.lastFourDigits.length === 4 && slip.cardType && slip.terminalId) {
-        const duplicateSlip = getDuplicateCardDetails(pumperName, slip.lastFourDigits, slip.cardType, slip.terminalId, slip.id)
+        const duplicateSlip = getDuplicateCardDetails(pumperName, slip.lastFourDigits, slip.cardType, slip.terminalId, slip.timestamp, slip.id)
         if (duplicateSlip) {
           setDuplicateCardErrors(prev => ({
             ...prev,
@@ -1063,7 +1061,7 @@ export default function CloseShiftPage() {
     if (type === 'LOAN_GIVEN') {
       try {
         loanGivenBy = await getCurrentUserName()
-      } catch (err) {
+      } catch {
         loanGivenBy = 'Manager'
       }
     }
@@ -1228,14 +1226,17 @@ export default function CloseShiftPage() {
     }
 
     // Aggregate totals from pumper-wise breakdown
-    const totalCash = pumperBreakdowns.reduce((sum, b) => sum + b.declaredCash, 0)
-    const totalCard = pumperBreakdowns.reduce((sum, b) =>
-      sum + Object.values(b.declaredCardAmounts).reduce((cardSum, amount) => cardSum + amount, 0), 0
-    )
+    // const totalCash = pumperBreakdowns.reduce((sum, b) => sum + b.declaredCash, 0)
+    // const totalCard = pumperBreakdowns.reduce((sum, b) =>
+    //   sum + Object.values(b.declaredCardAmounts).reduce((cardSum, amount) => cardSum + amount, 0), 0
+    // )
     const totalCredit = pumperBreakdowns.reduce((sum, b) =>
       sum + Object.values(b.declaredCreditAmounts).reduce((creditSum, amount) => creditSum + amount, 0), 0
     )
-    const totalCheque = pumperBreakdowns.reduce((sum, b) => sum + b.declaredCheque, 0)
+    const totalCard = pumperBreakdowns.reduce((sum, b) =>
+      sum + Object.values(b.declaredCardAmounts).reduce((cardSum, amount) => cardSum + amount, 0), 0
+    )
+    // const totalCheque = pumperBreakdowns.reduce((sum, b) => sum + b.declaredCheque, 0)
 
     // Validate credit limits for all customers across all pumpers
     if (totalCredit > 0) {
@@ -1251,6 +1252,16 @@ export default function CloseShiftPage() {
               }
             }
           }
+        }
+      }
+    }
+
+    // Validate cheques have bank selected
+    for (const breakdown of pumperBreakdowns) {
+      for (const cheque of breakdown.cheques) {
+        if (!cheque.bankId) {
+          setError(`Please select a bank for cheque ${cheque.chequeNumber} (Pumper: ${breakdown.pumperName})`)
+          return
         }
       }
     }
@@ -1672,59 +1683,8 @@ export default function CloseShiftPage() {
       }
 
       // Cash will be added to safe manually by pumpers after shift end
-      // Cheques are still automatically tracked for record-keeping
-
-      // Add cheques to safe (for tracking purposes - pumpers handle physical cheques)
-      if (totalCheque > 0) {
-        try {
-          const shiftData = shiftResult || await (await fetch(`/api/shifts/${selectedShift}`)).json()
-          const stationId = shiftData.station?.id || shiftData.stationId
-
-          // Get all cheques from all pumpers
-          const allCheques: PumperCheque[] = []
-          pumperBreakdowns.forEach(breakdown => {
-            allCheques.push(...breakdown.cheques)
-          })
-
-          // Add each cheque to safe ONLY if it's cleared
-          // Cheques should not be counted as cash until they clear the bank
-          for (const cheque of allCheques) {
-            // Only add cleared cheques to safe - pending/bounced cheques should not be counted as cash
-            // Default to CLEARED if status is not specified (for backward compatibility)
-            const chequeStatus = cheque.status || 'CLEARED'
-            if (cheque.amount > 0 && chequeStatus === 'CLEARED') {
-              const safeRes = await fetch('/api/safe/transactions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  stationId,
-                  type: 'CHEQUE_RECEIVED',
-                  amount: cheque.amount,
-                  description: `Cleared Cheque #${cheque.chequeNumber} from ${cheque.receivedFrom}${cheque.bankName ? ` (${cheque.bankName})` : ''}`,
-                  timestamp: validatedEndTime.toISOString(),
-                  shiftId: selectedShift,
-                  chequeId: cheque.id, // Store reference if needed
-                  performedBy: getCurrentUserName()
-                })
-              })
-
-              if (!safeRes.ok) {
-                console.warn(`Failed to add cleared cheque ${cheque.chequeNumber} to safe`)
-              }
-            } else {
-              const chequeStatus = cheque.status || 'CLEARED'
-              if (chequeStatus !== 'CLEARED') {
-                console.log(`Skipping cheque ${cheque.chequeNumber} - status is ${chequeStatus}, not CLEARED`)
-              }
-            }
-          }
-
-          console.log('Cleared cheques added to safe successfully')
-        } catch (chequeErr) {
-          console.error('Error adding cheques to safe:', chequeErr)
-          // Don't fail the entire shift close if cheque addition fails
-        }
-      }
+      // Cheques are tracked in the Cheque table and associated with bank accounts
+      // They should NEVER be added to the safe
 
       // Create test pours
       try {
@@ -2022,6 +1982,10 @@ export default function CloseShiftPage() {
 
   return (
     <div className="space-y-6">
+      <PrintHeader
+        title={selectedShift ? shifts.find(s => s.id === selectedShift)?.stationId ? stations.find(st => st.id === shifts.find(s => s.id === selectedShift)?.stationId)?.name : undefined : undefined}
+        subtitle="Shift Close Summary"
+      />
       <div className="flex items-center gap-2">
         <Clock className="h-6 w-6 text-orange-600 dark:text-orange-400" />
         <h1 className="text-2xl font-bold">Close Shift</h1>
@@ -2402,7 +2366,7 @@ export default function CloseShiftPage() {
                                                           • Card Type: {duplicateSlip.cardType}<br />
                                                           {terminal && <span>• Terminal: {terminal.name} ({terminal.terminalNumber})</span>}
                                                         </div>
-                                                        <div className="mt-2 font-semibold">⚠️ The same card with the same type cannot be used twice on the same terminal in the same day!</div>
+                                                        <div className="mt-2 font-semibold">⚠️ The same card with the same type cannot be used twice on the same terminal at the same time!</div>
                                                         <div className="mt-1 text-xs">
                                                           <strong>Note:</strong> Different cards can have the same last 4 digits. If this is a different card,
                                                           change the card type (VISA/MASTER/AMEX) or use a different terminal.
@@ -2837,7 +2801,7 @@ export default function CloseShiftPage() {
                                 <div>
                                   <div>
                                     <div className="flex items-center justify-between mb-1">
-                                      <Label className="text-xs text-muted-foreground">Bank</Label>
+                                      <Label className="text-xs text-muted-foreground">Bank *</Label>
                                       <Dialog open={addBankDialogOpen} onOpenChange={setAddBankDialogOpen}>
                                         <DialogTrigger asChild>
                                           <Button
@@ -2921,6 +2885,14 @@ export default function CloseShiftPage() {
                                       </p>
                                     )}
                                   </div>
+                                </div>
+
+                                <div>
+                                  <Label className="text-xs text-muted-foreground mb-1 block">Cheque Date *</Label>
+                                  <DateTimePicker
+                                    value={cheque.chequeDate ? new Date(cheque.chequeDate) : new Date()}
+                                    onChange={(date) => handleUpdatePumperCheque(breakdown.pumperName, cheque.id, 'chequeDate', date || new Date())}
+                                  />
                                 </div>
 
                                 <div>

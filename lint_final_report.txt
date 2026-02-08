@@ -1,0 +1,41 @@
+﻿
+> shed-admin@0.1.0 lint
+> eslint
+
+
+C:\Users\USER\Desktop\dfs management system\shed-admin\src\app\(app)\salary\office-staff\[id]\page.tsx
+  71:19  warning  'setSuccess' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\USER\Desktop\dfs management system\shed-admin\src\app\(app)\settings\office-staff\page.tsx
+  77:6   warning  React Hook useEffect has a missing dependency: 'fetchOfficeStaff'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  88:14  warning  '_error' is defined but never used                                                                                   @typescript-eslint/no-unused-vars
+
+C:\Users\USER\Desktop\dfs management system\shed-admin\src\app\(app)\settings\prices\page.tsx
+  13:28  warning  'TrendingUp' is defined but never used                                                                                                            @typescript-eslint/no-unused-vars
+  13:40  warning  'Calendar' is defined but never used                                                                                                              @typescript-eslint/no-unused-vars
+  13:89  warning  'Zap' is defined but never used                                                                                                                   @typescript-eslint/no-unused-vars
+  13:94  warning  'Package' is defined but never used                                                                                                               @typescript-eslint/no-unused-vars
+  70:10  warning  'newFuelDialogOpen' is assigned a value but never used                                                                                            @typescript-eslint/no-unused-vars
+  91:6   warning  React Hook useEffect has missing dependencies: 'fetchFuels', 'fetchPrices', and 'fetchTanks'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\USER\Desktop\dfs management system\shed-admin\src\app\(app)\settings\profile\page.tsx
+   11:31  warning  'Shield' is defined but never used  @typescript-eslint/no-unused-vars
+  168:14  warning  'error' is defined but never used   @typescript-eslint/no-unused-vars
+  234:14  warning  'error' is defined but never used   @typescript-eslint/no-unused-vars
+
+C:\Users\USER\Desktop\dfs management system\shed-admin\src\app\(app)\settings\stations\page.tsx
+    9:60  warning  'DialogTrigger' is defined but never used                                                                         @typescript-eslint/no-unused-vars
+   11:29  warning  'CardHeader' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+   11:41  warning  'CardTitle' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+   34:10  warning  'loading' is assigned a value but never used                                                                      @typescript-eslint/no-unused-vars
+   54:6   warning  React Hook useEffect has a missing dependency: 'fetchStations'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   61:14  warning  'error' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+   95:14  warning  'error' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+  134:14  warning  'error' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+
+C:\Users\USER\Desktop\dfs management system\shed-admin\src\app\(app)\settings\tolerance\page.tsx
+  50:6  warning  React Hook useEffect has a missing dependency: 'fetchConfig'. Either include it or remove the dependency array        react-hooks/exhaustive-deps
+  54:6  warning  React Hook useEffect has a missing dependency: 'calculateExamples'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+Γ£û 22 problems (0 errors, 22 warnings)
+

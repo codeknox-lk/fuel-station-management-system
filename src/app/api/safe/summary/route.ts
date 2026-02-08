@@ -83,10 +83,7 @@ export async function GET(request: NextRequest) {
       .filter(tx => tx.type === 'CREDIT_PAYMENT')
       .reduce((sum, tx) => sum + tx.amount, 0)
 
-    // Get cheques received (not encashed - those are when they clear)
-    const totalChequeReceived = dayTransactions
-      .filter(tx => tx.type === 'CHEQUE_RECEIVED')
-      .reduce((sum, tx) => sum + tx.amount, 0)
+
 
     // Get deposits from safe transactions
     const totalDeposits = dayTransactions
@@ -116,7 +113,6 @@ export async function GET(request: NextRequest) {
           'CASH_FUEL_SALES',
           'POS_CARD_PAYMENT',
           'CREDIT_PAYMENT',
-          'CHEQUE_RECEIVED',
           'LOAN_REPAID'
         ].includes(tx.type)
 
@@ -130,7 +126,6 @@ export async function GET(request: NextRequest) {
         'CASH_FUEL_SALES',
         'POS_CARD_PAYMENT',
         'CREDIT_PAYMENT',
-        'CHEQUE_RECEIVED',
         'LOAN_REPAID'
       ].includes(tx.type))
       .reduce((sum, tx) => sum + tx.amount, 0)
@@ -173,7 +168,6 @@ export async function GET(request: NextRequest) {
           'CASH_FUEL_SALES',
           'POS_CARD_PAYMENT',
           'CREDIT_PAYMENT',
-          'CHEQUE_RECEIVED',
           'LOAN_REPAID'
         ].includes(tx.type)
         actualBalance += txIsIncome ? tx.amount : -tx.amount
@@ -204,7 +198,6 @@ export async function GET(request: NextRequest) {
         'CASH_FUEL_SALES',
         'POS_CARD_PAYMENT',
         'CREDIT_PAYMENT',
-        'CHEQUE_RECEIVED',
         'LOAN_REPAID'
       ].includes(tx.type))
       .map(tx => ({
@@ -212,8 +205,7 @@ export async function GET(request: NextRequest) {
         type: tx.type === 'CASH_FUEL_SALES' ? 'CASH_SALES' :
           tx.type === 'POS_CARD_PAYMENT' ? 'CARD_PAYMENT' :
             tx.type === 'CREDIT_PAYMENT' ? 'CREDIT_PAYMENT' :
-              tx.type === 'CHEQUE_RECEIVED' ? 'CHEQUE_RECEIVED' :
-                tx.type === 'LOAN_REPAID' ? 'LOAN_RECEIPT' : 'OTHER',
+              tx.type === 'LOAN_REPAID' ? 'LOAN_RECEIPT' : 'OTHER',
         description: tx.description,
         amount: tx.amount,
         time: new Date(tx.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
@@ -263,7 +255,7 @@ export async function GET(request: NextRequest) {
       .reduce((sum, tx) => sum + tx.amount, 0)
 
     const otherInflows = dayTransactions
-      .filter(tx => tx.type === 'CHEQUE_RECEIVED' || tx.type === 'POS_CARD_PAYMENT')
+      .filter(tx => tx.type === 'POS_CARD_PAYMENT')
       .reduce((sum, tx) => sum + tx.amount, 0)
 
     const loanPayments = dayTransactions
@@ -274,7 +266,7 @@ export async function GET(request: NextRequest) {
       .filter(tx => tx.type !== 'EXPENSE' && tx.type !== 'BANK_DEPOSIT' &&
         tx.type !== 'LOAN_GIVEN' && ![
           'CASH_FUEL_SALES', 'POS_CARD_PAYMENT', 'CREDIT_PAYMENT',
-          'CHEQUE_RECEIVED', 'LOAN_REPAID', 'OPENING_BALANCE'
+          'LOAN_REPAID', 'OPENING_BALANCE'
         ].includes(String(tx.type)))
       .reduce((sum, tx) => sum + tx.amount, 0)
 
@@ -303,7 +295,6 @@ export async function GET(request: NextRequest) {
       totalCashIn,
       totalPosCardIn,
       totalCreditRepayments,
-      totalChequeReceived,
       netCash,
       closingBalance
     }

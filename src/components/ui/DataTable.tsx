@@ -10,12 +10,21 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
   ChevronLeft,
   ChevronRight,
   Search,
-  Loader2
+  Loader2,
+  Download,
+  FileText
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { exportTableToCSV, exportTableToPDF } from '@/lib/exportUtils'
 
 export interface Column<T> {
   key: keyof T
@@ -23,6 +32,7 @@ export interface Column<T> {
   render?: (value: unknown, row: T) => React.ReactNode
   sortable?: boolean
   width?: string
+  exportFormatter?: (value: unknown, row: T) => string | number
 }
 
 interface DataTableProps<T = Record<string, unknown>> {
@@ -36,6 +46,8 @@ interface DataTableProps<T = Record<string, unknown>> {
   onRowClick?: (row: T) => void
   emptyMessage?: string
   loading?: boolean
+  enableExport?: boolean
+  exportFileName?: string
 }
 
 export function DataTable<T = Record<string, unknown>>({
@@ -48,7 +60,9 @@ export function DataTable<T = Record<string, unknown>>({
   className,
   onRowClick,
   emptyMessage = 'No data available',
-  loading = false
+  loading = false,
+  enableExport = false,
+  exportFileName = 'export'
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState('')
   const [sortKey, setSortKey] = useState<keyof T | null>(null)
@@ -99,20 +113,53 @@ export function DataTable<T = Record<string, unknown>>({
     setCurrentPage(Math.max(1, Math.min(page, totalPages)))
   }
 
+  const handleExportPDF = () => {
+    // Export currently filtered data (not just current page)
+    exportTableToPDF('Data Export', columns, filteredData, `${exportFileName}.pdf`)
+  }
+
+  const handleExportCSV = () => {
+    // Export currently filtered data (not just current page)
+    exportTableToCSV(columns, filteredData, exportFileName)
+  }
+
   return (
     <div className={cn('space-y-4', className)}>
-      {/* Search */}
-      {searchable && (
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={searchPlaceholder}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+      {/* Search and Export */}
+      {(searchable || enableExport) && (
+        <div className="flex items-center justify-between gap-4">
+          {searchable && (
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={searchPlaceholder}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          )}
+
+          {enableExport && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="ml-auto">
+                  <Download className="mr-2 h-4 w-4" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportPDF}>
+                  <FileText className="mr-2 h-4 w-4 text-red-600" />
+                  Export as PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportCSV}>
+                  <FileText className="mr-2 h-4 w-4 text-green-600" />
+                  Export as CSV/Excel
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       )}
 
@@ -231,3 +278,4 @@ export function DataTable<T = Record<string, unknown>>({
     </div>
   )
 }
+

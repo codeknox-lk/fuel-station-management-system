@@ -52,10 +52,9 @@ export async function POST(request: NextRequest) {
           'CASH_FUEL_SALES',
           'POS_CARD_PAYMENT',
           'CREDIT_PAYMENT',
-          'CHEQUE_RECEIVED',
           'LOAN_REPAID'
         ].includes(tx.type)
-        
+
         balanceBefore += txIsIncome ? tx.amount : -tx.amount
       }
     }

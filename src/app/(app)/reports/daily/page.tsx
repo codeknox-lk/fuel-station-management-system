@@ -19,7 +19,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import {
   Building2,
   DollarSign,
-  Calendar,
   TrendingUp,
   TrendingDown,
   AlertTriangle,
@@ -30,7 +29,6 @@ import {
   CreditCard,
   Banknote,
   Calculator,
-  ExternalLink,
   Users,
   Receipt,
   Clock,
@@ -42,6 +40,7 @@ import {
   CheckCircle
 } from 'lucide-react'
 import { exportDailyReportPDF, exportDailyReportExcel, DailyReportData } from '@/lib/exportUtils'
+import { PrintHeader } from '@/components/PrintHeader'
 
 interface Station {
   id: string
@@ -165,7 +164,7 @@ export default function DailyReportsPage() {
         const response = await fetch('/api/stations?active=true')
         const stationsData = await response.json()
         setStations(stationsData)
-      } catch (err) {
+      } catch {
         setError('Failed to load stations')
       }
     }
@@ -215,8 +214,12 @@ export default function DailyReportsPage() {
           errorData = { error: `HTTP ${response.status}: ${response.statusText}`, details: 'Failed to parse error response' }
         }
         console.error('[Frontend] API error response:', errorData)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const errorMessage = (errorData as any).message || (errorData as any).error || (errorData as any).details || 'Unknown error'
+        interface ErrorResponse {
+          message?: string
+          error?: string
+          details?: string | Record<string, unknown>
+        }
+        const errorMessage = (errorData as ErrorResponse).message || (errorData as ErrorResponse).error || (typeof (errorData as ErrorResponse).details === 'string' ? (errorData as ErrorResponse).details : JSON.stringify((errorData as ErrorResponse).details)) || 'Unknown error'
         throw new Error(`Failed to fetch daily report: ${response.status} ${response.statusText}. ${errorMessage}`)
       }
 
@@ -596,6 +599,10 @@ export default function DailyReportsPage() {
 
   return (
     <div className="space-y-6 p-6">
+      <PrintHeader
+        title={dailyReport?.stationName}
+        subtitle={`Daily Report - ${new Date(selectedDate).toLocaleDateString()}`}
+      />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -643,6 +650,7 @@ export default function DailyReportsPage() {
             <Label htmlFor="date">Date *</Label>
             <input
               id="date"
+              title="Select Date"
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
@@ -907,6 +915,8 @@ export default function DailyReportsPage() {
                 searchable={true}
                 searchPlaceholder="Search terminals..."
                 pagination={false}
+                enableExport={true}
+                exportFileName="daily-report-pos-terminals"
               />
 
               {/* POS Summary */}
@@ -969,6 +979,8 @@ export default function DailyReportsPage() {
                 searchable={true}
                 searchPlaceholder="Search customers..."
                 pagination={false}
+                enableExport={true}
+                exportFileName="daily-report-credit-customers"
               />
 
               {/* Credit Summary */}
@@ -1019,6 +1031,8 @@ export default function DailyReportsPage() {
                 searchable={true}
                 searchPlaceholder="Search cheques..."
                 pagination={false}
+                enableExport={true}
+                exportFileName="daily-report-cheques"
               />
 
               {/* Cheque Summary */}
@@ -1184,6 +1198,8 @@ export default function DailyReportsPage() {
                     searchPlaceholder="Search missing slips..."
                     pagination={false}
                     emptyMessage="No missing slips reported."
+                    enableExport={true}
+                    exportFileName="daily-report-missing-slips"
                   />
                   <div className="mt-4 pt-4 border-t">
                     <div className="flex items-center justify-between p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">

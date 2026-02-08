@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useStation } from '@/contexts/StationContext'
 import { FormCard } from '@/components/ui/FormCard'
 import { DataTable, Column } from '@/components/ui/DataTable'
@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { DollarSign, Plus, TrendingUp, Calendar, AlertCircle, Fuel, BarChart3, Droplet, Zap, Package } from 'lucide-react'
+import { DollarSign, Plus, AlertCircle, Fuel, BarChart3, Droplet } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -67,7 +67,6 @@ export default function FuelsPage() {
   const [loading, setLoading] = useState(true)
   const [priceDialogOpen, setPriceDialogOpen] = useState(false)
   const [fuelTypeDialogOpen, setFuelTypeDialogOpen] = useState(false)
-  const [newFuelDialogOpen, setNewFuelDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
   const [formData, setFormData] = useState({
     fuelId: '',
@@ -84,13 +83,7 @@ export default function FuelsPage() {
   const { selectedStation } = useStation()
   const { toast } = useToast()
 
-  useEffect(() => {
-    fetchFuels()
-    fetchPrices()
-    fetchTanks()
-  }, [selectedStation])
-
-  const fetchFuels = async () => {
+  const fetchFuels = useCallback(async () => {
     try {
       const response = await fetch('/api/fuels')
       if (!response.ok) throw new Error('Failed to fetch fuels')
@@ -102,17 +95,17 @@ export default function FuelsPage() {
       if (data.length > 0 && !formData.fuelId) {
         setFormData(prev => ({ ...prev, fuelId: data[0].id }))
       }
-    } catch (error) {
-      console.error('Error fetching fuels:', error)
+    } catch {
+      console.error('Error fetching fuels:')
       toast({
         title: "Error",
         description: "Failed to fetch fuel types",
         variant: "destructive"
       })
     }
-  }
+  }, [formData.fuelId, toast])
 
-  const fetchPrices = async () => {
+  const fetchPrices = useCallback(async () => {
     setLoading(true)
     try {
       const url = selectedStation && selectedStation !== 'all'
@@ -124,8 +117,8 @@ export default function FuelsPage() {
 
       const data = await response.json()
       setPrices(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error('Error fetching prices:', error)
+    } catch {
+      console.error('Error fetching prices:')
       toast({
         title: "Error",
         description: "Failed to fetch prices",
@@ -135,9 +128,9 @@ export default function FuelsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedStation, toast])
 
-  const fetchTanks = async () => {
+  const fetchTanks = useCallback(async () => {
     try {
       const url = selectedStation && selectedStation !== 'all'
         ? `/api/tanks?stationId=${selectedStation}`
@@ -148,10 +141,16 @@ export default function FuelsPage() {
 
       const data = await response.json()
       setTanks(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error('Error fetching tanks:', error)
+    } catch {
+      console.error('Error fetching tanks:')
     }
-  }
+  }, [selectedStation])
+
+  useEffect(() => {
+    fetchFuels()
+    fetchPrices()
+    fetchTanks()
+  }, [fetchFuels, fetchPrices, fetchTanks])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

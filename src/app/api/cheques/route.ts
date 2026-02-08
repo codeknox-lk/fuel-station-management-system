@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { ChequeStatus } from '@prisma/client'
 import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
@@ -36,15 +37,14 @@ export async function GET(request: NextRequest) {
 
     interface ChequeWhereInput {
       stationId?: string
-      status?: 'PENDING' | 'CLEARED' | 'BOUNCED' | 'CANCELLED'
+      status?: ChequeStatus
     }
     const where: ChequeWhereInput = {}
     if (stationId) {
       where.stationId = stationId
     }
     if (status) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      where.status = status as any
+      where.status = status as ChequeStatus
     }
 
     const cheques = await prisma.cheque.findMany({
@@ -60,6 +60,16 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             name: true
+          }
+        },
+        creditPayment: {
+          include: {
+            customer: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
           }
         }
       },

@@ -242,9 +242,10 @@ export const CreateCreditPaymentSchema = z.object({
     paymentType: z.enum(['CASH', 'CHEQUE', 'BANK_TRANSFER']),
     referenceNumber: z.string().optional().nullable(),
     chequeNumber: z.string().optional().nullable(),
+    chequeDate: z.union([z.string(), z.date()]).optional().transform(val => val ? new Date(val) : new Date()),
     bankId: z.string().optional().nullable(),
     paymentDate: z.union([z.string(), z.date()]).optional().transform(val => val ? new Date(val) : new Date()),
-    receivedBy: z.string().min(1, 'Received by is required'),
+    receivedBy: z.string().optional(),
     stationId: z.string().optional() // For Safe Transaction
 });
 

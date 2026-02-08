@@ -12,17 +12,17 @@ export async function GET(request: NextRequest) {
       where: bankId ? { id: bankId, isActive: true } : { isActive: true },
       orderBy: { name: 'asc' },
       include: {
-        deposits: stationId 
-          ? { 
-              where: { stationId },
-              orderBy: { depositDate: 'desc' }
-            }
+        deposits: stationId
+          ? {
+            where: { stationId },
+            orderBy: { depositDate: 'desc' }
+          }
           : { orderBy: { depositDate: 'desc' } },
         cheques: stationId
           ? {
-              where: { stationId },
-              orderBy: { receivedDate: 'desc' }
-            }
+            where: { stationId },
+            orderBy: { receivedDate: 'desc' }
+          }
           : { orderBy: { receivedDate: 'desc' } },
         posTerminals: {
           where: { isActive: true }
@@ -60,31 +60,31 @@ export async function GET(request: NextRequest) {
     const bankAccounts = banks.map(bank => {
       // Get credit payments for this bank
       const bankCreditPayments = creditPaymentsByBank.find(cp => cp.bankId === bank.id)?.creditPayments || []
-      
+
       // Get manual bank transactions for this bank
       const bankManualTransactions = bankTransactionsByBank.find(bt => bt.bankId === bank.id)?.bankTransactions || []
-      
+
       // Total deposits
       const totalDeposits = bank.deposits.reduce((sum, deposit) => sum + deposit.amount, 0)
-      
+
       // Total cheques (received)
       const totalCheques = bank.cheques.reduce((sum, cheque) => sum + cheque.amount, 0)
-      
+
       // Cleared cheques
       const clearedCheques = bank.cheques
         .filter(cheque => cheque.status === 'CLEARED')
         .reduce((sum, cheque) => sum + cheque.amount, 0)
-      
-      // Pending cheques
+
+      // Pending cheques (includes PENDING and DEPOSITED - awaiting clearance)
       const pendingCheques = bank.cheques
-        .filter(cheque => cheque.status === 'PENDING')
+        .filter(cheque => cheque.status === 'PENDING' || cheque.status === 'DEPOSITED')
         .reduce((sum, cheque) => sum + cheque.amount, 0)
-      
+
       // Bounced cheques
       const bouncedCheques = bank.cheques
         .filter(cheque => cheque.status === 'BOUNCED')
         .reduce((sum, cheque) => sum + cheque.amount, 0)
-      
+
       // Credit payments received
       const totalCreditPayments = bankCreditPayments.reduce((sum, payment) => sum + payment.amount, 0)
 
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
       const manualDeposits = bankManualTransactions
         .filter(t => ['DEPOSIT', 'TRANSFER_IN', 'INTEREST', 'ADJUSTMENT'].includes(t.type) && t.amount > 0)
         .reduce((sum, t) => sum + t.amount, 0)
-      
+
       const manualWithdrawals = bankManualTransactions
         .filter(t => ['WITHDRAWAL', 'TRANSFER_OUT', 'FEE'].includes(t.type))
         .reduce((sum, t) => sum + t.amount, 0)
@@ -112,37 +112,37 @@ export async function GET(request: NextRequest) {
         status?: string
         description: string
       }> = [
-        ...bank.deposits.map(d => ({
-          id: d.id,
-          type: 'DEPOSIT' as const,
-          amount: d.amount,
-          date: d.depositDate,
-          description: `Deposit by ${d.depositedBy}${d.depositSlip ? ` - Slip: ${d.depositSlip}` : ''}`
-        })),
-        ...bank.cheques.map(c => ({
-          id: c.id,
-          type: 'CHEQUE' as const,
-          amount: c.amount,
-          date: c.receivedDate,
-          status: c.status,
-          description: `Cheque ${c.chequeNumber} from ${c.receivedFrom}`
-        })),
-        ...bankCreditPayments.map(cp => ({
-          id: cp.id,
-          type: 'CREDIT_PAYMENT' as const,
-          amount: cp.amount,
-          date: cp.paymentDate,
-          description: `Credit payment${cp.chequeNumber ? ` - Cheque: ${cp.chequeNumber}` : ''}`
-        })),
-        ...bankManualTransactions.map(mt => ({
-          id: mt.id,
-          type: 'MANUAL' as const,
-          amount: mt.amount,
-          date: mt.transactionDate,
-          status: mt.type,
-          description: mt.description
-        }))
-      ]
+          ...bank.deposits.map(d => ({
+            id: d.id,
+            type: 'DEPOSIT' as const,
+            amount: d.amount,
+            date: d.depositDate,
+            description: `Deposit by ${d.depositedBy}${d.depositSlip ? ` - Slip: ${d.depositSlip}` : ''}`
+          })),
+          ...bank.cheques.map(c => ({
+            id: c.id,
+            type: 'CHEQUE' as const,
+            amount: c.amount,
+            date: c.receivedDate,
+            status: c.status,
+            description: `Cheque ${c.chequeNumber} from ${c.receivedFrom}`
+          })),
+          ...bankCreditPayments.map(cp => ({
+            id: cp.id,
+            type: 'CREDIT_PAYMENT' as const,
+            amount: cp.amount,
+            date: cp.paymentDate,
+            description: `Credit payment${cp.chequeNumber ? ` - Cheque: ${cp.chequeNumber}` : ''}`
+          })),
+          ...bankManualTransactions.map(mt => ({
+            id: mt.id,
+            type: 'MANUAL' as const,
+            amount: mt.amount,
+            date: mt.transactionDate,
+            status: mt.type,
+            description: mt.description
+          }))
+        ]
 
       // Sort by date descending and take last 10
       const recentTransactions = allTransactions

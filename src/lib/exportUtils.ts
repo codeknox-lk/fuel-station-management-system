@@ -1558,3 +1558,99 @@ export const exportPumperDetailsReportExcel = (reportData: PumperDetailsReportDa
 
   excel.save(`pumper-details-${stationName.replace(/\s+/g, '-')}-${monthLabel.replace(/\s+/g, '-')}.xlsx`)
 }
+
+// Generic Table Export Utilities
+
+/**
+ * Export any table data to PDF
+ * @param title Report title
+ * @param columns Column definitions (must include 'title' and 'key')
+ * @param data Data array
+ * @param filename Output filename (without extension)
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const exportTableToPDF = (title: string, columns: any[], data: any[], filename: string) => {
+  const doc = new PDFExporter(title, 'landscape')
+
+  // Format headers
+  const headers = columns.map(col => col.title)
+
+  // Format data
+  const tableData = data.map(row => {
+    return columns.map(col => {
+      const value = row[col.key]
+
+      // Handle custom formatting if provided in column definition
+      if (col.exportFormatter) {
+        return col.exportFormatter(value, row)
+      }
+
+      // Default formatting
+      if (typeof value === 'boolean') {
+        return value ? 'Yes' : 'No'
+      }
+      if (value === null || value === undefined) {
+        return ''
+      }
+      if (typeof value === 'object') {
+        // Try to handle simple objects or arrays
+        try {
+          return JSON.stringify(value)
+        } catch {
+          return '[Object]'
+        }
+      }
+      return String(value)
+    })
+  })
+
+  doc.addTable(headers, tableData)
+  doc.save(filename)
+}
+
+/**
+ * Export any table data to CSV/Excel
+ * @param columns Column definitions (must include 'title' and 'key')
+ * @param data Data array
+ * @param filename Output filename (without extension)
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const exportTableToCSV = (columns: any[], data: any[], filename: string) => {
+  // Format data for Excel
+  const excelData = data.map(row => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rowData: Record<string, any> = {}
+    columns.forEach(col => {
+      let value = row[col.key]
+
+      // Handle custom formatting if provided in column definition
+      if (col.exportFormatter) {
+        value = col.exportFormatter(value, row)
+      } else if (typeof value === 'boolean') {
+        value = value ? 'Yes' : 'No'
+      } else if (value === null || value === undefined) {
+        value = ''
+      } else if (typeof value === 'object') {
+        try {
+          value = JSON.stringify(value)
+        } catch {
+          value = '[Object]'
+        }
+      }
+
+      rowData[col.title] = value
+    })
+    return rowData
+  })
+
+  // Create workbook and worksheet
+  const wb = XLSX.utils.book_new()
+  const ws = XLSX.utils.json_to_sheet(excelData)
+
+  // Set column widths based on title length
+  const wscols = columns.map(col => ({ wch: Math.max(col.title.length + 5, 15) }))
+  ws['!cols'] = wscols
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1')
+  XLSX.writeFile(wb, `${filename}.xlsx`)
+}

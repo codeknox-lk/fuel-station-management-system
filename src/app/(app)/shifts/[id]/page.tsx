@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { getNozzleDisplayWithBadge } from '@/lib/nozzleUtils'
+import { PrintHeader } from '@/components/PrintHeader'
 import { ShiftWithDetails, AssignmentWithDetails, ShiftStatistics, DeclaredAmounts, Expense } from '@/types/db'
 
 // Helper type for the UI which might have parsed JSON fields
@@ -459,6 +460,12 @@ export default function ShiftDetailsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Print Header - Only visible when printing */}
+      {/* Print Header - Only visible when printing */}
+      <PrintHeader
+        title={shift?.station?.name || shift?.stationName}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">

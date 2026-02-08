@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useStation } from '@/contexts/StationContext'
 import { FormCard } from '@/components/ui/FormCard'
 import { DataTable } from '@/components/ui/DataTable'
@@ -65,6 +65,26 @@ export default function OfficeStaffPage() {
   })
   const { toast } = useToast()
 
+  const fetchOfficeStaff = useCallback(async () => {
+    if (!selectedStation) return
+
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/office-staff?stationId=${selectedStation}`)
+      if (!response.ok) throw new Error('Failed to fetch office staff')
+      const data = await response.json()
+      setOfficeStaff(data)
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to fetch office staff",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
+  }, [selectedStation, toast])
+
   useEffect(() => {
     if (selectedStation) {
       fetchOfficeStaff()
@@ -74,27 +94,7 @@ export default function OfficeStaffPage() {
         stationId: selectedStation
       }))
     }
-  }, [selectedStation])
-
-  const fetchOfficeStaff = async () => {
-    if (!selectedStation) return
-
-    try {
-      setLoading(true)
-      const response = await fetch(`/api/office-staff?stationId=${selectedStation}`)
-      if (!response.ok) throw new Error('Failed to fetch office staff')
-      const data = await response.json()
-      setOfficeStaff(data)
-    } catch (_error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch office staff",
-        variant: "destructive"
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [selectedStation, fetchOfficeStaff])
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 

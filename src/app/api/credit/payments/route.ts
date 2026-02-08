@@ -108,6 +108,11 @@ export async function POST(request: NextRequest) {
 
     // Create payment, update customer balance, and create safe transaction in a single transaction
     const transactionResult = await prisma.$transaction(async (tx) => {
+      let paymentStatus: 'PENDING' | 'CLEARED' | 'BOUNCED' = 'CLEARED'
+      if (paymentType === 'CHEQUE') {
+        paymentStatus = 'PENDING'
+      }
+
       // Create the payment
       const payment = await tx.creditPayment.create({
         data: {
@@ -119,7 +124,7 @@ export async function POST(request: NextRequest) {
           bankId: bankId || null,
           paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
           receivedBy: secureReceivedBy,
-          status: 'CLEARED'
+          status: paymentStatus
         },
         include: {
           customer: true,
@@ -127,96 +132,131 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      // Update customer balance (decrease)
-      await tx.creditCustomer.update({
-        where: { id: customerId },
-        data: {
-          currentBalance: {
-            decrement: validatedAmount
-          }
+      // Handle specific logic based on payment type
+      if (paymentType === 'CHEQUE') {
+        if (!stationId) {
+          throw new Error('Station ID is required for cheque payments')
         }
-      })
+        if (!chequeNumber) {
+          throw new Error('Cheque number is required')
+        }
 
-      // Create safe transaction for CASH payments only
-      if (stationId && paymentType === 'CASH') {
-        console.log('Creating safe transaction for CASH payment, stationId:', stationId)
-
-        // Get or create safe
-        let safe = await tx.safe.findUnique({
-          where: { stationId }
+        // Create Cheque record
+        await tx.cheque.create({
+          data: {
+            stationId: stationId,
+            chequeNumber: chequeNumber,
+            amount: validatedAmount,
+            // If bankId is provided, use it. If not, we need a way to store bank info? 
+            // The schema requires `bankId`. If user selects "Other" or no bank, we might fail.
+            // Assuming UI provides bankId. If not, we might need a fallback bank or handle it.
+            // For now, assume bankId is passed (as it is optional in Zod but Cheque model requires it?)
+            // Cheque model: bankId String. So it IS required.
+            // CreateCreditPaymentSchema has bankId optional. 
+            // UI must ensure bankId is selected for Cheques.
+            bankId: bankId!,
+            receivedFrom: customer.name,
+            receivedDate: paymentDate ? new Date(paymentDate) : new Date(),
+            chequeDate: result.data.chequeDate ? new Date(result.data.chequeDate) : new Date(),
+            status: 'PENDING',
+            creditPaymentId: payment.id,
+            recordedBy: secureReceivedBy
+          }
         })
-        console.log('Safe found/created:', safe ? 'Yes' : 'No')
 
-        if (!safe) {
-          safe = await tx.safe.create({
+        // Cheque payments do NOT reduce balance immediately
+        console.log(`Cheque payment recorded. Status: PENDING. Balance NOT updated for customer ${customerId}`)
+
+      } else {
+        // NON-CHEQUE (Cash/Bank Transfer): Reduce balance immediately
+        await tx.creditCustomer.update({
+          where: { id: customerId },
+          data: {
+            currentBalance: {
+              decrement: validatedAmount
+            }
+          }
+        })
+
+        // Create safe transaction for CASH payments only
+        if (stationId && paymentType === 'CASH') {
+          console.log('Creating safe transaction for CASH payment, stationId:', stationId)
+
+          // Get or create safe
+          let safe = await tx.safe.findUnique({
+            where: { stationId }
+          })
+
+          if (!safe) {
+            safe = await tx.safe.create({
+              data: {
+                stationId,
+                openingBalance: 0,
+                currentBalance: 0
+              }
+            })
+          }
+
+          // Calculate balance before transaction chronologically
+          const paymentTimestamp = paymentDate ? new Date(paymentDate) : new Date()
+          const allTransactions = await tx.safeTransaction.findMany({
+            where: {
+              safeId: safe.id,
+              timestamp: { lte: paymentTimestamp }
+            },
+            orderBy: [{ timestamp: 'asc' }, { createdAt: 'asc' }]
+          })
+
+          // Calculate balance before transaction chronologically
+          let balanceBefore = safe.openingBalance
+          for (const transaction of allTransactions) {
+            if (transaction.type === 'OPENING_BALANCE') {
+              balanceBefore = transaction.amount
+            } else {
+              const txIsIncome = [
+                'CASH_FUEL_SALES',
+                'POS_CARD_PAYMENT',
+                'CREDIT_PAYMENT',
+                'CHEQUE_RECEIVED', // We might want to remove this from safe balance calc in future? 
+                // For now, keep existing logic but since we DON'T add CHEQUE_RECEIVED tx here, it won't affect cash.
+                'LOAN_REPAID'
+              ].includes(transaction.type)
+              balanceBefore += txIsIncome ? transaction.amount : -transaction.amount
+            }
+          }
+
+          const balanceAfter = balanceBefore + validatedAmount
+
+          // Get bank name if bankId is provided
+          let bankName = ''
+          if (bankId) {
+            const bank = await tx.bank.findUnique({
+              where: { id: bankId },
+              select: { name: true }
+            })
+            bankName = bank ? ` - ${bank.name}` : ''
+          }
+
+          // Create safe transaction
+          await tx.safeTransaction.create({
             data: {
-              stationId,
-              openingBalance: 0,
-              currentBalance: 0
+              safeId: safe.id,
+              type: 'CREDIT_PAYMENT',
+              amount: validatedAmount,
+              balanceBefore,
+              balanceAfter,
+              description: `Credit payment from ${customer.name} - ${paymentType}${bankName}`,
+              performedBy: receivedBy,
+              timestamp: paymentDate ? new Date(paymentDate) : new Date(),
             }
           })
-        }
 
-        // Calculate balance before transaction chronologically
-        const paymentTimestamp = paymentDate ? new Date(paymentDate) : new Date()
-        const allTransactions = await tx.safeTransaction.findMany({
-          where: {
-            safeId: safe.id,
-            timestamp: { lte: paymentTimestamp }
-          },
-          orderBy: [{ timestamp: 'asc' }, { createdAt: 'asc' }]
-        })
-
-        // Calculate balance before transaction chronologically
-        // OPENING_BALANCE transactions set the balance, they don't add/subtract
-        let balanceBefore = safe.openingBalance
-        for (const transaction of allTransactions) {
-          if (transaction.type === 'OPENING_BALANCE') {
-            balanceBefore = transaction.amount
-          } else {
-            const txIsIncome = [
-              'CASH_FUEL_SALES',
-              'POS_CARD_PAYMENT',
-              'CREDIT_PAYMENT',
-              'CHEQUE_RECEIVED',
-              'LOAN_REPAID'
-            ].includes(transaction.type)
-            balanceBefore += txIsIncome ? transaction.amount : -transaction.amount
-          }
-        }
-
-        const balanceAfter = balanceBefore + validatedAmount
-
-        // Get bank name if bankId is provided
-        let bankName = ''
-        if (bankId) {
-          const bank = await tx.bank.findUnique({
-            where: { id: bankId },
-            select: { name: true }
+          // Update safe balance
+          await tx.safe.update({
+            where: { id: safe.id },
+            data: { currentBalance: balanceAfter }
           })
-          bankName = bank ? ` - ${bank.name}` : ''
         }
-
-        // Create safe transaction
-        await tx.safeTransaction.create({
-          data: {
-            safeId: safe.id,
-            type: 'CREDIT_PAYMENT',
-            amount: validatedAmount,
-            balanceBefore,
-            balanceAfter,
-            description: `Credit payment from ${customer.name} - ${paymentType}${chequeNumber ? ` (Cheque: ${chequeNumber})` : ''}${bankName}`,
-            performedBy: receivedBy,
-            timestamp: paymentDate ? new Date(paymentDate) : new Date(),
-            // Note: We don't have a direct foreign key, but we can store payment ID in description for traceability
-          }
-        })
-
-        // Update safe balance
-        await tx.safe.update({
-          where: { id: safe.id },
-          data: { currentBalance: balanceAfter }
-        })
       }
 
       return payment

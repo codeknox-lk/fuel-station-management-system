@@ -455,6 +455,8 @@ export default function POSTerminalsPage() {
           columns={columns}
           searchPlaceholder="Search terminals..."
           loading={loading}
+          enableExport={true}
+          exportFileName="pos-terminals-list"
         />
       </FormCard>
     </div>

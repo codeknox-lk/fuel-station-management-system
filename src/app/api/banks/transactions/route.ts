@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Prisma } from '@prisma/client'
+import { Prisma, BankTransactionType } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { CreateBankTransactionSchema } from '@/lib/schemas'
 
@@ -93,8 +93,7 @@ export async function POST(request: NextRequest) {
       data: {
         bankId,
         stationId: stationId || null,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        type: type as any,
+        type: type as BankTransactionType,
         amount: amount,
         description,
         referenceNumber: referenceNumber || null,

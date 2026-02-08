@@ -253,6 +253,8 @@ model Nozzle {
   tank         Tank     @relation(fields: [tankId], references: [id])
   nozzleNumber String
   isActive     Boolean  @default(true)
+  meterMax     Float?   // Added to prevent data loss
+  rolloverThreshold Float? // Added to prevent data loss
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -444,22 +446,31 @@ model Cheque {
   bankId       String
   bank         Bank         @relation(fields: [bankId], references: [id])
   receivedFrom String
-  receivedDate DateTime
-  status       ChequeStatus @default(PENDING)
-  clearedDate  DateTime?
-  notes        String?
-  recordedBy   String       @default("System") // Added for audit trail
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  receivedDate    DateTime
+  chequeDate      DateTime     @default(now()) // Date written on the cheque
+  depositDate     DateTime?    // Date deposited to bank
+  status          ChequeStatus @default(PENDING)
+  clearedDate     DateTime?
+  notes           String?
+  recordedBy      String       @default("System") // Added for audit trail
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relations
+  creditPaymentId String?        @unique
+  creditPayment   CreditPayment? @relation(fields: [creditPaymentId], references: [id])
+  bankTransaction BankTransaction?
 
   @@index([stationId])
   @@index([bankId])
   @@index([status])
   @@index([receivedDate])
+  @@index([chequeDate])
 }
 
 enum ChequeStatus {
   PENDING
+  DEPOSITED
   CLEARED
   BOUNCED
   CANCELLED
@@ -528,6 +539,9 @@ model CreditPayment {
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
+  // Relations
+  cheque          Cheque?
+
   @@index([customerId])
   @@index([paymentDate])
 }
@@ -540,6 +554,7 @@ enum PaymentType {
 
 enum CreditPaymentStatus {
   PENDING
+  DEPOSITED
   CLEARED
   BOUNCED
 }
@@ -755,6 +770,10 @@ model BankTransaction {
   notes           String?
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
+
+  // Relations
+  chequeId        String?             @unique
+  cheque          Cheque?             @relation(fields: [chequeId], references: [id])
 
   @@index([bankId])
   @@index([stationId])

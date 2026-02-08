@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, User, Lock, Shield, ArrowLeft } from 'lucide-react'
+import { Loader2, User, Lock, ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 interface UserProfile {
@@ -165,7 +165,7 @@ export default function ProfilePage() {
         const errorData = await response.json()
         setError(errorData.detail || 'Failed to update profile')
       }
-    } catch (error) {
+    } catch {
       setError('Unable to connect to server')
     } finally {
       setUpdating(false)
@@ -231,7 +231,7 @@ export default function ProfilePage() {
         const errorData = await response.json()
         setError(errorData.detail || 'Failed to change password')
       }
-    } catch (error) {
+    } catch {
       setError('Unable to connect to server')
     } finally {
       setUpdating(false)

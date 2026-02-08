@@ -1,0 +1,247 @@
+﻿
+> shed-admin@0.1.0 build
+> next build
+
+node.exe :  ΓÜá 
+Warning: Next.js 
+inferred your 
+workspace root, but 
+it may not be 
+correct.
+At line:1 char:1
++ & "C:\Program Files
+\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo 
+...
++ ~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: ( ΓÜá Wa   
+ rning: N...not b    
+e correct.:Strin    
+g) [], RemoteExc    
+eption
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
+ We detected 
+multiple lockfiles 
+and selected the 
+directory of C:\Users
+\USER\package-lock.js
+on as the root 
+directory.
+ To silence this 
+warning, set `outputF
+ileTracingRoot` in 
+your Next.js config, 
+or consider removing 
+one of the lockfiles 
+if it's not needed.
+   See https://nextjs
+.org/docs/app/api-ref
+erence/config/next-co
+nfig-js/output#caveat
+s for more 
+information.
+ Detected additional 
+lockfiles: 
+   * C:\Users\USER\De
+sktop\dfs management 
+system\shed-admin\pac
+kage-lock.json
+
+   Γû▓ Next.js 15.5.4
+   - Environments: .env.local, .env
+
+   Creating an optimized production build ...
+ Γ£ô Compiled successfully in 7.4s
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+   Generating static pages (0/131) ...
+   Generating static pages (32/131) 
+   Generating static pages (65/131) 
+   Generating static pages (98/131) 
+ Γ£ô Generating static pages (131/131)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                           Size  First Load JS
+Γöî Γùï /                                                576 B         102 kB
+Γö£ Γùï /_not-found                                       1 kB         103 kB
+Γö£ ╞Æ /api/admin/reset-password                        378 B         102 kB
+Γö£ ╞Æ /api/audit-log                                   378 B         102 kB
+Γö£ ╞Æ /api/audits/meter/stats                          378 B         102 kB
+Γö£ ╞Æ /api/auth/change-password                        378 B         102 kB
+Γö£ ╞Æ /api/auth/login                                  378 B         102 kB
+Γö£ ╞Æ /api/auth/me                                     378 B         102 kB
+Γö£ ╞Æ /api/banks                                       378 B         102 kB
+Γö£ ╞Æ /api/banks/[id]                                  378 B         102 kB
+Γö£ ╞Æ /api/banks/[id]/transactions                     378 B         102 kB
+Γö£ ╞Æ /api/banks/accounts                              378 B         102 kB
+Γö£ ╞Æ /api/banks/transactions                          378 B         102 kB
+Γö£ ╞Æ /api/banks/transactions/[id]                     378 B         102 kB
+Γö£ ╞Æ /api/cheques                                     378 B         102 kB
+Γö£ ╞Æ /api/credit/aging                                378 B         102 kB
+Γö£ ╞Æ /api/credit/customers                            378 B         102 kB
+Γö£ ╞Æ /api/credit/customers/[id]                       378 B         102 kB
+Γö£ ╞Æ /api/credit/payments                             378 B         102 kB
+Γö£ ╞Æ /api/credit/sales                                378 B         102 kB
+Γö£ ╞Æ /api/dashboard/summary                           378 B         102 kB
+Γö£ ╞Æ /api/deliveries                                  378 B         102 kB
+Γö£ ╞Æ /api/deliveries/[id]/verify                      378 B         102 kB
+Γö£ ╞Æ /api/deposits                                    378 B         102 kB
+Γö£ ╞Æ /api/expenses                                    378 B         102 kB
+Γö£ ╞Æ /api/fuels                                       378 B         102 kB
+Γö£ ╞Æ /api/fuels/[id]                                  378 B         102 kB
+Γö£ ╞Æ /api/loans/external                              378 B         102 kB
+Γö£ ╞Æ /api/loans/office                                378 B         102 kB
+Γö£ ╞Æ /api/loans/office/[id]                           378 B         102 kB
+Γö£ ╞Æ /api/loans/office/[id]/pay                       378 B         102 kB
+Γö£ ╞Æ /api/loans/payments                              378 B         102 kB
+Γö£ ╞Æ /api/loans/pumper                                378 B         102 kB
+Γö£ ╞Æ /api/loans/pumper/[id]                           378 B         102 kB
+Γö£ ╞Æ /api/loans/pumper/[id]/pay                       378 B         102 kB
+Γö£ ╞Æ /api/notifications                               378 B         102 kB
+Γö£ ╞Æ /api/notifications/[id]                          378 B         102 kB
+Γö£ ╞Æ /api/notifications/generate                      378 B         102 kB
+Γö£ ╞Æ /api/nozzles                                     378 B         102 kB
+Γö£ ╞Æ /api/nozzles/[id]                                378 B         102 kB
+Γö£ ╞Æ /api/nozzles/[id]/last-reading                   378 B         102 kB
+Γö£ ╞Æ /api/office-staff                                378 B         102 kB
+Γö£ ╞Æ /api/office-staff/[id]                           378 B         102 kB
+Γö£ ╞Æ /api/office-staff/salary                         378 B         102 kB
+Γö£ ╞Æ /api/oil-sales                                   378 B         102 kB
+Γö£ ╞Æ /api/pos/batches                                 378 B         102 kB
+Γö£ ╞Æ /api/pos/missing-slip                            378 B         102 kB
+Γö£ ╞Æ /api/pos/terminals                               378 B         102 kB
+Γö£ ╞Æ /api/pos/terminals/[id]                          378 B         102 kB
+Γö£ ╞Æ /api/prices                                      378 B         102 kB
+Γö£ ╞Æ /api/prices/[id]                                 378 B         102 kB
+Γö£ ╞Æ /api/prices/next                                 378 B         102 kB
+Γö£ ╞Æ /api/profile                                     378 B         102 kB
+Γö£ ╞Æ /api/profile/change-password                     378 B         102 kB
+Γö£ ╞Æ /api/pumpers                                     378 B         102 kB
+Γö£ ╞Æ /api/pumpers/[id]                                378 B         102 kB
+Γö£ ╞Æ /api/pumps                                       378 B         102 kB
+Γö£ ╞Æ /api/pumps/[id]                                  378 B         102 kB
+Γö£ ╞Æ /api/reports/credit-summary                      378 B         102 kB
+Γö£ ╞Æ /api/reports/daily                               378 B         102 kB
+Γö£ ╞Æ /api/reports/daily-comprehensive                 378 B         102 kB
+Γö£ ╞Æ /api/reports/daily-sales                         378 B         102 kB
+Γö£ ╞Æ /api/reports/monthly                             378 B         102 kB
+Γö£ ╞Æ /api/reports/pos-sales                           378 B         102 kB
+Γö£ ╞Æ /api/reports/profit                              378 B         102 kB
+Γö£ ╞Æ /api/reports/pumper-details                      378 B         102 kB
+Γö£ ╞Æ /api/reports/pumper-variance                     378 B         102 kB
+Γö£ ╞Æ /api/reports/station-comparison                  378 B         102 kB
+Γö£ ╞Æ /api/safe                                        378 B         102 kB
+Γö£ ╞Æ /api/safe/balance                                378 B         102 kB
+Γö£ ╞Æ /api/safe/outstanding-credit                     378 B         102 kB
+Γö£ ╞Æ /api/safe/pending                                378 B         102 kB
+Γö£ ╞Æ /api/safe/summary                                378 B         102 kB
+Γö£ ╞Æ /api/safe/transactions                           378 B         102 kB
+Γö£ ╞Æ /api/salary                                      378 B         102 kB
+Γö£ ╞Æ /api/salary/payments                             378 B         102 kB
+Γö£ ╞Æ /api/salary/repay-loan                           378 B         102 kB
+Γö£ ╞Æ /api/settings/tolerance                          378 B         102 kB
+Γö£ ╞Æ /api/shift-templates                             378 B         102 kB
+Γö£ ╞Æ /api/shift-templates/[id]                        378 B         102 kB
+Γö£ ╞Æ /api/shift-templates/cleanup                     378 B         102 kB
+Γö£ ╞Æ /api/shifts                                      378 B         102 kB
+Γö£ ╞Æ /api/shifts/[id]                                 378 B         102 kB
+Γö£ ╞Æ /api/shifts/[id]/assign                          378 B         102 kB
+Γö£ ╞Æ /api/shifts/[id]/assignments                     378 B         102 kB
+Γö£ ╞Æ /api/shifts/[id]/assignments/[assignId]/close    378 B         102 kB
+Γö£ ╞Æ /api/shifts/[id]/close                           378 B         102 kB
+Γö£ ╞Æ /api/shifts/[id]/report                          378 B         102 kB
+Γö£ ╞Æ /api/shifts/[id]/stats                           378 B         102 kB
+Γö£ ╞Æ /api/shifts/bulk-close                           378 B         102 kB
+Γö£ ╞Æ /api/shifts/cleanup                              378 B         102 kB
+Γö£ ╞Æ /api/shifts/unprocessed                          378 B         102 kB
+Γö£ ╞Æ /api/stations                                    378 B         102 kB
+Γö£ ╞Æ /api/stations/[id]                               378 B         102 kB
+Γö£ ╞Æ /api/tanks                                       378 B         102 kB
+Γö£ ╞Æ /api/tanks/[id]                                  378 B         102 kB
+Γö£ ╞Æ /api/tanks/cleanup                               378 B         102 kB
+Γö£ ╞Æ /api/tanks/dips                                  378 B         102 kB
+Γö£ ╞Æ /api/tanks/infrastructure                        378 B         102 kB
+Γö£ ╞Æ /api/tanks/report                                378 B         102 kB
+Γö£ ╞Æ /api/tanks/update-stock                          378 B         102 kB
+Γö£ ╞Æ /api/tenders/shift/[shiftId]                     378 B         102 kB
+Γö£ ╞Æ /api/tests                                       378 B         102 kB
+Γö£ ╞Æ /api/users                                       378 B         102 kB
+Γö£ ╞Æ /api/users/[id]                                  378 B         102 kB
+Γö£ Γùï /banks                                         10.5 kB         153 kB
+Γö£ Γùï /cheques                                       3.91 kB         173 kB
+Γö£ Γùï /credit                                        7.47 kB         118 kB
+Γö£ Γùï /credit/aging                                  8.21 kB         148 kB
+Γö£ Γùï /credit/customers                              6.81 kB         154 kB
+Γö£ Γùï /credit/payments                               6.48 kB         177 kB
+Γö£ Γùï /credit/sales                                  4.71 kB         174 kB
+Γö£ Γùï /dashboard                                     6.16 kB         116 kB
+Γö£ Γùï /deposits                                      4.67 kB         174 kB
+Γö£ Γùï /expenses                                      6.49 kB         176 kB
+Γö£ Γùï /force-change-password                         4.73 kB         120 kB
+Γö£ Γùï /loans                                         10.9 kB         136 kB
+Γö£ Γùï /login                                         8.47 kB         124 kB
+Γö£ Γùï /notifications                                 9.44 kB         156 kB
+Γö£ Γùï /owner-dashboard                               14.9 kB         228 kB
+Γö£ Γùï /pos                                           7.42 kB         118 kB
+Γö£ Γùï /pos/batches                                   10.9 kB         150 kB
+Γö£ Γùï /pos/missing-slips                              6.7 kB         172 kB
+Γö£ Γùï /reports                                       5.45 kB         116 kB
+Γö£ Γùï /reports/credit                                4.73 kB         503 kB
+Γö£ Γùï /reports/daily                                 7.38 kB         390 kB
+Γö£ Γùï /reports/daily-sales                           4.68 kB         496 kB
+Γö£ Γùï /reports/daily-sales-liters                    4.68 kB         496 kB
+Γö£ Γùï /reports/pos-sales                             5.13 kB         497 kB
+Γö£ Γùï /reports/profit                                7.34 kB         495 kB
+Γö£ Γùï /reports/pumper-details                        6.07 kB         393 kB
+Γö£ Γùï /reports/pumper-variance                       9.01 kB         226 kB
+Γö£ Γùï /reports/shift                                 8.08 kB         395 kB
+Γö£ Γùï /reports/station-comparison                     5.4 kB         408 kB
+Γö£ Γùï /reports/tanks                                  9.1 kB         389 kB
+Γö£ Γùï /safe                                          9.37 kB         182 kB
+Γö£ Γùï /safe/summary                                   8.5 kB         148 kB
+Γö£ ╞Æ /safe/transactions/[id]                        8.15 kB         118 kB
+Γö£ Γùï /salary                                        10.2 kB         390 kB
+Γö£ ╞Æ /salary/[pumperId]                             9.45 kB         155 kB
+Γö£ ╞Æ /salary/[pumperId]/loans                       6.79 kB         133 kB
+Γö£ ╞Æ /salary/office-staff/[id]                      5.87 kB         116 kB
+Γö£ Γùï /settings                                      5.61 kB         116 kB
+Γö£ Γùï /settings/banks                                4.23 kB         132 kB
+Γö£ Γùï /settings/office-staff                         6.65 kB         153 kB
+Γö£ Γùï /settings/pos-terminals                         4.5 kB         132 kB
+Γö£ Γùï /settings/prices                               14.2 kB         157 kB
+Γö£ Γùï /settings/profile                              8.04 kB         123 kB
+Γö£ Γùï /settings/pumpers                              6.68 kB         134 kB
+Γö£ Γùï /settings/shift-templates                      5.29 kB         133 kB
+Γö£ Γùï /settings/stations                             4.73 kB         151 kB
+Γö£ Γùï /settings/tanks                                9.78 kB         156 kB
+Γö£ Γùï /settings/tolerance                            7.67 kB         118 kB
+Γö£ Γùï /settings/users                                7.52 kB         154 kB
+Γö£ Γùï /shifts                                        9.83 kB         156 kB
+Γö£ ╞Æ /shifts/[id]                                   8.16 kB         125 kB
+Γö£ Γùï /shifts/close                                  20.9 kB         192 kB
+Γö£ Γùï /shifts/open                                   8.07 kB         180 kB
+Γö£ Γùï /tanks                                         10.2 kB         153 kB
+Γö£ Γùï /tanks/deliveries                              12.1 kB         194 kB
+Γö£ Γùï /tanks/dips                                    5.71 kB         188 kB
+Γö£ Γùï /tanks/report                                  6.85 kB         146 kB
+Γöö Γùï /tanks/setup                                   11.1 kB         150 kB
++ First Load JS shared by all                       102 kB
+  Γö£ chunks/1255-f6a15b87c131d0d2.js                45.4 kB
+  Γö£ chunks/4bd1b696-182b6b13bdad92e3.js            54.2 kB
+  Γöö other shared chunks (total)                    2.12 kB
+
+
+Γùï  (Static)   prerendered as static content
+╞Æ  (Dynamic)  server-rendered on demand
+

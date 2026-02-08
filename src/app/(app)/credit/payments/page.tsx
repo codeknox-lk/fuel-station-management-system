@@ -109,6 +109,8 @@ export default function CreditPaymentsPage() {
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CHEQUE' | 'BANK_TRANSFER'>('CASH')
   const [referenceNumber, setReferenceNumber] = useState('')
   const [chequeNumber, setChequeNumber] = useState('')
+  const [chequeDate, setChequeDate] = useState<Date>(new Date())
+
   const [selectedBank, setSelectedBank] = useState('')
   const [notes, setNotes] = useState('')
 
@@ -207,7 +209,9 @@ export default function CreditPaymentsPage() {
           amount: amount,
           paymentDate: paymentDate.toISOString(),
           paymentType: paymentMethod,
+
           chequeNumber: chequeNumber || null,
+          chequeDate: chequeDate.toISOString(),
           bankId: selectedBank || null,
           stationId: selectedStation !== 'all' ? selectedStation : null
         })
@@ -215,8 +219,18 @@ export default function CreditPaymentsPage() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        const errorMsg = errorData.details
-          ? `${errorData.error}: ${errorData.details}`
+        let detailsMsg = ''
+        if (errorData.details) {
+          if (typeof errorData.details === 'object' && errorData.details !== null) {
+            detailsMsg = Object.entries(errorData.details)
+              .map(([key, msgs]) => `${key}: ${(Array.isArray(msgs) ? msgs : [msgs]).join(', ')}`)
+              .join('; ')
+          } else {
+            detailsMsg = String(errorData.details)
+          }
+        }
+        const errorMsg = detailsMsg
+          ? `${errorData.error}: ${detailsMsg}`
           : (errorData.error || 'Failed to record payment')
         console.error('Payment API Error:', errorData)
         throw new Error(errorMsg)
@@ -245,6 +259,7 @@ export default function CreditPaymentsPage() {
       setPaymentMethod('CASH')
       setReferenceNumber('')
       setChequeNumber('')
+      setChequeDate(new Date())
       setSelectedBank('')
       setNotes('')
 
@@ -545,6 +560,14 @@ export default function CreditPaymentsPage() {
                   placeholder="123456"
                   disabled={loading}
                   required
+                />
+              </div>
+              <div>
+                <Label htmlFor="chequeDate">Cheque Date *</Label>
+                <DateTimePicker
+                  value={chequeDate}
+                  onChange={(date) => setChequeDate(date || new Date())}
+                  disabled={loading}
                 />
               </div>
               <div>

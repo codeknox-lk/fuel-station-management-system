@@ -293,7 +293,6 @@ export async function POST(
               'CASH_FUEL_SALES',
               'POS_CARD_PAYMENT',
               'CREDIT_PAYMENT',
-              'CHEQUE_RECEIVED',
               'LOAN_REPAID'
             ].includes(tx.type)
             balanceBefore += txIsIncome ? tx.amount : -tx.amount
@@ -328,6 +327,60 @@ export async function POST(
         console.error('Error adding cash to safe during shift close:', safeError)
         // Don't fail the shift close if safe transaction fails
         // Just log it - manager can add manually if needed
+      }
+    }
+
+    // Process Cheques from Pumper Breakdown and create Cheque records
+    if (pumperBreakdown && Array.isArray(pumperBreakdown)) {
+      try {
+        console.log('Processing cheques from pumper breakdown...')
+
+        for (const pumperData of pumperBreakdown) {
+          if (pumperData.cheques && Array.isArray(pumperData.cheques)) {
+            for (const cheque of pumperData.cheques) {
+              if (cheque.amount > 0 && cheque.chequeNumber) {
+                // Try to resolve bankId
+                let bankId = cheque.bankId
+                if (!bankId && cheque.bankName) {
+                  const bank = await prisma.bank.findFirst({
+                    where: { name: { equals: cheque.bankName, mode: 'insensitive' } }
+                  })
+                  if (bank) bankId = bank.id
+                }
+
+                if (!bankId) {
+                  console.warn(`Could not resolve bank for cheque ${cheque.chequeNumber}. Skipping Cheque record creation.`)
+                  continue
+                }
+
+                const chequeDate = cheque.chequeDate ? new Date(cheque.chequeDate) : new Date(shiftEnd)
+
+                // Create Cheque record
+                try {
+                  await prisma.cheque.create({
+                    data: {
+                      stationId: shift.stationId,
+                      chequeNumber: cheque.chequeNumber,
+                      amount: Number(cheque.amount),
+                      bankId: bankId,
+                      receivedFrom: pumperData.pumperName || 'Unknown Pumper',
+                      receivedDate: shiftEnd,
+                      chequeDate: chequeDate,
+                      status: 'PENDING',
+                      notes: `From Shift Close - ${pumperData.pumperName} - ${cheque.bankName || ''}`,
+                      recordedBy: closedBy || 'System'
+                    }
+                  })
+                  console.log(`✅ Created cheque record: ${cheque.chequeNumber}`)
+                } catch (err) {
+                  console.error(`Failed to create cheque ${cheque.chequeNumber}:`, err)
+                }
+              }
+            }
+          }
+        }
+      } catch (chequeError) {
+        console.error('Error processing cheques during shift close:', chequeError)
       }
     }
 

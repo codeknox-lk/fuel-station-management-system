@@ -8,6 +8,8 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Fix workspace root detection
+  outputFileTracingRoot: __dirname,
 }
 
 module.exports = nextConfig

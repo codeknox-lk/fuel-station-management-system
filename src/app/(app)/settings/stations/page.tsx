@@ -1,14 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { FormCard } from '@/components/ui/FormCard'
 import { DataTable } from '@/components/ui/DataTable'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Building2, Plus, Edit, Trash2, MapPin, Phone, Clock } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
@@ -31,7 +31,6 @@ interface Station {
 export default function StationsPage() {
   const router = useRouter()
   const [stations, setStations] = useState<Station[]>([])
-  const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingStation, setEditingStation] = useState<Station | null>(null)
   const [formData, setFormData] = useState({
@@ -49,25 +48,23 @@ export default function StationsPage() {
   const userRole = typeof window !== 'undefined' ? localStorage.getItem('userRole') : null
   const isDeveloper = userRole === 'DEVELOPER'
 
-  useEffect(() => {
-    fetchStations()
-  }, [])
-
-  const fetchStations = async () => {
+  const fetchStations = useCallback(async () => {
     try {
       const response = await fetch('/api/stations')
       const data = await response.json()
       setStations(data)
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to fetch stations",
         variant: "destructive"
       })
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    fetchStations()
+  }, [fetchStations])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -92,7 +89,7 @@ export default function StationsPage() {
       setDialogOpen(false)
       resetForm()
       fetchStations()
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: `Failed to ${editingStation ? 'update' : 'create'} station`,
@@ -131,7 +128,7 @@ export default function StationsPage() {
       })
 
       fetchStations()
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to delete station",
@@ -415,6 +412,8 @@ export default function StationsPage() {
           data={stations}
           columns={columns}
           searchPlaceholder="Search stations..."
+          enableExport={true}
+          exportFileName="stations-list"
         />
       </FormCard>
     </div>

@@ -491,6 +491,8 @@ export default function BanksPage() {
           data={banks}
           columns={columns}
           searchPlaceholder="Search banks..."
+          enableExport={true}
+          exportFileName="banks-list"
         />
       </FormCard>
     </div>

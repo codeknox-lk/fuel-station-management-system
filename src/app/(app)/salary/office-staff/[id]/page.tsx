@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { useStation } from '@/contexts/StationContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -68,7 +68,6 @@ export default function OfficeStaffSalaryDetailsPage() {
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [salaryData, setSalaryData] = useState<OfficeStaffSalaryData | null>(null)
 
 
@@ -431,21 +430,6 @@ export default function OfficeStaffSalaryDetailsPage() {
         </CardContent>
       </Card>
 
-      {/* Messages */}
-      {success && (
-        <Card className="border-green-500/20 bg-green-500/10">
-          <CardContent className="pt-6">
-            <p className="text-green-600 font-medium">{success}</p>
-          </CardContent>
-        </Card>
-      )}
-      {error && (
-        <Card className="border-red-500/20 bg-red-500/10">
-          <CardContent className="pt-6">
-            <p className="text-red-600">{error}</p>
-          </CardContent>
-        </Card>
-      )}
     </div>
   )
 }

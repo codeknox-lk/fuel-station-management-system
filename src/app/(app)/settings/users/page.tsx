@@ -706,6 +706,8 @@ export default function UsersPage() {
           columns={columns}
           searchPlaceholder="Search users..."
           loading={loading}
+          enableExport={true}
+          exportFileName="users-list"
         />
       </FormCard>
 

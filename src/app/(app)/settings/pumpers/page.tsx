@@ -805,6 +805,8 @@ export default function PumpersPage() {
           data={pumpers}
           columns={columns}
           searchPlaceholder="Search pumpers..."
+          enableExport={true}
+          exportFileName="pumpers-list"
         />
       </FormCard>
     </div>

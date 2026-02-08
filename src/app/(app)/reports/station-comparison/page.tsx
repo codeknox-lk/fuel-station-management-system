@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
@@ -21,7 +21,6 @@ import {
   Building2,
   DollarSign,
   Fuel,
-  Users,
   Award,
   AlertCircle,
   Download,
@@ -64,19 +63,7 @@ export default function StationComparisonPage() {
     return date
   })
 
-  useEffect(() => {
-    // Check if user is owner
-    if (typeof window !== 'undefined') {
-      const role = localStorage.getItem('userRole')
-      if (role !== 'OWNER') {
-        router.push('/reports')
-        return
-      }
-    }
-    fetchStationData()
-  }, [router])
-
-  const fetchStationData = async () => {
+  const fetchStationData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -106,7 +93,21 @@ export default function StationComparisonPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [startDate, endDate])
+
+  useEffect(() => {
+    // Check if user is owner
+    if (typeof window !== 'undefined') {
+      const role = localStorage.getItem('userRole')
+      if (role !== 'OWNER') {
+        router.push('/reports')
+        return
+      }
+    }
+    fetchStationData()
+  }, [fetchStationData, router])
+
+
 
   const handleApplyFilters = () => {
     fetchStationData()

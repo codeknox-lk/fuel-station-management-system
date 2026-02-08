@@ -34,16 +34,26 @@ export async function GET(
       })
       : []
 
-    // Fetch cheques
-    const cheques = (!type || type === 'all' || type === 'cheque')
+    // 2. Cheques (received/deposited)
+    const cheques = (!type || type === 'all' || type === 'cheque' || type === 'credit_payment')
       ? await prisma.cheque.findMany({
         where: {
           bankId,
-          ...(stationId && { stationId }),
-          ...(dateFilter && { receivedDate: dateFilter })
+          // Only fetch if linked to credit payment when type is credit_payment
+          ...(type === 'credit_payment' ? { creditPaymentId: { not: null } } : {}),
+          ...(dateFilter && {
+            OR: [
+              { receivedDate: dateFilter },
+              { depositDate: dateFilter },
+              { clearedDate: dateFilter }
+            ]
+          })
         },
         include: {
-          station: { select: { name: true } }
+          station: { select: { name: true } },
+          creditPayment: {
+            include: { customer: true }
+          }
         },
         orderBy: { receivedDate: 'desc' }
       })
@@ -54,6 +64,7 @@ export async function GET(
       ? await prisma.creditPayment.findMany({
         where: {
           bankId,
+          paymentType: { not: 'CHEQUE' }, // Exclude cheques as they are handled separately
           ...(dateFilter && { paymentDate: dateFilter })
         },
         include: {
@@ -90,7 +101,7 @@ export async function GET(
         accountId: d.accountId,
         createdAt: d.createdAt
       })),
-      ...cheques.map(c => ({
+      ...cheques.map((c) => ({
         id: c.id,
         type: 'CHEQUE' as const,
         amount: c.amount,
@@ -141,7 +152,7 @@ export async function GET(
       totalDeposits: deposits.reduce((sum, d) => sum + d.amount, 0),
       totalCheques: cheques.reduce((sum, c) => sum + c.amount, 0),
       clearedCheques: cheques.filter(c => c.status === 'CLEARED').reduce((sum, c) => sum + c.amount, 0),
-      pendingCheques: cheques.filter(c => c.status === 'PENDING').reduce((sum, c) => sum + c.amount, 0),
+      pendingCheques: cheques.filter(c => ['PENDING', 'DEPOSITED'].includes(c.status)).reduce((sum, c) => sum + c.amount, 0),
       bouncedCheques: cheques.filter(c => c.status === 'BOUNCED').reduce((sum, c) => sum + c.amount, 0),
       totalCreditPayments: creditPayments.reduce((sum, cp) => sum + cp.amount, 0),
       manualDeposits: bankTransactions.filter(bt => ['DEPOSIT', 'TRANSFER_IN', 'INTEREST', 'ADJUSTMENT'].includes(bt.type)).reduce((sum, bt) => sum + bt.amount, 0),

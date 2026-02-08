@@ -72,6 +72,7 @@ interface CreditTransaction {
   paymentType?: string
   chequeNumber?: string
   bankName?: string
+  status?: 'PENDING' | 'CLEARED' | 'BOUNCED'
 }
 
 export default function CreditCustomersPage() {
@@ -148,6 +149,7 @@ export default function CreditCustomersPage() {
         paymentType?: string
         chequeNumber?: string
         bank?: { name: string }
+        status?: 'PENDING' | 'CLEARED' | 'BOUNCED' // Added status
       }
 
       // Transform sales
@@ -175,7 +177,8 @@ export default function CreditCustomersPage() {
         description: `Payment received - ${payment.paymentType || 'Cash'}${payment.chequeNumber ? ` (Cheque: ${payment.chequeNumber})` : ''}${payment.bank ? ` - ${payment.bank.name}` : ''}`,
         paymentType: payment.paymentType,
         chequeNumber: payment.chequeNumber,
-        bankName: payment.bank?.name
+        bankName: payment.bank?.name,
+        status: payment.status // Include status
       }))
 
       // Combine and sort by timestamp (newest first)
@@ -460,7 +463,7 @@ export default function CreditCustomersPage() {
         </Badge>
       )
     },
-    ...(userRole === 'OWNER' ? [{
+    ...(['OWNER', 'MANAGER', 'DEVELOPER'].includes(userRole) ? [{
       key: 'actions' as keyof CreditCustomer,
       title: 'Actions',
       render: (_value: unknown, row: CreditCustomer) => (
@@ -532,8 +535,9 @@ export default function CreditCustomersPage() {
       title: 'Amount',
       render: (value: unknown, row: CreditTransaction) => {
         const isSale = row.type === 'SALE'
+        const isPending = row.type === 'PAYMENT' && row.status === 'PENDING'
         return (
-          <div className={`flex items-center gap-2 font-mono font-semibold ${isSale ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+          <div className={`flex items-center gap-2 font-mono font-semibold ${isSale ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'} ${isPending ? 'opacity-50' : ''}`}>
             {isSale ? (
               <>
                 <Plus className="h-4 w-4" />
@@ -543,6 +547,7 @@ export default function CreditCustomersPage() {
               <>
                 <Minus className="h-4 w-4" />
                 <span>Rs. {(value as number).toLocaleString()}</span>
+                {isPending && <span className="text-xs ml-1 text-yellow-600 dark:text-yellow-400">(Pending)</span>}
               </>
             )}
           </div>
@@ -565,7 +570,7 @@ export default function CreditCustomersPage() {
           <CreditCard className="h-8 w-8 text-orange-600 dark:text-orange-400" />
           Credit Customers
         </h1>
-        {userRole === 'OWNER' && (
+        {['OWNER', 'MANAGER', 'DEVELOPER'].includes(userRole) && (
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={() => setEditingCustomer(null)}>
@@ -794,7 +799,7 @@ export default function CreditCustomersPage() {
               <p className="text-sm text-muted-foreground">Total Payments</p>
               <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                 Rs. {filteredTransactions
-                  .filter(tx => tx.type === 'PAYMENT')
+                  .filter(tx => tx.type === 'PAYMENT' && tx.status !== 'PENDING') // Exclude pending payments
                   .reduce((sum, tx) => sum + tx.amount, 0)
                   .toLocaleString()}
               </p>
@@ -812,6 +817,8 @@ export default function CreditCustomersPage() {
               columns={transactionColumns}
               searchPlaceholder="Search transactions..."
               emptyMessage="No transactions found."
+              enableExport={true}
+              exportFileName="credit-transactions"
             />
           )}
         </div>

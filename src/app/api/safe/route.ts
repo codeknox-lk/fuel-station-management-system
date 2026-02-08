@@ -147,7 +147,6 @@ export async function POST(request: NextRequest) {
         'CASH_FUEL_SALES',
         'POS_CARD_PAYMENT',
         'CREDIT_PAYMENT',
-        'CHEQUE_RECEIVED',
         'LOAN_REPAID',
         'OPENING_BALANCE'
       ].includes(String(tx.type))
@@ -160,7 +159,6 @@ export async function POST(request: NextRequest) {
       'CASH_FUEL_SALES',
       'POS_CARD_PAYMENT',
       'CREDIT_PAYMENT',
-      'CHEQUE_RECEIVED',
       'LOAN_REPAID',
       'OPENING_BALANCE'
     ].includes(String(type))

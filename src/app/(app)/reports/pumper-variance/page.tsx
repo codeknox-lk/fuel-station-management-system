@@ -21,15 +21,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   LineChart,
   Line,
-  XAxis,
-  YAxis,
   ResponsiveContainer
 } from 'recharts'
 import {
   Building2,
   User,
-  TrendingUp,
-  TrendingDown,
   DollarSign,
   AlertCircle,
   Calculator,
@@ -129,7 +125,7 @@ export default function PumperVariancePage() {
         const response = await fetch('/api/stations?active=true')
         const stationsData = await response.json()
         setStations(stationsData)
-      } catch (err) {
+      } catch {
         setError('Failed to load stations')
       }
     }
@@ -163,7 +159,6 @@ export default function PumperVariancePage() {
       }
 
       const reportData = await response.json()
-      const station = stations.find(s => s.id === selectedStation)
 
       // Transform API data to match frontend interface
       interface ApiDailyVariance {
@@ -226,7 +221,7 @@ export default function PumperVariancePage() {
 
       setPumperVariances(pumperVariances)
 
-    } catch (err) {
+    } catch {
       setError('Failed to generate pumper variance report')
     } finally {
       setLoading(false)

@@ -782,6 +782,8 @@ export default function TanksSettingsPage() {
                 columns={tankColumns}
                 searchPlaceholder="Search tanks..."
                 emptyMessage="No tanks found. Create one to get started!"
+                enableExport={true}
+                exportFileName="tanks-list"
               />
             </FormCard>
           </TabsContent>
