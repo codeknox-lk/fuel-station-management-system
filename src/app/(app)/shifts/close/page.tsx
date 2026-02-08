@@ -50,7 +50,6 @@ interface Assignment {
   startMeterReading: number
   endMeterReading?: number
   status: string
-  canSales?: number // Can sales in litres
   pumpSales?: number // Pump sales in litres (calculated)
   nozzle?: {
     id: string
@@ -479,8 +478,7 @@ export default function CloseShiftPage() {
             pumperAssignments.forEach(assignment => {
               if (assignment.endMeterReading && assignment.startMeterReading) {
                 const delta = Math.max(0, assignment.endMeterReading - assignment.startMeterReading)
-                const canSales = assignment.canSales || 0
-                const pumpSales = assignment.pumpSales || Math.max(0, delta - canSales)
+                const pumpSales = assignment.pumpSales || delta
                 const fuelId = assignment.nozzle?.tank?.fuelId
                 const price = fuelId ? (priceMap[fuelId] || 470) : 470
                 calculatedSales += pumpSales * price
@@ -616,17 +614,16 @@ export default function CloseShiftPage() {
 
 
 
-  const handleUpdateAssignment = (assignmentId: string | number, field: 'endMeterReading' | 'canSales', value: number) => {
+  const handleUpdateAssignment = (assignmentId: string | number, field: 'endMeterReading', value: number) => {
     setAssignments(prev =>
       prev.map(assignment => {
         if (assignment.id === assignmentId) {
           const updated = { ...assignment, [field]: value }
 
-          // Calculate pump sales when meter reading or can sales change
-          if (field === 'endMeterReading' || field === 'canSales') {
+          // Calculate pump sales when meter reading changes
+          if (field === 'endMeterReading') {
             const meterDelta = (updated.endMeterReading || 0) - updated.startMeterReading
-            const canSales = updated.canSales || 0
-            updated.pumpSales = Math.max(0, meterDelta - canSales)
+            updated.pumpSales = Math.max(0, meterDelta)
           }
 
           return updated
@@ -1934,19 +1931,6 @@ export default function CloseShiftPage() {
           value={(value as number) || ''}
           onChange={(e) => handleUpdateAssignment(row.id, 'endMeterReading', parseInt(e.target.value) || 0)}
           placeholder="Enter end reading"
-          className="w-full"
-        />
-      )
-    },
-    {
-      key: 'canSales' as keyof Assignment,
-      title: 'Can Sales (L)',
-      render: (value: unknown, row: Assignment) => (
-        <Input
-          type="number"
-          value={(value as number) || ''}
-          onChange={(e) => handleUpdateAssignment(row.id, 'canSales', parseInt(e.target.value) || 0)}
-          placeholder="0"
           className="w-full"
         />
       )
@@ -3659,8 +3643,7 @@ export default function CloseShiftPage() {
                         const delta = assignment.endMeterReading && assignment.startMeterReading
                           ? assignment.endMeterReading - assignment.startMeterReading
                           : 0
-                        const canSales = assignment.canSales || 0
-                        const pumpSales = assignment.pumpSales || Math.max(0, delta - canSales)
+                        const pumpSales = assignment.pumpSales || delta
                         const fuelType = assignment.nozzle?.tank?.fuel?.name || 'Unknown'
                         const nozzleDisplay = assignment.nozzle
                           ? `P-${assignment.nozzle.pump?.pumpNumber || '?'} N-${assignment.nozzle.nozzleNumber}`

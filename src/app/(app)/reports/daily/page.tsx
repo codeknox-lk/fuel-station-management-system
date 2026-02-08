@@ -96,7 +96,6 @@ interface DailyReport {
   dieselSales: number
   superDieselSales: number
   oilSales: number
-  canSales: number
   totalFuelSales: number
   totalSales: number
 
@@ -815,12 +814,12 @@ export default function DailyReportsPage() {
                   </div>
                 </div>
                 <div className="p-4 bg-orange-500/10 rounded-lg border border-orange-500/20">
-                  <div className="text-sm text-muted-foreground mb-1">Oil & Can</div>
+                  <div className="text-sm text-muted-foreground mb-1">Oil Sales</div>
                   <div className="text-xl font-bold text-orange-600">
-                    Rs. {(dailyReport.oilSales + dailyReport.canSales).toLocaleString()}
+                    Rs. {dailyReport.oilSales.toLocaleString()}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    {(((dailyReport.oilSales + dailyReport.canSales) / dailyReport.totalSales) * 100).toFixed(1)}%
+                    {((dailyReport.oilSales / dailyReport.totalSales) * 100).toFixed(1)}%
                   </div>
                 </div>
                 <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">

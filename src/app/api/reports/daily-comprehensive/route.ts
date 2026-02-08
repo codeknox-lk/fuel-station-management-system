@@ -261,7 +261,6 @@ export async function GET(request: NextRequest) {
     const dieselSales = salesByFuelType.get('DIESEL') || 0
     const superDieselSales = salesByFuelType.get('SUPER_DIESEL') || 0
     const oilSales = salesByFuelType.get('OIL') || 0
-    const canSales = 0 // Can sales would need separate tracking
     const totalFuelSales = petrolSales + dieselSales + superDieselSales
 
     // Calculate tender breakdown from shift declared amounts
@@ -634,7 +633,6 @@ export async function GET(request: NextRequest) {
       dieselSales: Math.round(dieselSales),
       superDieselSales: Math.round(superDieselSales),
       oilSales: Math.round(oilSales),
-      canSales: Math.round(canSales),
       totalFuelSales: Math.round(totalFuelSales),
       totalSales: Math.round(totalSales),
       cashAmount: Math.round(cashAmount),

@@ -129,7 +129,6 @@ export type AssignmentWithDetails = Prisma.ShiftAssignmentGetPayload<{
     pumperName: string
     actualLiters?: number
     sales?: number
-    canSales?: number
 }
 
 // Shift with relations

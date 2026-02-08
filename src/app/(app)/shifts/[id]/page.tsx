@@ -41,7 +41,6 @@ interface TenderSummary {
   }
   salesBreakdown?: {
     totalPumpSales: number
-    totalCanSales: number
     totalLitres: number
     oilSales?: {
       totalAmount: number
@@ -429,13 +428,6 @@ export default function ShiftDetailsPage() {
       )
     },
     {
-      key: 'canSales' as keyof AssignmentWithDetails,
-      title: 'Can Sales',
-      render: (value: unknown) => (
-        <span className="text-sm">{value ? `${value}L` : '0L'}</span>
-      )
-    },
-    {
       key: 'sales' as keyof AssignmentWithDetails,
       title: 'Total Sales',
       render: (value: unknown, row: AssignmentWithDetails) => (
@@ -593,12 +585,6 @@ export default function ShiftDetailsPage() {
                       {tenderSummary.salesBreakdown.totalPumpSales.toLocaleString()}L
                     </div>
                     <div className="text-muted-foreground">Pump Sales</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-green-600 dark:text-green-400 text-lg">
-                      {tenderSummary.salesBreakdown.totalCanSales.toLocaleString()}L
-                    </div>
-                    <div className="text-muted-foreground">Can Sales</div>
                   </div>
                   <div className="text-center">
                     <div className="text-orange-600 dark:text-orange-400 text-lg">

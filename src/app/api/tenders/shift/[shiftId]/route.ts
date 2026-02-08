@@ -84,8 +84,6 @@ export async function GET(
 
         // Get sales breakdown from saved statistics if available
         const salesBreakdown = {
-          totalPumpSales: shiftStatistics.totalLiters || 0, // Use totalLiters as pump sales
-          totalCanSales: 0, // Can sales not stored separately
           totalLitres: shiftStatistics.totalLiters || 0,
           oilSales: {
             totalAmount: 0,
@@ -216,20 +214,17 @@ export async function GET(
       endReading: number
       delta: number
       pumpSales: number
-      canSales: number
       price: number
       amount: number
       startTime: Date
       endTime: Date
     }
-    let salesData: SalesDataItem[] = []
     let totalPumpSales = 0
-    let totalCanSales = 0
+    let salesData: SalesDataItem[] = []
 
     interface AssignmentData {
       endMeterReading?: number | null
       startMeterReading: number
-      canSales?: number
       pumpSales?: number
       nozzleId: string
       fuelName?: string
@@ -240,7 +235,6 @@ export async function GET(
       nozzleId?: string
       startMeterReading: number | string
       endMeterReading?: number | string | null
-      canSales?: number | string
       pumpSales?: number | string
       fuelName?: string
       fuelId?: string
@@ -269,7 +263,6 @@ export async function GET(
         endMeterReading: a.endMeterReading !== null && a.endMeterReading !== undefined
           ? (typeof a.endMeterReading === 'number' ? a.endMeterReading : parseFloat(a.endMeterReading) || null)
           : null,
-        canSales: typeof a.canSales === 'number' ? a.canSales : (a.canSales ? parseFloat(a.canSales) : 0),
         pumpSales: typeof a.pumpSales === 'number' ? a.pumpSales : (a.pumpSales ? parseFloat(a.pumpSales) : undefined),
         fuelName: a.fuelName || null,
         fuelId: a.fuelId || null
@@ -309,15 +302,13 @@ export async function GET(
         }
 
         const delta = Math.max(0, endReading - assignment.startMeterReading) // Ensure non-negative
-        const canSales = assignment.canSales || 0
-        const pumpSales = assignment.pumpSales || Math.max(0, delta - canSales)
+        const pumpSales = assignment.pumpSales || delta
         const price = assignment.fuelId ? (priceMap[assignment.fuelId] || 470) : 470
 
-        // Calculate sales amount from pump sales only (can sales are handled separately)
+        // Calculate sales amount
         const salesAmount = pumpSales * price
 
         totalPumpSales += pumpSales
-        totalCanSales += canSales
 
         return {
           nozzleId: assignment.nozzleId,
@@ -325,9 +316,8 @@ export async function GET(
           endReading: assignment.endMeterReading || 0,
           delta,
           pumpSales,
-          canSales,
           price,
-          amount: salesAmount, // Sales amount = pump sales * price (excluding can sales)
+          amount: salesAmount,
           startTime: shift.startTime,
           endTime: shift.endTime || new Date()
         }
@@ -412,8 +402,7 @@ export async function GET(
       },
       salesBreakdown: {
         totalPumpSales,
-        totalCanSales,
-        totalLitres: totalPumpSales + totalCanSales,
+        totalLitres: totalPumpSales,
         oilSales: {
           totalAmount: oilTotal,
           salesCount: oilSales.length
