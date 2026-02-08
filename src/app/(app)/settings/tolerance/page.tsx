@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Gauge, Save, RotateCcw, AlertTriangle, CheckCircle, Info, Calculator, ArrowLeft } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { NumberInput } from '@/components/inputs/NumberInput'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
 import { useRouter } from 'next/navigation'
 
@@ -35,7 +34,6 @@ interface ToleranceExample {
 export default function TolerancePage() {
   const router = useRouter()
   const [config, setConfig] = useState<ToleranceConfig | null>(null)
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState({
     percentageTolerance: 0, // Not used - flat amount only
@@ -46,15 +44,7 @@ export default function TolerancePage() {
   const [examples, setExamples] = useState<ToleranceExample[]>([])
   const { toast } = useToast()
 
-  useEffect(() => {
-    fetchConfig()
-  }, [])
-
-  useEffect(() => {
-    calculateExamples()
-  }, [formData])
-
-  const fetchConfig = async () => {
+  const fetchConfig = useCallback(async () => {
     try {
       const response = await fetch('/api/settings/tolerance')
       const data = await response.json()
@@ -67,16 +57,41 @@ export default function TolerancePage() {
           description: data.description
         })
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to fetch tolerance configuration",
         variant: "destructive"
       })
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [toast])
+
+  const calculateExamples = useCallback(() => {
+    const salesAmounts = [1000, 5000, 10000, 25000, 50000, 100000]
+
+    const newExamples = salesAmounts.map(salesAmount => {
+      const flatAmount = formData.flatAmountTolerance
+      const finalTolerance = flatAmount // Always flat amount
+
+      return {
+        salesAmount,
+        percentageAmount: 0, // Not used
+        flatAmount,
+        finalTolerance,
+        classification: 'within' as 'within' | 'exceeded'
+      }
+    })
+
+    setExamples(newExamples)
+  }, [formData])
+
+  useEffect(() => {
+    fetchConfig()
+  }, [fetchConfig])
+
+  useEffect(() => {
+    calculateExamples()
+  }, [calculateExamples])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -97,7 +112,7 @@ export default function TolerancePage() {
       })
 
       fetchConfig()
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to save tolerance configuration",
@@ -119,36 +134,8 @@ export default function TolerancePage() {
     }
   }
 
-  const calculateTolerance = (_salesAmount: number) => {
-    // Always return flat amount - no percentage calculation
-    return formData.flatAmountTolerance
-  }
-
-  const calculateExamples = () => {
-    const salesAmounts = [1000, 5000, 10000, 25000, 50000, 100000]
-
-    const newExamples = salesAmounts.map(salesAmount => {
-      const flatAmount = formData.flatAmountTolerance
-      const finalTolerance = flatAmount // Always flat amount
-
-      return {
-        salesAmount,
-        percentageAmount: 0, // Not used
-        flatAmount,
-        finalTolerance,
-        classification: 'within' as 'within' | 'exceeded'
-      }
-    })
-
-    setExamples(newExamples)
-  }
-
   const formatCurrency = (amount: number) => {
     return `Rs. ${amount.toFixed(2)}`
-  }
-
-  const formatPercentage = (value: number) => {
-    return `${value}%`
   }
 
   const hasChanges = config && (
