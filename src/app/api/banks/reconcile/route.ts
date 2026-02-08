@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
                 }
             },
             formula: `${totalDeposits} (deposits) + ${clearedCheques} (cleared cheques) + ${totalCreditPayments} (credit payments) + ${manualDeposits} (manual deposits) - ${manualWithdrawals} (withdrawals) = ${calculatedBalance}`,
-            warnings: []
+            warnings: [] as string[]
         }
 
         // Add warnings

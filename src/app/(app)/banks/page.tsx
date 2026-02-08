@@ -23,6 +23,14 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { Textarea } from '@/components/ui/textarea'
 
+interface Transaction {
+  id: string
+  type: string
+  amount: number
+  description: string
+  date: string
+}
+
 interface BankAccount {
   id: string
   name: string

@@ -246,7 +246,7 @@ export async function POST(request: NextRequest) {
               balanceBefore,
               balanceAfter,
               description: `Credit payment from ${customer.name} - ${paymentType}${bankName}`,
-              performedBy: receivedBy,
+              performedBy: secureReceivedBy,
               timestamp: paymentDate ? new Date(paymentDate) : new Date(),
             }
           })

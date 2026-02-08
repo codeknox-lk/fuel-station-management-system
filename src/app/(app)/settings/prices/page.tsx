@@ -251,7 +251,7 @@ export default function FuelsPage() {
         description: `${newFuelData.name} added successfully!`
       })
 
-      setNewFuelDialogOpen(false)
+      setFuelTypeDialogOpen(false)
       setNewFuelData({
         code: '',
         name: '',

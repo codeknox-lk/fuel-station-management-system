@@ -228,7 +228,7 @@ export async function POST(request: NextRequest) {
         beforeDipReading: beforeDipReading ? parseFloat(String(beforeDipReading)) : null,
         beforeDipTime: beforeDipTime ? new Date(String(beforeDipTime)) : null,
         fuelSoldDuring: fuelSoldDuring ? parseFloat(String(fuelSoldDuring)) : null,
-        beforeMeterReadings: beforeMeterReadings ? (beforeMeterReadings as Prisma.InputJsonValue) : null,
+        beforeMeterReadings: beforeMeterReadings ? (beforeMeterReadings as Prisma.InputJsonValue) : undefined,
         verificationStatus: 'PENDING_VERIFICATION'
       },
       include: {
