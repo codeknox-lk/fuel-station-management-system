@@ -24,12 +24,37 @@ import { PrintHeader } from '@/components/PrintHeader'
 import { ShiftWithDetails, AssignmentWithDetails, ShiftStatistics, DeclaredAmounts, Expense } from '@/types/db'
 
 // Helper type for the UI which might have parsed JSON fields
-interface UIShift extends Omit<ShiftWithDetails, 'statistics' | 'declaredAmounts'> {
-  statistics?: ShiftStatistics
+interface ShopItem {
+  id: string
+  product: {
+    name: string
+    unit: string
+    sellingPrice: number
+  }
+  openingStock: number
+  addedStock: number
+  closingStock: number | null
+  // Helper properties for DataTable keys
+  productName?: string
+  soldQuantity?: number
+  revenue?: number
+}
+
+interface UIShift extends Omit<ShiftWithDetails, 'statistics' | 'declaredAmounts' | 'shopAssignment'> {
+  statistics?: ShiftStatistics & {
+    nozzleSales?: number
+    shopSales?: number
+  }
   declaredAmounts?: DeclaredAmounts
+  shopAssignment?: {
+    pumperName: string
+    items: ShopItem[]
+  }
 }
 
 interface TenderSummary {
+  nozzleSales?: number
+  shopSales?: number
   totalSales: number
   totalDeclared: number
   variance: number
@@ -46,6 +71,7 @@ interface TenderSummary {
       totalAmount: number
       salesCount: number
     }
+    shopSales?: number
   }
 }
 
@@ -467,10 +493,8 @@ export default function ShiftDetailsPage() {
           </Button>
           <div className="flex flex-col">
             <h1
-              className="text-3xl font-bold text-foreground shift-details-title"
+              className="text-3xl font-bold text-foreground"
               style={{
-                textDecoration: 'none',
-                borderBottom: 'none',
                 border: 'none',
                 outline: 'none',
                 boxShadow: 'none',
@@ -543,8 +567,10 @@ export default function ShiftDetailsPage() {
             <Users className="h-4 w-4 text-green-600 dark:text-green-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{assignments.length}</div>
-            <p className="text-xs text-muted-foreground">Pumpers</p>
+            <div className="text-2xl font-bold">
+              {assignments.length + (shift.shopAssignment ? 1 : 0)}
+            </div>
+            <p className="text-xs text-muted-foreground">Pumpers Total</p>
           </CardContent>
         </Card>
 
@@ -615,6 +641,27 @@ export default function ShiftDetailsPage() {
                     })()}
                   </span>
                 </div>
+                {tenderSummary?.shopSales !== undefined && tenderSummary.shopSales > 0 && (
+                  <>
+                    <div className="flex justify-between text-xs px-2">
+                      <span className="text-muted-foreground italic">- Nozzle Sales:</span>
+                      <span className="text-muted-foreground">
+                        Rs. {(tenderSummary.nozzleSales ?? ((() => {
+                          const stats = typeof shift.statistics === 'string'
+                            ? (() => { try { return JSON.parse(shift.statistics as string) } catch { return {} } })()
+                            : shift.statistics || {}
+                          return (stats?.totalSales ?? 0)
+                        })() - tenderSummary.shopSales)).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs px-2">
+                      <span className="text-muted-foreground italic">- Shop Sales:</span>
+                      <span className="text-muted-foreground">
+                        Rs. {tenderSummary.shopSales.toLocaleString()}
+                      </span>
+                    </div>
+                  </>
+                )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Declared:</span>
                   <span className="font-semibold">
@@ -705,9 +752,13 @@ export default function ShiftDetailsPage() {
                 <span className="text-sm font-medium">Pumpers</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                {assignments.length > 0
-                  ? Array.from(new Set(assignments.map(a => a.pumperName).filter(Boolean))).join(', ') || 'No pumpers assigned'
-                  : 'No pumpers assigned'}
+                {(() => {
+                  const names = new Set(assignments.map(a => a.pumperName).filter(Boolean))
+                  if (shift.shopAssignment?.pumperName) {
+                    names.add(shift.shopAssignment.pumperName)
+                  }
+                  return Array.from(names).join(', ') || 'No pumpers assigned'
+                })()}
               </p>
             </div>
 
@@ -746,11 +797,72 @@ export default function ShiftDetailsPage() {
             />
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              No assignments found
+              No nozzle assignments found
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Shop Assignment */}
+      {shift.shopAssignment && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Shop Assignment</CardTitle>
+            <CardDescription>Inventory accountability for {shift.shopAssignment.pumperName}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DataTable
+              data={shift.shopAssignment.items}
+              columns={[
+                {
+                  key: 'productName' as keyof ShopItem,
+                  title: 'Product',
+                  render: (_: unknown, row: ShopItem) => (
+                    <span className="font-medium">{row.product.name}</span>
+                  )
+                },
+                {
+                  key: 'openingStock' as keyof ShopItem,
+                  title: 'Opening + Added',
+                  render: (_: unknown, row: ShopItem) => (
+                    <span className="font-mono">{(row.openingStock + row.addedStock).toLocaleString()} {row.product.unit}</span>
+                  )
+                },
+                {
+                  key: 'closingStock' as keyof ShopItem,
+                  title: 'Closing Stock',
+                  render: (_: unknown, row: ShopItem) => (
+                    <span className="font-mono">{row.closingStock?.toLocaleString() || '-'}</span>
+                  )
+                },
+                {
+                  key: 'soldQuantity' as keyof ShopItem,
+                  title: 'Sold',
+                  render: (_: unknown, row: ShopItem) => {
+                    const sold = row.closingStock !== null
+                      ? Math.max(0, (row.openingStock + row.addedStock) - row.closingStock)
+                      : 0
+                    return <span className={`font-mono ${sold > 0 ? 'text-orange-600' : ''}`}>{sold.toLocaleString()}</span>
+                  }
+                },
+                {
+                  key: 'revenue' as keyof ShopItem,
+                  title: 'Revenue',
+                  render: (_: unknown, row: ShopItem) => {
+                    const sold = row.closingStock !== null
+                      ? Math.max(0, (row.openingStock + row.addedStock) - row.closingStock)
+                      : 0
+                    const revenue = sold * row.product.sellingPrice
+                    return <span className="font-mono font-semibold">Rs. {revenue.toLocaleString()}</span>
+                  }
+                }
+              ]}
+              searchable={false}
+              pagination={false}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Pumper-wise Breakdown (for closed shifts) */}
       {shift.status === 'CLOSED' && shift.declaredAmounts &&
@@ -782,11 +894,28 @@ export default function ShiftDetailsPage() {
                     </div>
 
                     {/* Sales Summary */}
-                    <div className="space-y-2">
-                      <div className="text-xs font-semibold text-muted-foreground uppercase">Sales</div>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div className="text-muted-foreground">Calculated Sales:</div>
-                        <div className="font-mono text-right font-medium">Rs. {breakdown.calculatedSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    <div className="space-y-1">
+                      {breakdown.meterSales !== undefined && breakdown.meterSales > 0 && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground italic">Meter Sales:</span>
+                          <span className="font-mono">Rs. {(breakdown.meterSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      )}
+                      {breakdown.shopSales !== undefined && breakdown.shopSales > 0 && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground italic">Shop Sales:</span>
+                          <span className="font-mono">Rs. {(breakdown.shopSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      )}
+                      <div className={`flex justify-between text-sm ${breakdown.meterSales && breakdown.shopSales ? 'border-t pt-1 mt-1' : ''}`}>
+                        <div className="text-muted-foreground font-semibold">
+                          {breakdown.meterSales && breakdown.shopSales ? "Total Sales:" :
+                            (assignments.some(a => a.pumperName === breakdown.pumperName)
+                              ? (shift.shopAssignment && breakdown.pumperName === shift.shopAssignment.pumperName ? "Total Sales (Meter + Shop)" : "Calculated Sales (from meter)")
+                              : "Shop Calculated Sales")
+                          }
+                        </div>
+                        <div className="font-mono text-right font-bold">Rs. {(breakdown.calculatedSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                       </div>
                     </div>
 
@@ -924,13 +1053,13 @@ export default function ShiftDetailsPage() {
                     <div className="space-y-2 border-t pt-2 bg-muted/50 p-2 rounded">
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div className="font-semibold">Total Declared:</div>
-                        <div className="font-mono text-right font-semibold">Rs. {breakdown.declaredAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div className="font-mono text-right font-semibold">Rs. {(breakdown.declaredAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         <div className="font-semibold">Variance:</div>
-                        <div className={`font-mono text-right font-semibold ${breakdown.variance > 20 ? 'text-red-600 dark:text-red-400' :
-                          breakdown.variance < -20 ? 'text-green-600 dark:text-green-400' :
+                        <div className={`font-mono text-right font-semibold ${(breakdown.variance || 0) > 20 ? 'text-red-600 dark:text-red-400' :
+                          (breakdown.variance || 0) < -20 ? 'text-green-600 dark:text-green-400' :
                             'text-foreground'
                           }`}>
-                          {breakdown.variance >= 0 ? '+' : ''}Rs. {breakdown.variance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {(breakdown.variance || 0) >= 0 ? '+' : ''}Rs. {(breakdown.variance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </div>
                     </div>

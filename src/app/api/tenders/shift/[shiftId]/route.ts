@@ -207,6 +207,28 @@ export async function GET(
     })
     const oilTotal = oilSales.reduce((sum, sale) => sum + sale.totalAmount, 0)
 
+    // Get shop sales for this shift
+    const shopAssignment = await prisma.shopAssignment.findFirst({
+      where: { shiftId },
+      include: {
+        items: {
+          include: {
+            product: true
+          }
+        }
+      }
+    })
+
+    let shopSalesTotal = 0
+    if (shopAssignment) {
+      shopAssignment.items.forEach(item => {
+        const sold = (item.closingStock !== null)
+          ? Math.max(0, (item.openingStock + item.addedStock) - item.closingStock)
+          : 0
+        shopSalesTotal += sold * item.product.sellingPrice
+      })
+    }
+
     // Calculate sales from assignments
     interface SalesDataItem {
       nozzleId: string
@@ -393,20 +415,20 @@ export async function GET(
     })
 
     const tenderSummary = {
-      totalSales: summary.totalSales,
+      totalSales: summary.totalSales + shopSalesTotal,
+      shopSales: shopSalesTotal,
+      nozzleSales: summary.totalSales,
       totalDeclared: summary.totalDeclared,
-      variance: calculatedVariance, // Ensure we use the correct calculation
-      varianceClassification: {
-        ...summary.varianceClassification,
-        variance: calculatedVariance // Ensure varianceClassification also has the correct variance
-      },
+      variance: calculatedVariance + shopSalesTotal, // Ensure we use the correct calculation
+      varianceClassification: classifyVariance(summary.totalSales + shopSalesTotal, summary.totalDeclared),
       salesBreakdown: {
         totalPumpSales,
         totalLitres: totalPumpSales,
         oilSales: {
           totalAmount: oilTotal,
           salesCount: oilSales.length
-        }
+        },
+        shopSales: shopSalesTotal
       }
     }
 

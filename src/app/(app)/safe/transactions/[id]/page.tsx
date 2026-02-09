@@ -14,7 +14,8 @@ import {
   ArrowLeft,
   ShoppingCart,
   CreditCard,
-  AlertCircle
+  AlertCircle,
+  Droplet
 } from 'lucide-react'
 
 interface SafeTransaction {
@@ -41,6 +42,10 @@ interface SafeTransaction {
       }
       pumperName?: string
     }>
+    shopAssignment?: {
+      id: string
+      pumperName: string
+    }
     declaredAmounts?: {
       cash?: number
       card?: number
@@ -257,6 +262,8 @@ export default function TransactionDetailsPage() {
     interface PumperBreakdown {
       pumperName: string
       calculatedSales: number
+      meterSales?: number
+      shopSales?: number
       declaredCash: number
       declaredAmount: number
       variance: number
@@ -309,6 +316,9 @@ export default function TransactionDetailsPage() {
       .filter((name, index, arr) => name && arr.indexOf(name) === index)
       .join(', ') || 'Unknown'
 
+    const hasNozzles = (transaction.shift?.assignments?.length ?? 0) > 0
+    const hasShop = !!transaction.shift?.shopAssignment
+
     return (
       <div className="space-y-6 p-6">
         {/* Header */}
@@ -331,7 +341,14 @@ export default function TransactionDetailsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <ShoppingCart className="h-5 w-5" />
+              <div className="flex items-center -space-x-1">
+                {hasNozzles && (
+                  <Droplet className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                )}
+                {hasShop && (
+                  <ShoppingCart className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                )}
+              </div>
               Shift Information
             </CardTitle>
           </CardHeader>
@@ -450,9 +467,29 @@ export default function TransactionDetailsPage() {
                         <div className="text-sm font-semibold text-muted-foreground uppercase border-b pb-2">Sales</div>
 
                         <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">Calculated Sales (from meters):</span>
-                            <span className="font-mono font-semibold">Rs. {breakdown.calculatedSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          {breakdown.meterSales !== undefined && breakdown.meterSales > 0 && (
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-muted-foreground">Meter Sales:</span>
+                              <span className="font-mono">Rs. {(breakdown.meterSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                          )}
+
+                          {breakdown.shopSales !== undefined && breakdown.shopSales > 0 && (
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-muted-foreground">Shop Sales:</span>
+                              <span className="font-mono">Rs. {(breakdown.shopSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                          )}
+
+                          <div className={`flex justify-between items-center ${(breakdown.meterSales && breakdown.shopSales) ? 'border-t pt-1 mt-1' : ''}`}>
+                            <span className="text-sm text-muted-foreground font-semibold">
+                              {(breakdown.meterSales && breakdown.shopSales) ? "Total Sales:" :
+                                (transaction.shift?.assignments?.some(a => a.pumperName === breakdown.pumperName)
+                                  ? (transaction.shift.shopAssignment && breakdown.pumperName === transaction.shift.shopAssignment.pumperName ? "Total Sales (Meter + Shop):" : "Calculated Sales (from meter):")
+                                  : "Shop Calculated Sales:")
+                              }
+                            </span>
+                            <span className="font-mono font-semibold">Rs. {(breakdown.calculatedSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           </div>
                         </div>
                       </div>

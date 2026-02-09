@@ -15,7 +15,8 @@ import {
   Clock,
   DollarSign,
   AlertTriangle,
-  GitCompare
+  GitCompare,
+  ShoppingBag
 } from 'lucide-react'
 
 interface ReportCard {
@@ -155,6 +156,21 @@ export default function ReportsPage() {
         'Pumper performance comparison',
         'Best & worst performers',
         'Monthly trends comparison'
+      ],
+      color: 'text-orange-600 dark:text-orange-400',
+      minRole: 'OWNER'
+    },
+    {
+      title: 'Shop Profitability Report',
+      description: 'Detailed analysis of shop product performance and inventory valuation',
+      icon: <ShoppingBag className="h-8 w-8" />,
+      href: '/reports/shop-profit',
+      features: [
+        'FIFO-based gross profit calculation',
+        'Product-wise performance tracking',
+        'Current inventory valuation at cost',
+        'Category-wise sales breakdown',
+        'Wastage and loss reporting'
       ],
       color: 'text-orange-600 dark:text-orange-400',
       minRole: 'OWNER'

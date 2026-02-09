@@ -60,6 +60,46 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    // Get all shop sales for the month
+    const shopSales = await prisma.shopSale.findMany({
+      where: {
+        assignment: {
+          shift: {
+            stationId,
+            endTime: {
+              gte: startOfMonth,
+              lte: endOfMonth
+            }
+          }
+        }
+      },
+      include: {
+        assignment: {
+          select: {
+            shift: {
+              select: {
+                startTime: true,
+                endTime: true
+              }
+            }
+          }
+        }
+      }
+    })
+
+    // Get all shop wastage for the month
+    const shopWastage = await prisma.shopWastage.findMany({
+      where: {
+        product: {
+          stationId
+        },
+        timestamp: {
+          gte: startOfMonth,
+          lte: endOfMonth
+        }
+      }
+    })
+
     // Get all expenses for the month
     const expenses = await prisma.expense.findMany({
       where: {
@@ -138,14 +178,36 @@ export async function GET(request: NextRequest) {
         })
         .reduce((sum, exp) => sum + exp.amount, 0)
 
-      const profit = revenue - dayExpenses
-      const margin = revenue > 0 ? (profit / revenue) * 100 : 0
+      // Calculate shop revenue and COGS for this day
+      const dayShopSales = shopSales.filter(s => {
+        const saleDate = s.timestamp || s.assignment?.shift?.endTime || s.assignment?.shift?.startTime
+        if (!saleDate) return false
+        const d = new Date(saleDate)
+        return d >= dayStart && d <= dayEnd
+      })
+
+      const shopRevenue = dayShopSales.reduce((sum, s) => sum + s.totalAmount, 0)
+      const shopCOGS = dayShopSales.reduce((sum, s) => sum + (s.costPrice * s.quantity), 0)
+
+      // Calculate shop wastage (Cost Loss)
+      const dayWastageLoss = shopWastage
+        .filter(w => {
+          const wDate = new Date(w.timestamp)
+          return wDate >= dayStart && wDate <= dayEnd
+        })
+        .reduce((sum, w) => sum + (w.costPrice * w.quantity), 0)
+
+      const totalDayRevenue = revenue + shopRevenue
+      const totalDayExpenses = dayExpenses + shopCOGS + dayWastageLoss
+
+      const profit = totalDayRevenue - totalDayExpenses
+      const margin = totalDayRevenue > 0 ? (profit / totalDayRevenue) * 100 : 0
 
       dailyData.push({
         day: currentDate.getDate(),
         date: `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`,
-        revenue: Math.round(revenue),
-        expenses: Math.round(dayExpenses),
+        revenue: Math.round(totalDayRevenue),
+        expenses: Math.round(totalDayExpenses),
         profit: Math.round(profit),
         margin: Math.round(margin * 100) / 100
       })
@@ -196,12 +258,28 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Add Shop Sales to revenue breakdown
+    const totalShopRevenue = shopSales.reduce((sum, s) => sum + s.totalAmount, 0)
+    const totalShopCOGS = shopSales.reduce((sum, s) => sum + (s.costPrice * s.quantity), 0)
+    const totalWastageLoss = shopWastage.reduce((sum, w) => sum + (w.costPrice * w.quantity), 0)
+
+    if (totalShopRevenue > 0) {
+      revenueByFuelType.set('Shop Sales', totalShopRevenue)
+    }
+
     // Get expense breakdown by category
     const expensesByCategory = new Map<string, number>()
     for (const expense of expenses) {
       const category = expense.category || 'Other'
       const current = expensesByCategory.get(category) || 0
       expensesByCategory.set(category, current + expense.amount)
+    }
+
+    if (totalShopCOGS > 0) {
+      expensesByCategory.set('Shop COGS', totalShopCOGS)
+    }
+    if (totalWastageLoss > 0) {
+      expensesByCategory.set('Shop Wastage/Loss', totalWastageLoss)
     }
 
     // Build revenue breakdown

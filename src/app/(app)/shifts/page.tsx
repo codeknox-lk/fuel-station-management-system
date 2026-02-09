@@ -238,8 +238,8 @@ export default function ShiftsPage() {
           }
         }
 
-        // Count assignments
-        const assignmentCount = shift._count?.assignments ?? 0
+        // Count assignments (nozzle + shop)
+        const assignmentCount = (shift._count?.assignments ?? 0) + (shift.shopAssignment ? 1 : 0)
 
         return {
           ...shift,

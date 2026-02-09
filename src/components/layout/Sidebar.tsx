@@ -16,7 +16,8 @@ import {
   Wallet,
   DollarSign,
   Handshake,
-  Landmark
+  Landmark,
+  Store // Added Store icon
 } from 'lucide-react'
 
 type UserRole = 'DEVELOPER' | 'OWNER' | 'MANAGER' | 'ACCOUNTS'
@@ -43,6 +44,12 @@ const navigation: NavItem[] = [
     title: 'Shifts',
     href: '/shifts',
     icon: Clock,
+    roles: ['DEVELOPER', 'OWNER', 'MANAGER']
+  },
+  {
+    title: 'Shop',
+    href: '/shop',
+    icon: Store,
     roles: ['DEVELOPER', 'OWNER', 'MANAGER']
   },
   // {

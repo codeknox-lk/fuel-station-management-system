@@ -51,6 +51,12 @@ export async function GET(request: NextRequest) {
               openedBy: true,
               declaredAmounts: true,
               statistics: true,
+              shopAssignment: {
+                select: {
+                  id: true,
+                  pumperName: true
+                }
+              },
               template: {
                 select: {
                   id: true,
@@ -159,6 +165,12 @@ export async function GET(request: NextRequest) {
               name: true
             }
           },
+          shopAssignment: {
+            select: {
+              id: true,
+              pumperName: true
+            }
+          },
           assignments: {
             select: {
               pumperName: true
@@ -241,6 +253,12 @@ export async function GET(request: NextRequest) {
           template: {
             select: {
               name: true
+            }
+          },
+          shopAssignment: {
+            select: {
+              id: true,
+              pumperName: true
             }
           },
           assignments: {

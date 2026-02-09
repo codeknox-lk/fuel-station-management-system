@@ -39,7 +39,8 @@ import {
   Building2,
   Calendar,
   AlertCircle,
-  ArrowUpCircle
+  ArrowUpCircle,
+  Droplet
 } from 'lucide-react'
 
 interface Cheque {
@@ -133,6 +134,10 @@ interface SafeTransaction {
         varianceStatus: string
       }>
     }
+    shopAssignment?: {
+      id: string
+      pumperName: string
+    } | null
   }
   batch?: {
     id: string
@@ -813,9 +818,9 @@ export default function SafePage() {
     const currentBalance = safe?.currentBalance || 0
     if (depositAmount > currentBalance) {
       toast({
-        title: "Error",
-        description: `Cannot deposit more than available cash. Current: Rs. ${currentBalance.toLocaleString()}`,
-        variant: "destructive"
+        title: "Deposit Amount Error",
+        description: `Cannot deposit more than the current safe cash balance: Rs. ${(currentBalance || 0).toLocaleString()}`,
+        variant: "destructive",
       })
       return
     }
@@ -992,13 +997,23 @@ export default function SafePage() {
     {
       key: 'type',
       title: 'Type',
-      render: (value: unknown) => {
+      render: (value: unknown, row: SafeTransaction | GroupedTransaction) => {
         const type = value as string
         if (type === 'SHIFT_CLOSURE') {
+          const hasNozzles = (row.shift?.assignments?.length ?? 0) > 0
+          const hasShop = !!row.shift?.shopAssignment
+
           return (
-            <div className="flex items-center gap-2">
-              <ShoppingCart className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-              <Badge className="bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300">
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center -space-x-1">
+                {hasNozzles && (
+                  <Droplet className="h-4 w-4 text-blue-600 dark:text-blue-400 bg-background rounded-full" />
+                )}
+                {hasShop && (
+                  <ShoppingCart className="h-4 w-4 text-orange-600 dark:text-orange-400 bg-background rounded-full" />
+                )}
+              </div>
+              <Badge className="bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300 ml-1">
                 Shift Closure
               </Badge>
             </div>
@@ -1022,10 +1037,17 @@ export default function SafePage() {
 
         // Show shift closure breakdown
         if ('isGrouped' in row && row.isGrouped && row.type === 'SHIFT_CLOSURE') {
-          const pumpers = row.shift?.assignments
-            ?.map((a) => a.pumper?.name || a.pumperName)
+          const assignments = row.shift?.assignments || []
+          const assignPumpers = assignments
+            .map((a) => a.pumper?.name || a.pumperName)
             .filter((name, index, arr) => name && arr.indexOf(name) === index)
-            .join(', ') || 'Unknown'
+
+          const shopPumper = row.shift?.shopAssignment?.pumperName
+          const allPumpers = [...assignPumpers]
+          if (shopPumper && !allPumpers.includes(shopPumper)) {
+            allPumpers.push(shopPumper)
+          }
+          const pumperDisplay = allPumpers.length > 0 ? allPumpers.join(', ') : 'Unknown'
 
           const breakdown = row.breakdown
           const parts: string[] = []
@@ -1039,7 +1061,7 @@ export default function SafePage() {
               <div className="text-sm font-medium">{description}</div>
               <div className="text-xs text-muted-foreground flex items-center gap-2">
                 <Users className="h-3 w-3" />
-                <span>{pumpers}</span>
+                <span>{pumperDisplay}{row.shift?.shopAssignment ? ' (Includes Shop)' : ''}</span>
               </div>
               {parts.length > 0 && (
                 <div className="text-xs text-muted-foreground mt-1">
@@ -1979,7 +2001,7 @@ export default function SafePage() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label className="text-right">Amount</Label>
-              <div className="col-span-3 font-medium">Rs. {selectedCheque?.amount?.toLocaleString()}</div>
+              <div className="col-span-3 font-medium">Rs. {(selectedCheque?.amount || 0).toLocaleString()}</div>
             </div>
 
             {chequeAction === 'DEPOSIT' && (

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStation } from '@/contexts/StationContext'
 import { FormCard } from '@/components/ui/FormCard'
@@ -19,7 +19,7 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
 import { DateTimePicker } from '@/components/inputs/DateTimePicker'
-import { Clock, Fuel, DollarSign, CreditCard, FileText, Plus, Trash2, Printer, Wallet, ExternalLink, Building2, Check, ChevronDown, ChevronUp } from 'lucide-react'
+import { Clock, Fuel, DollarSign, CreditCard, FileText, Plus, Trash2, Printer, Wallet, ExternalLink, Building2, Check, ChevronDown, ChevronUp, ShoppingBag } from 'lucide-react'
 import { PrintHeader } from '@/components/PrintHeader'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -41,6 +41,10 @@ interface Shift {
   status: string
   openedBy: string
   assignments?: Assignment[]
+  shopAssignment?: {
+    id: string
+    pumperName: string
+  }
 }
 
 interface Assignment {
@@ -143,6 +147,8 @@ interface PumperTestPour {
 interface PumperBreakdown {
   pumperName: string
   calculatedSales: number
+  meterSales: number
+  shopSales: number
   declaredAmount: number
   declaredCash: number
   declaredCardAmounts: Record<string, number> // terminalId -> amount
@@ -164,6 +170,24 @@ interface Pumper {
   isActive?: boolean
 }
 
+interface ShopShiftItem {
+  id: string
+  productId: string
+  product: { name: string; unit: string; sellingPrice: number }
+  openingStock: number
+  addedStock: number
+  closingStock?: number
+  soldQuantity?: number
+  revenue?: number
+}
+
+interface ShopAssignment {
+  id: string
+  pumperId: string
+  pumperName: string
+  items: ShopShiftItem[]
+}
+
 export default function CloseShiftPage() {
   const router = useRouter()
   const [stations, setStations] = useState<Station[]>([])
@@ -182,6 +206,9 @@ export default function CloseShiftPage() {
   const { selectedStation } = useStation()
   const [selectedShift, setSelectedShift] = useState('')
   const [endTime, setEndTime] = useState<Date>(new Date())
+
+
+
 
   // Tender summary (calculated from pumper-wise data)
 
@@ -207,6 +234,10 @@ export default function CloseShiftPage() {
   // Track minimized slips
   const [minimizedPOSSlips, setMinimizedPOSSlips] = useState<Record<string, boolean>>({}) // slipId -> is minimized
   const [minimizedMissingSlips, setMinimizedMissingSlips] = useState<Record<string, boolean>>({}) // slipId -> is minimized
+
+  // Shop assignment and sales
+  const [shopAssignment, setShopAssignment] = useState<ShopAssignment | null>(null)
+  const [shopClosingStocks, setShopClosingStocks] = useState<Record<string, number>>({}) // itemId -> closing stock
 
   // Add Bank Dialog State
   const [addBankDialogOpen, setAddBankDialogOpen] = useState(false)
@@ -422,14 +453,48 @@ export default function CloseShiftPage() {
       }
 
       loadAssignments()
+
+      // Fetch Shop Assignment
+      const fetchShopAssignment = async () => {
+        try {
+          const res = await fetch(`/api/shop/assignments?shiftId=${selectedShift}`)
+          if (res.ok) {
+            const data = await res.json()
+            if (data) {
+              setShopAssignment(data)
+              // Initialize closing stocks with opening + added
+              const initialStocks: Record<string, number> = {}
+              data.items.forEach((item: ShopShiftItem) => {
+                initialStocks[item.id] = (item.openingStock + item.addedStock)
+              })
+              setShopClosingStocks(initialStocks)
+            } else {
+              setShopAssignment(null)
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching shop assignment:', err)
+        }
+      }
+      fetchShopAssignment()
     } else {
       setAssignments([])
+      setShopAssignment(null)
     }
   }, [selectedShift])
 
-  // Calculate pumper-wise breakdown
+  // Calculate total shop revenue
+  const totalShopRevenue = useMemo(() => {
+    if (!shopAssignment) return 0
+    return shopAssignment.items.reduce((sum, item) => {
+      const closing = shopClosingStocks[item.id] ?? (item.openingStock + item.addedStock)
+      const sold = Math.max(0, (item.openingStock + item.addedStock) - closing)
+      return sum + (sold * item.product.sellingPrice)
+    }, 0)
+  }, [shopAssignment, shopClosingStocks])
+
   useEffect(() => {
-    if (selectedShift && assignments.length > 0 && selectedStation) {
+    if (selectedShift && (assignments.length > 0 || shopAssignment) && selectedStation) {
       const calculatePumperBreakdown = async () => {
         try {
           // Get prices for fuel types
@@ -440,11 +505,9 @@ export default function CloseShiftPage() {
                 const res = await fetch(`/api/prices?stationId=${selectedStation}&fuelId=${fuelType}`)
                 if (res.ok) {
                   const priceData = await res.json()
-                  // API returns single price object when fuelType is specified
                   if (priceData && !Array.isArray(priceData) && priceData.price) {
                     return { fuelType, price: priceData.price }
                   }
-                  // If array, get most recent active price
                   if (Array.isArray(priceData) && priceData.length > 0) {
                     const activePrices = priceData.filter((p: { isActive: boolean; effectiveDate: string }) => p.isActive)
                       .sort((a: { effectiveDate: string }, b: { effectiveDate: string }) => new Date(b.effectiveDate).getTime() - new Date(a.effectiveDate).getTime())
@@ -462,7 +525,7 @@ export default function CloseShiftPage() {
           // Group assignments by pumper
           const pumperMap = new Map<string, Assignment[]>()
           assignments.forEach(assignment => {
-            if (assignment.endMeterReading && assignment.pumperName) {
+            if (assignment.pumperName) {
               if (!pumperMap.has(assignment.pumperName)) {
                 pumperMap.set(assignment.pumperName, [])
               }
@@ -470,130 +533,74 @@ export default function CloseShiftPage() {
             }
           })
 
+          // Also include shop pumper if they have no nozzle assignments
+          if (shopAssignment && !pumperMap.has(shopAssignment.pumperName)) {
+            pumperMap.set(shopAssignment.pumperName, [])
+          }
+
           // Calculate sales per pumper
           const breakdowns: PumperBreakdown[] = []
           pumperMap.forEach((pumperAssignments, pumperName) => {
-            let calculatedSales = 0
-
+            let meterSales = 0
             pumperAssignments.forEach(assignment => {
               if (assignment.endMeterReading && assignment.startMeterReading) {
                 const delta = Math.max(0, assignment.endMeterReading - assignment.startMeterReading)
                 const pumpSales = assignment.pumpSales || delta
                 const fuelId = assignment.nozzle?.tank?.fuelId
                 const price = fuelId ? (priceMap[fuelId] || 470) : 470
-                calculatedSales += pumpSales * price
+                meterSales += pumpSales * price
               }
             })
 
+            let shopSales = 0
+            if (shopAssignment && pumperName === shopAssignment.pumperName) {
+              shopSales = totalShopRevenue
+            }
+
+            const calculatedSales = meterSales + shopSales
             const cash = pumperDeclaredCash[pumperName] || 0
             const creditAmounts = pumperDeclaredCreditAmounts[pumperName] || {}
             const cheques = pumperDeclaredCheques[pumperName] || []
-            const cheque = cheques.reduce((sum, chq) => sum + chq.amount, 0)
+            const totalCheque = cheques.reduce((sum, chq) => sum + chq.amount, 0)
             const advance = pumperAdvances[pumperName] || 0
             const expenses = pumperExpenses[pumperName] || []
 
-            // Separate bank deposits from other expenses
             const bankDeposits = expenses.filter(exp => exp.type === 'BANK_DEPOSIT')
             const otherExpenses = expenses.filter(exp => exp.type !== 'BANK_DEPOSIT')
             const totalBankDeposits = bankDeposits.reduce((sum, exp) => sum + exp.amount, 0)
             const totalOtherExpenses = otherExpenses.reduce((sum, exp) => sum + exp.amount, 0)
 
-            // Calculate card total from POS slips instead of manual entry
             const pumperSlips = posSlips[pumperName] || []
-            const totalCardFromSlips = pumperSlips.reduce((sum, slip) => {
-              if (slip.terminalId && slip.amount > 0) {
-                return sum + slip.amount
-              }
-              return sum
-            }, 0)
-
-            // Include missing slips in card total (they represent transactions that happened but slip wasn't provided)
+            const totalCardFromSlips = pumperSlips.reduce((sum, slip) => slip.terminalId && slip.amount > 0 ? sum + slip.amount : sum, 0)
             const key = `${pumperName}-unified`
             const pumperMissingSlips = missingSlips[key] || []
-            const totalCardFromMissing = pumperMissingSlips.reduce((sum, slip) => {
-              if (slip.terminalId && slip.amount > 0 && slip.lastFourDigits.length === 4) {
-                return sum + slip.amount
-              }
-              return sum
-            }, 0)
-
-            // Total card amount = regular slips + missing slips
+            const totalCardFromMissing = pumperMissingSlips.reduce((sum, slip) => slip.terminalId && slip.amount > 0 && slip.lastFourDigits.length === 4 ? sum + slip.amount : sum, 0)
             const totalCard = totalCardFromSlips + totalCardFromMissing
 
-            // Build card amounts map from slips for compatibility (include missing slips)
             const cardAmounts: Record<string, number> = {}
-            pumperSlips.forEach(slip => {
-              if (slip.terminalId && slip.amount > 0) {
-                cardAmounts[slip.terminalId] = (cardAmounts[slip.terminalId] || 0) + slip.amount
-              }
-            })
-            // Add missing slips to card amounts map
-            pumperMissingSlips.forEach(slip => {
-              if (slip.terminalId && slip.amount > 0 && slip.lastFourDigits.length === 4) {
-                cardAmounts[slip.terminalId] = (cardAmounts[slip.terminalId] || 0) + slip.amount
-              }
-            })
+            pumperSlips.forEach(slip => { if (slip.terminalId && slip.amount > 0) cardAmounts[slip.terminalId] = (cardAmounts[slip.terminalId] || 0) + slip.amount })
+            pumperMissingSlips.forEach(slip => { if (slip.terminalId && slip.amount > 0 && slip.lastFourDigits.length === 4) cardAmounts[slip.terminalId] = (cardAmounts[slip.terminalId] || 0) + slip.amount })
+
             const totalCredit = Object.values(creditAmounts).reduce((sum, amount) => sum + amount, 0)
-
-            // CORRECT LOGIC:
-            // - Cash declared = FULL cash amount they received from sales (NOT already deducted)
-            // - Advance is money taken FROM the cash declared (will be deducted from salary later, NOT from variance)
-            // - Advance can ONLY come from cash, not from card/credit/cheque
-            // - Bank deposits are cash that was deposited to bank (included in declared amount)
-            // 
-            // MATHEMATICAL LOGIC:
-            // Cash Declared = Full cash received from sales (e.g., Rs. 20,100)
-            // Advance Taken = Amount taken from cash (e.g., Rs. 10,000) - NOT part of variance!
-            // Bank Deposits = Amount deposited from cash (e.g., Rs. 0) - included in declared
-            // 
-            // Example: 
-            //   - Cash declared = Rs. 20,100 (FULL amount received)
-            //   - Advance taken = Rs. 10,000 (taken from cash, will be deducted from salary)
-            //   - Bank deposits = Rs. 0 (cash that was deposited, included in declared)
-            //   - Cash actually handed over = 20,100 - 10,000 - 0 = Rs. 10,100
-            // 
-            // Total Declared Amount = Cash Declared + Card + Credit + Cheque + Bank Deposits
-            //                       = Cash + Card + Credit + Cheque + Bank Deposits
-            // 
-            // IMPORTANT: Advance is NOT deducted from variance calculation!
-            // Variance = Calculated Sales - (Total Declared - Other Expenses)
-            //          = Calculated Sales - (Cash + Card + Credit + Cheque + Bank Deposits - Other Expenses)
-            // 
-            // Why? Advance is not a variance - it's money the pumper took and will be deducted from salary.
-            // Variance only measures if they're declaring the correct amount vs calculated sales.
-            // 
-            // Effective Declared (for variance) = Total Declared - Other Expenses (loans, etc.)
-            //                                    = Cash + Card + Credit + Cheque + Bank Deposits - Other Expenses
-            //                                    (Advance is NOT included - it's handled separately in salary)
-            const declaredAmount = cash + totalCard + totalCredit + cheque + totalBankDeposits
-
-            // Effective declared for variance calculation - does NOT include advance
-            // Advance will be deducted from salary separately, not from variance
-            // Other expenses (loans, etc.) reduce the effective declared amount
-            // Bank deposits are already included in declared amount (they're cash that was deposited)
+            const declaredAmount = cash + totalCard + totalCredit + totalCheque + totalBankDeposits
             const effectiveDeclaredAmount = declaredAmount - totalOtherExpenses
             const variance = calculatedSales - effectiveDeclaredAmount
-
-            // Variance logic: If |variance| > 20, add/deduct FULL variance amount
-            // If |variance| <= 20, ignore (NORMAL - no adjustment)
-            // If variance > 20: sales > effective declared (SHORTAGE) → DEDUCT FULL variance from salary
-            // If variance < -20: effective declared > sales (SURPLUS) → ADD FULL variance to salary
-            const varianceStatus = Math.abs(variance) > 20
-              ? (variance > 20 ? 'DEDUCT_FROM_SALARY' : 'ADD_TO_SALARY')
-              : 'NORMAL'
+            const varianceStatus = Math.abs(variance) > 20 ? (variance > 20 ? 'DEDUCT_FROM_SALARY' : 'ADD_TO_SALARY') : 'NORMAL'
 
             breakdowns.push({
               pumperName,
               calculatedSales,
+              meterSales,
+              shopSales,
               declaredAmount,
               declaredCash: cash,
               declaredCardAmounts: cardAmounts,
               declaredCreditAmounts: creditAmounts,
-              declaredCheque: cheque,
-              cheques: cheques,
+              declaredCheque: totalCheque,
+              cheques,
               advanceTaken: advance,
-              expenses: expenses,
-              totalExpenses: totalBankDeposits + totalOtherExpenses, // Total for display
+              expenses,
+              totalExpenses: totalBankDeposits + totalOtherExpenses,
               variance,
               varianceStatus,
               assignments: pumperAssignments
@@ -605,12 +612,11 @@ export default function CloseShiftPage() {
           console.error('Failed to calculate pumper breakdown:', err)
         }
       }
-
       calculatePumperBreakdown()
     } else {
       setPumperBreakdowns([])
     }
-  }, [selectedShift, assignments, selectedStation, pumperDeclaredCash, pumperDeclaredCardAmounts, pumperDeclaredCreditAmounts, pumperDeclaredCheques, pumperAdvances, otherPumperAdvances, pumperExpenses, posSlips, missingSlips])
+  }, [selectedShift, assignments, selectedStation, pumperDeclaredCash, pumperDeclaredCardAmounts, pumperDeclaredCreditAmounts, pumperDeclaredCheques, pumperAdvances, otherPumperAdvances, pumperExpenses, posSlips, missingSlips, shopAssignment, totalShopRevenue])
 
 
 
@@ -638,6 +644,10 @@ export default function CloseShiftPage() {
 
   const handleUpdatePumperCash = (pumperName: string, amount: number) => {
     setPumperDeclaredCash(prev => ({ ...prev, [pumperName]: amount }))
+  }
+
+  const handleUpdateShopClosingStock = (itemId: string, stock: number) => {
+    setShopClosingStocks(prev => ({ ...prev, [itemId]: stock }))
   }
 
 
@@ -715,7 +725,7 @@ export default function CloseShiftPage() {
     const availableAdvanceLimit = ADVANCE_LIMIT - monthlyRental
 
     if (amount > availableAdvanceLimit) {
-      setError(`Advance limit exceeded for ${pumperName}! Monthly loan rental: Rs. ${monthlyRental.toLocaleString()}, Available advance limit: Rs. ${availableAdvanceLimit.toLocaleString()}. Total (rental + advance) cannot exceed Rs. ${ADVANCE_LIMIT.toLocaleString()}.`)
+      setError(`Advance limit exceeded for ${pumperName}! Monthly loan rental: Rs. ${(monthlyRental || 0).toLocaleString()}, Available advance limit: Rs. ${(availableAdvanceLimit || 0).toLocaleString()}. Total (rental + advance) cannot exceed Rs. ${(ADVANCE_LIMIT || 0).toLocaleString()}.`)
       setTimeout(() => setError(''), 7000)
       return
     }
@@ -727,7 +737,7 @@ export default function CloseShiftPage() {
     const totalAdvances = amount + otherAdvancesTotal
 
     if (totalAdvances > currentCash && currentCash > 0) {
-      setError(`Total advances (taken: Rs. ${amount.toLocaleString()} + given: Rs. ${otherAdvancesTotal.toLocaleString()}) cannot exceed cash declared (Rs. ${currentCash.toLocaleString()}). Advances can only come from cash.`)
+      setError(`Total advances (taken: Rs. ${(amount || 0).toLocaleString()} + given: Rs. ${(otherAdvancesTotal || 0).toLocaleString()}) cannot exceed cash declared (Rs. ${(currentCash || 0).toLocaleString()}). Advances can only come from cash.`)
       setTimeout(() => setError(''), 5000)
       return
     }
@@ -763,7 +773,7 @@ export default function CloseShiftPage() {
         const newAmount = value as number
 
         if (newAmount > availableAdvanceLimit) {
-          setError(`Advance limit exceeded for ${receivingPumperName}! Monthly loan rental: Rs. ${monthlyRental.toLocaleString()}, Available advance limit: Rs. ${availableAdvanceLimit.toLocaleString()}. Total (rental + advance) cannot exceed Rs. ${ADVANCE_LIMIT.toLocaleString()}.`)
+          setError(`Advance limit exceeded for ${receivingPumperName}! Monthly loan rental: Rs. ${(monthlyRental || 0).toLocaleString()}, Available advance limit: Rs. ${(availableAdvanceLimit || 0).toLocaleString()}. Total (rental + advance) cannot exceed Rs. ${(ADVANCE_LIMIT || 0).toLocaleString()}.`)
           setTimeout(() => setError(''), 7000)
           return prev // Don't update if validation fails
         }
@@ -775,7 +785,7 @@ export default function CloseShiftPage() {
         const totalAdvances = advanceTaken + otherAdvancesTotal + newAmount
 
         if (totalAdvances > currentCash && currentCash > 0) {
-          setError(`Total advances (taken: Rs. ${advanceTaken.toLocaleString()} + given: Rs. ${(otherAdvancesTotal + newAmount).toLocaleString()}) cannot exceed cash declared (Rs. ${currentCash.toLocaleString()}). Advances can only come from cash.`)
+          setError(`Total advances (taken: Rs. ${(advanceTaken || 0).toLocaleString()} + given: Rs. ${((otherAdvancesTotal || 0) + (newAmount || 0)).toLocaleString()}) cannot exceed cash declared (Rs. ${(currentCash || 0).toLocaleString()}). Advances can only come from cash.`)
           setTimeout(() => setError(''), 5000)
           return prev // Don't update if validation fails
         }
@@ -1185,8 +1195,8 @@ export default function CloseShiftPage() {
       return
     }
 
-    if (!Array.isArray(assignments) || assignments.length === 0) {
-      setError('No assignments found. Cannot close shift without assignments.')
+    if ((!Array.isArray(assignments) || assignments.length === 0) && !shopAssignment) {
+      setError('No assignments found. Cannot close shift without fuel or shop assignments.')
       return
     }
 
@@ -1297,6 +1307,27 @@ export default function CloseShiftPage() {
       )
       const totalCheque = pumperBreakdowns.reduce((sum, b) => sum + b.declaredCheque, 0)
 
+      // 1. Update Shop Assignment closing stocks first if applicable
+      if (shopAssignment) {
+        console.log('Updating shop assignment closing stocks...')
+        const itemsToUpdate = shopAssignment.items.map(item => ({
+          id: item.id,
+          closingStock: shopClosingStocks[item.id] ?? (item.openingStock + item.addedStock)
+        }))
+
+        const shopRes = await fetch(`/api/shop/assignments/${shopAssignment.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: itemsToUpdate })
+        })
+
+        if (!shopRes.ok) {
+          const shopError = await shopRes.json()
+          throw new Error(shopError.error || 'Failed to update shop inventory')
+        }
+        console.log('Shop assignment updated successfully')
+      }
+
       console.log('Closing shift:', selectedShift)
       console.log('Assignments to close:', assignments)
 
@@ -1390,6 +1421,7 @@ export default function CloseShiftPage() {
           cardAmount: totalCard,
           creditAmount: totalCredit,
           chequeAmount: totalCheque,
+          shopRevenue: totalShopRevenue,
           pumperBreakdown: pumperBreakdownData, // Send pumper-wise breakdown
           otherPumperAdvances: Object.entries(otherPumperAdvances).reduce((acc, [pumperName, advances]) => {
             const validAdvances = advances.filter(a => a.pumperId && a.amount > 0)
@@ -1424,17 +1456,13 @@ export default function CloseShiftPage() {
       if (totalCredit > 0) {
         try {
           // Get the first assignment's nozzleId for credit sales
-          if (assignments.length === 0 || !assignments[0].nozzleId) {
-            throw new Error('No assignments found. Cannot create credit sale without a nozzle.')
-          }
+          let nozzleId: string | null = null
+          let fuelType: string | null = null
 
-          const firstAssignment = assignments[0]
-          const nozzleId = firstAssignment.nozzleId
-
-          // Get fuel ID from assignment's nozzle data
-          const fuelId = firstAssignment.nozzle?.tank?.fuelId
-          if (!fuelId) {
-            throw new Error('Cannot determine fuel ID for credit sale')
+          if (assignments.length > 0) {
+            const firstAssignment = assignments[0]
+            nozzleId = firstAssignment.nozzleId as string
+            fuelType = firstAssignment.nozzle?.tank?.fuel?.name || null
           }
 
           // Get shift data to get stationId and startTime
@@ -1442,24 +1470,22 @@ export default function CloseShiftPage() {
           const stationId = shiftData.station?.id || shiftData.stationId
           const shiftStartTime = new Date(shiftData.startTime || validatedEndTime)
 
-          // Fetch current price for the fuel type
-          const fuelType = firstAssignment.nozzle?.tank?.fuel?.name
-          if (!fuelType) {
-            throw new Error('Cannot determine fuel type for credit sale')
-          }
-          const priceRes = await fetch(`/api/prices?stationId=${stationId}&fuelType=${fuelType}&isActive=true`)
           let pricePerLiter = 470 // Default fallback price
-          if (priceRes.ok) {
-            const prices = await priceRes.json()
-            if (Array.isArray(prices) && prices.length > 0) {
-              // Get the most recent active price that's effective before or on shift start
-              const activePrices = prices.filter((p: { isActive: boolean; effectiveDate: string }) =>
-                p.isActive && new Date(p.effectiveDate) <= shiftStartTime
-              ).sort((a: { effectiveDate: string }, b: { effectiveDate: string }) =>
-                new Date(b.effectiveDate).getTime() - new Date(a.effectiveDate).getTime()
-              )
-              if (activePrices.length > 0) {
-                pricePerLiter = activePrices[0].price
+          if (fuelType) {
+            // Fetch current price for the fuel type
+            const priceRes = await fetch(`/api/prices?stationId=${stationId}&fuelType=${fuelType}&isActive=true`)
+            if (priceRes.ok) {
+              const prices = await priceRes.json()
+              if (Array.isArray(prices) && prices.length > 0) {
+                // Get the most recent active price that's effective before or on shift start
+                const activePrices = prices.filter((p: { isActive: boolean; effectiveDate: string }) =>
+                  p.isActive && new Date(p.effectiveDate) <= shiftStartTime
+                ).sort((a: { effectiveDate: string }, b: { effectiveDate: string }) =>
+                  new Date(b.effectiveDate).getTime() - new Date(a.effectiveDate).getTime()
+                )
+                if (activePrices.length > 0) {
+                  pricePerLiter = activePrices[0].price
+                }
               }
             }
           }
@@ -1804,7 +1830,6 @@ export default function CloseShiftPage() {
         const shiftData = shiftResult || await (await fetch(`/api/shifts/${selectedShift}`)).json()
         const stationId = shiftData.station?.id || shiftData.stationId
 
-        // Collect all loan expenses from all pumpers
         const allLoanExpenses: Array<{ expense: PumperExpense; pumperName: string }> = []
         pumperBreakdowns.forEach(breakdown => {
           const loanExpenses = breakdown.expenses.filter(exp => exp.type === 'LOAN_GIVEN' && exp.loanGivenTo && exp.amount > 0)
@@ -1813,19 +1838,13 @@ export default function CloseShiftPage() {
           })
         })
 
-        // Create LoanPumper records for each loan expense
         if (allLoanExpenses.length > 0) {
           for (const { expense } of allLoanExpenses) {
             try {
-              // Get the pumper who received the loan
               const receivingPumper = pumpers.find(p => p.id === expense.loanGivenTo)
-              if (!receivingPumper) {
-                console.warn(`Skipping loan - pumper with ID ${expense.loanGivenTo} not found`)
-                continue
-              }
+              if (!receivingPumper) continue
 
-              // Create LoanPumper record
-              const loanRes = await fetch('/api/loans/pumper', {
+              await fetch('/api/loans/pumper', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1834,27 +1853,37 @@ export default function CloseShiftPage() {
                   amount: expense.amount,
                   monthlyRental: expense.monthlyRental || 0,
                   reason: expense.description || 'Loan given during shift close',
-                  dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
-                  fromSafe: false // This is not from safe, it's from shift expenses
+                  dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                  fromSafe: false
                 })
               })
-
-              if (!loanRes.ok) {
-                const errorData = await loanRes.json().catch(() => ({}))
-                console.warn(`Failed to create loan record for ${receivingPumper.name}:`, errorData)
-              } else {
-                console.log(`✅ Loan record created for ${receivingPumper.name}`)
-              }
             } catch (loanErr) {
               console.error(`Error creating loan record:`, loanErr)
-              // Don't fail the entire shift close if loan creation fails
             }
           }
-          console.log('Loan records created successfully')
         }
       } catch (loanErr) {
         console.error('Error creating loan records:', loanErr)
-        // Don't fail the entire shift close if loan creation fails
+      }
+
+      // Close Shop Assignment if it exists
+      if (shopAssignment) {
+        const shopCloseRes = await fetch(`/api/shop/assignments/${shopAssignment.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: Object.entries(shopClosingStocks).map(([id, closingStock]) => ({
+              id,
+              closingStock
+            }))
+          })
+        })
+
+        if (!shopCloseRes.ok) {
+          const errorData = await shopCloseRes.json().catch(() => ({}))
+          console.warn('Failed to close shop assignment:', errorData)
+          setError(prev => prev ? `${prev}\nFailed to close shop: ${errorData.error}` : `Failed to close shop: ${errorData.error}`)
+        }
       }
 
       setSuccess('Shift closed successfully! Redirecting...')
@@ -2028,6 +2057,9 @@ export default function CloseShiftPage() {
                       if (pumperNames.length > 0) {
                         pumperDisplay = pumperNames.join(', ')
                       }
+                    } else if (shift.shopAssignment) {
+                      // If no nozzle assignments but has shop assignment, show shop pumper
+                      pumperDisplay = `${shift.shopAssignment.pumperName} (Shop)`
                     }
 
                     return (
@@ -2056,7 +2088,7 @@ export default function CloseShiftPage() {
         </div>
       </FormCard>
 
-      {selectedShift && (
+      {selectedShift && assignments.length > 0 && (
         <FormCard title="Meter Readings" description="Enter end meter readings for each assignment">
           {assignments.length > 0 ? (
             <DataTable
@@ -2068,6 +2100,81 @@ export default function CloseShiftPage() {
           ) : (
             <p className="text-sm text-muted-foreground py-4">No assignments found for this shift. Assignments will appear here once added.</p>
           )}
+        </FormCard>
+      )}
+
+      {selectedShift && shopAssignment && (
+        <FormCard title="Shop Sales" description={`Inventory accountability for ${shopAssignment.pumperName}`}>
+          <div className="space-y-4">
+            <DataTable
+              data={shopAssignment.items}
+              columns={[
+                {
+                  key: 'product',
+                  title: 'Product',
+                  render: (_: unknown, row: ShopShiftItem) => (
+                    <div className="flex items-center gap-2">
+                      <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{row.product.name}</span>
+                    </div>
+                  )
+                },
+                {
+                  key: 'openingStock',
+                  title: 'Opening + Added',
+                  render: (_: unknown, row: ShopShiftItem) => (
+                    <span className="font-mono">{(row.openingStock + row.addedStock).toLocaleString()} {row.product.unit}</span>
+                  )
+                },
+                {
+                  key: 'closingStock',
+                  title: 'Closing Stock',
+                  render: (_: unknown, row: ShopShiftItem) => (
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={shopClosingStocks[row.id] ?? ''}
+                      onChange={(e) => handleUpdateShopClosingStock(row.id, parseFloat(e.target.value) || 0)}
+                      className="w-32"
+                    />
+                  )
+                },
+                {
+                  key: 'soldQuantity',
+                  title: 'Sold',
+                  render: (_: unknown, row: ShopShiftItem) => {
+                    const closing = shopClosingStocks[row.id] ?? (row.openingStock + row.addedStock)
+                    const sold = Math.max(0, (row.openingStock + row.addedStock) - closing)
+                    return <span className="font-mono text-orange-600">{sold.toLocaleString()}</span>
+                  }
+                },
+                {
+                  key: 'revenue',
+                  title: 'Revenue',
+                  render: (_: unknown, row: ShopShiftItem) => {
+                    const closing = shopClosingStocks[row.id] ?? (row.openingStock + row.addedStock)
+                    const sold = Math.max(0, (row.openingStock + row.addedStock) - closing)
+                    const revenue = sold * row.product.sellingPrice
+                    return <span className="font-mono font-semibold">Rs. {revenue.toLocaleString()}</span>
+                  }
+                }
+              ]}
+              searchable={false}
+              pagination={false}
+            />
+            <div className="flex justify-end p-4 bg-muted/50 rounded-lg">
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Total Shop Revenue</p>
+                <p className="text-2xl font-bold text-orange-600">
+                  Rs. {shopAssignment.items.reduce((sum, item) => {
+                    const closing = shopClosingStocks[item.id] ?? (item.openingStock + item.addedStock)
+                    const sold = Math.max(0, (item.openingStock + item.addedStock) - closing)
+                    return sum + (sold * item.product.sellingPrice)
+                  }, 0).toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </div>
         </FormCard>
       )}
 
@@ -2128,13 +2235,35 @@ export default function CloseShiftPage() {
                   </div>
 
                   <div className="space-y-4">
-                    {/* Calculated Sales */}
-                    <div>
-                      <Label className="text-sm text-muted-foreground mb-1 block">
-                        Calculated Sales (from meter)
-                      </Label>
-                      <div className="font-mono font-semibold text-lg">
-                        Rs. {breakdown.calculatedSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {/* Calculated Sales Breakdown */}
+                    <div className="bg-muted/30 p-3 rounded-lg border space-y-2">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1 block">Calculated Sales:</Label>
+
+                      {breakdown.meterSales > 0 && (
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <Fuel className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">Meter Sales:</span>
+                          </div>
+                          <span className="font-mono font-medium">Rs. {breakdown.meterSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      )}
+
+                      {breakdown.shopSales > 0 && (
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <ShoppingBag className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">Shop Sales:</span>
+                          </div>
+                          <span className="font-mono font-medium">Rs. {breakdown.shopSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      )}
+
+                      {(breakdown.meterSales > 0 && breakdown.shopSales > 0) && <div className="border-t border-dashed my-1" />}
+
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-semibold">Total Calculated:</span>
+                        <span className="font-mono font-bold text-lg text-primary">Rs. {breakdown.calculatedSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
                     </div>
 
@@ -3710,23 +3839,21 @@ export default function CloseShiftPage() {
                   <div className="text-center p-3 bg-green-500/10 dark:bg-green-500/20 rounded-lg border border-green-500/20">
                     <div className="text-xs text-muted-foreground mb-1">Card</div>
                     <div className="font-mono font-semibold text-green-700 dark:text-green-300">
-                      Rs. {pumperBreakdowns.reduce((sum, b) =>
-                        sum + Object.values(b.declaredCardAmounts).reduce((cardSum, amount) => cardSum + amount, 0), 0
-                      ).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      Rs. {(pumperBreakdowns.reduce((sum, b) =>
+                        sum + Object.values(b.declaredCardAmounts).reduce((cardSum, amount) => cardSum + (amount || 0), 0), 0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
                   <div className="text-center p-3 bg-orange-500/10 dark:bg-orange-500/20 rounded-lg border border-orange-500/20">
                     <div className="text-xs text-muted-foreground mb-1">Credit</div>
                     <div className="font-mono font-semibold text-orange-700 dark:text-orange-300">
-                      Rs. {pumperBreakdowns.reduce((sum, b) =>
-                        sum + Object.values(b.declaredCreditAmounts).reduce((creditSum, amount) => creditSum + amount, 0), 0
-                      ).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      Rs. {(pumperBreakdowns.reduce((sum, b) =>
+                        sum + Object.values(b.declaredCreditAmounts).reduce((creditSum, amount) => creditSum + (amount || 0), 0), 0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
                   <div className="text-center p-3 bg-orange-500/10 dark:bg-orange-500/20 rounded-lg border border-orange-500/20">
                     <div className="text-xs text-muted-foreground mb-1">Cheque</div>
                     <div className="font-mono font-semibold text-orange-700 dark:text-orange-300">
-                      Rs. {pumperBreakdowns.reduce((sum, b) => sum + b.declaredCheque, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      Rs. {(pumperBreakdowns.reduce((sum, b) => sum + (b.declaredCheque || 0), 0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
                 </div>

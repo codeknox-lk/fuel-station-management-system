@@ -20,7 +20,7 @@ import { DateTimePicker } from '@/components/inputs/DateTimePicker'
 import { DataTable } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Clock, Fuel, User, Plus } from 'lucide-react'
+import { Clock, Fuel, User, Plus, ShoppingBag } from 'lucide-react'
 import { getCurrentUserName } from '@/lib/auth'
 import { getNozzleShortName, getNozzleDisplayWithBadge } from '@/lib/nozzleUtils'
 
@@ -170,6 +170,18 @@ export default function OpenShiftPage() {
   const [startTime, setStartTime] = useState<Date>(new Date())
   const [assignments, setAssignments] = useState<Assignment[]>([])
 
+  interface Product {
+    id: string
+    name: string
+    sellingPrice: number
+  }
+
+  // Shop assignment state
+  const [shopPumperId, setShopPumperId] = useState('')
+  const [shopPumperName, setShopPumperName] = useState('')
+  const [shopProducts, setShopProducts] = useState<Product[]>([])
+  const [isShopActive, setIsShopActive] = useState(false)
+
   // Load initial data
   useEffect(() => {
     const loadData = async () => {
@@ -198,12 +210,11 @@ export default function OpenShiftPage() {
 
         setStations(stationsData)
         setShiftTemplates(templatesData)
-      } catch (err) {
-        console.error('Error loading data:', err)
-        setError(`Failed to load data: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      } catch (error: unknown) {
+        console.error('Error loading data:', error)
+        setError(`Failed to load data: ${error instanceof Error ? error.message : 'Unknown error'}`)
       }
     }
-
     loadData()
   }, [])
 
@@ -407,6 +418,12 @@ export default function OpenShiftPage() {
       }
 
       loadStationData()
+
+      // Load shop products for the station
+      fetch(`/api/shop/products?stationId=${selectedStation}&isActive=true`)
+        .then(res => res.json())
+        .then(data => setShopProducts(data || []))
+        .catch(err => console.error('Error loading shop products:', err))
     }
   }, [selectedStation])
 
@@ -515,8 +532,17 @@ export default function OpenShiftPage() {
   }
 
   const handleOpenShift = async () => {
-    if (!selectedTemplate || assignments.length === 0) {
-      setError('Please fill in all required fields and add at least one assignment')
+    // Check if either assignments exist OR shop pumper is selected
+    const hasShopAssignment = shopPumperId && shopPumperId !== 'none'
+    const hasNozzleAssignments = assignments.length > 0
+
+    if (!selectedTemplate) {
+      setError('Please select a shift template')
+      return
+    }
+
+    if (!hasNozzleAssignments && !hasShopAssignment) {
+      setError('Please either add nozzle assignments OR assign a shop pumper to open a shift')
       return
     }
 
@@ -535,18 +561,20 @@ export default function OpenShiftPage() {
       return
     }
 
-    // Validate that all assignments have pumpers selected
-    const incompleteAssignments = assignments.filter(a => !a.pumperId || !a.pumperName)
-    if (incompleteAssignments.length > 0) {
-      setError('Please select a pumper for all nozzle assignments')
-      return
-    }
+    // Validate that all assignments have pumpers selected (only if there are assignments)
+    if (hasNozzleAssignments) {
+      const incompleteAssignments = assignments.filter(a => !a.pumperId || !a.pumperName)
+      if (incompleteAssignments.length > 0) {
+        setError('Please select a pumper for all nozzle assignments')
+        return
+      }
 
-    // Validate that all assignments have valid start meter readings
-    const invalidMeterReadings = assignments.filter(a => !a.startMeterReading || a.startMeterReading < 0)
-    if (invalidMeterReadings.length > 0) {
-      setError('Please enter valid start meter readings for all assignments (must be >= 0)')
-      return
+      // Validate that all assignments have valid start meter readings
+      const invalidMeterReadings = assignments.filter(a => !a.startMeterReading || a.startMeterReading < 0)
+      if (invalidMeterReadings.length > 0) {
+        setError('Please enter valid start meter readings for all assignments (must be >= 0)')
+        return
+      }
     }
 
     setLoading(true)
@@ -652,6 +680,27 @@ export default function OpenShiftPage() {
         } catch (assignError) {
           console.error('Error creating assignment:', assignError)
           throw new Error(`Failed to create assignment: ${assignError instanceof Error ? assignError.message : 'Unknown error'}`)
+        }
+      }
+
+      // Create Shop Assignment if selected
+      if (shopPumperId && shopPumperId !== 'none') {
+        try {
+          const shopAssignRes = await fetch('/api/shop/assignments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              shiftId: shift.id,
+              pumperId: shopPumperId,
+              pumperName: shopPumperName,
+              productIds: shopProducts.map(p => p.id)
+            })
+          })
+          if (!shopAssignRes.ok) {
+            console.error('Failed to create shop assignment')
+          }
+        } catch (err) {
+          console.error('Error creating shop assignment:', err)
         }
       }
 
@@ -831,6 +880,48 @@ export default function OpenShiftPage() {
             />
           </div>
         </div>
+
+        {/* Shop Assignment (Optional) */}
+        <div className="mt-6 pt-6 border-t border-border">
+          <div className="flex items-center gap-2 mb-4">
+            <ShoppingBag className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+            <Label className="text-base font-semibold">Shop Assignment (Optional)</Label>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="shopPumper">Assign Shop Pumper</Label>
+              <Select
+                value={shopPumperId}
+                onValueChange={(val) => {
+                  setShopPumperId(val)
+                  setShopPumperName(pumpers.find(p => p.id === val)?.name || '')
+                  setIsShopActive(!!val)
+                }}
+              >
+                <SelectTrigger id="shopPumper">
+                  <SelectValue placeholder="No pumper assigned (Shop Closed)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No pumper assigned (Shop Closed)</SelectItem>
+                  {pumpers.map((pumper) => (
+                    <SelectItem key={pumper.id} value={pumper.id}>
+                      {pumper.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {isShopActive && (
+              <div className="p-3 bg-muted rounded-md flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Tracking {shopProducts.length} shop products</p>
+                  <p className="text-xs text-muted-foreground italic">Suggested stock will be based on last counts.</p>
+                </div>
+                <Badge className="bg-green-500">Shop Active</Badge>
+              </div>
+            )}
+          </div>
+        </div>
       </FormCard>
 
       {selectedStation ? (
@@ -954,7 +1045,7 @@ export default function OpenShiftPage() {
         </Button>
         <Button
           onClick={handleOpenShift}
-          disabled={loading || !selectedTemplate || assignments.length === 0}
+          disabled={loading || !selectedTemplate || (assignments.length === 0 && (!shopPumperId || shopPumperId === 'none'))}
           className="bg-orange-600 hover:bg-orange-700"
         >
           {loading ? 'Opening...' : 'Open Shift'}

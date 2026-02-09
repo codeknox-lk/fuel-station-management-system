@@ -1,5 +1,79 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
+
+// Define explicit types for complex Prisma inclusions
+type ShiftWithAssignments = Prisma.ShiftGetPayload<{
+  include: {
+    assignments: {
+      include: {
+        nozzle: {
+          include: {
+            pump: true,
+            tank: {
+              include: {
+                fuel: true
+              }
+            }
+          }
+        }
+      }
+    },
+    shopAssignment: {
+      include: {
+        items: {
+          include: { product: true }
+        }
+      }
+    }
+  }
+}>
+
+type ShopSaleWithShift = Prisma.ShopSaleGetPayload<{
+  include: {
+    assignment: {
+      select: {
+        shift: {
+          select: {
+            startTime: true,
+            endTime: true
+          }
+        }
+      }
+    }
+  }
+}>
+
+type PosBatchWithTerminals = Prisma.PosBatchGetPayload<{
+  include: {
+    terminalEntries: {
+      include: {
+        terminal: {
+          include: {
+            bank: true
+          }
+        }
+      }
+    }
+  }
+}>
+
+type CreditSaleWithCustomer = Prisma.CreditSaleGetPayload<{
+  include: {
+    customer: true,
+    shift: true
+  }
+}>
+
+type CreditPaymentWithCustomer = Prisma.CreditPaymentGetPayload<{
+  include: {
+    customer: {
+      include: {
+        creditSales: true
+      }
+    }
+  }
+}>
 
 export async function GET(request: NextRequest) {
   try {
@@ -55,28 +129,21 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get shifts for the day - get shifts that ENDED on this day (or were active during the day)
-    // This ensures we capture all sales that happened on this day, even if shift started previous day
-    let shifts
+    // Get shifts for the day
+    let shifts: ShiftWithAssignments[] = []
     try {
-      // First, get shifts without nested where clause to avoid potential Prisma issues
-      // Get shifts that either:
-      // 1. Ended on this day (endTime within day range) - most common case
-      // 2. Started on this day and are CLOSED (for same-day shifts)
-      const allShifts = await prisma.shift.findMany({
+      const allShiftsRaw = await prisma.shift.findMany({
         where: {
           stationId,
-          status: 'CLOSED', // Only include closed shifts for accurate reporting
+          status: 'CLOSED',
           OR: [
             {
-              // Shifts that ended on this day
               endTime: {
                 gte: startOfDay,
                 lte: endOfDay
               }
             },
             {
-              // Shifts that started on this day (fallback for same-day shifts)
               startTime: {
                 gte: startOfDay,
                 lte: endOfDay
@@ -111,69 +178,96 @@ export async function GET(request: NextRequest) {
                 }
               }
             }
+          },
+          shopAssignment: {
+            include: {
+              items: {
+                include: { product: true }
+              }
+            }
           }
         }
       })
 
+      const allShifts = allShiftsRaw as ShiftWithAssignments[]
+
       // Filter assignments in JavaScript to only include closed ones with end meter reading
-      shifts = allShifts.map(shift => ({
+      shifts = allShifts.map((shift) => ({
         ...shift,
         assignments: shift.assignments.filter(
-          assignment => assignment.status === 'CLOSED' && assignment.endMeterReading !== null && assignment.endMeterReading !== undefined
+          (assignment) => assignment.status === 'CLOSED' && assignment.endMeterReading !== null && assignment.endMeterReading !== undefined
         )
       }))
 
-      const totalAssignments = allShifts.reduce((sum, s) => sum + s.assignments.length, 0)
-      const filteredAssignments = shifts.reduce((sum, s) => sum + s.assignments.length, 0)
+      const totalAssignments = allShifts.reduce((sum, s) => sum + (s.assignments?.length || 0), 0)
+      const filteredAssignments = shifts.reduce((sum, s) => sum + (s.assignments?.length || 0), 0)
       console.log(`[Daily Report API] Found ${shifts.length} shifts for the day (${filteredAssignments} filtered assignments out of ${totalAssignments} total)`)
-
-      // Log details about each shift for debugging
-      shifts.forEach((shift, idx) => {
-        console.log(`[Daily Report API] Shift ${idx + 1}: id=${shift.id}, status=${shift.status}, assignments=${shift.assignments.length}`)
-        shift.assignments.forEach((assignment, aIdx) => {
-          console.log(`  Assignment ${aIdx + 1}: start=${assignment.startMeterReading}, end=${assignment.endMeterReading}, nozzle=${assignment.nozzleId}, tank=${assignment.nozzle?.tank?.id || 'N/A'}, fuel=${assignment.nozzle?.tank?.fuel?.name || 'N/A'}`)
-        })
-      })
     } catch (shiftsError) {
       console.error('[Daily Report API] Error fetching shifts:', shiftsError)
-
-      let errorMessage = 'Unknown error'
-      let errorDetails = 'Unknown error'
-
-      if (shiftsError instanceof Error) {
-        errorMessage = shiftsError.message
-        errorDetails = shiftsError.toString()
-        console.error('[Daily Report API] Error message:', errorMessage)
-        console.error('[Daily Report API] Error details:', errorDetails)
-        if (shiftsError.stack) {
-          console.error('[Daily Report API] Error stack:', shiftsError.stack)
-        }
-      } else if (typeof shiftsError === 'string') {
-        errorMessage = shiftsError
-        errorDetails = shiftsError
-      } else {
-        try {
-          errorDetails = JSON.stringify(shiftsError)
-        } catch {
-          errorDetails = String(shiftsError)
-        }
-      }
-
-      const errorResponse = {
-        error: 'Error fetching shifts',
-        message: errorMessage,
-        details: errorDetails
-      }
-
-      console.error('[Daily Report API] Returning error response:', JSON.stringify(errorResponse, null, 2))
-
-      return NextResponse.json(errorResponse, { status: 500 })
+      const message = shiftsError instanceof Error ? shiftsError.message : String(shiftsError)
+      return NextResponse.json({ error: 'Error fetching shifts', message }, { status: 500 })
     }
+
+    // Get all shop sales for the day to calculate COGS
+    let shopSalesData: ShopSaleWithShift[] = []
+    try {
+      shopSalesData = await prisma.shopSale.findMany({
+        where: {
+          assignment: {
+            shift: {
+              stationId,
+              endTime: {
+                gte: startOfDay,
+                lte: endOfDay
+              }
+            }
+          }
+        },
+        include: {
+          assignment: {
+            select: {
+              shift: {
+                select: {
+                  startTime: true,
+                  endTime: true
+                }
+              }
+            }
+          }
+        }
+      }) as ShopSaleWithShift[]
+    } catch (e) {
+      console.error('[Daily Report API] Error fetching shop sales:', e)
+    }
+
+    // Get all shop wastage for the day
+    let shopWastageData: Prisma.ShopWastageGetPayload<{ include: { product: true } }>[] = []
+    try {
+      shopWastageData = await prisma.shopWastage.findMany({
+        where: {
+          product: {
+            stationId
+          },
+          timestamp: {
+            gte: startOfDay,
+            lte: endOfDay
+          }
+        },
+        include: {
+          product: true
+        }
+      })
+    } catch (e) {
+      console.error('[Daily Report API] Error fetching shop wastage:', e)
+    }
+
+    const shopRevenue = shopSalesData.reduce((sum: number, s) => sum + s.totalAmount, 0)
+    const shopCOGS = shopSalesData.reduce((sum: number, s) => sum + (s.costPrice * s.quantity), 0)
+    const shopWastageLoss = shopWastageData.reduce((sum: number, w) => sum + (w.costPrice * w.quantity), 0)
 
     // Calculate sales by fuel type
     const salesByFuelType = new Map<string, number>()
     let totalSales = 0
-    let totalLiters = 0
 
     console.log(`[Daily Report API] Processing ${shifts.length} shifts for sales calculation`)
 
@@ -183,44 +277,32 @@ export async function GET(request: NextRequest) {
         continue
       }
 
-      console.log(`[Daily Report API] Processing shift ${shift.id} with ${shift.assignments.length} assignments`)
-
       for (const assignment of shift.assignments) {
-        if (!assignment.endMeterReading || !assignment.startMeterReading) {
-          console.log(`[Daily Report API] Assignment ${assignment.id} missing meter readings: start=${assignment.startMeterReading}, end=${assignment.endMeterReading}`)
+        if (assignment.endMeterReading === null || assignment.startMeterReading === null ||
+          assignment.endMeterReading === undefined || assignment.startMeterReading === undefined) {
           continue
         }
 
         if (!assignment.nozzle || !assignment.nozzle.tank) {
-          console.log(`[Daily Report API] Assignment ${assignment.id} missing nozzle or tank: nozzle=${!!assignment.nozzle}, tank=${!!(assignment.nozzle?.tank)}`)
           continue
         }
 
         // Handle meter rollover
         let litersSold = assignment.endMeterReading - assignment.startMeterReading
         if (litersSold < 0) {
-          // Check for meter rollover (meter reset from 99999 to 0)
           const METER_MAX = 99999
           if (assignment.startMeterReading > 90000 && assignment.endMeterReading < 10000) {
             litersSold = (METER_MAX - assignment.startMeterReading) + assignment.endMeterReading
-            console.log(`[Daily Report API] Meter rollover detected for assignment ${assignment.id}: ${assignment.startMeterReading} -> ${assignment.endMeterReading}, calculated liters: ${litersSold}`)
           } else {
-            console.log(`[Daily Report API] Assignment ${assignment.id} has invalid liters sold: ${litersSold} (not a rollover)`)
             continue
           }
         }
 
-        if (litersSold <= 0) {
-          console.log(`[Daily Report API] Assignment ${assignment.id} has invalid liters sold: ${litersSold}`)
-          continue
-        }
+        if (litersSold <= 0) continue
 
         const fuelId = assignment.nozzle.tank.fuelId
         const fuelType = assignment.nozzle.tank.fuel?.code
-        if (!fuelType) {
-          console.log(`[Daily Report API] Assignment ${assignment.id} has no fuel type`)
-          continue
-        }
+        if (!fuelType) continue
 
         try {
           const price = await prisma.price.findFirst({
@@ -234,36 +316,26 @@ export async function GET(request: NextRequest) {
           })
 
           const pricePerLiter = price ? price.price : 0
-          if (pricePerLiter === 0) {
-            console.log(`[Daily Report API] No price found for fuelType ${fuelType} at station ${stationId}`)
-          }
-
           const salesAmount = litersSold * pricePerLiter
 
           const current = salesByFuelType.get(fuelType) || 0
           salesByFuelType.set(fuelType, current + salesAmount)
           totalSales += salesAmount
-          totalLiters += litersSold
-
-          console.log(`[Daily Report API] Assignment ${assignment.id}: ${litersSold}L ${fuelType} @ Rs.${pricePerLiter}/L = Rs.${salesAmount}`)
         } catch (priceError) {
           console.error(`[Daily Report API] Error fetching price for fuelType ${fuelType}:`, priceError)
-          // Continue with price 0
         }
       }
     }
 
-    console.log(`[Daily Report API] Total sales calculated: Rs.${totalSales}, Total liters: ${totalLiters}L`)
-    console.log(`[Daily Report API] Sales by fuel type:`, Object.fromEntries(salesByFuelType))
-
-    // Extract fuel sales (matching frontend expectations)
     const petrolSales = salesByFuelType.get('PETROL_92') || salesByFuelType.get('PETROL_95') || 0
     const dieselSales = salesByFuelType.get('DIESEL') || 0
     const superDieselSales = salesByFuelType.get('SUPER_DIESEL') || 0
     const oilSales = salesByFuelType.get('OIL') || 0
     const totalFuelSales = petrolSales + dieselSales + superDieselSales
+    const shopSales = shopRevenue
+    totalSales += shopSales
 
-    // Calculate tender breakdown from shift declared amounts
+    // Tender breakdown
     let cashAmount = 0
     let cardAmount = 0
     let creditAmount = 0
@@ -285,54 +357,27 @@ export async function GET(request: NextRequest) {
       chequeAmount += declared.cheque || 0
     }
 
-    // Get shift IDs for related queries
     const shiftIds = shifts.map(s => s.id)
 
-    interface PosBatchType {
-      terminalEntries: {
-        terminal: {
-          id: string
-          name: string
-          terminalNumber: string
-          bank?: { name: string } | null
-        }
-        transactionCount: number
-        visaAmount: number
-        masterAmount: number
-        amexAmount: number
-        qrAmount: number
-        dialogTouchAmount?: number
-      }[]
-    }
-    // Get POS batches and terminals
-    let posBatches: PosBatchType[] = []
+    // POS batches
+    let posBatches: PosBatchWithTerminals[] = []
     if (shiftIds.length > 0) {
       try {
-        posBatches = await prisma.posBatch.findMany({
-          where: {
-            shiftId: {
-              in: shiftIds
-            }
-          },
+        posBatches = (await prisma.posBatch.findMany({
+          where: { shiftId: { in: shiftIds } },
           include: {
             terminalEntries: {
               include: {
-                terminal: {
-                  include: {
-                    bank: true
-                  }
-                }
+                terminal: { include: { bank: true } }
               }
             }
           }
-        })
+        })) as PosBatchWithTerminals[]
       } catch (posError) {
         console.error('[Daily Report API] Error fetching POS batches:', posError)
-        // Continue with empty array
       }
     }
 
-    // Build POS terminal breakdown
     interface PosTerminalSummary {
       terminalId: string
       terminalName: string
@@ -350,11 +395,9 @@ export async function GET(request: NextRequest) {
     }
     const posTerminalsMap = new Map<string, PosTerminalSummary>()
     for (const batch of posBatches) {
-      if (!batch.terminalEntries || !Array.isArray(batch.terminalEntries)) continue
-
+      if (!batch.terminalEntries) continue
       for (const entry of batch.terminalEntries) {
-        if (!entry.terminal || !entry.terminal.id) continue
-
+        if (!entry.terminal) continue
         const terminalId = entry.terminal.id
         if (!posTerminalsMap.has(terminalId)) {
           posTerminalsMap.set(terminalId, {
@@ -381,40 +424,21 @@ export async function GET(request: NextRequest) {
         terminal.mastercardAmount += (entry.masterAmount || 0)
         terminal.amexAmount += (entry.amexAmount || 0)
         terminal.qrAmount += (entry.qrAmount || 0)
-        terminal.dialogTouchAmount += 0 // Not in schema, would need to be added if needed
       }
     }
     const posTerminals = Array.from(posTerminalsMap.values())
     const totalPOSAmount = posTerminals.reduce((sum, t) => sum + t.totalAmount, 0)
 
-    interface CreditSaleType {
-      customerId: string
-      amount: number
-      customer: {
-        id: string
-        name: string
-        creditLimit: number
-        currentBalance: number
-      }
-    }
-    // Get credit customers and sales
-    let creditSales: CreditSaleType[] = []
+    // Credit sales
+    let creditSales: CreditSaleWithCustomer[] = []
     if (shiftIds.length > 0) {
       try {
-        creditSales = await prisma.creditSale.findMany({
-          where: {
-            shiftId: {
-              in: shiftIds
-            }
-          },
-          include: {
-            customer: true,
-            shift: true
-          }
-        })
+        creditSales = (await prisma.creditSale.findMany({
+          where: { shiftId: { in: shiftIds } },
+          include: { customer: true, shift: true }
+        })) as CreditSaleWithCustomer[]
       } catch (creditError) {
         console.error('[Daily Report API] Error fetching credit sales:', creditError)
-        // Continue with empty array
       }
     }
 
@@ -426,9 +450,11 @@ export async function GET(request: NextRequest) {
       creditLimit: number
       currentBalance: number
       paymentReceived: number
+      averageTransaction: number
     }
     const creditCustomersMap = new Map<string, CreditCustomerSummary>()
     for (const sale of creditSales) {
+      if (!sale.customer) continue
       const customerId = sale.customerId
       if (!creditCustomersMap.has(customerId)) {
         creditCustomersMap.set(customerId, {
@@ -438,7 +464,8 @@ export async function GET(request: NextRequest) {
           transactionCount: 0,
           creditLimit: sale.customer.creditLimit || 0,
           currentBalance: sale.customer.currentBalance || 0,
-          paymentReceived: 0
+          paymentReceived: 0,
+          averageTransaction: 0
         })
       }
       const customer = creditCustomersMap.get(customerId)!
@@ -446,55 +473,24 @@ export async function GET(request: NextRequest) {
       customer.transactionCount += 1
     }
 
-    interface CreditPaymentType {
-      customerId: string
-      amount: number
-    }
-    // Get credit payments for the day
-    // First get all credit payments for the day, then filter by checking if customer has sales in our shifts
-    let creditPayments: CreditPaymentType[] = []
+    // Credit payments
+    let creditPayments: CreditPaymentWithCustomer[] = []
     try {
-      // Get all credit payments for the day
-      const allCreditPayments = await prisma.creditPayment.findMany({
-        where: {
-          paymentDate: {
-            gte: startOfDay,
-            lte: endOfDay
-          }
-        },
+      creditPayments = (await prisma.creditPayment.findMany({
+        where: { paymentDate: { gte: startOfDay, lte: endOfDay } },
         include: {
           customer: {
             include: {
               creditSales: {
-                where: {
-                  shiftId: {
-                    in: shiftIds.length > 0 ? shiftIds : []
-                  }
-                },
-                take: 1 // We just need to know if there's at least one
+                where: { shiftId: { in: shiftIds.length > 0 ? shiftIds : ["none"] } },
+                take: 1
               }
             }
           }
         }
-      })
-
-      // Filter to only include payments where customer has sales in our shifts
-      if (shiftIds.length > 0) {
-        creditPayments = allCreditPayments.filter(payment =>
-          payment.customer.creditSales && payment.customer.creditSales.length > 0
-        )
-      } else {
-        // If no shifts, no credit payments should be included
-        creditPayments = []
-      }
+      })) as CreditPaymentWithCustomer[]
     } catch (creditPaymentError) {
       console.error('[Daily Report API] Error fetching credit payments:', creditPaymentError)
-      if (creditPaymentError instanceof Error) {
-        console.error('[Daily Report API] Credit payment error details:', creditPaymentError.message)
-        console.error('[Daily Report API] Credit payment error stack:', creditPaymentError.stack)
-      }
-      // Continue with empty array
-      creditPayments = []
     }
 
     for (const payment of creditPayments) {
@@ -510,34 +506,15 @@ export async function GET(request: NextRequest) {
     }))
     const totalCreditSales = creditCustomers.reduce((sum, c) => sum + c.totalSales, 0)
 
-    interface ChequeType {
-      id: string
-      chequeNumber?: string
-      amount: number
-      receivedFrom?: string
-      receivedDate?: Date
-      status: string
-      bank?: { name: string } | null
-      bankBranch?: string
-    }
-    // Get cheques
-    let cheques: ChequeType[] = []
+    // Cheques
+    let cheques: Prisma.ChequeGetPayload<{ include: { bank: true } }>[] = []
     try {
       cheques = await prisma.cheque.findMany({
-        where: {
-          stationId,
-          receivedDate: {
-            gte: startOfDay,
-            lte: endOfDay
-          }
-        },
-        include: {
-          bank: true
-        }
+        where: { stationId, receivedDate: { gte: startOfDay, lte: endOfDay } },
+        include: { bank: true }
       })
     } catch (chequeError) {
       console.error('[Daily Report API] Error fetching cheques:', chequeError)
-      // Continue with empty array
     }
 
     const chequeBreakdown = cheques.map(cheque => ({
@@ -546,83 +523,31 @@ export async function GET(request: NextRequest) {
       amount: cheque.amount,
       receivedFrom: cheque.receivedFrom || 'Unknown',
       bankName: cheque.bank?.name || 'Unknown Bank',
-      bankBranch: cheque.bankBranch || 'Unknown',
+      bankBranch: cheque.bank?.branch || 'Unknown',
       receivedDate: cheque.receivedDate?.toISOString().split('T')[0] || dateStr,
       status: cheque.status
     }))
     const totalChequeAmount = chequeBreakdown.reduce((sum, c) => sum + c.amount, 0)
 
-    // Get expenses
-    let expenses: { amount: number }[] = []
-    try {
-      expenses = await prisma.expense.findMany({
-        where: {
-          stationId,
-          expenseDate: {
-            gte: startOfDay,
-            lte: endOfDay
-          }
-        }
-      })
-    } catch (expenseError) {
-      console.error('[Daily Report API] Error fetching expenses:', expenseError)
-      // Continue with empty array
-    }
-    const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0)
+    // Expenses, Deposits, Loans
+    const expenses = await prisma.expense.findMany({ where: { stationId, expenseDate: { gte: startOfDay, lte: endOfDay } } })
+    const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0) + shopCOGS + shopWastageLoss
+    const deposits = await prisma.deposit.findMany({ where: { stationId, depositDate: { gte: startOfDay, lte: endOfDay } } })
+    const totalDeposits = deposits.reduce((sum, d) => sum + d.amount, 0)
+    const loans = await prisma.loanExternal.findMany({ where: { stationId, createdAt: { gte: startOfDay, lte: endOfDay } } })
+    const totalLoans = loans.reduce((sum, l) => sum + l.amount, 0)
 
-    // Get deposits
-    let deposits: { amount: number }[] = []
-    try {
-      deposits = await prisma.deposit.findMany({
-        where: {
-          stationId,
-          depositDate: {
-            gte: startOfDay,
-            lte: endOfDay
-          }
-        }
-      })
-    } catch (depositError) {
-      console.error('[Daily Report API] Error fetching deposits:', depositError)
-      // Continue with empty array
-    }
-    const totalDeposits = deposits.reduce((sum, deposit) => sum + deposit.amount, 0)
-
-    // Get loans given
-    let loans: { amount: number }[] = []
-    try {
-      loans = await prisma.loanExternal.findMany({
-        where: {
-          stationId,
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay
-          }
-        }
-      })
-    } catch (loanError) {
-      console.error('[Daily Report API] Error fetching loans:', loanError)
-      // Continue with empty array
-    }
-    const totalLoans = loans.reduce((sum, loan) => sum + loan.amount, 0)
-
-    // Calculate variance (total sales vs declared)
     const declaredTotal = cashAmount + cardAmount + creditAmount + chequeAmount
     const totalVariance = totalSales - declaredTotal
     const variancePercentage = totalSales > 0 ? (totalVariance / totalSales) * 100 : 0
+    const missingSlips: { id: string; terminalName: string; amount: number }[] = []
 
-    // Get missing slips (POS batches without all slips) - placeholder for now
-    const missingSlips: unknown[] = []
-
-    // Calculate metrics
     const shiftCount = shifts.length
     const transactionCount = shifts.reduce((sum, shift) => {
       const declared = (shift.declaredAmounts as unknown as DeclaredAmounts) || {}
       return sum + (declared.transactionCount || shift.assignments.length)
     }, 0)
     const averageTransaction = transactionCount > 0 ? totalSales / transactionCount : 0
-
-    // Net profit = Sales - Expenses - Deposits - Loans Given (loans are outflows, not income)
     const netProfit = totalSales - totalExpenses - totalDeposits - totalLoans
 
     const report = {
@@ -634,6 +559,7 @@ export async function GET(request: NextRequest) {
       superDieselSales: Math.round(superDieselSales),
       oilSales: Math.round(oilSales),
       totalFuelSales: Math.round(totalFuelSales),
+      shopSales: Math.round(shopSales),
       totalSales: Math.round(totalSales),
       cashAmount: Math.round(cashAmount),
       cardAmount: Math.round(cardAmount),
@@ -661,60 +587,9 @@ export async function GET(request: NextRequest) {
       chequePercentage: totalSales > 0 ? Math.round((chequeAmount / totalSales) * 100 * 100) / 100 : 0
     }
 
-    console.log('[Daily Report API] Report generated successfully')
-    console.log('[Daily Report API] Final report summary:', {
-      date: report.date,
-      stationName: report.stationName,
-      shiftCount: report.shiftCount,
-      transactionCount: report.transactionCount,
-      totalSales: report.totalSales,
-      totalFuelSales: report.totalFuelSales,
-      petrolSales: report.petrolSales,
-      dieselSales: report.dieselSales,
-      cashAmount: report.cashAmount,
-      cardAmount: report.cardAmount,
-      creditAmount: report.creditAmount,
-      totalExpenses: report.totalExpenses,
-      totalDeposits: report.totalDeposits,
-      netProfit: report.netProfit
-    })
     return NextResponse.json(report)
   } catch (error) {
-    console.error('[Daily Report API] Error generating comprehensive daily report:', error)
-
-    let errorMessage = 'Unknown error'
-    let errorDetails = ''
-    let errorStack: string | undefined = undefined
-
-    if (error instanceof Error) {
-      errorMessage = error.message
-      errorDetails = error.toString()
-      errorStack = error.stack
-      console.error('[Daily Report API] Error message:', errorMessage)
-      console.error('[Daily Report API] Error details:', errorDetails)
-      if (errorStack) {
-        console.error('[Daily Report API] Error stack:', errorStack)
-      }
-    } else if (typeof error === 'string') {
-      errorMessage = error
-      errorDetails = error
-    } else {
-      try {
-        errorDetails = JSON.stringify(error)
-      } catch {
-        errorDetails = String(error)
-      }
-    }
-
-    const errorResponse = {
-      error: 'Internal server error',
-      message: errorMessage,
-      details: errorDetails,
-      ...(process.env.NODE_ENV === 'development' && errorStack ? { stack: errorStack } : {})
-    }
-
-    console.error('[Daily Report API] Returning error response:', JSON.stringify(errorResponse, null, 2))
-
-    return NextResponse.json(errorResponse, { status: 500 })
+    console.error('[Daily Report API] Error:', error)
+    return NextResponse.json({ error: 'Internal server error', message: error instanceof Error ? error.message : String(error) }, { status: 500 })
   }
 }

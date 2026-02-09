@@ -38,6 +38,15 @@ export async function POST(request: NextRequest) {
             }
           }
         },
+        shopAssignment: {
+          include: {
+            items: {
+              include: {
+                product: true
+              }
+            }
+          }
+        },
         template: true,
         station: true
       }
@@ -119,6 +128,19 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        // Calculate shop sales if applicable
+        let shopSalesTotal = 0
+        if (shift.shopAssignment) {
+          shift.shopAssignment.items.forEach(item => {
+            const sold = (item.closingStock !== null)
+              ? Math.max(0, (item.openingStock + item.addedStock) - item.closingStock)
+              : 0
+            shopSalesTotal += (sold * item.product.sellingPrice)
+          })
+        }
+
+        totalSales += shopSalesTotal
+
         // Update shift and tank levels in a transaction
         await prisma.$transaction(async (tx) => {
           // Get test pours for this shift that were returned (should add back to tank)
@@ -158,19 +180,43 @@ export async function POST(request: NextRequest) {
                 totalSales: Math.round(totalSales),
                 totalLiters: Math.round(totalLiters * 100) / 100,
                 averagePricePerLiter: totalLiters > 0 ? Math.round((totalSales / totalLiters) * 100) / 100 : 0,
-                assignmentCount: shift.assignments.length,
-                closedAssignments: shift.assignments.length
+                assignmentCount: shift.assignments.length + (shift.shopAssignment ? 1 : 0),
+                closedAssignments: shift.assignments.length + (shift.shopAssignment ? 1 : 0)
               },
               declaredAmounts: {
                 cash: 0,
                 card: 0,
                 credit: 0,
                 cheque: 0,
+                shopRevenue: Math.round(shopSalesTotal),
                 total: 0,
                 pumperBreakdown: []
               }
             }
           })
+
+          // Update Shop Assignment if applicable
+          if (shift.shopAssignment) {
+            await tx.shopAssignment.update({
+              where: { id: shift.shopAssignment.id },
+              data: {
+                status: 'CLOSED',
+                totalRevenue: Math.round(shopSalesTotal),
+                items: {
+                  updateMany: shift.shopAssignment.items
+                    .filter(item => item.closingStock === null)
+                    .map(item => ({
+                      where: { id: item.id },
+                      data: {
+                        closingStock: item.openingStock + item.addedStock,
+                        soldQuantity: 0,
+                        revenue: 0
+                      }
+                    }))
+                }
+              }
+            })
+          }
 
           // Update tank levels: decrement sales but add back test returns
           for (const [tankId, litersSold] of salesByTank) {

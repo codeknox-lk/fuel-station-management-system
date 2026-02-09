@@ -84,6 +84,8 @@ export interface Expense {
 export interface PumperBreakdown {
     pumperName: string
     calculatedSales: number
+    meterSales?: number
+    shopSales?: number
     declaredCash: number
     declaredCardAmounts?: Record<string, number>
     declaredCardAmountsWithNames?: Record<string, { terminalName: string }>
@@ -142,6 +144,9 @@ export type ShiftWithDetails = Prisma.ShiftGetPayload<{
         }
         _count: {
             select: { assignments: true }
+        },
+        shopAssignment: {
+            select: { id: true, pumperName: true }
         }
     }
 }> & {

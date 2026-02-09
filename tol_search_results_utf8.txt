@@ -1,0 +1,720 @@
+﻿src\app\(app)\banks\page.tsx:156:        description: `Successfully ${isDeposit ? 'added' : 'removed'} Rs. ${parseFloat(manualTransactionForm.amount).toLocaleString()} ${isDeposit ? 'to' : 'from'} ${selectedBankForTransaction.name}`
+src\app\(app)\banks\page.tsx:223:              Rs. {overallBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\banks\page.tsx:234:              Rs. {overallDeposits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\banks\page.tsx:245:              Rs. {overallPendingCheques.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\banks\page.tsx:278:                  Rs. {bank.currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+src\app\(app)\banks\page.tsx:287:                    Rs. {bank.totalDeposits.toLocaleString()}
+src\app\(app)\banks\page.tsx:293:                    Rs. {bank.totalCheques.toLocaleString()}
+src\app\(app)\banks\page.tsx:299:                    Rs. {bank.totalCreditPayments.toLocaleString()}
+src\app\(app)\banks\page.tsx:305:                    Rs. {bank.pendingCheques.toLocaleString()}
+src\app\(app)\banks\page.tsx:374:                Rs. {selectedBankForTransaction?.currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+src\app\(app)\banks\page.tsx:468:                    ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+src\app\(app)\banks\[id]\page.tsx:223:                        Rs. {(value as number).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\banks\[id]\page.tsx:282:                        Rs. {bankAccount.currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\banks\[id]\page.tsx:295:                                Rs. {transactionSummary.totalDeposits.toLocaleString()}
+src\app\(app)\banks\[id]\page.tsx:306:                                Rs. {transactionSummary.clearedCheques.toLocaleString()}
+src\app\(app)\banks\[id]\page.tsx:317:                                Rs. {transactionSummary.pendingCheques.toLocaleString()}
+src\app\(app)\banks\[id]\page.tsx:328:                                Rs. {transactionSummary.bouncedCheques.toLocaleString()}
+src\app\(app)\banks\[id]\page.tsx:339:                                Rs. {transactionSummary.totalCreditPayments.toLocaleString()}
+src\app\(app)\cheques\page.tsx:260:            Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\credit\aging\page.tsx:204:              Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\credit\aging\page.tsx:218:          Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\credit\aging\page.tsx:227:          Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\credit\aging\page.tsx:236:          Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\credit\aging\page.tsx:245:          Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\credit\aging\page.tsx:290:                Rs. {row.lastPaymentAmount.toLocaleString()}
+src\app\(app)\credit\aging\page.tsx:371:                  Rs. {summary.totalOutstanding.toLocaleString()}
+src\app\(app)\credit\aging\page.tsx:385:                  Rs. {summary.currentBucket.toLocaleString()}
+src\app\(app)\credit\aging\page.tsx:399:                  Rs. {summary.bucket31to60.toLocaleString()}
+src\app\(app)\credit\aging\page.tsx:413:                  Rs. {summary.bucket61to90.toLocaleString()}
+src\app\(app)\credit\aging\page.tsx:427:                  Rs. {summary.over90Bucket.toLocaleString()}
+src\app\(app)\credit\customers\page.tsx:164:        description: `Credit sale - ${sale.liters?.toFixed(2) || 'N/A'}L @ Rs. ${sale.price?.toLocaleString() || 'N/A'}/L`,
+src\app\(app)\credit\customers\page.tsx:428:            Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\credit\customers\page.tsx:440:            Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\credit\customers\page.tsx:452:            Rs. {numValue?.toLocaleString() || 0}
+src\app\(app)\credit\customers\page.tsx:497:          <span className="text-sm">{new Date(value as string).toLocaleString()}</span>
+src\app\(app)\credit\customers\page.tsx:544:                <span>Rs. {(value as number).toLocaleString()}</span>
+src\app\(app)\credit\customers\page.tsx:549:                <span>Rs. {(value as number).toLocaleString()}</span>
+src\app\(app)\credit\customers\page.tsx:711:            Rs. {customers.reduce((sum, c) => sum + c.creditLimit, 0).toLocaleString()}
+src\app\(app)\credit\customers\page.tsx:717:            Rs. {customers.reduce((sum, c) => sum + c.currentBalance, 0).toLocaleString()}
+src\app\(app)\credit\customers\page.tsx:795:                  .toLocaleString()}
+src\app\(app)\credit\customers\page.tsx:804:                  .toLocaleString()}
+src\app\(app)\credit\page.tsx:175:          Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\credit\page.tsx:184:          Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\credit\page.tsx:195:            Rs. {numValue?.toLocaleString() || 0}
+src\app\(app)\credit\page.tsx:276:          {row.type === 'SALE' ? '+' : '-'}Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\credit\page.tsx:320:            Rs. {stats.totalCreditLimit.toLocaleString()}
+src\app\(app)\credit\page.tsx:327:            Rs. {stats.totalOutstanding.toLocaleString()}
+src\app\(app)\credit\page.tsx:330:            Available: Rs. {stats.availableCredit.toLocaleString()}
+src\app\(app)\credit\payments\page.tsx:175:        description: `Payment amount exceeds outstanding balance of Rs. ${customer.currentBalance.toLocaleString()}`,
+src\app\(app)\credit\payments\page.tsx:337:            Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\credit\payments\page.tsx:437:                          Outstanding: Rs. {customer.currentBalance.toLocaleString()}
+src\app\(app)\credit\payments\page.tsx:448:                  <div>Credit Limit: Rs. {selectedCustomerData.creditLimit.toLocaleString()}</div>
+src\app\(app)\credit\payments\page.tsx:449:                  <div className="font-semibold">Outstanding Balance: Rs. {selectedCustomerData.currentBalance.toLocaleString()}</div>
+src\app\(app)\credit\payments\page.tsx:668:                      Rs. {selectedPayment.amount.toLocaleString()}
+src\app\(app)\credit\payments\page.tsx:673:                    <p className="font-medium">{new Date(selectedPayment.paymentDate).toLocaleString()}</p>
+src\app\(app)\credit\payments\page.tsx:741:                    <p className="text-sm">{new Date(selectedPayment.createdAt).toLocaleString()}</p>
+src\app\(app)\credit\sales\page.tsx:147:      setError(`Amount exceeds available credit limit of Rs. ${customer.availableCredit.toLocaleString()}`)
+src\app\(app)\credit\sales\page.tsx:265:            Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\credit\sales\page.tsx:366:                            Available: Rs. {customer.availableCredit.toLocaleString()}
+src\app\(app)\credit\sales\page.tsx:377:                    <div>Credit Limit: Rs. {selectedCustomerData.creditLimit.toLocaleString()}</div>
+src\app\(app)\credit\sales\page.tsx:378:                    <div>Current Balance: Rs. {selectedCustomerData.currentBalance.toLocaleString()}</div>
+src\app\(app)\credit\sales\page.tsx:379:                    <div className="font-semibold">Available: Rs. {selectedCustomerData.availableCredit.toLocaleString()}</div>
+src\app\(app)\dashboard\page.tsx:143:            <div className="text-3xl font-bold text-orange-600">Rs. {(stats.todaySales || 0).toLocaleString()}</div>
+src\app\(app)\dashboard\page.tsx:150:                  <>Avg: Rs. {Math.round((stats.todaySales || 0) / (stats.todayTransactions || 1)).toLocaleString()}/sale</>
+src\app\(app)\dashboard\page.tsx:187:            <div className="text-2xl font-bold text-orange-600">Rs. {(stats.safeBalance || 0).toLocaleString()}</div>
+src\app\(app)\dashboard\page.tsx:191:                Credit: Rs. {(stats.creditOutstanding || 0).toLocaleString()}
+src\app\(app)\dashboard\page.tsx:207:                    {(fuel.stock || 0).toLocaleString()} / {(fuel.capacity || 0).toLocaleString()} L
+src\app\(app)\dashboard\page.tsx:243:                  <p className="text-xs text-muted-foreground">{new Date(alert.createdAt).toLocaleString()}</p>
+src\app\(app)\deposits\page.tsx:236:            Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\expenses\page.tsx:248:            Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\loans\page.tsx:305:              Rs. {totalActivePumper.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\loans\page.tsx:315:              Rs. {totalMonthlyRental.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\loans\page.tsx:326:              Rs. {totalActiveExternal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\loans\page.tsx:402:                              Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\loans\page.tsx:405:                              Rs. {paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\loans\page.tsx:408:                              Rs. {remainingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\loans\page.tsx:411:                              Rs. {(loan.monthlyRental || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\loans\page.tsx:479:                            Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\loans\page.tsx:482:                            Rs. {(loan.monthlyRental || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\loans\page.tsx:546:                            Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\loans\page.tsx:606:                            Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\loans\page.tsx:671:                              Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\loans\page.tsx:674:                              Rs. {(loan.paidAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\loans\page.tsx:677:                              Rs. {balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\loans\page.tsx:680:                              Rs. {(loan.monthlyRental || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\loans\page.tsx:742:                            Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\loans\page.tsx:797:                    <TableCell>{new Date(payment.timestamp).toLocaleString()}</TableCell>
+src\app\(app)\loans\page.tsx:799:                      Rs. {payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\loans\page.tsx:804:                      Rs. {payment.balanceAfter.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\loans\page.tsx:828:                  <div>Loan Amount: Rs. {selectedLoanForPayment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\loans\page.tsx:831:                      <div>Paid: Rs. {selectedLoanForPayment.paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\loans\page.tsx:832:                      <div>Remaining: Rs. {(selectedLoanForPayment.amount - (selectedLoanForPayment.paidAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\loans\page.tsx:847:                    Remaining: Rs. {(selectedLoanForPayment.amount - (selectedLoanForPayment.paidAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\loans\page.tsx:852:                    Full amount: Rs. {selectedLoanForPayment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\owner-dashboard\page.tsx:335:          Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\owner-dashboard\page.tsx:344:          Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\owner-dashboard\page.tsx:363:            {(value as number) >= 0 ? '+' : ''}Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\owner-dashboard\page.tsx:435:            Rs. {(value as number).toLocaleString()}
+src\app\(app)\owner-dashboard\page.tsx:514:                  Rs. {combinedStats.totalRevenue.toLocaleString()}
+src\app\(app)\owner-dashboard\page.tsx:526:                  Rs. {combinedStats.totalProfit.toLocaleString()}
+src\app\(app)\owner-dashboard\page.tsx:540:                  Rs. {combinedStats.totalVariance.toLocaleString()}
+src\app\(app)\owner-dashboard\page.tsx:611:                      <Tooltip formatter={(value: number) => [`Rs. ${value.toLocaleString()}`, '']} />
+src\app\(app)\pos\batches\page.tsx:258:            {(value as number)?.toLocaleString() || '0'}
+src\app\(app)\pos\batches\page.tsx:270:            {(value as number)?.toLocaleString() || '0'}
+src\app\(app)\pos\batches\page.tsx:282:            {(value as number)?.toLocaleString() || '0'}
+src\app\(app)\pos\batches\page.tsx:294:            {(value as number)?.toLocaleString() || '0'}
+src\app\(app)\pos\batches\page.tsx:411:                <strong>Total Amount: Rs. {totalAmount.toLocaleString()}</strong>
+src\app\(app)\pos\batches\page.tsx:469:                  <span className="font-medium">Put batch total (Rs. {totalAmount.toLocaleString()}) into Safe</span>
+src\app\(app)\pos\missing-slips\page.tsx:184:            {new Date(value as string).toLocaleString()}
+src\app\(app)\pos\missing-slips\page.tsx:234:            Rs. {(value as number)?.toLocaleString() || '0'}
+src\app\(app)\pos\missing-slips\page.tsx:246:            {new Date(value as string).toLocaleString()}
+src\app\(app)\pos\missing-slips\page.tsx:325:                          Rs. {batch.totalAmount.toLocaleString()}
+src\app\(app)\pos\page.tsx:149:          description: `Missing slip reported - Rs. ${slip.amount.toLocaleString()}`,
+src\app\(app)\pos\page.tsx:246:          <span className="">{(value as number)?.toLocaleString() || 0}</span>
+src\app\(app)\pos\page.tsx:257:            Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\pos\page.tsx:281:            {new Date(value as string).toLocaleString()}
+src\app\(app)\pos\page.tsx:309:            Rs. {(value as number).toLocaleString()}
+src\app\(app)\pos\page.tsx:348:            {stats.totalTransactions.toLocaleString()}
+src\app\(app)\pos\page.tsx:354:            Rs. {stats.totalAmount.toLocaleString()}
+src\app\(app)\pos\page.tsx:357:            Avg: Rs. {stats.averageTransaction.toLocaleString()}
+src\app\(app)\reports\credit\page.tsx:340:                  Rs. {reportData.summary.totalOutstanding.toLocaleString()}
+src\app\(app)\reports\credit\page.tsx:343:                  Avg: Rs. {reportData.summary.averageBalance.toLocaleString()}
+src\app\(app)\reports\credit\page.tsx:355:                  Rs. {reportData.summary.totalCreditSales.toLocaleString()}
+src\app\(app)\reports\credit\page.tsx:397:                    formatter={(value: number) => `Rs. ${value.toLocaleString()}`}
+src\app\(app)\reports\credit\page.tsx:443:                    <Tooltip formatter={(value: number) => `Rs. ${value.toLocaleString()}`} />
+src\app\(app)\reports\credit\page.tsx:463:                    <p className="font-semibold">Rs. {data.amount.toLocaleString()}</p>
+src\app\(app)\reports\credit\page.tsx:498:                          Rs. {customer.currentBalance.toLocaleString()}
+src\app\(app)\reports\credit\page.tsx:502:                        Rs. {customer.creditLimit.toLocaleString()}
+src\app\(app)\reports\credit\page.tsx:512:                      <td className="text-right p-3">Rs. {customer.salesInPeriod.toLocaleString()}</td>
+src\app\(app)\reports\credit\page.tsx:513:                      <td className="text-right p-3">Rs. {customer.paymentsInPeriod.toLocaleString()}</td>
+src\app\(app)\reports\daily\page.tsx:355:          Rs. {(value as number || 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:364:          Rs. {(value as number || 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:373:          Rs. {(value as number || 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:382:          Rs. {(value as number || 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:391:          Rs. {(value as number || 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:400:          Rs. {(value as number || 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:442:          Rs. {(value as number || 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:451:          Rs. {(value as number || 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:460:          Rs. {(value as number || 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:472:              Rs. {(value as number || 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:486:          Rs. {(value as number || 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:513:          Rs. {(value as number || 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:573:          Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\reports\daily\page.tsx:724:                  Rs. {(dailyReport.totalSales || 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:756:                  Rs. {Math.round(dailyReport.averageTransaction || 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:772:                  Rs. {(dailyReport.netProfit || 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:795:                    Rs. {(dailyReport.petrolSales || 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:804:                    Rs. {dailyReport.dieselSales.toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:813:                    Rs. {dailyReport.superDieselSales.toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:822:                    Rs. {dailyReport.oilSales.toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:834:                    Rs. {dailyReport.shopSales.toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:843:                    Rs. {dailyReport.totalFuelSales.toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:870:                    Rs. {dailyReport.cashAmount.toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:882:                    Rs. {dailyReport.cardAmount.toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:894:                    Rs. {dailyReport.creditAmount.toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:906:                    Rs. {dailyReport.chequeAmount.toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:942:                      Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.visaAmount, 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:948:                      Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.mastercardAmount, 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:954:                      Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.amexAmount, 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:960:                      Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.qrAmount, 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:966:                      Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.dialogTouchAmount, 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:972:                      Rs. {dailyReport.totalPOSAmount.toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:1006:                      Rs. {dailyReport.totalCreditSales.toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:1012:                      Rs. {dailyReport.creditCustomers.reduce((sum, c) => sum + c.paymentReceived, 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:1024:                      Rs. {dailyReport.creditCustomers.reduce((sum, c) => sum + c.currentBalance, 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:1058:                      Rs. {dailyReport.totalChequeAmount.toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:1064:                      Rs. {dailyReport.cheques.filter(c => c.status === 'CLEARED').reduce((sum, c) => sum + c.amount, 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:1070:                      Rs. {dailyReport.cheques.filter(c => c.status === 'PENDING').reduce((sum, c) => sum + c.amount, 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:1076:                      Rs. {dailyReport.cheques.filter(c => c.status === 'BOUNCED').reduce((sum, c) => sum + c.amount, 0).toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:1095:                  Rs. {dailyReport.totalExpenses.toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:1111:                  Rs. {dailyReport.totalDeposits.toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:1127:                  Rs. {dailyReport.totalLoans.toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:1150:                    {dailyReport.totalVariance >= 0 ? '+' : ''}Rs. {dailyReport.totalVariance.toLocaleString()}
+src\app\(app)\reports\daily\page.tsx:1222:                        Rs. {(dailyReport.missingSlips.reduce((sum, s) => sum + (s.amount || 0), 0) || 0).toLocaleString()}
+src\app\(app)\reports\daily-sales\page.tsx:346:                  Rs. {(salesData.totalsByFuelType?.[fuelName] || 0).toLocaleString()}
+src\app\(app)\reports\daily-sales\page.tsx:363:                Rs. {salesData.dailySales.reduce((sum, day) => sum + day.totalSales, 0).toLocaleString()}
+src\app\(app)\reports\daily-sales\page.tsx:396:                  formatter={(value: number) => `Rs. ${value.toLocaleString()}`}
+src\app\(app)\reports\daily-sales\page.tsx:457:                        Rs. {(day.sales?.[fuelName] || 0).toLocaleString()}
+src\app\(app)\reports\daily-sales\page.tsx:461:                      Rs. {day.totalSales.toLocaleString()}
+src\app\(app)\reports\daily-sales\page.tsx:469:                      Rs. {(salesData.totalsByFuelType?.[fuelName] || 0).toLocaleString()}
+src\app\(app)\reports\daily-sales\page.tsx:473:                    Rs. {salesData.dailySales.reduce((sum, day) => sum + day.totalSales, 0).toLocaleString()}
+src\app\(app)\reports\daily-sales-liters\page.tsx:349:                  {(salesData.totalLitersByFuelType[fuelType] || 0).toLocaleString()} L
+src\app\(app)\reports\daily-sales-liters\page.tsx:366:                {salesData.dailySales.reduce((sum, day) => sum + day.totalLiters, 0).toLocaleString()} L
+src\app\(app)\reports\daily-sales-liters\page.tsx:399:                  formatter={(value: number) => `${value.toLocaleString()} L`}
+src\app\(app)\reports\daily-sales-liters\page.tsx:460:                        {(day.liters[fuelType] || 0).toLocaleString()} L
+src\app\(app)\reports\daily-sales-liters\page.tsx:464:                      {day.totalLiters.toLocaleString()} L
+src\app\(app)\reports\daily-sales-liters\page.tsx:472:                      {(salesData.totalLitersByFuelType[fuelType] || 0).toLocaleString()} L
+src\app\(app)\reports\daily-sales-liters\page.tsx:476:                    {salesData.dailySales.reduce((sum, day) => sum + day.totalLiters, 0).toLocaleString()} L
+src\app\(app)\reports\pos-sales\page.tsx:338:                  Rs. {reportData.summary.totalSales.toLocaleString()}
+src\app\(app)\reports\pos-sales\page.tsx:350:                  {reportData.summary.totalTransactions.toLocaleString()}
+src\app\(app)\reports\pos-sales\page.tsx:414:                    formatter={(value: number) => `Rs. ${value.toLocaleString()}`}
+src\app\(app)\reports\pos-sales\page.tsx:494:                              Rs. {(bankDay?.amount || 0).toLocaleString()}
+src\app\(app)\reports\pos-sales\page.tsx:503:                              Rs. {(terminalDay?.amount || 0).toLocaleString()}
+src\app\(app)\reports\pos-sales\page.tsx:509:                        Rs. {day.totalAmount.toLocaleString()}
+src\app\(app)\reports\pos-sales\page.tsx:550:                        <td className="text-right p-3 text-sm text-orange-600">Rs. {terminal.visa.toLocaleString()}</td>
+src\app\(app)\reports\pos-sales\page.tsx:551:                        <td className="text-right p-3 text-sm text-orange-600">Rs. {terminal.master.toLocaleString()}</td>
+src\app\(app)\reports\pos-sales\page.tsx:552:                        <td className="text-right p-3 text-sm text-green-600">Rs. {terminal.amex.toLocaleString()}</td>
+src\app\(app)\reports\pos-sales\page.tsx:553:                        <td className="text-right p-3 text-sm text-orange-600">Rs. {terminal.qr.toLocaleString()}</td>
+src\app\(app)\reports\pos-sales\page.tsx:554:                        <td className="text-right p-3 text-sm text-red-600">Rs. {terminal.dialogTouch.toLocaleString()}</td>
+src\app\(app)\reports\pos-sales\page.tsx:556:                          Rs. {terminal.totalAmount.toLocaleString()}
+src\app\(app)\reports\pos-sales\page.tsx:587:                      <td className="text-right p-3 text-sm">Rs. {bank.visa.toLocaleString()}</td>
+src\app\(app)\reports\pos-sales\page.tsx:588:                      <td className="text-right p-3 text-sm">Rs. {bank.master.toLocaleString()}</td>
+src\app\(app)\reports\pos-sales\page.tsx:589:                      <td className="text-right p-3 text-sm">Rs. {bank.amex.toLocaleString()}</td>
+src\app\(app)\reports\pos-sales\page.tsx:590:                      <td className="text-right p-3 text-sm">Rs. {bank.qr.toLocaleString()}</td>
+src\app\(app)\reports\pos-sales\page.tsx:591:                      <td className="text-right p-3 text-sm">Rs. {bank.dialogTouch.toLocaleString()}</td>
+src\app\(app)\reports\pos-sales\page.tsx:593:                        Rs. {bank.totalAmount.toLocaleString()}
+src\app\(app)\reports\pos-sales\page.tsx:622:                        <td className="text-right p-3">Rs. {slip.amount.toLocaleString()}</td>
+src\app\(app)\reports\pos-sales\page.tsx:623:                        <td className="p-3">{new Date(slip.timestamp).toLocaleString()}</td>
+src\app\(app)\reports\profit\page.tsx:290:          Rs. {Math.floor(value as number).toLocaleString()}
+src\app\(app)\reports\profit\page.tsx:328:          Rs. {Math.floor(value as number).toLocaleString()}
+src\app\(app)\reports\profit\page.tsx:460:                  Rs. {profitReport.totalRevenue.toLocaleString()}
+src\app\(app)\reports\profit\page.tsx:463:                  Daily avg: Rs. {Math.floor(profitReport.totalRevenue / profitReport.dailyData.length).toLocaleString()}
+src\app\(app)\reports\profit\page.tsx:474:                  Rs. {profitReport.totalExpenses.toLocaleString()}
+src\app\(app)\reports\profit\page.tsx:488:                  Rs. {profitReport.totalProfit.toLocaleString()}
+src\app\(app)\reports\profit\page.tsx:538:                        `Rs. ${value.toLocaleString()}`,
+src\app\(app)\reports\profit\page.tsx:587:                    <span className="text-green-600 dark:text-green-400">Rs. {profitReport.bestDay.revenue.toLocaleString()}</span>
+src\app\(app)\reports\profit\page.tsx:591:                    <span className="text-red-600 dark:text-red-400">Rs. {profitReport.bestDay.expenses.toLocaleString()}</span>
+src\app\(app)\reports\profit\page.tsx:595:                    <span className="font-bold text-orange-600 dark:text-orange-400">Rs. {profitReport.bestDay.profit.toLocaleString()}</span>
+src\app\(app)\reports\profit\page.tsx:617:                    <span className="text-green-600 dark:text-green-400">Rs. {profitReport.worstDay.revenue.toLocaleString()}</span>
+src\app\(app)\reports\profit\page.tsx:621:                    <span className="text-red-600 dark:text-red-400">Rs. {profitReport.worstDay.expenses.toLocaleString()}</span>
+src\app\(app)\reports\profit\page.tsx:625:                    <span className="font-bold text-orange-600 dark:text-orange-400">Rs. {profitReport.worstDay.profit.toLocaleString()}</span>
+src\app\(app)\reports\pumper-details\page.tsx:387:                  Rs. {reportData.summary.totalSales.toLocaleString()}
+src\app\(app)\reports\pumper-details\page.tsx:390:                  {reportData.summary.totalLiters.toLocaleString()} L sold
+src\app\(app)\reports\pumper-details\page.tsx:422:                  Rs. {reportData.summary.totalLoanBalance.toLocaleString()} balance
+src\app\(app)\reports\pumper-details\page.tsx:450:                <p className="font-medium">Rs. {selectedPumperData.baseSalary.toLocaleString()}</p>
+src\app\(app)\reports\pumper-details\page.tsx:454:                <p className="font-medium">Rs. {selectedPumperData.holidayAllowance.toLocaleString()}</p>
+src\app\(app)\reports\pumper-details\page.tsx:458:                <p className="font-medium text-orange-600">Rs. {selectedPumperData.advanceLimit.toLocaleString()}</p>
+src\app\(app)\reports\pumper-details\page.tsx:474:                <p className="text-3xl font-bold text-green-600">Rs. {selectedPumperData.totalSales.toLocaleString()}</p>
+src\app\(app)\reports\pumper-details\page.tsx:476:                  Avg: Rs. {selectedPumperData.averageSalesPerShift.toLocaleString()}/shift
+src\app\(app)\reports\pumper-details\page.tsx:483:                <p className="text-3xl font-bold text-orange-600">{selectedPumperData.totalLiters.toLocaleString()} L</p>
+src\app\(app)\reports\pumper-details\page.tsx:485:                  Avg: {selectedPumperData.averageLitersPerShift.toLocaleString()} L/shift
+src\app\(app)\reports\pumper-details\page.tsx:512:                    <p className="text-2xl font-bold">{fuel.liters.toLocaleString()} L</p>
+src\app\(app)\reports\pumper-details\page.tsx:526:                  <p className="text-2xl font-bold text-green-600">Rs. {selectedPumperData.totalSalaryPaid.toLocaleString()}</p>
+src\app\(app)\reports\pumper-details\page.tsx:533:                  <p className="text-2xl font-bold text-orange-600">Rs. {selectedPumperData.totalAdvances.toLocaleString()}</p>
+src\app\(app)\reports\pumper-details\page.tsx:540:                  <p className="text-2xl font-bold text-red-600">Rs. {selectedPumperData.totalLoanBalance.toLocaleString()}</p>
+src\app\(app)\reports\pumper-details\page.tsx:567:                        <td className="text-right p-3">Rs. {loan.amount.toLocaleString()}</td>
+src\app\(app)\reports\pumper-details\page.tsx:569:                          Rs. {loan.balance.toLocaleString()}
+src\app\(app)\reports\pumper-details\page.tsx:571:                        <td className="text-right p-3">Rs. {(loan.monthlyRental || 0).toLocaleString()}</td>
+src\app\(app)\reports\pumper-details\page.tsx:601:                        <td className="text-right p-3">Rs. {payment.baseSalary.toLocaleString()}</td>
+src\app\(app)\reports\pumper-details\page.tsx:603:                          +Rs. {payment.varianceAdd.toLocaleString()}
+src\app\(app)\reports\pumper-details\page.tsx:606:                          -Rs. {payment.varianceDeduct.toLocaleString()}
+src\app\(app)\reports\pumper-details\page.tsx:609:                          -Rs. {payment.advances.toLocaleString()}
+src\app\(app)\reports\pumper-details\page.tsx:612:                          -Rs. {payment.loans.toLocaleString()}
+src\app\(app)\reports\pumper-details\page.tsx:615:                          Rs. {payment.netSalary.toLocaleString()}
+src\app\(app)\reports\pumper-details\page.tsx:655:                    <td className="text-right p-3">Rs. {pumper.totalSales.toLocaleString()}</td>
+src\app\(app)\reports\pumper-details\page.tsx:656:                    <td className="text-right p-3">{pumper.totalLiters.toLocaleString()} L</td>
+src\app\(app)\reports\pumper-details\page.tsx:670:                          <p className="text-red-600">Rs. {pumper.totalLoanBalance.toLocaleString()}</p>
+src\app\(app)\reports\pumper-details\page.tsx:675:                    <td className="text-right p-3">Rs. {pumper.totalSalaryPaid.toLocaleString()}</td>
+src\app\(app)\reports\pumper-variance\page.tsx:300:          Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\reports\pumper-variance\page.tsx:309:          Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\reports\pumper-variance\page.tsx:318:          Rs. {(value as number)?.toLocaleString() || 0}
+src\app\(app)\reports\pumper-variance\page.tsx:504:                  Rs. {totalVarianceAmount.toLocaleString()}
+src\app\(app)\reports\pumper-variance\page.tsx:516:                  Rs. {totalDueAmount.toLocaleString()}
+src\app\(app)\reports\pumper-variance\page.tsx:597:                Total amount due from pumpers is Rs. {totalDueAmount.toLocaleString()}.
+src\app\(app)\reports\shift\page.tsx:464:            Rs. {numValue.toLocaleString()}
+src\app\(app)\reports\shift\page.tsx:477:              {numValue >= 0 ? '+' : ''}Rs. {numValue.toLocaleString()}
+src\app\(app)\reports\shift\page.tsx:598:                    {new Date(shiftReport.shift.startTime).toLocaleString()}
+src\app\(app)\reports\shift\page.tsx:604:                    {new Date(shiftReport.shift.endTime).toLocaleString()}
+src\app\(app)\reports\shift\page.tsx:625:                  Rs. {shiftReport.tenderSummary.totalCalculated.toLocaleString()}
+src\app\(app)\reports\shift\page.tsx:640:                  Rs. {shiftReport.tenderSummary.shopSales.toLocaleString()}
+src\app\(app)\reports\shift\page.tsx:654:                  Rs. {shiftReport.tenderSummary.totalDeclared.toLocaleString()}
+src\app\(app)\reports\shift\page.tsx:668:                  {shiftReport.totalVariance >= 0 ? '+' : ''}Rs. {shiftReport.totalVariance.toLocaleString()}
+src\app\(app)\reports\shift\page.tsx:718:                    <span className="font-semibold">Rs. {shiftReport.tenderSummary.cashTotal.toLocaleString()}</span>
+src\app\(app)\reports\shift\page.tsx:727:                      <span className="font-semibold">Rs. {amount.toLocaleString()}</span>
+src\app\(app)\reports\shift\page.tsx:733:                      Rs. {Object.values(shiftReport.tenderSummary.cardTotals).reduce((sum, amount) => sum + amount, 0).toLocaleString()}
+src\app\(app)\reports\shift\page.tsx:742:                    <span className="font-semibold">Rs. {shiftReport.tenderSummary.creditTotal.toLocaleString()}</span>
+src\app\(app)\reports\shift\page.tsx:746:                    <span className="font-semibold">Rs. {shiftReport.tenderSummary.chequeTotal.toLocaleString()}</span>
+src\app\(app)\reports\shift\page.tsx:756:                      Rs. {shiftReport.tenderSummary.totalDeclared.toLocaleString()}
+src\app\(app)\reports\shift\page.tsx:762:                      Rs. {shiftReport.tenderSummary.totalCalculated.toLocaleString()}
+src\app\(app)\reports\shift\page.tsx:768:                      {shiftReport.tenderSummary.variance >= 0 ? '+' : ''}Rs. {shiftReport.tenderSummary.variance.toLocaleString()}
+src\app\(app)\reports\shift\page.tsx:804:                        return <span className="font-semibold text-green-600">Rs. {numValue.toLocaleString()}</span>
+src\app\(app)\reports\shift\page.tsx:815:                      Rs. {shiftReport.shopAssignment.totalRevenue.toLocaleString()}
+src\app\(app)\reports\shop-profit\page.tsx:135:            render: (val) => `Rs. ${(val as number).toLocaleString()}`
+src\app\(app)\reports\shop-profit\page.tsx:140:            render: (val) => `Rs. ${(val as number).toLocaleString()}`
+src\app\(app)\reports\shop-profit\page.tsx:147:                    Rs. {(val as number).toLocaleString()}
+src\app\(app)\reports\shop-profit\page.tsx:226:                                <div className="text-2xl font-bold">Rs. {report.summary.totalRevenue.toLocaleString()}</div>
+src\app\(app)\reports\shop-profit\page.tsx:239:                                <div className="text-2xl font-bold text-green-600">Rs. {report.summary.totalProfit.toLocaleString()}</div>
+src\app\(app)\reports\shop-profit\page.tsx:251:                                <div className="text-2xl font-bold text-red-600">Rs. {report.summary.totalWastageLoss.toLocaleString()}</div>
+src\app\(app)\reports\shop-profit\page.tsx:263:                                <div className="text-2xl font-bold text-orange-800 dark:text-orange-300">Rs. {report.summary.inventoryValuation.toLocaleString()}</div>
+src\app\(app)\reports\shop-profit\page.tsx:292:                                        <Tooltip formatter={(value) => `Rs. ${Number(value).toLocaleString()}`} />
+src\app\(app)\reports\shop-profit\page.tsx:309:                                        <Tooltip formatter={(value) => `Rs. ${Number(value).toLocaleString()}`} />
+src\app\(app)\reports\station-comparison\page.tsx:131:    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 34)
+src\app\(app)\reports\station-comparison\page.tsx:147:    doc.text(`Total Sales: Rs. ${totals.totalSales.toLocaleString()}`, 14, 56)
+src\app\(app)\reports\station-comparison\page.tsx:148:    doc.text(`Total Volume: ${totals.totalVolume.toLocaleString()} L`, 14, 62)
+src\app\(app)\reports\station-comparison\page.tsx:149:    doc.text(`Total Profit: Rs. ${totals.totalProfit.toLocaleString()}`, 14, 68)
+src\app\(app)\reports\station-comparison\page.tsx:154:      `Rs. ${station.totalSales.toLocaleString()}`,
+src\app\(app)\reports\station-comparison\page.tsx:155:      `${station.totalVolume.toLocaleString()} L`,
+src\app\(app)\reports\station-comparison\page.tsx:156:      `Rs. ${station.totalProfit.toLocaleString()}`,
+src\app\(app)\reports\station-comparison\page.tsx:157:      `Rs. ${station.avgDailySales.toLocaleString()}`,
+src\app\(app)\reports\station-comparison\page.tsx:166:      `Rs. ${totals.totalSales.toLocaleString()}`,
+src\app\(app)\reports\station-comparison\page.tsx:167:      `${totals.totalVolume.toLocaleString()} L`,
+src\app\(app)\reports\station-comparison\page.tsx:168:      `Rs. ${totals.totalProfit.toLocaleString()}`,
+src\app\(app)\reports\station-comparison\page.tsx:169:      `Rs. ${totals.avgDailySales.toLocaleString()}`,
+src\app\(app)\reports\station-comparison\page.tsx:211:      [`Generated: ${new Date().toLocaleString()}`],
+src\app\(app)\reports\station-comparison\page.tsx:215:      [`Total Sales: Rs. ${totals.totalSales.toLocaleString()}`],
+src\app\(app)\reports\station-comparison\page.tsx:216:      [`Total Volume: ${totals.totalVolume.toLocaleString()} L`],
+src\app\(app)\reports\station-comparison\page.tsx:217:      [`Total Profit: Rs. ${totals.totalProfit.toLocaleString()}`],
+src\app\(app)\reports\station-comparison\page.tsx:413:                <p className="text-2xl font-bold">Rs. {totalAcrossStations.sales.toLocaleString()}</p>
+src\app\(app)\reports\station-comparison\page.tsx:425:                <p className="text-2xl font-bold">{totalAcrossStations.volume.toLocaleString()} L</p>
+src\app\(app)\reports\station-comparison\page.tsx:437:                <p className="text-2xl font-bold">Rs. {totalAcrossStations.profit.toLocaleString()}</p>
+src\app\(app)\reports\station-comparison\page.tsx:459:                  Total Sales: Rs. {bestPerformer.totalSales.toLocaleString()}
+src\app\(app)\reports\station-comparison\page.tsx:507:                      Rs. {station.totalSales.toLocaleString()}
+src\app\(app)\reports\station-comparison\page.tsx:510:                      {station.totalVolume.toLocaleString()}
+src\app\(app)\reports\station-comparison\page.tsx:513:                      Rs. {station.totalProfit.toLocaleString()}
+src\app\(app)\reports\station-comparison\page.tsx:516:                      Rs. {station.avgDailySales.toLocaleString()}
+src\app\(app)\reports\station-comparison\page.tsx:541:                    Rs. {totalAcrossStations.sales.toLocaleString()}
+src\app\(app)\reports\station-comparison\page.tsx:544:                    {totalAcrossStations.volume.toLocaleString()}
+src\app\(app)\reports\station-comparison\page.tsx:547:                    Rs. {totalAcrossStations.profit.toLocaleString()}
+src\app\(app)\reports\tanks\page.tsx:354:        <span className="text-sm">{(value as number)?.toLocaleString() || 0}L</span>
+src\app\(app)\reports\tanks\page.tsx:362:          <div className="text-sm font-semibold">{(value as number)?.toLocaleString() || 0}L</div>
+src\app\(app)\reports\tanks\page.tsx:364:            Book: {row.openingBook?.toLocaleString() || 0}L
+src\app\(app)\reports\tanks\page.tsx:378:            +{(value as number)?.toLocaleString() || 0}L
+src\app\(app)\reports\tanks\page.tsx:394:            -{(value as number)?.toLocaleString() || 0}L
+src\app\(app)\reports\tanks\page.tsx:407:          +{(value as number)?.toLocaleString() || 0}L
+src\app\(app)\reports\tanks\page.tsx:416:          <div className="text-sm font-semibold">{(value as number)?.toLocaleString() || 0}L</div>
+src\app\(app)\reports\tanks\page.tsx:418:            Book: {row.closingBook?.toLocaleString() || 0}L
+src\app\(app)\reports\tanks\page.tsx:432:            {(value as number) >= 0 ? '+' : ''}{(value as number)?.toLocaleString() || 0}L
+src\app\(app)\reports\tanks\page.tsx:500:          +{(value as number)?.toLocaleString() || 0}L
+src\app\(app)\reports\tanks\page.tsx:545:          {(value as number)?.toLocaleString() || 0}L
+src\app\(app)\reports\tanks\page.tsx:691:                  {summary.totalCapacity.toLocaleString()}L capacity
+src\app\(app)\reports\tanks\page.tsx:704:                  {summary.totalDeliveries.toLocaleString()}L
+src\app\(app)\reports\tanks\page.tsx:720:                  {summary.totalSales.toLocaleString()}L
+src\app\(app)\reports\tanks\page.tsx:736:                  {summary.totalVariance.toLocaleString()}L
+src\app\(app)\reports\tanks\page.tsx:752:                  {summary.totalClosingStock.toLocaleString()}L
+src\app\(app)\reports\tanks\page.tsx:863:                      {tank.tankNumber} ΓÇó Capacity: {tank.capacity.toLocaleString()}L
+src\app\(app)\reports\tanks\page.tsx:877:                    <div className="text-2xl font-bold">{tank.openingDip.toLocaleString()}L</div>
+src\app\(app)\reports\tanks\page.tsx:879:                      {tank.openingPercentage.toFixed(1)}% ΓÇó Book: {tank.openingBook.toLocaleString()}L
+src\app\(app)\reports\tanks\page.tsx:884:                    <div className="text-2xl font-bold">{tank.closingDip.toLocaleString()}L</div>
+src\app\(app)\reports\tanks\page.tsx:886:                      {tank.closingPercentage.toFixed(1)}% ΓÇó Book: {tank.closingBook.toLocaleString()}L
+src\app\(app)\reports\tanks\page.tsx:892:                      {tank.variance >= 0 ? '+' : ''}{tank.variance.toLocaleString()}L
+src\app\(app)\reports\tanks\page.tsx:908:                      +{tank.deliveries.toLocaleString()}L
+src\app\(app)\reports\tanks\page.tsx:920:                      -{tank.sales.toLocaleString()}L
+src\app\(app)\reports\tanks\page.tsx:932:                      +{tank.testReturns.toLocaleString()}L
+src\app\(app)\reports\tanks\page.tsx:947:                      Avg sales: {tank.averageDailySales.toLocaleString()}L/day
+src\app\(app)\reports\tanks\page.tsx:992:                        <> ΓÇó Last delivery: {new Date(tank.lastDeliveryDate).toLocaleDateString()} ({tank.lastDeliveryQuantity?.toLocaleString()}L)</>
+src\app\(app)\safe\page.tsx:822:        description: `Cannot deposit more than the current safe cash balance: Rs. ${(currentBalance || 0).toLocaleString()}`,
+src\app\(app)\safe\page.tsx:993:          <span className="text-sm">{new Date(value as string).toLocaleString()}</span>
+src\app\(app)\safe\page.tsx:1054:          if (breakdown && breakdown.cash > 0) parts.push(`Cash: Rs. ${breakdown.cash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+src\app\(app)\safe\page.tsx:1055:          if (breakdown && breakdown.card > 0) parts.push(`Card: Rs. ${breakdown.card.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+src\app\(app)\safe\page.tsx:1056:          if (breakdown && breakdown.credit > 0) parts.push(`Credit: Rs. ${breakdown.credit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+src\app\(app)\safe\page.tsx:1057:          if (breakdown && breakdown.cheque > 0) parts.push(`Cheque: Rs. ${breakdown.cheque.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+src\app\(app)\safe\page.tsx:1071:                      ΓÇó Total: Rs. {breakdown.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\page.tsx:1141:              Rs. {Math.abs(value as number).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\page.tsx:1153:          <span className="font-semibold">Rs. {(value as number).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\safe\page.tsx:1261:                Rs. {safe?.openingBalance.toLocaleString() || '0'}
+src\app\(app)\safe\page.tsx:1276:                Rs. {safe?.currentBalance.toLocaleString() || '0'}
+src\app\(app)\safe\page.tsx:1291:                Rs. {outstandingCredit.toLocaleString()}
+src\app\(app)\safe\page.tsx:1306:                Rs. {((safe?.currentBalance || 0) + outstandingCredit).toLocaleString()}
+src\app\(app)\safe\page.tsx:1339:                      return (loanGiven - loanRepaid).toLocaleString()
+src\app\(app)\safe\page.tsx:1367:                      return todayCollections.toLocaleString()
+src\app\(app)\safe\page.tsx:1396:                      return deposits.toLocaleString()
+src\app\(app)\safe\page.tsx:1424:                      return largest.toLocaleString()
+src\app\(app)\safe\page.tsx:1811:                        Available in safe: Rs. {(safe.currentBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\page.tsx:1905:                    <p className="text-2xl font-bold">Rs. {cheques.filter(c => c.status === 'PENDING').reduce((sum, c) => sum + c.amount, 0).toLocaleString()}</p>
+src\app\(app)\safe\page.tsx:1926:                { key: 'amount', title: 'Amount', render: (val) => `Rs. ${Number(val).toLocaleString()}` },
+src\app\(app)\safe\page.tsx:2004:              <div className="col-span-3 font-medium">Rs. {(selectedCheque?.amount || 0).toLocaleString()}</div>
+src\app\(app)\safe\summary\page.tsx:277:                    Rs. {safeSummary.actualBalance.toLocaleString()}
+src\app\(app)\safe\summary\page.tsx:313:                  Rs. {safeSummary.openingBalance.toLocaleString()}
+src\app\(app)\safe\summary\page.tsx:324:                  + Rs. {safeSummary.totalInflows.toLocaleString()}
+src\app\(app)\safe\summary\page.tsx:335:                  - Rs. {safeSummary.totalOutflows.toLocaleString()}
+src\app\(app)\safe\summary\page.tsx:346:                  Rs. {safeSummary.expectedBalance.toLocaleString()}
+src\app\(app)\safe\summary\page.tsx:362:                    Rs. {safeSummary.expectedBalance.toLocaleString()}
+src\app\(app)\safe\summary\page.tsx:368:                    Rs. {safeSummary.actualBalance.toLocaleString()}
+src\app\(app)\safe\summary\page.tsx:374:                    {safeSummary.variance >= 0 ? '+' : ''}Rs. {safeSummary.variance.toLocaleString()}
+src\app\(app)\safe\summary\page.tsx:389:                      Inflows - Rs. {safeSummary.totalInflows.toLocaleString()}
+src\app\(app)\safe\summary\page.tsx:414:                          Rs. {inflow.amount.toLocaleString()}
+src\app\(app)\safe\summary\page.tsx:432:                      Outflows - Rs. {safeSummary.totalOutflows.toLocaleString()}
+src\app\(app)\safe\summary\page.tsx:458:                          Rs. {outflow.amount.toLocaleString()}
+src\app\(app)\safe\summary\page.tsx:474:                The safe is not balanced. Variance of Rs. {Math.abs(safeSummary.variance).toLocaleString()}
+src\app\(app)\safe\transactions\[id]\page.tsx:376:                  {new Date(transaction.timestamp).toLocaleString()}
+src\app\(app)\safe\transactions\[id]\page.tsx:397:                  Rs. {totalCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:403:                  Rs. {totalCard.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:409:                  Rs. {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:415:                  Rs. {totalCheque.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:423:                Rs. {(totalCash + totalCard + totalCredit + totalCheque).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:473:                              <span className="font-mono">Rs. {(breakdown.meterSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\safe\transactions\[id]\page.tsx:480:                              <span className="font-mono">Rs. {(breakdown.shopSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\safe\transactions\[id]\page.tsx:492:                            <span className="font-mono font-semibold">Rs. {(breakdown.calculatedSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\safe\transactions\[id]\page.tsx:506:                                Rs. {breakdown.declaredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:515:                                Rs. {totalCard.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:524:                                Rs. {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:533:                                Rs. {totalCheques.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:552:                                <span className="font-mono">Rs. {(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\safe\transactions\[id]\page.tsx:571:                                <span className="font-mono">Rs. {(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\safe\transactions\[id]\page.tsx:589:                              <span className="font-mono">Rs. {(cheque.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\safe\transactions\[id]\page.tsx:605:                                - Rs. {breakdown.advanceTaken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:614:                                - Rs. {(loan.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:623:                                - Rs. {(expense.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:640:                                + Rs. {(deposit.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:653:                          Rs. {breakdown.declaredAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:660:                          {breakdown.variance >= 0 ? '+' : ''}Rs. {breakdown.variance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:674:                    Rs. {totalCalculatedSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:679:                    Rs. {totalCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:684:                    Rs. {totalCard.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:689:                    Rs. {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:694:                    Rs. {totalCheque.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:699:                    Rs. {totalDeclared.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:707:                    {totalVariance >= 0 ? '+' : ''}Rs. {totalVariance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:728:                  <div className="text-base font-bold mb-3">Total POS Amount: Rs. {transaction.batch.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\safe\transactions\[id]\page.tsx:753:                                  <span className="font-mono">Rs. {entry.visaAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\safe\transactions\[id]\page.tsx:759:                                  <span className="font-mono">Rs. {entry.masterAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\safe\transactions\[id]\page.tsx:765:                                  <span className="font-mono">Rs. {entry.amexAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\safe\transactions\[id]\page.tsx:771:                                  <span className="font-mono">Rs. {entry.qrAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\safe\transactions\[id]\page.tsx:778:                              <span className="font-mono">Rs. {terminalTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\safe\transactions\[id]\page.tsx:804:                  Rs. {transaction.balanceBefore.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:810:                  + Rs. {(totalCash + totalCard + totalCredit + totalCheque).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:816:                  Rs. {transaction.balanceAfter.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\safe\transactions\[id]\page.tsx:859:                  {new Date(transaction.timestamp).toLocaleString()}
+src\app\(app)\safe\transactions\[id]\page.tsx:866:                {INCOME_TYPES.includes(transaction.type) ? '+' : '-'} Rs. {Math.abs(transaction.amount).toLocaleString()}
+src\app\(app)\safe\transactions\[id]\page.tsx:876:                Rs. {transaction.balanceBefore.toLocaleString()}
+src\app\(app)\safe\transactions\[id]\page.tsx:882:                Rs. {transaction.balanceAfter.toLocaleString()}
+src\app\(app)\safe\transactions\[id]\page.tsx:906:              <div className="text-base font-bold mb-3">Total Batch Amount: Rs. {transaction.batch.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\safe\transactions\[id]\page.tsx:932:                              <span className="font-mono">Rs. {entry.visaAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\safe\transactions\[id]\page.tsx:938:                              <span className="font-mono">Rs. {entry.masterAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\safe\transactions\[id]\page.tsx:944:                              <span className="font-mono">Rs. {entry.amexAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\safe\transactions\[id]\page.tsx:950:                              <span className="font-mono">Rs. {entry.qrAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\safe\transactions\[id]\page.tsx:956:                              <span className="font-mono">Rs. {(entry.dialogTouchAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\safe\transactions\[id]\page.tsx:963:                          <span className="font-mono">Rs. {terminalTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\safe\transactions\[id]\page.tsx:985:              <div><span className="font-medium">Amount:</span> Rs. {transaction.cheque.amount.toLocaleString()}</div>
+src\app\(app)\salary\office-staff\[id]\page.tsx:223:              Rs. {salaryData.baseSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\office-staff\[id]\page.tsx:236:              Rs. {salaryData.totalAllowances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\office-staff\[id]\page.tsx:249:              Rs. {salaryData.totalDeductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\office-staff\[id]\page.tsx:262:              Rs. {salaryData.netSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\office-staff\[id]\page.tsx:280:                  +Rs. {salaryData.specialAllowance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\office-staff\[id]\page.tsx:288:                  +Rs. {salaryData.otherAllowances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\office-staff\[id]\page.tsx:296:                  +Rs. {salaryData.medicalAllowance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\office-staff\[id]\page.tsx:304:                  +Rs. {salaryData.holidayAllowance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\office-staff\[id]\page.tsx:312:                  +Rs. {salaryData.fuelAllowance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\office-staff\[id]\page.tsx:326:                  +Rs. {salaryData.totalAllowances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\office-staff\[id]\page.tsx:343:                  -Rs. {salaryData.advances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\office-staff\[id]\page.tsx:351:                  -Rs. {salaryData.loans.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\office-staff\[id]\page.tsx:359:                  -Rs. {salaryData.absentDeduction.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\office-staff\[id]\page.tsx:367:                  -Rs. {salaryData.epf.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\office-staff\[id]\page.tsx:380:                  -Rs. {salaryData.totalDeductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\office-staff\[id]\page.tsx:399:                Rs. {salaryData.baseSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\office-staff\[id]\page.tsx:405:                +Rs. {salaryData.totalAllowances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\office-staff\[id]\page.tsx:411:                Rs. {salaryData.grossSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\office-staff\[id]\page.tsx:417:                -Rs. {salaryData.totalDeductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\office-staff\[id]\page.tsx:425:                  Rs. {salaryData.netSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\page.tsx:269:            Rs. {(value as number).toLocaleString()}
+src\app\(app)\salary\page.tsx:278:        <span>Rs. {(value as number).toLocaleString()}</span>
+src\app\(app)\salary\page.tsx:287:          <span className="text-orange-600">-Rs. {advances.toLocaleString()}</span>
+src\app\(app)\salary\page.tsx:299:          <span className="text-red-600">-Rs. {loans.toLocaleString()}</span>
+src\app\(app)\salary\page.tsx:314:              <span className="text-xs text-green-600">+Rs. {add.toLocaleString()}</span>
+src\app\(app)\salary\page.tsx:315:              <span className="text-xs text-red-600">-Rs. {deduct.toLocaleString()}</span>
+src\app\(app)\salary\page.tsx:319:          return <span className="text-green-600">+Rs. {add.toLocaleString()}</span>
+src\app\(app)\salary\page.tsx:321:          return <span className="text-red-600">-Rs. {deduct.toLocaleString()}</span>
+src\app\(app)\salary\page.tsx:335:              Rs. {net.toLocaleString()}
+src\app\(app)\salary\page.tsx:370:        <span>Rs. {(value as number).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\salary\page.tsx:379:          <span className="text-green-600">+Rs. {allowances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\salary\page.tsx:391:          <span className="text-red-600">-Rs. {deductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\salary\page.tsx:406:              Rs. {net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\page.tsx:522:                Rs. {salaryData.salaryData.reduce((sum, p) => sum + p.netSalary, 0).toLocaleString()}
+src\app\(app)\salary\page.tsx:532:                Rs. {salaryData.salaryData.reduce((sum, p) => sum + p.totalAdvances, 0).toLocaleString()}
+src\app\(app)\salary\[pumperId]\loans\page.tsx:236:              Rs. {totalOutstanding.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\[pumperId]\loans\page.tsx:246:              Rs. {totalMonthlyRental.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\[pumperId]\loans\page.tsx:256:              Rs. {totalPaidAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\[pumperId]\loans\page.tsx:316:                          Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\[pumperId]\loans\page.tsx:319:                          Rs. {paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\[pumperId]\loans\page.tsx:322:                          Rs. {remainingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\[pumperId]\loans\page.tsx:352:                              Rs. {(loan.monthlyRental || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\[pumperId]\loans\page.tsx:444:                        Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\[pumperId]\loans\page.tsx:447:                        Rs. {paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\[pumperId]\loans\page.tsx:450:                        Rs. {remainingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\[pumperId]\loans\page.tsx:453:                        Rs. {(loan.monthlyRental || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\[pumperId]\loans\page.tsx:499:                  <div>Loan Amount: Rs. {selectedLoanForPayment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\salary\[pumperId]\loans\page.tsx:500:                  <div>Paid: Rs. {(selectedLoanForPayment.paidAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\salary\[pumperId]\loans\page.tsx:501:                  <div>Remaining: Rs. {(selectedLoanForPayment.amount - (selectedLoanForPayment.paidAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\salary\[pumperId]\loans\page.tsx:502:                  <div>Monthly Rental: Rs. {(selectedLoanForPayment.monthlyRental || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\salary\[pumperId]\loans\page.tsx:514:                  Remaining: Rs. {(selectedLoanForPayment.amount - (selectedLoanForPayment.paidAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\salary\[pumperId]\page.tsx:376:                    value={`Rs. ${salaryData?.netSalary.toLocaleString() || 0}`}
+src\app\(app)\salary\[pumperId]\page.tsx:468:              Rs. {(salaryData.totalOvertimeAmount || 0).toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:484:              Rs. {(salaryData.commission || 0).toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:487:              From Rs. {salaryData.totalSales.toLocaleString()} sales
+src\app\(app)\salary\[pumperId]\page.tsx:516:              Rs. {salaryData.netSalary.toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:534:                  -Rs. {salaryData.epf.toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:541:                -Rs. {salaryData.totalAdvances.toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:547:                -Rs. {salaryData.totalLoans.toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:554:                  -Rs. {salaryData.varianceDeduct.toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:562:                  -Rs. {((salaryData.epf || 0) + salaryData.totalAdvances + salaryData.totalLoans + salaryData.varianceDeduct).toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:579:                  +Rs. {salaryData.holidayAllowance.toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:592:                  +Rs. {salaryData.totalOvertimeAmount.toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:605:                  +Rs. {salaryData.commission.toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:613:                  +Rs. {salaryData.varianceAdd.toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:621:                  +Rs. {((salaryData.holidayAllowance || 0) + (salaryData.totalOvertimeAmount || 0) + (salaryData.commission || 0) + salaryData.varianceAdd).toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:640:                Rs. {salaryData.baseSalary.toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:646:                +Rs. {((salaryData.holidayAllowance || 0) + (salaryData.totalOvertimeAmount || 0) + (salaryData.commission || 0) + salaryData.varianceAdd).toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:652:                -Rs. {((salaryData.epf || 0) + salaryData.totalAdvances + salaryData.totalLoans + salaryData.varianceDeduct).toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:660:                  Rs. {salaryData.netSalary.toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:721:                            Rs. {shift.overtimeAmount.toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:734:                          Rs. {shift.sales.toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:738:                        Commission: Rs. {Math.floor(shift.sales / 1000).toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:745:                        Rs. {shift.advance.toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:761:                              +Rs. {Math.abs(shift.variance).toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:769:                              -Rs. {shift.variance.toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:792:                            ? `+Rs. ${impact.toLocaleString()}`
+src\app\(app)\salary\[pumperId]\page.tsx:793:                            : `-Rs. ${Math.abs(impact).toLocaleString()}`
+src\app\(app)\salary\[pumperId]\page.tsx:867:                        Rs. {payment.netSalary.toLocaleString()}
+src\app\(app)\salary\[pumperId]\page.tsx:891:                <div>Total loan amount: Rs. {salaryData.totalLoanAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\salary\[pumperId]\page.tsx:893:                  <div>Total monthly rental deduction: Rs. {salaryData.totalLoans.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\salary\[pumperId]\page.tsx:897:              `Total monthly rental deduction: Rs. ${salaryData.totalLoans.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+src\app\(app)\settings\office-staff\page.tsx:287:          <span>Rs. {(value as number).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\settings\prices\page.tsx:401:          {new Date(row.effectiveDate).toLocaleString('en-US', {
+src\app\(app)\settings\prices\page.tsx:721:                <div className="text-2xl font-bold">{totalCapacity.toLocaleString()}</div>
+src\app\(app)\settings\prices\page.tsx:732:                <div className="text-2xl font-bold">{totalStock.toLocaleString()}</div>
+src\app\(app)\settings\prices\page.tsx:790:                          <span className="font-medium">{stats.totalCapacity.toLocaleString()} L</span>
+src\app\(app)\settings\prices\page.tsx:794:                          <span className="font-medium">{stats.currentStock.toLocaleString()} L</span>
+src\app\(app)\settings\prices\page.tsx:920:                              <p className="text-lg font-semibold">{totalCap.toLocaleString()} L</p>
+src\app\(app)\settings\prices\page.tsx:924:                              <p className="text-lg font-semibold">{currentStock.toLocaleString()} L</p>
+src\app\(app)\settings\prices\page.tsx:929:                                {(totalCap - currentStock).toLocaleString()} L
+src\app\(app)\settings\prices\page.tsx:969:                                      <span>Stock: {tank.currentLevel.toLocaleString()} L</span>
+src\app\(app)\settings\prices\page.tsx:970:                                      <span>Cap: {tank.capacity.toLocaleString()} L</span>
+src\app\(app)\settings\tanks\page.tsx:470:        <Badge variant="outline">{(value as number).toLocaleString()} L</Badge>
+src\app\(app)\settings\tanks\page.tsx:479:            <span>{(value as number).toLocaleString()} L</span>
+src\app\(app)\settings\tanks\page.tsx:863:                                ({tank.capacity.toLocaleString()}L)
+src\app\(app)\settings\tolerance\page.tsx:180:                Last updated: {new Date(config.updatedAt).toLocaleString()} by {config.updatedBy}
+src\app\(app)\settings\tolerance\page.tsx:210:                  Percentage tolerance is no longer used. Any variance within Rs. {formData.flatAmountTolerance.toLocaleString()}
+src\app\(app)\shifts\close\page.tsx:728:      setError(`Advance limit exceeded for ${pumperName}! Monthly loan rental: Rs. ${(monthlyRental || 0).toLocaleString()}, Available advance limit: Rs. ${(availableAdvanceLimit || 0).toLocaleString()}. Total (rental + advance) cannot exceed Rs. ${(ADVANCE_LIMIT || 0).toLocaleString()}.`)
+src\app\(app)\shifts\close\page.tsx:740:      setError(`Total advances (taken: Rs. ${(amount || 0).toLocaleString()} + given: Rs. ${(otherAdvancesTotal || 0).toLocaleString()}) cannot exceed cash declared (Rs. ${(currentCash || 0).toLocaleString()}). Advances can only come from cash.`)
+src\app\(app)\shifts\close\page.tsx:776:          setError(`Advance limit exceeded for ${receivingPumperName}! Monthly loan rental: Rs. ${(monthlyRental || 0).toLocaleString()}, Available advance limit: Rs. ${(availableAdvanceLimit || 0).toLocaleString()}. Total (rental + advance) cannot exceed Rs. ${(ADVANCE_LIMIT || 0).toLocaleString()}.`)
+src\app\(app)\shifts\close\page.tsx:788:          setError(`Total advances (taken: Rs. ${(advanceTaken || 0).toLocaleString()} + given: Rs. ${((otherAdvancesTotal || 0) + (newAmount || 0)).toLocaleString()}) cannot exceed cash declared (Rs. ${(currentCash || 0).toLocaleString()}). Advances can only come from cash.`)
+src\app\(app)\shifts\close\page.tsx:943:        setError(`ΓÜá∩╕Å FRAUD ALERT: Card ending in ${updatedSlip.lastFourDigits} (${updatedSlip.cardType}) was already added today at ${duplicateTime} for Rs. ${duplicateSlip.amount.toLocaleString()} on ${terminal?.name || 'same terminal'}. The same card with same type cannot be used twice on the same terminal at the same time!`)
+src\app\(app)\shifts\close\page.tsx:1257:                setError(`Credit amount for ${customer.name} (Rs. ${amount.toLocaleString()}) exceeds available credit (Rs. ${availableCredit.toLocaleString()})`)
+src\app\(app)\shifts\close\page.tsx:1949:            {numValue != null ? numValue.toLocaleString() : '-'}
+src\app\(app)\shifts\close\page.tsx:1974:            {pumpSales.toLocaleString()}
+src\app\(app)\shifts\close\page.tsx:1988:            {delta.toLocaleString()}
+src\app\(app)\shifts\close\page.tsx:2067:                        {new Date(shift.startTime).toLocaleString()} - {pumperDisplay}
+src\app\(app)\shifts\close\page.tsx:2126:                    <span className="font-mono">{(row.openingStock + row.addedStock).toLocaleString()} {row.product.unit}</span>
+src\app\(app)\shifts\close\page.tsx:2148:                    return <span className="font-mono text-orange-600">{sold.toLocaleString()}</span>
+src\app\(app)\shifts\close\page.tsx:2158:                    return <span className="font-mono font-semibold">Rs. {revenue.toLocaleString()}</span>
+src\app\(app)\shifts\close\page.tsx:2173:                  }, 0).toLocaleString()}
+src\app\(app)\shifts\close\page.tsx:2248:                          <span className="font-mono font-medium">Rs. {breakdown.meterSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\shifts\close\page.tsx:2258:                          <span className="font-mono font-medium">Rs. {breakdown.shopSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\shifts\close\page.tsx:2266:                        <span className="font-mono font-bold text-lg text-primary">Rs. {breakdown.calculatedSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\shifts\close\page.tsx:2373:                                                  <span className="text-xs text-green-600 dark:text-green-400">Rs. {slip.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\shifts\close\page.tsx:2478:                                                          ΓÇó Amount: Rs. {duplicateSlip.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<br />
+src\app\(app)\shifts\close\page.tsx:2558:                                                  Rs. {terminalTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:2573:                                              <span className="font-mono">Rs. {amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\shifts\close\page.tsx:2585:                                              Rs. {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:2656:                                                          <span className="text-xs text-orange-600 dark:text-orange-400">Rs. {slip.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\shifts\close\page.tsx:2835:                                    Warning: Amount exceeds available credit by Rs. {(amount - availableCredit).toLocaleString()}
+src\app\(app)\shifts\close\page.tsx:2840:                                    Available credit: Rs. {availableCredit.toLocaleString()}
+src\app\(app)\shifts\close\page.tsx:3026:                                Rs. {breakdown.declaredCheque.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:3199:                                  ≡ƒÆ░ Advance Limit: Rs. {availableLimit.toLocaleString()}
+src\app\(app)\shifts\close\page.tsx:3200:                                  {monthlyRental > 0 && ` (Limit: Rs. 50,000 - Monthly Rental: Rs. ${monthlyRental.toLocaleString()})`}
+src\app\(app)\shifts\close\page.tsx:3204:                                    Cash after advance: Rs. {(breakdown.declaredCash - breakdown.advanceTaken).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:3205:                                    (Rs. {breakdown.declaredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} declared - Rs. {breakdown.advanceTaken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} advance)
+src\app\(app)\shifts\close\page.tsx:3326:                                    <span className="font-mono">Rs. {advanceTaken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\shifts\close\page.tsx:3330:                                    <span className="font-mono">Rs. {otherAdvancesTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\shifts\close\page.tsx:3334:                                    <span className="font-mono">Rs. {totalAdvances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\shifts\close\page.tsx:3339:                                      Rs. {cashAfterAllAdvances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:3615:                            <div className="font-mono text-right">Rs. {breakdown.declaredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\shifts\close\page.tsx:3628:                                      - Rs. {advanceTaken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:3634:                                          - Rs. {otherAdvancesTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:3640:                                      - Rs. {totalAdvances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:3644:                                      Rs. {(breakdown.declaredCash - totalAdvances).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:3654:                              Rs. {Object.values(breakdown.declaredCardAmounts).reduce((sum, amount) => sum + amount, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:3659:                              Rs. {Object.values(breakdown.declaredCreditAmounts).reduce((sum, amount) => sum + amount, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:3663:                            <div className="font-mono text-right">Rs. {breakdown.declaredCheque.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\shifts\close\page.tsx:3673:                                      + Rs. {totalBankDeposits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:3685:                              Rs. {breakdown.declaredAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:3688:                              (Cash {breakdown.declaredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + Card + Credit + Cheque + Bank Deposits)
+src\app\(app)\shifts\close\page.tsx:3708:                                      Rs. {breakdown.advanceTaken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:3723:                                      - Rs. {totalOtherExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:3732:                                  Rs. {(breakdown.declaredAmount - totalOtherExpenses).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:3755:                        {breakdown.variance >= 0 ? '+' : ''}Rs. {breakdown.variance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:3760:                            ? `Add Rs. ${Math.abs(breakdown.variance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} to salary`
+src\app\(app)\shifts\close\page.tsx:3761:                            : `Deduct Rs. ${Math.abs(breakdown.variance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} from salary`}
+src\app\(app)\shifts\close\page.tsx:3805:                    Rs. {pumperBreakdowns.reduce((sum, b) => sum + b.calculatedSales, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:3811:                    Rs. {pumperBreakdowns.reduce((sum, b) => sum + b.declaredAmount, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:3824:                    Rs. {pumperBreakdowns.reduce((sum, b) => sum + b.variance, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:3836:                      Rs. {pumperBreakdowns.reduce((sum, b) => sum + b.declaredCash, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:3843:                        sum + Object.values(b.declaredCardAmounts).reduce((cardSum, amount) => cardSum + (amount || 0), 0), 0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:3850:                        sum + Object.values(b.declaredCreditAmounts).reduce((creditSum, amount) => creditSum + (amount || 0), 0), 0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\close\page.tsx:3856:                      Rs. {(pumperBreakdowns.reduce((sum, b) => sum + (b.declaredCheque || 0), 0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\open\page.tsx:73:            Last: {lastReading.toLocaleString()}
+src\app\(app)\shifts\open\page.tsx:79:          ΓÜá∩╕Å Differs from last reading ({lastReading?.toLocaleString()})
+src\app\(app)\shifts\page.tsx:332:            {new Date(value as string).toLocaleString()}
+src\app\(app)\shifts\page.tsx:348:              {new Date(value as string).toLocaleString()}
+src\app\(app)\shifts\page.tsx:382:              Rs. {(value as number).toLocaleString()}
+src\app\(app)\shifts\page.tsx:460:            <div className="text-2xl font-bold">Rs. {stats.totalSales.toLocaleString()}</div>
+src\app\(app)\shifts\[id]\page.tsx:105:  return `Rs. ${amount.toLocaleString()}`
+src\app\(app)\shifts\[id]\page.tsx:611:                      {tenderSummary.salesBreakdown.totalPumpSales.toLocaleString()}L
+src\app\(app)\shifts\[id]\page.tsx:617:                      Rs. {(tenderSummary.salesBreakdown.oilSales?.totalAmount || 0).toLocaleString()}
+src\app\(app)\shifts\[id]\page.tsx:623:                      {tenderSummary.salesBreakdown.totalLitres.toLocaleString()}L
+src\app\(app)\shifts\[id]\page.tsx:640:                      return (stats?.totalSales ?? 0).toLocaleString()
+src\app\(app)\shifts\[id]\page.tsx:654:                        })() - tenderSummary.shopSales)).toLocaleString()}
+src\app\(app)\shifts\[id]\page.tsx:660:                        Rs. {tenderSummary.shopSales.toLocaleString()}
+src\app\(app)\shifts\[id]\page.tsx:668:                    Rs. {(tenderSummary?.totalDeclared ?? 0).toLocaleString()}
+src\app\(app)\shifts\[id]\page.tsx:675:                    Rs. {(tenderSummary?.variance ?? 0).toLocaleString()}
+src\app\(app)\shifts\[id]\page.tsx:684:                    Rs. {(tenderSummary?.varianceClassification?.tolerance ?? 0).toLocaleString()}
+src\app\(app)\shifts\[id]\page.tsx:721:                {new Date(shift.startTime).toLocaleString()}
+src\app\(app)\shifts\[id]\page.tsx:731:                {shift.endTime ? new Date(shift.endTime).toLocaleString() : '-'}
+src\app\(app)\shifts\[id]\page.tsx:828:                    <span className="font-mono">{(row.openingStock + row.addedStock).toLocaleString()} {row.product.unit}</span>
+src\app\(app)\shifts\[id]\page.tsx:835:                    <span className="font-mono">{row.closingStock?.toLocaleString() || '-'}</span>
+src\app\(app)\shifts\[id]\page.tsx:845:                    return <span className={`font-mono ${sold > 0 ? 'text-orange-600' : ''}`}>{sold.toLocaleString()}</span>
+src\app\(app)\shifts\[id]\page.tsx:856:                    return <span className="font-mono font-semibold">Rs. {revenue.toLocaleString()}</span>
+src\app\(app)\shifts\[id]\page.tsx:901:                          <span className="font-mono">Rs. {(breakdown.meterSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\shifts\[id]\page.tsx:907:                          <span className="font-mono">Rs. {(breakdown.shopSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\shifts\[id]\page.tsx:918:                        <div className="font-mono text-right font-bold">Rs. {(breakdown.calculatedSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\shifts\[id]\page.tsx:926:                        <div className="text-sm font-mono text-right">Rs. {breakdown.declaredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\shifts\[id]\page.tsx:941:                                <span className="font-mono">Rs. {amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\shifts\[id]\page.tsx:947:                            <span className="font-mono">Rs. {totalCard.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\shifts\[id]\page.tsx:964:                                <span className="font-mono">Rs. {amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\shifts\[id]\page.tsx:970:                            <span className="font-mono">Rs. {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\shifts\[id]\page.tsx:986:                              <span className="font-mono">Rs. {(cheque.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\shifts\[id]\page.tsx:991:                            <span className="font-mono">Rs. {totalCheques.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\shifts\[id]\page.tsx:1002:                          - Rs. {breakdown.advanceTaken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\[id]\page.tsx:1015:                              <span className="font-mono text-orange-600 dark:text-orange-400">- Rs. {(loan.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\shifts\[id]\page.tsx:1030:                              <span className="font-mono text-orange-600 dark:text-orange-400">+ Rs. {(deposit.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\shifts\[id]\page.tsx:1045:                              <span className="font-mono text-orange-600 dark:text-orange-400">- Rs. {(expense.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+src\app\(app)\shifts\[id]\page.tsx:1056:                        <div className="font-mono text-right font-semibold">Rs. {(breakdown.declaredAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\shifts\[id]\page.tsx:1062:                          {(breakdown.variance || 0) >= 0 ? '+' : ''}Rs. {(breakdown.variance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shifts\[id]\page.tsx:1104:                      <div className="font-mono text-right font-semibold">Rs. {totalCalculatedSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\shifts\[id]\page.tsx:1109:                          <div className="font-mono text-right">Rs. {totalDeclaredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\shifts\[id]\page.tsx:1116:                          <div className="font-mono text-right">Rs. {totalDeclaredCard.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\shifts\[id]\page.tsx:1123:                          <div className="font-mono text-right">Rs. {totalDeclaredCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\shifts\[id]\page.tsx:1130:                          <div className="font-mono text-right">Rs. {totalDeclaredCheque.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\shifts\[id]\page.tsx:1137:                          <div className="font-mono text-right text-orange-600 dark:text-orange-400">+ Rs. {totalBankDeposits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\shifts\[id]\page.tsx:1144:                          <div className="font-mono text-right text-orange-600 dark:text-orange-400">- Rs. {totalAdvances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\shifts\[id]\page.tsx:1151:                          <div className="font-mono text-right text-orange-600 dark:text-orange-400">- Rs. {totalOtherExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\shifts\[id]\page.tsx:1156:                      <div className="font-mono text-right font-bold text-base pt-2 border-t">Rs. {totalDeclared.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+src\app\(app)\shifts\[id]\page.tsx:1163:                        {totalVariance >= 0 ? '+' : ''}Rs. {totalVariance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+src\app\(app)\shop\page.tsx:174:            render: (val) => <span className="font-medium">Rs. {(val as number).toLocaleString()}</span>
+src\app\(app)\shop\page.tsx:200:        { key: 'costPrice', title: 'Cost Price', render: (val) => `Rs. ${(val as number).toLocaleString()}` },
+src\app\(app)\tanks\deliveries\page.tsx:486:        return new Date(value as string).toLocaleString()
+src\app\(app)\tanks\deliveries\page.tsx:509:        return <span>{(value as number).toLocaleString()}L</span>
+src\app\(app)\tanks\deliveries\page.tsx:517:        return <span className="font-semibold text-green-600">{(value as number).toLocaleString()}L</span>
+src\app\(app)\tanks\deliveries\page.tsx:709:                              <div className="text-2xl font-bold">{tank.currentLevel.toLocaleString()}L</div>
+src\app\(app)\tanks\deliveries\page.tsx:764:                            Measured at: {beforeDipTime.toLocaleString()}
+src\app\(app)\tanks\deliveries\page.tsx:843:                                                <div className="font-mono font-semibold text-sm">{assignment.startMeterReading.toLocaleString()}L</div>
+src\app\(app)\tanks\deliveries\page.tsx:865:                                                  {reading?.fuelUsed && reading.fuelUsed > 0 ? `${reading.fuelUsed.toLocaleString()}L` : '-'}
+src\app\(app)\tanks\deliveries\page.tsx:881:                                            .toLocaleString()
+src\app\(app)\tanks\deliveries\page.tsx:892:                                <span className="font-mono font-bold text-lg">{calculateTotalFuelSold(pumpReadings, selectedTank).toLocaleString()}L</span>
+src\app\(app)\tanks\deliveries\page.tsx:955:                                  value={beforeDipReading ? parseFloat(beforeDipReading).toLocaleString() : ''}
+src\app\(app)\tanks\deliveries\page.tsx:963:                                      Γ£ô {beforeDipDepth}cm = {parseFloat(beforeDipReading).toLocaleString()}L
+src\app\(app)\tanks\deliveries\page.tsx:1002:                                <span className="font-semibold">{tank.currentLevel.toLocaleString()}L</span>
+src\app\(app)\tanks\deliveries\page.tsx:1006:                                <span className="font-semibold">-{fuelSoldBeforeDip.toLocaleString()}L</span>
+src\app\(app)\tanks\deliveries\page.tsx:1011:                                  {expectedLevel.toLocaleString()}L
+src\app\(app)\tanks\deliveries\page.tsx:1019:                                <span className="text-green-600 font-semibold">{physicalDip.toLocaleString()}L</span>
+src\app\(app)\tanks\deliveries\page.tsx:1193:                  <div className="font-mono font-bold text-xl">{verifyingDelivery.invoiceQuantity.toLocaleString()}L</div>
+src\app\(app)\tanks\deliveries\page.tsx:1219:                      <div className="font-mono font-bold text-xl text-orange-600">{verifyingDelivery.beforeDipReading?.toLocaleString() || '-'}L</div>
+src\app\(app)\tanks\deliveries\page.tsx:1223:                      <div className="font-mono font-bold text-xl text-orange-600">{verifyingDelivery.fuelSoldDuring?.toLocaleString() || '0'}L</div>
+src\app\(app)\tanks\deliveries\page.tsx:1312:                                          <div className="font-semibold text-orange-600">{beforeDipMeter.toLocaleString()}L</div>
+src\app\(app)\tanks\deliveries\page.tsx:1334:                                            {reading?.fuelUsed && reading.fuelUsed > 0 ? `${reading.fuelUsed.toLocaleString()}L` : '-'}
+src\app\(app)\tanks\deliveries\page.tsx:1350:                                      .toLocaleString()
+src\app\(app)\tanks\deliveries\page.tsx:1361:                          <span className="font-bold text-lg">{calculateTotalFuelSold(afterPumpReadings, verifyingDelivery.tankId).toLocaleString()}L</span>
+src\app\(app)\tanks\deliveries\page.tsx:1434:                            value={afterDipReading ? parseFloat(afterDipReading).toLocaleString() : ''}
+src\app\(app)\tanks\deliveries\page.tsx:1442:                                Γ£ô {afterDipDepth}cm = {parseFloat(afterDipReading).toLocaleString()}L
+src\app\(app)\tanks\deliveries\page.tsx:1485:                              <span className="font-semibold">{verifyingDelivery.beforeDipReading.toLocaleString()}L</span>
+src\app\(app)\tanks\deliveries\page.tsx:1489:                              <span className="font-mono font-semibold">+{verifyingDelivery.invoiceQuantity.toLocaleString()}L</span>
+src\app\(app)\tanks\deliveries\page.tsx:1493:                              <span className="font-mono font-semibold">-{fuelSoldDuring.toLocaleString()}L</span>
+src\app\(app)\tanks\deliveries\page.tsx:1497:                              <span className="font-mono text-orange-600">{(verifyingDelivery.beforeDipReading + verifyingDelivery.invoiceQuantity - fuelSoldDuring).toLocaleString()}L</span>
+src\app\(app)\tanks\deliveries\page.tsx:1506:                            <div className="font-mono font-bold text-2xl text-green-600">{parseFloat(afterDipReading).toLocaleString()}L</div>
+src\app\(app)\tanks\deliveries\page.tsx:1510:                            <div className="font-mono font-bold text-2xl text-orange-600">{(verifyingDelivery.beforeDipReading + verifyingDelivery.invoiceQuantity - fuelSoldDuring).toLocaleString()}L</div>
+src\app\(app)\tanks\deliveries\page.tsx:1520:                              <span className="font-mono">{parseFloat(afterDipReading).toLocaleString()}L</span>
+src\app\(app)\tanks\deliveries\page.tsx:1524:                              <span className="font-mono">-{verifyingDelivery.beforeDipReading.toLocaleString()}L</span>
+src\app\(app)\tanks\deliveries\page.tsx:1528:                              <span className="font-mono">+{fuelSoldDuring.toLocaleString()}L</span>
+src\app\(app)\tanks\deliveries\page.tsx:1533:                            <span className="font-mono font-bold text-3xl text-orange-600">{actualReceived.toLocaleString()}L</span>
+src\app\(app)\tanks\deliveries\page.tsx:1541:                            <div className="font-mono font-bold text-xl">{verifyingDelivery.invoiceQuantity.toLocaleString()}L</div>
+src\app\(app)\tanks\deliveries\page.tsx:1597:                  <div className="font-mono font-semibold">{selectedDelivery.invoiceQuantity.toLocaleString()}L</div>
+src\app\(app)\tanks\deliveries\page.tsx:1601:                  <div className="font-mono font-semibold text-green-600">{selectedDelivery.actualReceived?.toLocaleString() || '-'}L</div>
+src\app\(app)\tanks\deliveries\page.tsx:1605:                  <div className="font-mono">{selectedDelivery.beforeDipReading?.toLocaleString() || '-'}L</div>
+src\app\(app)\tanks\deliveries\page.tsx:1609:                  <div className="font-mono">{selectedDelivery.afterDipReading?.toLocaleString() || '-'}L</div>
+src\app\(app)\tanks\deliveries\page.tsx:1613:                  <div className="font-mono text-orange-600">{selectedDelivery.fuelSoldDuring?.toLocaleString() || '0'}L</div>
+src\app\(app)\tanks\dips\page.tsx:426:        return new Date(value as string).toLocaleString()
+src\app\(app)\tanks\dips\page.tsx:444:        return <span className="font-semibold">{(value as number).toLocaleString()}L</span>
+src\app\(app)\tanks\dips\page.tsx:460:            {numValue > 0 ? '+' : ''}{numValue.toLocaleString()}L
+src\app\(app)\tanks\dips\page.tsx:546:                        Tank {tank.tankNumber} - {tank.fuel?.icon} {tank.fuel?.name} ({tank.capacity.toLocaleString()}L)
+src\app\(app)\tanks\dips\page.tsx:577:                          <div className="text-2xl font-bold">{systemLevel.toLocaleString()}L</div>
+src\app\(app)\tanks\dips\page.tsx:580:                              Last updated: {new Date(selectedTankData.updatedAt).toLocaleString()}
+src\app\(app)\tanks\dips\page.tsx:600:                      <p className="text-sm">Checking for shifts active at {dipTime.toLocaleString()}...</p>
+src\app\(app)\tanks\dips\page.tsx:612:                      {activeShifts.length} shift(s) were running at {dipTime.toLocaleString()}. Enter current meter readings to calculate actual tank levels.
+src\app\(app)\tanks\dips\page.tsx:625:                              Started: {new Date(shift.startTime).toLocaleString()}
+src\app\(app)\tanks\dips\page.tsx:654:                                    {assignment.startMeterReading.toLocaleString()}L
+src\app\(app)\tanks\dips\page.tsx:675:                                    {reading.fuelUsed > 0 ? `${reading.fuelUsed.toLocaleString()}L` : '-'}
+src\app\(app)\tanks\dips\page.tsx:722:                                      <span className="">{originalLevel.toLocaleString()}L</span>
+src\app\(app)\tanks\dips\page.tsx:726:                                      <span className="">-{fuelUsed.toLocaleString()}L</span>
+src\app\(app)\tanks\dips\page.tsx:730:                                      <span className="">{updatedLevel.toLocaleString()}L</span>
+src\app\(app)\tanks\dips\page.tsx:747:                    No shifts were running at {dipTime.toLocaleString()}. System stock levels are accurate.
+src\app\(app)\tanks\dips\page.tsx:802:                        value={dipLitres ? parseFloat(dipLitres).toLocaleString() : ''}
+src\app\(app)\tanks\dips\page.tsx:810:                            Γ£ô {dipDepth}cm = {parseFloat(dipLitres).toLocaleString()}L
+src\app\(app)\tanks\dips\page.tsx:846:                                <span className="font-mono font-semibold">{adjustedLevel.toLocaleString()}L</span>
+src\app\(app)\tanks\dips\page.tsx:850:                                <span className="font-mono font-semibold">{dipReading.toLocaleString()}L</span>
+src\app\(app)\tanks\dips\page.tsx:856:                                    {variance > 0 ? '+' : ''}{variance.toLocaleString()}L
+src\app\(app)\tanks\dips\page.tsx:928:                    {selectedDip.createdAt ? new Date(selectedDip.createdAt).toLocaleString() : 'N/A'}
+src\app\(app)\tanks\dips\page.tsx:934:                    {selectedDip.dipLitres != null ? selectedDip.dipLitres.toLocaleString() : '-'}L
+src\app\(app)\tanks\dips\page.tsx:940:                    {(selectedDip.variance || 0) > 0 ? '+' : ''}{selectedDip.variance != null ? selectedDip.variance.toLocaleString() : '0'}L
+src\app\(app)\tanks\page.tsx:310:          {(value as number)?.toLocaleString() || 0}L
+src\app\(app)\tanks\page.tsx:321:            {(value as number)?.toLocaleString() || 0}L
+src\app\(app)\tanks\page.tsx:387:              {data.capacity.toLocaleString()}L
+src\app\(app)\tanks\page.tsx:390:              Stock: {data.stock.toLocaleString()}L
+src\app\(app)\tanks\page.tsx:471:                            {tank.currentLevel.toLocaleString()}L / {tank.capacity.toLocaleString()}L
+src\app\(app)\tanks\page.tsx:581:                    {tankDetails.capacity?.toLocaleString() || 0}L
+src\app\(app)\tanks\page.tsx:587:                    {tankDetails.currentLevel?.toLocaleString() || 0}L
+src\app\(app)\tanks\page.tsx:614:                    <span>{tankDetails.capacity.toLocaleString()}L</span>
+src\app\(app)\tanks\page.tsx:650:                          <div className="font-medium">{dip.reading?.toLocaleString() || 0}L</div>
+src\app\(app)\tanks\page.tsx:652:                            {new Date(dip.dipDate).toLocaleString()}
+src\app\(app)\tanks\page.tsx:674:                            +{delivery.quantity?.toLocaleString() || 0}L
+src\app\(app)\tanks\page.tsx:680:                            {new Date(delivery.deliveryDate).toLocaleString()}
+src\app\(app)\tanks\report\page.tsx:285:                    {report.totalVariance >= 0 ? '+' : ''}{report.totalVariance.toLocaleString()}L
+src\app\(app)\tanks\report\page.tsx:324:                      <div className="text-lg">{tank.openingStock.toLocaleString()}L</div>
+src\app\(app)\tanks\report\page.tsx:333:                      <div className="text-lg text-green-600 dark:text-green-400">+{tank.deliveries.toLocaleString()}L</div>
+src\app\(app)\tanks\report\page.tsx:342:                      <div className="text-lg text-red-600 dark:text-red-400">-{tank.sales.toLocaleString()}L</div>
+src\app\(app)\tanks\report\page.tsx:351:                      <div className="text-lg text-orange-600 dark:text-orange-400">+{tank.testReturns.toLocaleString()}L</div>
+src\app\(app)\tanks\report\page.tsx:360:                      <div className="text-lg">{tank.closingBookStock.toLocaleString()}L</div>
+src\app\(app)\tanks\report\page.tsx:369:                      <div className="text-lg font-semibold">{tank.closingDipStock.toLocaleString()}L</div>
+src\app\(app)\tanks\report\page.tsx:383:                        {tank.variance >= 0 ? '+' : ''}{tank.variance.toLocaleString()}L
+src\app\(app)\tanks\report\page.tsx:395:                        Tolerance Limit: ┬▒{tank.toleranceLimit.toLocaleString()}L
+src\app\(app)\tanks\setup\page.tsx:412:                                ({tank.capacity.toLocaleString()}L)
+src\app\api\banks\reconcile\route.ts:134:            result.warnings.push(`${bank.cheques.filter(c => c.status === 'BOUNCED').length} bounced cheque(s) totaling Rs.${bouncedCheques.toLocaleString()}`)
+src\app\api\banks\reconcile\route.ts:138:            result.warnings.push(`${bank.cheques.filter(c => c.status === 'PENDING' || c.status === 'DEPOSITED').length} pending cheque(s) totaling Rs.${pendingCheques.toLocaleString()}`)
+src\app\api\cheques\route.ts:150:          details: `Recorded cheque: ${newCheque.chequeNumber} for Rs. ${newCheque.amount.toLocaleString()}`,
+src\app\api\deliveries\route.ts:209:          details: `Tank capacity: ${tank.capacity.toLocaleString()}L, Current: ${tank.currentLevel.toLocaleString()}L, Invoice: ${invoiceQuantity.toLocaleString()}L. Available space: ${availableSpace.toFixed(1)}L`
+src\app\api\deliveries\[id]\verify\route.ts:87:          details: `Tank capacity: ${delivery.tank.capacity.toLocaleString()}L, After dip: ${afterDipReading.toLocaleString()}L`
+src\app\api\deposits\route.ts:243:          details: `Deposited Rs. ${validatedAmount.toLocaleString()} to ${result.bank.name}`,
+src\app\api\loans\pumper\[id]\pay\route.ts:139:        : `Payment of Rs. ${paymentAmount.toLocaleString()} recorded. Remaining: Rs. ${remainingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+src\app\api\notifications\generate\route.ts:152:                  message: `${customer.name} payment is ${daysSinceLastSale} days overdue (Rs. ${customer.currentBalance.toLocaleString()})`,
+src\app\api\notifications\generate\route.ts:221:                  message: `Shift closed with ${variancePercentage.toFixed(2)}% variance (Rs. ${Math.abs(statistics.variance || 0).toLocaleString()}) - ${variancePercentage > 2.0 ? 'requires immediate review' : 'needs review'}`,
+src\app\api\safe\transactions\route.ts:377:      console.warn(`ΓÜá∩╕Å Large transaction amount detected: Rs.${amount.toLocaleString()} (${type})`)

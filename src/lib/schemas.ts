@@ -136,6 +136,7 @@ export const EndShiftSchema = z.object({
     cardAmount: z.union([z.string(), z.number()]).optional().transform(val => val ? Number(val) : 0),
     creditAmount: z.union([z.string(), z.number()]).optional().transform(val => val ? Number(val) : 0),
     chequeAmount: z.union([z.string(), z.number()]).optional().transform(val => val ? Number(val) : 0),
+    shopRevenue: z.union([z.string(), z.number()]).optional().transform(val => val ? Number(val) : 0),
     pumperBreakdown: z.array(z.any()).optional().default([])
 });
 

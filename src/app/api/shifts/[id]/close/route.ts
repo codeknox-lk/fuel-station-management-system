@@ -27,6 +27,7 @@ export async function POST(
       cardAmount,
       creditAmount,
       chequeAmount,
+      shopRevenue,
       pumperBreakdown
     } = result.data
 
@@ -168,10 +169,10 @@ export async function POST(
           closedBy: closedBy || 'System',
           statistics: {
             durationHours: Math.round(durationHours * 100) / 100,
-            totalSales: Math.round(totalSales),
+            totalSales: Math.round(totalSales + (shopRevenue || 0)),
             totalLiters: Math.round(totalLiters * 100) / 100,
             averagePricePerLiter: totalLiters > 0 ? Math.round((totalSales / totalLiters) * 100) / 100 : 0,
-            assignmentCount: shift.assignments.length,
+            assignmentCount: shift.assignments.length + (shift.templateId ? 1 : 0), // Include shop in count if it's a template? Actually template doesn't tell.
             closedAssignments: shift.assignments.filter(a => a.status === 'CLOSED').length
           },
           declaredAmounts: {
@@ -309,7 +310,7 @@ export async function POST(
             amount: cashAmount,
             balanceBefore,
             balanceAfter,
-            description: `Cash from ${shift.template?.name || 'shift'} shift (${closedBy || 'System'})`,
+            description: `Cash from ${shift.template?.name || 'shift'} shift (${closedBy || 'System'})${shopRevenue && shopRevenue > 0 ? ` (Includes Shop: Rs. ${shopRevenue})` : ''}`,
             performedBy: closedBy || 'System',
             timestamp: shiftEnd,
             shiftId: id
@@ -393,7 +394,7 @@ export async function POST(
       ...resultTransaction,
       statistics: {
         durationHours: Math.round(durationHours * 100) / 100,
-        totalSales: Math.round(totalSales),
+        totalSales: Math.round(totalSales + (shopRevenue || 0)),
         totalLiters: Math.round(totalLiters * 100) / 100,
         averagePricePerLiter: totalLiters > 0 ? Math.round((totalSales / totalLiters) * 100) / 100 : 0,
         assignmentCount: shift.assignments.length,

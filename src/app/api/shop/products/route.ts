@@ -1,0 +1,76 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
+
+export async function GET(request: NextRequest) {
+    try {
+        const { searchParams } = new URL(request.url)
+        const stationId = searchParams.get('stationId')
+        const isActive = searchParams.get('isActive')
+
+        if (!stationId) {
+            return NextResponse.json({ error: 'Station ID is required' }, { status: 400 })
+        }
+
+        const where: Prisma.ShopProductWhereInput = {
+            stationId,
+        }
+
+        if (isActive !== null) {
+            where.isActive = isActive === 'true'
+        }
+
+        const products = await prisma.shopProduct.findMany({
+            where,
+            include: {
+                batches: {
+                    where: {
+                        currentQuantity: { gt: 0 }
+                    },
+                    orderBy: {
+                        purchaseDate: 'asc'
+                    }
+                }
+            },
+            orderBy: {
+                name: 'asc'
+            }
+        })
+
+        return NextResponse.json(products)
+    } catch (error) {
+        console.error('Error fetching shop products:', error)
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
+}
+
+export async function POST(request: NextRequest) {
+    try {
+        const body = await request.json()
+        const { stationId, name, category, unit, sellingPrice, reorderLevel } = body
+
+        if (!stationId || !name || sellingPrice === undefined) {
+            return NextResponse.json(
+                { error: 'Station ID, name, and selling price are required' },
+                { status: 400 }
+            )
+        }
+
+        const product = await prisma.shopProduct.create({
+            data: {
+                stationId,
+                name,
+                category,
+                unit: unit || 'piece',
+                sellingPrice: parseFloat(sellingPrice),
+                reorderLevel: reorderLevel ? parseFloat(reorderLevel) : 5,
+                isActive: true
+            }
+        })
+
+        return NextResponse.json(product, { status: 201 })
+    } catch (error) {
+        console.error('Error creating shop product:', error)
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
+}

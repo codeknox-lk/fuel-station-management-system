@@ -34,7 +34,8 @@ import {
   AlertTriangle,
   ArrowLeft,
   Download,
-  FileSpreadsheet
+  FileSpreadsheet,
+  ShoppingBag
 } from 'lucide-react'
 import { exportShiftReportPDF } from '@/lib/exportUtils'
 
@@ -91,10 +92,29 @@ interface ApiAssignment {
   pricePerLiter?: number
 }
 
+interface ShopAssignmentReport {
+  id: string
+  pumperId: string
+  pumperName: string
+  status: string
+  totalRevenue: number
+  items: Array<{
+    id: string
+    productId: string
+    productName: string
+    openingStock: number
+    addedStock: number
+    closingStock: number | null
+    soldQuantity: number
+    revenue: number
+  }>
+}
+
 interface ShiftReport {
   shift: Shift
   nozzleReports: NozzleReport[]
   tenderSummary: TenderSummary
+  shopAssignment: ShopAssignmentReport | null
   totalVariance: number
   variancePercentage: number
   overallStatus: 'BALANCED' | 'MINOR_VARIANCE' | 'MAJOR_VARIANCE'
@@ -123,6 +143,8 @@ interface TenderSummary {
   chequeTotal: number
   totalDeclared: number
   totalCalculated: number
+  fuelSales: number
+  shopSales: number
   variance: number
 }
 
@@ -297,7 +319,9 @@ export default function ShiftReportsPage() {
         creditTotal,
         chequeTotal,
         totalDeclared,
-        totalCalculated,
+        totalCalculated: reportData.summary?.totalSales || 0,
+        fuelSales: reportData.summary?.fuelSales || 0,
+        shopSales: reportData.summary?.shopSales || 0,
         variance: tenderVariance
       }
 
@@ -316,6 +340,7 @@ export default function ShiftReportsPage() {
         shift,
         nozzleReports,
         tenderSummary,
+        shopAssignment: reportData.shopAssignment,
         totalVariance,
         variancePercentage,
         overallStatus
@@ -347,7 +372,13 @@ export default function ShiftReportsPage() {
         amount: nr.salesAmount,
         variancePercentage: nr.variancePercentage
       })),
-      totalSales: shiftReport.tenderSummary.totalCalculated,
+      totalSales: shiftReport.tenderSummary.fuelSales,
+      shopSales: shiftReport.tenderSummary.shopSales,
+      shopPerformance: shiftReport.shopAssignment?.items.map(item => ({
+        productName: item.productName,
+        soldQuantity: item.soldQuantity,
+        revenue: item.revenue
+      })),
       totalDeclared: shiftReport.tenderSummary.totalDeclared,
       variance: shiftReport.totalVariance,
       overallStatus: shiftReport.overallStatus
@@ -591,10 +622,25 @@ export default function ShiftReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-700">
-                  Rs. {shiftReport.nozzleReports.reduce((sum, report) => sum + report.salesAmount, 0).toLocaleString()}
+                  Rs. {shiftReport.tenderSummary.totalCalculated.toLocaleString()}
+                </div>
+                <div className="text-xs text-muted-foreground flex gap-2">
+                  <span>{shiftReport.nozzleReports.reduce((sum: number, report: NozzleReport) => sum + report.litersSold, 0).toFixed(1)}L Fuel</span>
+                  {shiftReport.shopAssignment && <span>+ Shop Sales</span>}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Shop Sales</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-700">
+                  Rs. {shiftReport.tenderSummary.shopSales.toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  {shiftReport.nozzleReports.reduce((sum, report) => sum + report.litersSold, 0).toFixed(1)}L total
+                  {shiftReport.shopAssignment?.items.length || 0} items sold
                 </div>
               </CardContent>
             </Card>
@@ -726,6 +772,53 @@ export default function ShiftReportsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Shop Sales Details */}
+          {shiftReport.shopAssignment && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShoppingBag className="h-5 w-5 text-orange-600" />
+                    <CardTitle>Shop Sales Breakdown</CardTitle>
+                  </div>
+                  <div className="text-sm font-medium">
+                    Pumper: {shiftReport.shopAssignment.pumperName}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <DataTable
+                  data={shiftReport.shopAssignment.items}
+                  columns={[
+                    { key: 'productName' as keyof typeof shiftReport.shopAssignment.items[0], title: 'Product' },
+                    { key: 'openingStock' as keyof typeof shiftReport.shopAssignment.items[0], title: 'Opening' },
+                    { key: 'addedStock' as keyof typeof shiftReport.shopAssignment.items[0], title: 'Added' },
+                    { key: 'closingStock' as keyof typeof shiftReport.shopAssignment.items[0], title: 'Closing', render: (val) => (val as number) ?? '-' },
+                    { key: 'soldQuantity' as keyof typeof shiftReport.shopAssignment.items[0], title: 'Sold' },
+                    {
+                      key: 'revenue' as keyof typeof shiftReport.shopAssignment.items[0],
+                      title: 'Revenue',
+                      render: (val: unknown) => {
+                        const numValue = typeof val === 'number' ? val : 0
+                        return <span className="font-semibold text-green-600">Rs. {numValue.toLocaleString()}</span>
+                      }
+                    }
+                  ]}
+                  pagination={false}
+                  emptyMessage="No shop sales recorded."
+                />
+                <div className="mt-4 flex justify-end">
+                  <div className="text-right">
+                    <div className="text-sm text-muted-foreground">Shop Revenue</div>
+                    <div className="text-xl font-bold text-orange-600">
+                      Rs. {shiftReport.shopAssignment.totalRevenue.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Print Action */}
           <Card>

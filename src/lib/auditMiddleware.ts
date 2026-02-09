@@ -42,10 +42,17 @@ export async function auditLog(context: AuditContext, request: NextRequest): Pro
         })
         if (userByUsername) {
           validUserId = userByUsername.id
+        } else {
+          // If no user found by ID or username, we can't create an audit log (FK constraint)
+          // In development/test environments, this avoids crashes when session headers are missing
+          console.warn(`AuditLog: Skipping entry because no valid user found for ID: ${userIdHeader}, Name: ${userNameHeader}`)
+          return
         }
       }
-    } catch {
-      // Continue with original userId - Prisma will handle FK constraint
+    } catch (err) {
+      // Continue with original userId - Prisma will handle FK constraint if it fails
+      // or return if we want to be safe. Since it's a catch block, we'll log it.
+      console.warn(`AuditLog: Error during user validation:`, err)
     }
 
     // Create audit log entry using Prisma

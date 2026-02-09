@@ -52,6 +52,15 @@ export async function GET(request: NextRequest) {
             select: {
               assignments: true
             }
+          },
+          shopAssignment: {
+            include: {
+              items: {
+                include: {
+                  product: true
+                }
+              }
+            }
           }
         }
       })
@@ -142,6 +151,12 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             name: true
+          }
+        },
+        shopAssignment: {
+          select: {
+            id: true,
+            pumperName: true
           }
         },
         _count: {

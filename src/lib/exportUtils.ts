@@ -521,6 +521,7 @@ export interface DailyReportData {
     diesel?: { litres: number; amount: number }
     superDiesel?: { litres: number; amount: number }
   }
+  shopSales?: number
   totalSales?: number
   totalExpenses?: number
   netProfit?: number
@@ -535,7 +536,8 @@ export const exportDailyReportPDF = (reportData: DailyReportData, stationName: s
     ['Petrol 92', `${reportData.salesBreakdown?.petrol92?.litres || 0}L`, `Rs. ${(reportData.salesBreakdown?.petrol92?.amount || 0).toLocaleString()}`],
     ['Petrol 95', `${reportData.salesBreakdown?.petrol95?.litres || 0}L`, `Rs. ${(reportData.salesBreakdown?.petrol95?.amount || 0).toLocaleString()}`],
     ['Diesel', `${reportData.salesBreakdown?.diesel?.litres || 0}L`, `Rs. ${(reportData.salesBreakdown?.diesel?.amount || 0).toLocaleString()}`],
-    ['Super Diesel', `${reportData.salesBreakdown?.superDiesel?.litres || 0}L`, `Rs. ${(reportData.salesBreakdown?.superDiesel?.amount || 0).toLocaleString()}`]
+    ['Super Diesel', `${reportData.salesBreakdown?.superDiesel?.litres || 0}L`, `Rs. ${(reportData.salesBreakdown?.superDiesel?.amount || 0).toLocaleString()}`],
+    ['Shop Sales', '-', `Rs. ${(reportData.shopSales || 0).toLocaleString()}`]
   ]
   pdf.addTable(['Fuel Type', 'Litres', 'Amount'], salesData, 'Sales Breakdown')
 
@@ -559,7 +561,8 @@ export const exportDailyReportExcel = (reportData: DailyReportData, stationName:
     ['Petrol 92', reportData.salesBreakdown?.petrol92?.litres || 0, reportData.salesBreakdown?.petrol92?.amount || 0],
     ['Petrol 95', reportData.salesBreakdown?.petrol95?.litres || 0, reportData.salesBreakdown?.petrol95?.amount || 0],
     ['Diesel', reportData.salesBreakdown?.diesel?.litres || 0, reportData.salesBreakdown?.diesel?.amount || 0],
-    ['Super Diesel', reportData.salesBreakdown?.superDiesel?.litres || 0, reportData.salesBreakdown?.superDiesel?.amount || 0]
+    ['Super Diesel', reportData.salesBreakdown?.superDiesel?.litres || 0, reportData.salesBreakdown?.superDiesel?.amount || 0],
+    ['Shop Sales', '-', reportData.shopSales || 0]
   ]
   excel.addWorksheet('Sales Breakdown', ['Fuel Type', 'Litres', 'Amount (Rs)'], salesData)
 
@@ -583,6 +586,12 @@ interface ShiftReportData {
     amount: number
     variancePercentage: number
   }>
+  shopSales?: number
+  shopPerformance?: Array<{
+    productName: string
+    soldQuantity: number
+    revenue: number
+  }>
   totalSales?: number
   totalDeclared?: number
   variance?: number
@@ -603,9 +612,20 @@ export const exportShiftReportPDF = (shiftData: ShiftReportData, stationName: st
 
   pdf.addTable(['Nozzle', 'Pumper', 'Litres', 'Amount', 'Variance'], nozzleData, 'Nozzle Performance')
 
+  // Shop performance if available
+  if (shiftData.shopPerformance && shiftData.shopPerformance.length > 0) {
+    const shopData = shiftData.shopPerformance.map((item) => [
+      item.productName,
+      item.soldQuantity.toString(),
+      `Rs. ${item.revenue.toLocaleString()}`
+    ])
+    pdf.addTable(['Product', 'Qty Sold', 'Revenue'], shopData, 'Shop Sales Breakdown')
+  }
+
   // Summary
   const summaryData = [
-    { label: 'Total Sales', value: `Rs. ${(shiftData.totalSales || 0).toLocaleString()}` },
+    { label: 'Fuel Sales', value: `Rs. ${(shiftData.totalSales || 0).toLocaleString()}` },
+    { label: 'Shop Sales', value: `Rs. ${(shiftData.shopSales || 0).toLocaleString()}` },
     { label: 'Total Declared', value: `Rs. ${(shiftData.totalDeclared || 0).toLocaleString()}` },
     { label: 'Variance', value: `Rs. ${(shiftData.variance || 0).toLocaleString()}` },
     { label: 'Status', value: shiftData.overallStatus || 'Unknown' }

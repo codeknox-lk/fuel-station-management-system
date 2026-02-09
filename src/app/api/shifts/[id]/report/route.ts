@@ -21,6 +21,15 @@ export async function GET(
             id: true,
             name: true
           }
+        },
+        shopAssignment: {
+          include: {
+            items: {
+              include: {
+                product: true
+              }
+            }
+          }
         }
       }
     })
@@ -122,13 +131,32 @@ export async function GET(
         closedBy: shift.closedBy
       },
       summary: {
-        totalSales: Math.round(totalSales),
+        fuelSales: Math.round(totalSales),
+        shopSales: shift.shopAssignment ? Math.round(shift.shopAssignment.totalRevenue) : 0,
+        totalSales: Math.round(totalSales + (shift.shopAssignment ? shift.shopAssignment.totalRevenue : 0)),
         totalLiters: Math.round(totalLiters * 100) / 100,
         averagePricePerLiter: totalLiters > 0 ? Math.round((totalSales / totalLiters) * 100) / 100 : 0,
         assignmentCount: assignments.length,
         averageLitersPerHour: durationHours > 0 ? Math.round((totalLiters / durationHours) * 100) / 100 : 0
       },
       assignments: assignmentReports,
+      shopAssignment: shift.shopAssignment ? {
+        id: shift.shopAssignment.id,
+        pumperId: shift.shopAssignment.pumperId,
+        pumperName: shift.shopAssignment.pumperName,
+        status: shift.shopAssignment.status,
+        totalRevenue: shift.shopAssignment.totalRevenue,
+        items: shift.shopAssignment.items.map((item: { id: string; productId: string; product: { name: string }; openingStock: number; addedStock: number; closingStock: number | null; soldQuantity: number; revenue: number }) => ({
+          id: item.id,
+          productId: item.productId,
+          productName: item.product.name,
+          openingStock: item.openingStock,
+          addedStock: item.addedStock,
+          closingStock: item.closingStock,
+          soldQuantity: item.soldQuantity,
+          revenue: item.revenue
+        }))
+      } : null,
       generatedAt: new Date().toISOString(),
       reportType: 'SHIFT_SUMMARY'
     }

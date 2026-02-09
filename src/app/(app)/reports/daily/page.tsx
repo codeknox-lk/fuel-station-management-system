@@ -37,7 +37,8 @@ import {
   Wallet,
   ArrowUp,
   ArrowDown,
-  CheckCircle
+  CheckCircle,
+  ShoppingBag
 } from 'lucide-react'
 import { exportDailyReportPDF, exportDailyReportExcel, DailyReportData } from '@/lib/exportUtils'
 import { PrintHeader } from '@/components/PrintHeader'
@@ -96,6 +97,7 @@ interface DailyReport {
   dieselSales: number
   superDieselSales: number
   oilSales: number
+  shopSales: number
   totalFuelSales: number
   totalSales: number
 
@@ -274,7 +276,8 @@ export default function DailyReportsPage() {
       totalSales: dailyReport.totalSales,
       totalExpenses: dailyReport.totalExpenses,
       netProfit: dailyReport.netProfit,
-      variancePercentage: dailyReport.variancePercentage
+      variancePercentage: dailyReport.variancePercentage,
+      shopSales: dailyReport.shopSales
     }
 
     exportDailyReportPDF(exportData, stationName, dateStr)
@@ -349,7 +352,7 @@ export default function DailyReportsPage() {
       title: 'Visa',
       render: (value: unknown) => (
         <span className="text-sm text-orange-600">
-          Rs. {(value as number).toLocaleString()}
+          Rs. {(value as number || 0).toLocaleString()}
         </span>
       )
     },
@@ -358,7 +361,7 @@ export default function DailyReportsPage() {
       title: 'Mastercard',
       render: (value: unknown) => (
         <span className="text-sm text-red-600">
-          Rs. {(value as number).toLocaleString()}
+          Rs. {(value as number || 0).toLocaleString()}
         </span>
       )
     },
@@ -367,7 +370,7 @@ export default function DailyReportsPage() {
       title: 'Amex',
       render: (value: unknown) => (
         <span className="text-sm text-green-600">
-          Rs. {(value as number).toLocaleString()}
+          Rs. {(value as number || 0).toLocaleString()}
         </span>
       )
     },
@@ -376,7 +379,7 @@ export default function DailyReportsPage() {
       title: 'QR',
       render: (value: unknown) => (
         <span className="text-sm text-orange-600">
-          Rs. {(value as number).toLocaleString()}
+          Rs. {(value as number || 0).toLocaleString()}
         </span>
       )
     },
@@ -385,7 +388,7 @@ export default function DailyReportsPage() {
       title: 'Dialog Touch',
       render: (value: unknown) => (
         <span className="text-sm text-orange-600">
-          Rs. {(value as number).toLocaleString()}
+          Rs. {(value as number || 0).toLocaleString()}
         </span>
       )
     },
@@ -394,7 +397,7 @@ export default function DailyReportsPage() {
       title: 'Total',
       render: (value: unknown) => (
         <span className="font-bold">
-          Rs. {(value as number).toLocaleString()}
+          Rs. {(value as number || 0).toLocaleString()}
         </span>
       )
     },
@@ -436,7 +439,7 @@ export default function DailyReportsPage() {
       title: 'Total Sales',
       render: (value: unknown) => (
         <span className="font-semibold text-green-600">
-          Rs. {(value as number).toLocaleString()}
+          Rs. {(value as number || 0).toLocaleString()}
         </span>
       )
     },
@@ -445,7 +448,7 @@ export default function DailyReportsPage() {
       title: 'Avg Transaction',
       render: (value: unknown) => (
         <span className="text-sm">
-          Rs. {(value as number).toLocaleString()}
+          Rs. {(value as number || 0).toLocaleString()}
         </span>
       )
     },
@@ -454,7 +457,7 @@ export default function DailyReportsPage() {
       title: 'Credit Limit',
       render: (value: unknown) => (
         <span className="text-sm text-muted-foreground">
-          Rs. {(value as number).toLocaleString()}
+          Rs. {(value as number || 0).toLocaleString()}
         </span>
       )
     },
@@ -466,7 +469,7 @@ export default function DailyReportsPage() {
         return (
           <div>
             <span className="font-semibold">
-              Rs. {(value as number).toLocaleString()}
+              Rs. {(value as number || 0).toLocaleString()}
             </span>
             <div className="text-xs text-muted-foreground">
               {usagePercent.toFixed(1)}% used
@@ -480,7 +483,7 @@ export default function DailyReportsPage() {
       title: 'Payment Received',
       render: (value: unknown) => (
         <span className="font-semibold text-orange-600">
-          Rs. {(value as number).toLocaleString()}
+          Rs. {(value as number || 0).toLocaleString()}
         </span>
       )
     }
@@ -507,7 +510,7 @@ export default function DailyReportsPage() {
       title: 'Amount',
       render: (value: unknown) => (
         <span className="font-semibold text-green-600">
-          Rs. {(value as number).toLocaleString()}
+          Rs. {(value as number || 0).toLocaleString()}
         </span>
       )
     },
@@ -718,7 +721,7 @@ export default function DailyReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-green-600">
-                  Rs. {dailyReport.totalSales.toLocaleString()}
+                  Rs. {(dailyReport.totalSales || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {dailyReport.transactionCount} transactions
@@ -750,7 +753,7 @@ export default function DailyReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-orange-600">
-                  Rs. {Math.round(dailyReport.averageTransaction).toLocaleString()}
+                  Rs. {Math.round(dailyReport.averageTransaction || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   Per transaction
@@ -765,8 +768,8 @@ export default function DailyReportsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className={`text-3xl font-bold ${dailyReport.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  Rs. {dailyReport.netProfit.toLocaleString()}
+                <div className={`text-3xl font-bold ${(dailyReport.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  Rs. {(dailyReport.netProfit || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   After expenses
@@ -789,7 +792,7 @@ export default function DailyReportsPage() {
                 <div className="p-4 bg-orange-500/10 rounded-lg border border-orange-500/20">
                   <div className="text-sm text-muted-foreground mb-1">Petrol 92</div>
                   <div className="text-xl font-bold text-orange-600">
-                    Rs. {dailyReport.petrolSales.toLocaleString()}
+                    Rs. {(dailyReport.petrolSales || 0).toLocaleString()}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
                     {((dailyReport.petrolSales / dailyReport.totalSales) * 100).toFixed(1)}%
@@ -820,6 +823,18 @@ export default function DailyReportsPage() {
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
                     {((dailyReport.oilSales / dailyReport.totalSales) * 100).toFixed(1)}%
+                  </div>
+                </div>
+                <div className="p-4 bg-orange-500/10 rounded-lg border border-orange-500/20">
+                  <div className="flex items-center gap-2 mb-1">
+                    <ShoppingBag className="h-4 w-4 text-orange-600" />
+                    <div className="text-sm text-muted-foreground">Shop Sales</div>
+                  </div>
+                  <div className="text-xl font-bold text-orange-600">
+                    Rs. {dailyReport.shopSales.toLocaleString()}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {((dailyReport.shopSales / dailyReport.totalSales) * 100).toFixed(1)}%
                   </div>
                 </div>
                 <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
@@ -1204,7 +1219,7 @@ export default function DailyReportsPage() {
                     <div className="flex items-center justify-between p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
                       <span className="font-medium">Total Missing Slip Amount:</span>
                       <span className="font-bold text-yellow-600 text-lg">
-                        Rs. {dailyReport.missingSlips.reduce((sum, s) => sum + s.amount, 0).toLocaleString()}
+                        Rs. {(dailyReport.missingSlips.reduce((sum, s) => sum + (s.amount || 0), 0) || 0).toLocaleString()}
                       </span>
                     </div>
                   </div>
