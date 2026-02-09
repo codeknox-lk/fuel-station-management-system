@@ -2062,9 +2062,20 @@ export default function CloseShiftPage() {
                       pumperDisplay = `${shift.shopAssignment.pumperName} (Shop)`
                     }
 
+                    const isShopOnly = (!assignments || assignments.length === 0) && !!shift.shopAssignment
+
                     return (
                       <SelectItem key={shift.id} value={shift.id}>
-                        {new Date(shift.startTime).toLocaleString()} - {pumperDisplay}
+                        <div className="flex items-center gap-2">
+                          {isShopOnly ? (
+                            <ShoppingBag className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                          ) : (
+                            <Fuel className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                          )}
+                          <span>
+                            {new Date(shift.startTime).toLocaleString()} - {pumperDisplay}
+                          </span>
+                        </div>
                       </SelectItem>
                     )
                   })

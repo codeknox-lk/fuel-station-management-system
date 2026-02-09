@@ -332,7 +332,58 @@ export async function GET(request: NextRequest) {
     const superDieselSales = salesByFuelType.get('SUPER_DIESEL') || 0
     const oilSales = salesByFuelType.get('OIL') || 0
     const totalFuelSales = petrolSales + dieselSales + superDieselSales
-    const shopSales = shopRevenue
+
+    // Calculate Shop Sales from Assignments (Inventory Method)
+    const shopSalesMap = new Map<string, {
+      productId: string
+      productName: string
+      quantity: number
+      revenue: number
+    }>()
+
+    for (const shift of shifts) {
+      if (shift.shopAssignment?.items) {
+        for (const item of shift.shopAssignment.items) {
+          // If closing stock is not set, assume 0 sold? Or assume all sold? 
+          // Usually closingStock is required. If null, maybe 0 sold or handled elsewhere.
+          // In shift close, existing logic: closing = stock[id] ?? (opening+added). Sold = (opening+added) - closing.
+          // If closingStock is null in DB, it implies not closed? But specific shift query filters for status='CLOSED' (line 138),
+          // though checking assignments status... shift status should be enough.
+
+          // Let's use the same logic as Shift Closure:
+          // closingStock is nullable in DB.
+          const open = item.openingStock + item.addedStock
+          const close = item.closingStock
+
+          if (close !== null && close !== undefined) {
+            const sold = Math.max(0, open - close)
+            const revenue = sold * item.product.sellingPrice
+
+            if (sold > 0) {
+              const key = item.productId
+              const existing = shopSalesMap.get(key)
+              if (existing) {
+                existing.quantity += sold
+                existing.revenue += revenue
+              } else {
+                shopSalesMap.set(key, {
+                  productId: item.productId,
+                  productName: item.product.name,
+                  quantity: sold,
+                  revenue: revenue
+                })
+              }
+            }
+          }
+        }
+      }
+    }
+    const shopSalesBreakdown = Array.from(shopSalesMap.values()).sort((a, b) => b.revenue - a.revenue)
+    const shopSalesFromInventory = shopSalesBreakdown.reduce((sum, i) => sum + i.revenue, 0)
+
+    // Use Inventory Sales if > 0, otherwise fallback to Transaction Sales (ShopSale table)
+    const shopSales = shopSalesFromInventory > 0 ? shopSalesFromInventory : shopRevenue
+
     totalSales += shopSales
 
     // Tender breakdown
@@ -584,8 +635,10 @@ export async function GET(request: NextRequest) {
       cashPercentage: totalSales > 0 ? Math.round((cashAmount / totalSales) * 100 * 100) / 100 : 0,
       cardPercentage: totalSales > 0 ? Math.round((cardAmount / totalSales) * 100 * 100) / 100 : 0,
       creditPercentage: totalSales > 0 ? Math.round((creditAmount / totalSales) * 100 * 100) / 100 : 0,
-      chequePercentage: totalSales > 0 ? Math.round((chequeAmount / totalSales) * 100 * 100) / 100 : 0
+      chequePercentage: totalSales > 0 ? Math.round((chequeAmount / totalSales) * 100 * 100) / 100 : 0,
+      shopSalesBreakdown
     }
+
 
     return NextResponse.json(report)
   } catch (error) {

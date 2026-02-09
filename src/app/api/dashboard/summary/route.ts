@@ -31,6 +31,13 @@ export async function GET(request: NextRequest) {
               id: true,
               name: true
             }
+          },
+          assignments: {
+            select: { id: true },
+            take: 1
+          },
+          shopAssignment: {
+            select: { id: true }
           }
         },
         orderBy: { startTime: 'desc' },
@@ -186,11 +193,20 @@ export async function GET(request: NextRequest) {
         todaySales,
         todayTransactions,
         activeShifts: activeShifts.length,
-        activeShiftDetails: activeShifts.map(s => ({
-          id: s.id,
-          station: s.station,
-          startTime: s.startTime
-        })),
+        activeShiftDetails: activeShifts.map(s => {
+          const hasPumps = s.assignments && s.assignments.length > 0
+          const hasShop = !!s.shopAssignment
+          let type = 'PUMP'
+          if (hasPumps && hasShop) type = 'MIXED'
+          else if (hasShop) type = 'SHOP'
+
+          return {
+            id: s.id,
+            station: s.station,
+            startTime: s.startTime,
+            type
+          }
+        }),
         safeBalance: safeData?.currentBalance || 0,
         creditOutstanding,
         totalTanks,

@@ -172,7 +172,7 @@ export default function CreditPage() {
       title: 'Credit Limit',
       render: (value: unknown) => (
         <span className="font-mono text-orange-600 dark:text-orange-400">
-          {row.type === 'SALE' ? '+' : '-'}Rs. {((value as number) || 0).toLocaleString()}
+          Rs. {((value as number) || 0).toLocaleString()}
         </span>
       )
     },
@@ -181,18 +181,18 @@ export default function CreditPage() {
       title: 'Outstanding',
       render: (value: unknown) => (
         <span className="font-mono font-semibold text-red-600 dark:text-red-400">
-          {row.type === 'SALE' ? '+' : '-'}Rs. {((value as number) || 0).toLocaleString()}
+          Rs. {((value as number) || 0).toLocaleString()}
         </span>
       )
     },
     {
       key: 'availableCredit' as keyof CreditCustomer,
       title: 'Available',
-      render: (value: unknown) => {
-        const numValue = value as number
+      render: (value: unknown, row: CreditCustomer) => {
+        const numValue = (row.creditLimit || 0) - (row.currentBalance || 0)
         return (
           <span className={`font-mono font-semibold ${numValue > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-            Rs. {(numValue || 0).toLocaleString()}
+            Rs. {numValue.toLocaleString()}
           </span>
         )
       }

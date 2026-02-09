@@ -16,11 +16,13 @@ import {
   User,
   Calendar,
   ArrowLeft,
-  Printer
+  Printer,
+  ShoppingBag
 } from 'lucide-react'
 import Link from 'next/link'
 import { getNozzleDisplayWithBadge } from '@/lib/nozzleUtils'
 import { PrintHeader } from '@/components/PrintHeader'
+import { ShopSalesTable } from '@/components/shifts/ShopSalesTable'
 import { ShiftWithDetails, AssignmentWithDetails, ShiftStatistics, DeclaredAmounts, Expense } from '@/types/db'
 
 // Helper type for the UI which might have parsed JSON fields
@@ -476,6 +478,11 @@ export default function ShiftDetailsPage() {
     }
   ]
 
+  // Determine shift type
+  const hasPumps = (shift.assignmentCount || 0) > 0
+  const hasShop = !!shift.shopAssignment
+  const isShopOnly = hasShop && !hasPumps
+
   return (
     <div className="space-y-6">
       {/* Print Header - Only visible when printing */}
@@ -484,8 +491,7 @@ export default function ShiftDetailsPage() {
         title={shift?.station?.name || shift?.stationName}
       />
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between no-print">
         <div className="flex items-center gap-4">
           <Button variant="outline" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -493,7 +499,7 @@ export default function ShiftDetailsPage() {
           </Button>
           <div className="flex flex-col">
             <h1
-              className="text-3xl font-bold text-foreground"
+              className="text-3xl font-bold text-foreground flex items-center gap-2"
               style={{
                 border: 'none',
                 outline: 'none',
@@ -505,11 +511,19 @@ export default function ShiftDetailsPage() {
                 backgroundRepeat: 'none'
               }}
             >
+              {isShopOnly ? (
+                <ShoppingBag className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+              ) : (
+                <Clock className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+              )}
               Shift Details
             </h1>
-            <p className="text-muted-foreground mt-1">
-              {shift.station?.name || shift.stationName || 'Unknown Station'} • {shift.template?.name || shift.templateName || 'Unknown Template'}
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-muted-foreground mr-2">
+                {shift.station?.name || shift.stationName || 'Unknown Station'} • {shift.template?.name || shift.templateName || 'Unknown Template'}
+              </span>
+              {hasShop && <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Shop Active</Badge>}
+            </div>
           </div>
         </div>
 
@@ -570,7 +584,7 @@ export default function ShiftDetailsPage() {
             <div className="text-2xl font-bold">
               {assignments.length + (shift.shopAssignment ? 1 : 0)}
             </div>
-            <p className="text-xs text-muted-foreground">Pumpers Total</p>
+            <p className="text-xs text-muted-foreground">Total Staff</p>
           </CardContent>
         </Card>
 
@@ -585,7 +599,17 @@ export default function ShiftDetailsPage() {
                 const stats = typeof shift.statistics === 'string'
                   ? (() => { try { return JSON.parse(shift.statistics as string) } catch { return {} } })()
                   : shift.statistics || {}
-                return stats?.totalSales ? formatCurrency(stats.totalSales) : '-'
+
+                // Calculate total including shop if available
+                const total = (stats?.totalSales || 0) +
+                  (shift.shopAssignment?.items?.reduce((acc, item) => acc + (item.revenue || 0), 0) || 0)
+                // Note: stats.totalSales might already include shop sales depending on backend, 
+                // but usually it's calculated from pump sales + declared shop sales. 
+                // For now, let's stick to what the backend provides if possible, or fallback to manual sum.
+                // Actually, stats usually only has pump sales if not updated. 
+                // Let's use tenderSummary if available, else calc
+
+                return formatCurrency(tenderSummary?.totalSales || total)
               })()}
             </div>
             <p className="text-xs text-muted-foreground">Revenue</p>
@@ -601,8 +625,8 @@ export default function ShiftDetailsPage() {
             <CardDescription>Sales vs declared amounts</CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Sales Breakdown */}
-            {tenderSummary?.salesBreakdown && (
+            {/* Sales Breakdown - Fuel Only */}
+            {hasPumps && tenderSummary?.salesBreakdown && (
               <div className="bg-orange-500/10 dark:bg-orange-500/20 p-4 rounded-lg mb-6">
                 <h4 className="font-semibold text-orange-700 dark:text-orange-300 mb-3">Sales Breakdown</h4>
                 <div className="grid grid-cols-4 gap-4 text-sm">
@@ -704,6 +728,25 @@ export default function ShiftDetailsPage() {
         </Card>
       )}
 
+      {/* Shop Sales Section */}
+      {hasShop && shift.shopAssignment && (
+        <ShopSalesTable
+          shopAssignment={{
+            id: shift.shopAssignment.pumperName,
+            pumperName: shift.shopAssignment.pumperName,
+            totalRevenue: shift.shopAssignment.items.reduce((acc, item) => acc + (item.revenue || 0), 0),
+            items: shift.shopAssignment.items.map(item => ({
+              ...item,
+              id: item.id || Math.random().toString(),
+              productId: item.id || 'unknown',
+              revenue: item.revenue || 0,
+              soldQuantity: item.soldQuantity || 0
+            }))
+          }}
+          className="mb-8"
+        />
+      )}
+
       {/* Shift Information */}
       <Card>
         <CardHeader>
@@ -782,84 +825,25 @@ export default function ShiftDetailsPage() {
       </Card>
 
       {/* Assignments */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Assignments</CardTitle>
-          <CardDescription>Pumper assignments and meter readings</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {assignmentsWithCalculations.length > 0 ? (
-            <DataTable
-              data={assignmentsWithCalculations}
-              columns={assignmentColumns}
-              searchable={false}
-              pagination={false}
-            />
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              No nozzle assignments found
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Shop Assignment */}
-      {shift.shopAssignment && (
+      {hasPumps && (
         <Card>
           <CardHeader>
-            <CardTitle>Shop Assignment</CardTitle>
-            <CardDescription>Inventory accountability for {shift.shopAssignment.pumperName}</CardDescription>
+            <CardTitle>Assignments</CardTitle>
+            <CardDescription>Pumper assignments and meter readings</CardDescription>
           </CardHeader>
           <CardContent>
-            <DataTable
-              data={shift.shopAssignment.items}
-              columns={[
-                {
-                  key: 'productName' as keyof ShopItem,
-                  title: 'Product',
-                  render: (_: unknown, row: ShopItem) => (
-                    <span className="font-medium">{row.product.name}</span>
-                  )
-                },
-                {
-                  key: 'openingStock' as keyof ShopItem,
-                  title: 'Opening + Added',
-                  render: (_: unknown, row: ShopItem) => (
-                    <span className="font-mono">{(row.openingStock + (row.addedStock) || 0).toLocaleString()} {row.product.unit}</span>
-                  )
-                },
-                {
-                  key: 'closingStock' as keyof ShopItem,
-                  title: 'Closing Stock',
-                  render: (_: unknown, row: ShopItem) => (
-                    <span className="font-mono">{(row.closingStock || 0).toLocaleString() || '-'}</span>
-                  )
-                },
-                {
-                  key: 'soldQuantity' as keyof ShopItem,
-                  title: 'Sold',
-                  render: (_: unknown, row: ShopItem) => {
-                    const sold = row.closingStock !== null
-                      ? Math.max(0, (row.openingStock + row.addedStock) - row.closingStock)
-                      : 0
-                    return <span className={`font-mono ${sold > 0 ? 'text-orange-600' : ''}`}>{(sold || 0).toLocaleString()}</span>
-                  }
-                },
-                {
-                  key: 'revenue' as keyof ShopItem,
-                  title: 'Revenue',
-                  render: (_: unknown, row: ShopItem) => {
-                    const sold = row.closingStock !== null
-                      ? Math.max(0, (row.openingStock + row.addedStock) - row.closingStock)
-                      : 0
-                    const revenue = sold * row.product.sellingPrice
-                    return <span className="font-mono font-semibold">Rs. {(revenue || 0).toLocaleString()}</span>
-                  }
-                }
-              ]}
-              searchable={false}
-              pagination={false}
-            />
+            {assignmentsWithCalculations.length > 0 ? (
+              <DataTable
+                data={assignmentsWithCalculations}
+                columns={assignmentColumns}
+                searchable={false}
+                pagination={false}
+              />
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No nozzle assignments found
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

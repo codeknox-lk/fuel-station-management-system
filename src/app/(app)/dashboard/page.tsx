@@ -9,7 +9,7 @@ import { FormCard } from '@/components/ui/FormCard'
 import {
   Fuel, CreditCard, DollarSign,
   AlertTriangle, Clock, Activity, FileText, Wallet,
-  Building2, CheckCircle2, Package
+  Building2, CheckCircle2, Package, ShoppingBag
 } from 'lucide-react'
 
 interface FuelStock {
@@ -21,9 +21,11 @@ interface FuelStock {
 
 interface ActiveShiftDetail {
   id: string
-  template?: {
+  station?: {
     name: string
   }
+  type: 'PUMP' | 'SHOP' | 'MIXED'
+  startTime: string
 }
 
 interface ActivityItem {
@@ -125,11 +127,35 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground mt-1">
               {stats.activeShifts > 0 ? 'Currently running' : 'No active shifts'}
             </p>
-            {stats.activeShiftDetails.length > 0 && (
-              <div className="mt-2 pt-2 border-t">
-                <p className="text-xs font-medium">Latest: {stats.activeShiftDetails[0].template?.name || 'Shift'}</p>
+            {stats.activeShiftDetails.map((shift) => (
+              <div key={shift.id} className="mt-2 pt-2 border-t flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {shift.type === 'SHOP' ? (
+                    <div className="flex items-center gap-1 text-blue-600">
+                      <ShoppingBag className="h-3 w-3" />
+                      <span className="text-[10px] uppercase font-bold">Shop</span>
+                    </div>
+                  ) : shift.type === 'MIXED' ? (
+                    <div className="flex items-center gap-1 text-purple-600">
+                      <Fuel className="h-3 w-3" />
+                      <span className="text-[10px]">+</span>
+                      <ShoppingBag className="h-3 w-3" />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 text-orange-600">
+                      <Fuel className="h-3 w-3" />
+                      <span className="text-[10px] uppercase font-bold">Pump</span>
+                    </div>
+                  )}
+                  <span className="text-xs font-medium truncate max-w-[120px]">
+                    {shift.station?.name || 'Unknown Station'}
+                  </span>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(shift.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
               </div>
-            )}
+            ))}
           </CardContent>
         </Card>
 

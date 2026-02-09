@@ -100,6 +100,12 @@ interface DailyReport {
   shopSales: number
   totalFuelSales: number
   totalSales: number
+  shopSalesBreakdown?: Array<{
+    productId: string
+    productName: string
+    quantity: number
+    revenue: number
+  }>
 
   // Tender breakdown
   cashAmount: number
@@ -849,6 +855,41 @@ export default function DailyReportsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Shop Sales Breakdown */}
+          {dailyReport.shopSalesBreakdown && dailyReport.shopSalesBreakdown.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingBag className="h-5 w-5" />
+                  Shop Sales Breakdown
+                </CardTitle>
+                <CardDescription>Itemized shop sales</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border">
+                  <table className="w-full caption-bottom text-sm select-auto">
+                    <thead className="[&_tr]:border-b">
+                      <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                        <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Product</th>
+                        <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">Quantity Sold</th>
+                        <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">Revenue</th>
+                      </tr>
+                    </thead>
+                    <tbody className="[&_tr:last-child]:border-0">
+                      {dailyReport.shopSalesBreakdown.map((item) => (
+                        <tr key={item.productId} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                          <td className="p-4 align-middle font-medium">{item.productName}</td>
+                          <td className="p-4 align-middle text-right text-orange-600">{item.quantity.toLocaleString()}</td>
+                          <td className="p-4 align-middle text-right font-bold">Rs. {item.revenue.toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Tender Breakdown */}
           <Card>
