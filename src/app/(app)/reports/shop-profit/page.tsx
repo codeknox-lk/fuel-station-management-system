@@ -132,19 +132,19 @@ export default function ShopProfitReportPage() {
         {
             key: 'revenue' as keyof PerformanceData,
             title: 'Revenue',
-            render: (val) => `Rs. ${(val as number).toLocaleString()}`
+            render: (val) => `Rs. ${(val as (number) || 0).toLocaleString()}`
         },
         {
             key: 'cost' as keyof PerformanceData,
             title: 'Cost (FIFO)',
-            render: (val) => `Rs. ${(val as number).toLocaleString()}`
+            render: (val) => `Rs. ${(val as (number) || 0).toLocaleString()}`
         },
         {
             key: 'profit' as keyof PerformanceData,
             title: 'Gross Profit',
             render: (val) => (
                 <span className={`font-bold ${(val as number) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    Rs. {(val as number).toLocaleString()}
+                    Rs. {(val as (number) || 0).toLocaleString()}
                 </span>
             )
         },
@@ -223,7 +223,7 @@ export default function ShopProfitReportPage() {
                                 <CardTitle className="text-sm font-medium text-muted-foreground">Shop Revenue</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">Rs. {report.summary.totalRevenue.toLocaleString()}</div>
+                                <div className="text-2xl font-bold">Rs. {(report.summary.totalRevenue || 0).toLocaleString()}</div>
                                 <div className="text-xs text-green-600 flex items-center gap-1 mt-1">
                                     <ArrowUpRight className="h-3 w-3" />
                                     From {report.performance.reduce((sum: number, p: PerformanceData) => sum + p.quantitySold, 0)} items
@@ -236,7 +236,7 @@ export default function ShopProfitReportPage() {
                                 <CardTitle className="text-sm font-medium text-muted-foreground">Profit (Gross)</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-green-600">Rs. {report.summary.totalProfit.toLocaleString()}</div>
+                                <div className="text-2xl font-bold text-green-600">Rs. {(report.summary.totalProfit || 0).toLocaleString()}</div>
                                 <div className="text-xs text-muted-foreground mt-1">
                                     {((report.summary.totalProfit / report.summary.totalRevenue) * 100).toFixed(1)}% avg margin
                                 </div>
@@ -248,7 +248,7 @@ export default function ShopProfitReportPage() {
                                 <CardTitle className="text-sm font-medium text-muted-foreground">Wastage Loss</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-red-600">Rs. {report.summary.totalWastageLoss.toLocaleString()}</div>
+                                <div className="text-2xl font-bold text-red-600">Rs. {(report.summary.totalWastageLoss || 0).toLocaleString()}</div>
                                 <div className="text-xs text-red-500 mt-1">
                                     Includes damaged & expired stock
                                 </div>
@@ -260,7 +260,7 @@ export default function ShopProfitReportPage() {
                                 <CardTitle className="text-sm font-medium text-orange-700 dark:text-orange-400 font-bold">Inventory Value</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-orange-800 dark:text-orange-300">Rs. {report.summary.inventoryValuation.toLocaleString()}</div>
+                                <div className="text-2xl font-bold text-orange-800 dark:text-orange-300">Rs. {(report.summary.inventoryValuation || 0).toLocaleString()}</div>
                                 <div className="text-xs text-orange-600 mt-1">
                                     Current stock at cost price
                                 </div>
@@ -289,7 +289,7 @@ export default function ShopProfitReportPage() {
                                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                             ))}
                                         </Pie>
-                                        <Tooltip formatter={(value) => `Rs. ${Number(value).toLocaleString()}`} />
+                                        <Tooltip formatter={(value) => `Rs. ${(Number(value) || 0).toLocaleString()}`} />
                                         <Legend />
                                     </PieChart>
                                 </ResponsiveContainer>
@@ -306,7 +306,7 @@ export default function ShopProfitReportPage() {
                                         <CartesianGrid strokeDasharray="3 3" />
                                         <XAxis dataKey="category" />
                                         <YAxis tickFormatter={(val) => `Rs. ${val / 1000}K`} />
-                                        <Tooltip formatter={(value) => `Rs. ${Number(value).toLocaleString()}`} />
+                                        <Tooltip formatter={(value) => `Rs. ${(Number(value) || 0).toLocaleString()}`} />
                                         <Legend />
                                         <Bar dataKey="revenue" fill="#3b82f6" name="Revenue" />
                                         <Bar dataKey="profit" fill="#10b981" name="Profit" />

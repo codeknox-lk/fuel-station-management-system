@@ -144,17 +144,17 @@ export default function StationComparisonPage() {
     doc.text('Summary', 14, 44)
     doc.setFontSize(10)
     doc.text(`Total Stations: ${stations.length}`, 14, 50)
-    doc.text(`Total Sales: Rs. ${totals.totalSales.toLocaleString()}`, 14, 56)
-    doc.text(`Total Volume: ${totals.totalVolume.toLocaleString()} L`, 14, 62)
-    doc.text(`Total Profit: Rs. ${totals.totalProfit.toLocaleString()}`, 14, 68)
+    doc.text(`Total Sales: Rs. ${(totals.totalSales || 0).toLocaleString()}`, 14, 56)
+    doc.text(`Total Volume: ${(totals.totalVolume || 0).toLocaleString()} L`, 14, 62)
+    doc.text(`Total Profit: Rs. ${(totals.totalProfit || 0).toLocaleString()}`, 14, 68)
 
     // Prepare table data
     const tableData = stations.map(station => [
       station.name,
-      `Rs. ${station.totalSales.toLocaleString()}`,
-      `${station.totalVolume.toLocaleString()} L`,
-      `Rs. ${station.totalProfit.toLocaleString()}`,
-      `Rs. ${station.avgDailySales.toLocaleString()}`,
+      `Rs. ${(station.totalSales || 0).toLocaleString()}`,
+      `${(station.totalVolume || 0).toLocaleString()} L`,
+      `Rs. ${(station.totalProfit || 0).toLocaleString()}`,
+      `Rs. ${(station.avgDailySales || 0).toLocaleString()}`,
       station.pumperCount.toString(),
       station.shiftsCount.toString(),
       `${station.profitMargin.toFixed(2)}%`
@@ -163,10 +163,10 @@ export default function StationComparisonPage() {
     // Add totals row
     tableData.push([
       'TOTAL',
-      `Rs. ${totals.totalSales.toLocaleString()}`,
-      `${totals.totalVolume.toLocaleString()} L`,
-      `Rs. ${totals.totalProfit.toLocaleString()}`,
-      `Rs. ${totals.avgDailySales.toLocaleString()}`,
+      `Rs. ${(totals.totalSales || 0).toLocaleString()}`,
+      `${(totals.totalVolume || 0).toLocaleString()} L`,
+      `Rs. ${(totals.totalProfit || 0).toLocaleString()}`,
+      `Rs. ${(totals.avgDailySales || 0).toLocaleString()}`,
       '-',
       totals.shiftsCount.toString(),
       '-'
@@ -212,9 +212,9 @@ export default function StationComparisonPage() {
       [],
       ['Summary'],
       [`Total Stations: ${stations.length}`],
-      [`Total Sales: Rs. ${totals.totalSales.toLocaleString()}`],
-      [`Total Volume: ${totals.totalVolume.toLocaleString()} L`],
-      [`Total Profit: Rs. ${totals.totalProfit.toLocaleString()}`],
+      [`Total Sales: Rs. ${(totals.totalSales || 0).toLocaleString()}`],
+      [`Total Volume: ${(totals.totalVolume || 0).toLocaleString()} L`],
+      [`Total Profit: Rs. ${(totals.totalProfit || 0).toLocaleString()}`],
       [],
       ['Station', 'Total Sales (Rs.)', 'Volume (L)', 'Profit (Rs.)', 'Avg Daily Sales (Rs.)', 'Pumpers', 'Shifts', 'Profit Margin (%)'],
       ...stations.map(station => [
@@ -410,7 +410,7 @@ export default function StationComparisonPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Sales</p>
-                <p className="text-2xl font-bold">Rs. {totalAcrossStations.sales.toLocaleString()}</p>
+                <p className="text-2xl font-bold">Rs. {(totalAcrossStations.sales || 0).toLocaleString()}</p>
               </div>
               <DollarSign className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
@@ -422,7 +422,7 @@ export default function StationComparisonPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Volume</p>
-                <p className="text-2xl font-bold">{totalAcrossStations.volume.toLocaleString()} L</p>
+                <p className="text-2xl font-bold">{(totalAcrossStations.volume || 0).toLocaleString()} L</p>
               </div>
               <Fuel className="h-8 w-8 text-orange-600 dark:text-orange-400" />
             </div>
@@ -434,7 +434,7 @@ export default function StationComparisonPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Profit</p>
-                <p className="text-2xl font-bold">Rs. {totalAcrossStations.profit.toLocaleString()}</p>
+                <p className="text-2xl font-bold">Rs. {(totalAcrossStations.profit || 0).toLocaleString()}</p>
               </div>
               <TrendingUp className="h-8 w-8 text-orange-600 dark:text-orange-400" />
             </div>
@@ -456,7 +456,7 @@ export default function StationComparisonPage() {
               <div>
                 <p className="text-2xl font-bold text-green-900 dark:text-green-100">{bestPerformer.name}</p>
                 <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                  Total Sales: Rs. {bestPerformer.totalSales.toLocaleString()}
+                  Total Sales: Rs. {(bestPerformer.totalSales || 0).toLocaleString()}
                 </p>
               </div>
               <Badge className="bg-green-600 text-white">Top Performer</Badge>
@@ -504,16 +504,16 @@ export default function StationComparisonPage() {
                       </div>
                     </td>
                     <td className="p-3 text-right">
-                      Rs. {station.totalSales.toLocaleString()}
+                      Rs. {(station.totalSales || 0).toLocaleString()}
                     </td>
                     <td className="p-3 text-right">
-                      {station.totalVolume.toLocaleString()}
+                      {(station.totalVolume || 0).toLocaleString()}
                     </td>
                     <td className="p-3 text-right text-green-600 dark:text-green-400">
-                      Rs. {station.totalProfit.toLocaleString()}
+                      Rs. {(station.totalProfit || 0).toLocaleString()}
                     </td>
                     <td className="p-3 text-right">
-                      Rs. {station.avgDailySales.toLocaleString()}
+                      Rs. {(station.avgDailySales || 0).toLocaleString()}
                     </td>
                     <td className="p-3 text-center">
                       <Badge variant="outline">{station.pumperCount}</Badge>
@@ -538,13 +538,13 @@ export default function StationComparisonPage() {
                 <tr className="border-t-2 font-bold bg-muted">
                   <td className="p-3">TOTAL</td>
                   <td className="p-3 text-right">
-                    Rs. {totalAcrossStations.sales.toLocaleString()}
+                    Rs. {(totalAcrossStations.sales || 0).toLocaleString()}
                   </td>
                   <td className="p-3 text-right">
-                    {totalAcrossStations.volume.toLocaleString()}
+                    {(totalAcrossStations.volume || 0).toLocaleString()}
                   </td>
                   <td className="p-3 text-right text-green-600 dark:text-green-400">
-                    Rs. {totalAcrossStations.profit.toLocaleString()}
+                    Rs. {(totalAcrossStations.profit || 0).toLocaleString()}
                   </td>
                   <td colSpan={4}></td>
                 </tr>

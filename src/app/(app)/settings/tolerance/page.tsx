@@ -207,7 +207,7 @@ export default function TolerancePage() {
                 <Info className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                 <AlertDescription className="text-orange-700 dark:text-orange-300">
                   <strong>Note:</strong> The system now uses a flat tolerance amount only.
-                  Percentage tolerance is no longer used. Any variance within Rs. {formData.flatAmountTolerance.toLocaleString()}
+                  Percentage tolerance is no longer used. Any variance within Rs. {(formData.flatAmountTolerance || 0).toLocaleString()}
                   is considered normal.
                 </AlertDescription>
               </Alert>

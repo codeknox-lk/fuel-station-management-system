@@ -266,7 +266,7 @@ export default function SalaryPage() {
         <div className="flex items-center gap-1">
           <TrendingUp className="h-4 w-4 text-green-600" />
           <span className="font-semibold text-green-600">
-            Rs. {(value as number).toLocaleString()}
+            Rs. {(value as (number) || 0).toLocaleString()}
           </span>
         </div>
       )
@@ -275,7 +275,7 @@ export default function SalaryPage() {
       key: 'baseSalary' as keyof SalaryData,
       title: 'Base Salary',
       render: (value: unknown) => (
-        <span>Rs. {(value as number).toLocaleString()}</span>
+        <span>Rs. {(value as (number) || 0).toLocaleString()}</span>
       )
     },
     {
@@ -284,7 +284,7 @@ export default function SalaryPage() {
       render: (value: unknown) => {
         const advances = value as number
         return advances > 0 ? (
-          <span className="text-orange-600">-Rs. {advances.toLocaleString()}</span>
+          <span className="text-orange-600">-Rs. {(advances || 0).toLocaleString()}</span>
         ) : (
           <span className="text-muted-foreground">-</span>
         )
@@ -296,7 +296,7 @@ export default function SalaryPage() {
       render: (value: unknown) => {
         const loans = value as number
         return loans > 0 ? (
-          <span className="text-red-600">-Rs. {loans.toLocaleString()}</span>
+          <span className="text-red-600">-Rs. {(loans || 0).toLocaleString()}</span>
         ) : (
           <span className="text-muted-foreground">-</span>
         )
@@ -311,14 +311,14 @@ export default function SalaryPage() {
         if (add > 0 && deduct > 0) {
           return (
             <div className="flex flex-col gap-0.5">
-              <span className="text-xs text-green-600">+Rs. {add.toLocaleString()}</span>
-              <span className="text-xs text-red-600">-Rs. {deduct.toLocaleString()}</span>
+              <span className="text-xs text-green-600">+Rs. {(add || 0).toLocaleString()}</span>
+              <span className="text-xs text-red-600">-Rs. {(deduct || 0).toLocaleString()}</span>
             </div>
           )
         } else if (add > 0) {
-          return <span className="text-green-600">+Rs. {add.toLocaleString()}</span>
+          return <span className="text-green-600">+Rs. {(add || 0).toLocaleString()}</span>
         } else if (deduct > 0) {
-          return <span className="text-red-600">-Rs. {deduct.toLocaleString()}</span>
+          return <span className="text-red-600">-Rs. {(deduct || 0).toLocaleString()}</span>
         }
         return <span className="text-muted-foreground">-</span>
       }
@@ -332,7 +332,7 @@ export default function SalaryPage() {
           <div className="flex items-center gap-2">
             <DollarSign className={`h-4 w-4 ${net >= 0 ? 'text-green-600' : 'text-red-600'}`} />
             <span className={`font-bold ${net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              Rs. {net.toLocaleString()}
+              Rs. {(net || 0).toLocaleString()}
             </span>
           </div>
         )
@@ -367,7 +367,7 @@ export default function SalaryPage() {
       key: 'baseSalary' as keyof OfficeStaffSalaryData,
       title: 'Base Salary',
       render: (value: unknown) => (
-        <span>Rs. {(value as number).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        <span>Rs. {(value as (number) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
       )
     },
     {
@@ -376,7 +376,7 @@ export default function SalaryPage() {
       render: (value: unknown) => {
         const allowances = value as number
         return allowances > 0 ? (
-          <span className="text-green-600">+Rs. {allowances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span className="text-green-600">+Rs. {(allowances || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         ) : (
           <span className="text-muted-foreground">-</span>
         )
@@ -388,7 +388,7 @@ export default function SalaryPage() {
       render: (value: unknown) => {
         const deductions = value as number
         return deductions > 0 ? (
-          <span className="text-red-600">-Rs. {deductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span className="text-red-600">-Rs. {(deductions || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         ) : (
           <span className="text-muted-foreground">-</span>
         )
@@ -403,7 +403,7 @@ export default function SalaryPage() {
           <div className="flex items-center gap-2">
             <DollarSign className={`h-4 w-4 ${net >= 0 ? 'text-green-600' : 'text-red-600'}`} />
             <span className={`font-bold ${net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              Rs. {net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs. {(net || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
         )
@@ -519,7 +519,7 @@ export default function SalaryPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                Rs. {salaryData.salaryData.reduce((sum, p) => sum + p.netSalary, 0).toLocaleString()}
+                Rs. {salaryData.salaryData.reduce((sum, p) => sum + p.netSalary, (0) || 0).toLocaleString()}
               </div>
             </CardContent>
           </Card>
@@ -529,7 +529,7 @@ export default function SalaryPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-orange-600">
-                Rs. {salaryData.salaryData.reduce((sum, p) => sum + p.totalAdvances, 0).toLocaleString()}
+                Rs. {salaryData.salaryData.reduce((sum, p) => sum + p.totalAdvances, (0) || 0).toLocaleString()}
               </div>
             </CardContent>
           </Card>

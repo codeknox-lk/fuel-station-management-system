@@ -332,7 +332,7 @@ export default function OwnerDashboardPage() {
       title: 'Today Revenue',
       render: (value: unknown) => (
         <span className="font-mono font-semibold text-green-600 dark:text-green-400">
-          Rs. {(value as number)?.toLocaleString() || 0}
+          Rs. {((value as number) || 0).toLocaleString()}
         </span>
       )
     },
@@ -341,7 +341,7 @@ export default function OwnerDashboardPage() {
       title: 'Today Profit',
       render: (value: unknown) => (
         <span className="font-mono font-semibold text-orange-600 dark:text-orange-400">
-          Rs. {(value as number)?.toLocaleString() || 0}
+          Rs. {((value as number) || 0).toLocaleString()}
         </span>
       )
     },
@@ -360,7 +360,7 @@ export default function OwnerDashboardPage() {
       render: (value: unknown, row: StationSummary) => (
         <div className="text-center">
           <div className={`font-mono font-semibold ${Math.abs(row.variancePercentage) <= 1 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-            {(value as number) >= 0 ? '+' : ''}Rs. {(value as number)?.toLocaleString() || 0}
+            {(value as number) >= 0 ? '+' : ''}Rs. {((value as number) || 0).toLocaleString()}
           </div>
           <div className="text-xs text-muted-foreground">
             {row.variancePercentage >= 0 ? '+' : ''}{row.variancePercentage.toFixed(2)}%
@@ -432,7 +432,7 @@ export default function OwnerDashboardPage() {
       render: (value: unknown) => (
         value ? (
           <span className="font-mono font-semibold text-red-600 dark:text-red-400">
-            Rs. {(value as number).toLocaleString()}
+            Rs. {((value as number) || 0).toLocaleString()}
           </span>
         ) : (
           <span className="text-muted-foreground">-</span>
@@ -511,7 +511,7 @@ export default function OwnerDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-700">
-                  Rs. {combinedStats.totalRevenue.toLocaleString()}
+                  Rs. {(combinedStats.totalRevenue || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground">All stations today</div>
               </CardContent>
@@ -523,7 +523,7 @@ export default function OwnerDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-700">
-                  Rs. {combinedStats.totalProfit.toLocaleString()}
+                  Rs. {(combinedStats.totalProfit || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {combinedStats.averageProfitMargin.toFixed(1)}% avg margin
@@ -537,7 +537,7 @@ export default function OwnerDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-700">
-                  Rs. {combinedStats.totalVariance.toLocaleString()}
+                  Rs. {(combinedStats.totalVariance || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground">Absolute variance</div>
               </CardContent>
@@ -608,7 +608,7 @@ export default function OwnerDashboardPage() {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                       <YAxis tick={{ fontSize: 12 }} tickFormatter={(value) => `Rs. ${(value / 1000).toFixed(0)}K`} />
-                      <Tooltip formatter={(value: number) => [`Rs. ${value.toLocaleString()}`, '']} />
+                      <Tooltip formatter={(value: number) => [`Rs. ${(value || 0).toLocaleString()}`, '']} />
                       <Bar dataKey="revenue" fill="#10b981" name="Revenue" />
                       <Bar dataKey="profit" fill="#3b82f6" name="Profit" />
                     </BarChart>

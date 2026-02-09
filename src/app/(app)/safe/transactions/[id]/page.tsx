@@ -394,25 +394,25 @@ export default function TransactionDetailsPage() {
               <div className="p-4 bg-green-500/10 dark:bg-green-500/20 rounded-lg border border-green-500/30">
                 <div className="text-xs text-muted-foreground mb-1">Cash</div>
                 <div className="text-xl font-bold text-green-600 dark:text-green-400 font-mono">
-                  Rs. {totalCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  Rs. {(totalCash || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
               <div className="p-4 bg-orange-500/10 dark:bg-orange-500/20 rounded-lg border border-orange-500/30">
                 <div className="text-xs text-muted-foreground mb-1">Card (POS)</div>
                 <div className="text-xl font-bold text-orange-600 dark:text-orange-400 font-mono">
-                  Rs. {totalCard.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  Rs. {(totalCard || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
               <div className="p-4 bg-orange-500/10 dark:bg-orange-500/20 rounded-lg border border-orange-500/30">
                 <div className="text-xs text-muted-foreground mb-1">Credit</div>
                 <div className="text-xl font-bold text-orange-600 dark:text-orange-400 font-mono">
-                  Rs. {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  Rs. {(totalCredit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
               <div className="p-4 bg-orange-500/10 dark:bg-orange-500/20 rounded-lg border border-orange-500/30">
                 <div className="text-xs text-muted-foreground mb-1">Cheques</div>
                 <div className="text-xl font-bold text-orange-600 dark:text-orange-400 font-mono">
-                  Rs. {totalCheque.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  Rs. {(totalCheque || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
             </div>
@@ -420,7 +420,7 @@ export default function TransactionDetailsPage() {
             <div className="flex items-center justify-between p-4 bg-primary/10 dark:bg-primary/20 border-2 border-primary/30 rounded-lg">
               <span className="text-lg font-bold">Total Added to Safe:</span>
               <span className="font-mono text-2xl font-bold text-primary">
-                Rs. {(totalCash + totalCard + totalCredit + totalCheque).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                Rs. {(totalCash + totalCard + totalCredit + (totalCheque) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
           </CardContent>
@@ -470,14 +470,14 @@ export default function TransactionDetailsPage() {
                           {breakdown.meterSales !== undefined && breakdown.meterSales > 0 && (
                             <div className="flex justify-between items-center text-xs">
                               <span className="text-muted-foreground">Meter Sales:</span>
-                              <span className="font-mono">Rs. {(breakdown.meterSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="font-mono">Rs. {(breakdown.meterSales || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                           )}
 
                           {breakdown.shopSales !== undefined && breakdown.shopSales > 0 && (
                             <div className="flex justify-between items-center text-xs">
                               <span className="text-muted-foreground">Shop Sales:</span>
-                              <span className="font-mono">Rs. {(breakdown.shopSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="font-mono">Rs. {(breakdown.shopSales || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                           )}
 
@@ -489,7 +489,7 @@ export default function TransactionDetailsPage() {
                                   : "Shop Calculated Sales:")
                               }
                             </span>
-                            <span className="font-mono font-semibold">Rs. {(breakdown.calculatedSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span className="font-mono font-semibold">Rs. {(breakdown.calculatedSales || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           </div>
                         </div>
                       </div>
@@ -503,7 +503,7 @@ export default function TransactionDetailsPage() {
                             <div className="flex justify-between items-center">
                               <span className="text-sm text-muted-foreground">Cash:</span>
                               <span className="font-mono font-semibold text-green-600 dark:text-green-400">
-                                Rs. {breakdown.declaredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                Rs. {(breakdown.declaredCash || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
                           )}
@@ -512,7 +512,7 @@ export default function TransactionDetailsPage() {
                             <div className="flex justify-between items-center">
                               <span className="text-sm text-muted-foreground">Card (POS):</span>
                               <span className="font-mono font-semibold text-orange-600 dark:text-orange-400">
-                                Rs. {totalCard.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                Rs. {(totalCard || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
                           )}
@@ -521,7 +521,7 @@ export default function TransactionDetailsPage() {
                             <div className="flex justify-between items-center">
                               <span className="text-sm text-muted-foreground">Credit:</span>
                               <span className="font-mono font-semibold text-orange-600 dark:text-orange-400">
-                                Rs. {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                Rs. {(totalCredit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
                           )}
@@ -530,7 +530,7 @@ export default function TransactionDetailsPage() {
                             <div className="flex justify-between items-center">
                               <span className="text-sm text-muted-foreground">Cheques:</span>
                               <span className="font-mono font-semibold text-orange-600 dark:text-orange-400">
-                                Rs. {totalCheques.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                Rs. {(totalCheques || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
                           )}
@@ -549,7 +549,7 @@ export default function TransactionDetailsPage() {
                             return (
                               <div key={terminalId} className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">{terminalName}:</span>
-                                <span className="font-mono">Rs. {(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <span className="font-mono">Rs. {(amount || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                               </div>
                             )
                           })}
@@ -568,7 +568,7 @@ export default function TransactionDetailsPage() {
                             return (
                               <div key={customerId} className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">{customerName}:</span>
-                                <span className="font-mono">Rs. {(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <span className="font-mono">Rs. {(amount || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                               </div>
                             )
                           })}
@@ -586,7 +586,7 @@ export default function TransactionDetailsPage() {
                               <span className="text-muted-foreground">
                                 Cheque #{cheque.chequeNumber} from {cheque.receivedFrom}{cheque.bankName ? ` (${cheque.bankName})` : ''}:
                               </span>
-                              <span className="font-mono">Rs. {(cheque.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="font-mono">Rs. {(cheque.amount || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                           ))}
                         </div>
@@ -602,7 +602,7 @@ export default function TransactionDetailsPage() {
                             <div className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Advance Taken:</span>
                               <span className="font-mono text-orange-600 dark:text-orange-400">
-                                - Rs. {breakdown.advanceTaken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                - Rs. {(breakdown.advanceTaken || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
                           )}
@@ -611,7 +611,7 @@ export default function TransactionDetailsPage() {
                             <div key={loanIdx} className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Loan to {loan.loanGivenToName || 'Pumper'}:</span>
                               <span className="font-mono text-orange-600 dark:text-orange-400">
-                                - Rs. {(loan.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                - Rs. {(loan.amount || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
                           ))}
@@ -620,7 +620,7 @@ export default function TransactionDetailsPage() {
                             <div key={expIdx} className="flex justify-between text-sm">
                               <span className="text-muted-foreground">{expense.description || 'Other Expense'}:</span>
                               <span className="font-mono text-orange-600 dark:text-orange-400">
-                                - Rs. {(expense.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                - Rs. {(expense.amount || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
                           ))}
@@ -637,7 +637,7 @@ export default function TransactionDetailsPage() {
                             <div key={depIdx} className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Bank Deposit ({deposit.bankName || 'Bank'}):</span>
                               <span className="font-mono text-orange-600 dark:text-orange-400">
-                                + Rs. {(deposit.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                + Rs. {(deposit.amount || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
                           ))}
@@ -650,14 +650,14 @@ export default function TransactionDetailsPage() {
                       <div className="grid grid-cols-2 gap-3 text-sm">
                         <div className="font-semibold">Total Declared:</div>
                         <div className="font-mono text-right font-semibold">
-                          Rs. {breakdown.declaredAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          Rs. {(breakdown.declaredAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                         <div className="font-semibold">Variance:</div>
                         <div className={`font-mono text-right font-semibold ${breakdown.variance > 20 ? 'text-red-600 dark:text-red-400' :
                           breakdown.variance < -20 ? 'text-green-600 dark:text-green-400' :
                             'text-foreground'
                           }`}>
-                          {breakdown.variance >= 0 ? '+' : ''}Rs. {breakdown.variance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {breakdown.variance >= 0 ? '+' : ''}Rs. {(breakdown.variance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </div>
                     </div>
@@ -671,32 +671,32 @@ export default function TransactionDetailsPage() {
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="font-semibold">Total Calculated Sales:</div>
                   <div className="font-mono text-right font-semibold">
-                    Rs. {totalCalculatedSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Rs. {(totalCalculatedSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
 
                   <div className="font-semibold">Total Cash Collected:</div>
                   <div className="font-mono text-right text-green-600 dark:text-green-400">
-                    Rs. {totalCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Rs. {(totalCash || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
 
                   <div className="font-semibold">Total Card Collected:</div>
                   <div className="font-mono text-right text-orange-600 dark:text-orange-400">
-                    Rs. {totalCard.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Rs. {(totalCard || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
 
                   <div className="font-semibold">Total Credit:</div>
                   <div className="font-mono text-right text-orange-600 dark:text-orange-400">
-                    Rs. {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Rs. {(totalCredit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
 
                   <div className="font-semibold">Total Cheques:</div>
                   <div className="font-mono text-right text-orange-600 dark:text-orange-400">
-                    Rs. {totalCheque.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Rs. {(totalCheque || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
 
                   <div className="font-bold text-base pt-2 border-t">Total Declared:</div>
                   <div className="font-mono text-right font-bold text-base pt-2 border-t">
-                    Rs. {totalDeclared.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Rs. {(totalDeclared || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
 
                   <div className="font-bold text-base">Total Variance:</div>
@@ -704,7 +704,7 @@ export default function TransactionDetailsPage() {
                     totalVariance < -20 ? 'text-green-600 dark:text-green-400' :
                       'text-foreground'
                     }`}>
-                    {totalVariance >= 0 ? '+' : ''}Rs. {totalVariance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {totalVariance >= 0 ? '+' : ''}Rs. {(totalVariance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
               </div>
@@ -725,7 +725,7 @@ export default function TransactionDetailsPage() {
             <CardContent>
               <div className="space-y-3">
                 <div className="p-3 bg-orange-500/10 dark:bg-orange-500/20 rounded-lg border">
-                  <div className="text-base font-bold mb-3">Total POS Amount: Rs. {transaction.batch.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  <div className="text-base font-bold mb-3">Total POS Amount: Rs. {(transaction.batch.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                   {transaction.batch.terminalEntries && transaction.batch.terminalEntries.length > 0 && (
                     <div className="space-y-3 mt-4">
                       {transaction.batch.terminalEntries.map((entry, idx) => {
@@ -750,32 +750,32 @@ export default function TransactionDetailsPage() {
                               {entry.visaAmount > 0 && (
                                 <div className="flex justify-between text-sm">
                                   <span className="text-muted-foreground">Visa:</span>
-                                  <span className="font-mono">Rs. {entry.visaAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                  <span className="font-mono">Rs. {(entry.visaAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
                               )}
                               {entry.masterAmount > 0 && (
                                 <div className="flex justify-between text-sm">
                                   <span className="text-muted-foreground">Master:</span>
-                                  <span className="font-mono">Rs. {entry.masterAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                  <span className="font-mono">Rs. {(entry.masterAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
                               )}
                               {entry.amexAmount > 0 && (
                                 <div className="flex justify-between text-sm">
                                   <span className="text-muted-foreground">Amex:</span>
-                                  <span className="font-mono">Rs. {entry.amexAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                  <span className="font-mono">Rs. {(entry.amexAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
                               )}
                               {entry.qrAmount > 0 && (
                                 <div className="flex justify-between text-sm">
                                   <span className="text-muted-foreground">QR:</span>
-                                  <span className="font-mono">Rs. {entry.qrAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                  <span className="font-mono">Rs. {(entry.qrAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
                               )}
                             </div>
 
                             <div className="flex justify-between text-sm font-semibold pt-2 border-t">
                               <span>Terminal Total:</span>
-                              <span className="font-mono">Rs. {terminalTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="font-mono">Rs. {(terminalTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                           </div>
                         )
@@ -801,19 +801,19 @@ export default function TransactionDetailsPage() {
               <div>
                 <Label className="text-xs text-muted-foreground">Balance Before</Label>
                 <div className="text-lg font-mono font-semibold mt-1">
-                  Rs. {transaction.balanceBefore.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  Rs. {(transaction.balanceBefore || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Amount Added</Label>
                 <div className="text-lg font-mono font-semibold text-green-600 dark:text-green-400 mt-1">
-                  + Rs. {(totalCash + totalCard + totalCredit + totalCheque).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  + Rs. {(totalCash + totalCard + totalCredit + (totalCheque) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Balance After</Label>
                 <div className="text-lg font-mono font-semibold mt-1">
-                  Rs. {transaction.balanceAfter.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  Rs. {(transaction.balanceAfter || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
             </div>
@@ -863,7 +863,7 @@ export default function TransactionDetailsPage() {
             <div>
               <Label className="text-xs text-muted-foreground">Amount</Label>
               <div className={`text-lg font-bold mt-1 ${INCOME_TYPES.includes(transaction.type) ? 'text-green-700' : 'text-red-700'}`}>
-                {INCOME_TYPES.includes(transaction.type) ? '+' : '-'} Rs. {Math.abs(transaction.amount).toLocaleString()}
+                {INCOME_TYPES.includes(transaction.type) ? '+' : '-'} Rs. {(Math.abs(transaction.amount) || 0).toLocaleString()}
               </div>
             </div>
             <div>
@@ -873,13 +873,13 @@ export default function TransactionDetailsPage() {
             <div>
               <Label className="text-xs text-muted-foreground">Balance Before</Label>
               <div className="text-sm font-mono mt-1">
-                Rs. {transaction.balanceBefore.toLocaleString()}
+                Rs. {(transaction.balanceBefore || 0).toLocaleString()}
               </div>
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Balance After</Label>
               <div className="text-sm font-mono mt-1">
-                Rs. {transaction.balanceAfter.toLocaleString()}
+                Rs. {(transaction.balanceAfter || 0).toLocaleString()}
               </div>
             </div>
           </div>
@@ -903,7 +903,7 @@ export default function TransactionDetailsPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="bg-orange-500/10 dark:bg-orange-500/20 p-4 rounded-lg border">
-              <div className="text-base font-bold mb-3">Total Batch Amount: Rs. {transaction.batch.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              <div className="text-base font-bold mb-3">Total Batch Amount: Rs. {(transaction.batch.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               {transaction.batch.terminalEntries && transaction.batch.terminalEntries.length > 0 && (
                 <div className="space-y-3 mt-4">
                   <div className="text-xs font-semibold text-muted-foreground uppercase">Terminal Breakdown</div>
@@ -929,38 +929,38 @@ export default function TransactionDetailsPage() {
                           {entry.visaAmount > 0 && (
                             <div className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Visa:</span>
-                              <span className="font-mono">Rs. {entry.visaAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="font-mono">Rs. {(entry.visaAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                           )}
                           {entry.masterAmount > 0 && (
                             <div className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Master:</span>
-                              <span className="font-mono">Rs. {entry.masterAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="font-mono">Rs. {(entry.masterAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                           )}
                           {entry.amexAmount > 0 && (
                             <div className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Amex:</span>
-                              <span className="font-mono">Rs. {entry.amexAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="font-mono">Rs. {(entry.amexAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                           )}
                           {entry.qrAmount > 0 && (
                             <div className="flex justify-between text-sm">
                               <span className="text-muted-foreground">QR:</span>
-                              <span className="font-mono">Rs. {entry.qrAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="font-mono">Rs. {(entry.qrAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                           )}
                           {(entry.dialogTouchAmount || 0) > 0 && (
                             <div className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Dialog Touch:</span>
-                              <span className="font-mono">Rs. {(entry.dialogTouchAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="font-mono">Rs. {(entry.dialogTouchAmount || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                           )}
                         </div>
 
                         <div className="flex justify-between text-sm font-semibold pt-2 border-t">
                           <span>Terminal Total:</span>
-                          <span className="font-mono">Rs. {terminalTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="font-mono">Rs. {(terminalTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                       </div>
                     )
@@ -982,7 +982,7 @@ export default function TransactionDetailsPage() {
           <CardContent>
             <div className="bg-orange-500/10 dark:bg-orange-500/20 p-3 rounded-lg space-y-1 text-sm">
               <div><span className="font-medium">Cheque Number:</span> {transaction.cheque.chequeNumber}</div>
-              <div><span className="font-medium">Amount:</span> Rs. {transaction.cheque.amount.toLocaleString()}</div>
+              <div><span className="font-medium">Amount:</span> Rs. {(transaction.cheque.amount || 0).toLocaleString()}</div>
               {transaction.cheque.bank && (
                 <div><span className="font-medium">Bank:</span> {transaction.cheque.bank.name}</div>
               )}

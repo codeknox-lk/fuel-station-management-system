@@ -201,7 +201,7 @@ export default function CreditAgingPage() {
           <div className="flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-red-600 dark:text-red-400" />
             <span className="font-mono font-semibold text-red-700">
-              Rs. {(value as number)?.toLocaleString() || 0}
+              Rs. {((value as number) || 0).toLocaleString()}
             </span>
           </div>
           <div className="text-xs text-muted-foreground">
@@ -215,7 +215,7 @@ export default function CreditAgingPage() {
       title: '0-30 Days',
       render: (value: unknown, row: CustomerAging) => (
         <span className={`font-mono ${getBucketColor(value as number, row.totalOutstanding)}`}>
-          Rs. {(value as number)?.toLocaleString() || 0}
+          Rs. {((value as number) || 0).toLocaleString()}
         </span>
       )
     },
@@ -224,7 +224,7 @@ export default function CreditAgingPage() {
       title: '31-60 Days',
       render: (value: unknown, row: CustomerAging) => (
         <span className={`font-mono ${getBucketColor(value as number, row.totalOutstanding)}`}>
-          Rs. {(value as number)?.toLocaleString() || 0}
+          Rs. {((value as number) || 0).toLocaleString()}
         </span>
       )
     },
@@ -233,7 +233,7 @@ export default function CreditAgingPage() {
       title: '61-90 Days',
       render: (value: unknown, row: CustomerAging) => (
         <span className={`font-mono ${getBucketColor(value as number, row.totalOutstanding)}`}>
-          Rs. {(value as number)?.toLocaleString() || 0}
+          Rs. {((value as number) || 0).toLocaleString()}
         </span>
       )
     },
@@ -242,7 +242,7 @@ export default function CreditAgingPage() {
       title: '90+ Days',
       render: (value: unknown, row: CustomerAging) => (
         <span className={`font-mono ${getBucketColor(value as number, row.totalOutstanding)}`}>
-          Rs. {(value as number)?.toLocaleString() || 0}
+          Rs. {((value as number) || 0).toLocaleString()}
         </span>
       )
     },
@@ -287,7 +287,7 @@ export default function CreditAgingPage() {
             </span>
             {row.lastPaymentAmount && (
               <span className="text-xs text-muted-foreground">
-                Rs. {row.lastPaymentAmount.toLocaleString()}
+                Rs. {(row.lastPaymentAmount || 0).toLocaleString()}
               </span>
             )}
           </div>
@@ -368,7 +368,7 @@ export default function CreditAgingPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-                  Rs. {summary.totalOutstanding.toLocaleString()}
+                  Rs. {(summary.totalOutstanding || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {summary.totalCustomers} customers
@@ -382,7 +382,7 @@ export default function CreditAgingPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-700">
-                  Rs. {summary.currentBucket.toLocaleString()}
+                  Rs. {(summary.currentBucket || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {summary.totalOutstanding > 0 ? Math.round((summary.currentBucket / summary.totalOutstanding) * 100) : 0}%
@@ -396,7 +396,7 @@ export default function CreditAgingPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-yellow-700">
-                  Rs. {summary.bucket31to60.toLocaleString()}
+                  Rs. {(summary.bucket31to60 || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {summary.totalOutstanding > 0 ? Math.round((summary.bucket31to60 / summary.totalOutstanding) * 100) : 0}%
@@ -410,7 +410,7 @@ export default function CreditAgingPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-700">
-                  Rs. {summary.bucket61to90.toLocaleString()}
+                  Rs. {(summary.bucket61to90 || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {summary.totalOutstanding > 0 ? Math.round((summary.bucket61to90 / summary.totalOutstanding) * 100) : 0}%
@@ -424,7 +424,7 @@ export default function CreditAgingPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-700">
-                  Rs. {summary.over90Bucket.toLocaleString()}
+                  Rs. {(summary.over90Bucket || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {summary.totalOutstanding > 0 ? Math.round((summary.over90Bucket / summary.totalOutstanding) * 100) : 0}%

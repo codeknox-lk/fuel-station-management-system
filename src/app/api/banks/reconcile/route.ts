@@ -131,11 +131,11 @@ export async function GET(request: NextRequest) {
 
         // Add warnings
         if (bouncedCheques > 0) {
-            result.warnings.push(`${bank.cheques.filter(c => c.status === 'BOUNCED').length} bounced cheque(s) totaling Rs.${bouncedCheques.toLocaleString()}`)
+            result.warnings.push(`${bank.cheques.filter(c => c.status === 'BOUNCED').length} bounced cheque(s) totaling Rs.${(bouncedCheques || 0).toLocaleString()}`)
         }
 
         if (pendingCheques > 0) {
-            result.warnings.push(`${bank.cheques.filter(c => c.status === 'PENDING' || c.status === 'DEPOSITED').length} pending cheque(s) totaling Rs.${pendingCheques.toLocaleString()}`)
+            result.warnings.push(`${bank.cheques.filter(c => c.status === 'PENDING' || c.status === 'DEPOSITED').length} pending cheque(s) totaling Rs.${(pendingCheques || 0).toLocaleString()}`)
         }
 
         return NextResponse.json(result)

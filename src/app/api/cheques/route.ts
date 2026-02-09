@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
           action: 'CREATE',
           entity: 'Cheque',
           entityId: newCheque.id,
-          details: `Recorded cheque: ${newCheque.chequeNumber} for Rs. ${newCheque.amount.toLocaleString()}`,
+          details: `Recorded cheque: ${newCheque.chequeNumber} for Rs. ${(newCheque.amount || 0).toLocaleString()}`,
           stationId: newCheque.stationId
         }
       })

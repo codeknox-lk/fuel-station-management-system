@@ -161,7 +161,7 @@ export default function CreditCustomersPage() {
         customerPhone: sale.customer?.phone || '',
         amount: sale.amount,
         timestamp: sale.timestamp,
-        description: `Credit sale - ${sale.liters?.toFixed(2) || 'N/A'}L @ Rs. ${sale.price?.toLocaleString() || 'N/A'}/L`,
+        description: `Credit sale - ${sale.liters?.toFixed(2) || 'N/A'}L @ Rs. ${(sale.price || 0).toLocaleString() || 'N/A'}/L`,
         shiftId: sale.shiftId
       }))
 
@@ -425,7 +425,7 @@ export default function CreditCustomersPage() {
         <div className="flex items-center gap-2">
           <CreditCard className="h-4 w-4 text-orange-600 dark:text-orange-400" />
           <span className="font-mono font-semibold text-orange-700">
-            Rs. {(value as number)?.toLocaleString() || 0}
+            Rs. {((value as number) || 0).toLocaleString()}
           </span>
         </div>
       )
@@ -437,7 +437,7 @@ export default function CreditCustomersPage() {
         <div className="flex items-center gap-2">
           <DollarSign className="h-4 w-4 text-muted-foreground" />
           <span className={`font-mono font-semibold ${getBalanceColor(value as number, row.creditLimit)}`}>
-            Rs. {(value as number)?.toLocaleString() || 0}
+            Rs. {((value as number) || 0).toLocaleString()}
           </span>
         </div>
       )
@@ -449,7 +449,7 @@ export default function CreditCustomersPage() {
         const numValue = value as number
         return (
           <span className={`font-mono font-semibold ${numValue > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-            Rs. {numValue?.toLocaleString() || 0}
+            Rs. {((value as number) || 0).toLocaleString()}
           </span>
         )
       }
@@ -494,7 +494,7 @@ export default function CreditCustomersPage() {
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm">{new Date(value as string).toLocaleString()}</span>
+          <span className="text-sm">{new Date(value as (string) || 0).toLocaleString()}</span>
         </div>
       )
     },
@@ -541,12 +541,12 @@ export default function CreditCustomersPage() {
             {isSale ? (
               <>
                 <Plus className="h-4 w-4" />
-                <span>Rs. {(value as number).toLocaleString()}</span>
+                <span>Rs. {(value as (number) || 0).toLocaleString()}</span>
               </>
             ) : (
               <>
                 <Minus className="h-4 w-4" />
-                <span>Rs. {(value as number).toLocaleString()}</span>
+                <span>Rs. {(value as (number) || 0).toLocaleString()}</span>
                 {isPending && <span className="text-xs ml-1 text-yellow-600 dark:text-yellow-400">(Pending)</span>}
               </>
             )}
@@ -708,13 +708,13 @@ export default function CreditCustomersPage() {
         <Card className="p-4">
           <h3 className="text-lg font-semibold text-foreground">Total Credit Limit</h3>
           <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
-            Rs. {customers.reduce((sum, c) => sum + c.creditLimit, 0).toLocaleString()}
+            Rs. {customers.reduce((sum, c) => sum + c.creditLimit, (0) || 0).toLocaleString()}
           </p>
         </Card>
         <Card className="p-4">
           <h3 className="text-lg font-semibold text-foreground">Outstanding Balance</h3>
           <p className="text-3xl font-bold text-red-600 dark:text-red-400">
-            Rs. {customers.reduce((sum, c) => sum + c.currentBalance, 0).toLocaleString()}
+            Rs. {customers.reduce((sum, c) => sum + c.currentBalance, (0) || 0).toLocaleString()}
           </p>
         </Card>
       </div>

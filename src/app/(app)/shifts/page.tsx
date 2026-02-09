@@ -329,7 +329,7 @@ export default function ShiftsPage() {
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm">
-            {new Date(value as string).toLocaleString()}
+            {new Date(value as (string) || 0).toLocaleString()}
           </span>
         </div>
       )
@@ -345,7 +345,7 @@ export default function ShiftsPage() {
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm">
-              {new Date(value as string).toLocaleString()}
+              {new Date(value as (string) || 0).toLocaleString()}
             </span>
           </div>
         )
@@ -379,7 +379,7 @@ export default function ShiftsPage() {
           <div className="flex items-center gap-1">
             <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
             <span className="font-semibold text-green-600 dark:text-green-400">
-              Rs. {(value as number).toLocaleString()}
+              Rs. {(value as (number) || 0).toLocaleString()}
             </span>
           </div>
         )
@@ -457,7 +457,7 @@ export default function ShiftsPage() {
             <TrendingUp className="h-4 w-4 text-orange-600 dark:text-orange-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Rs. {stats.totalSales.toLocaleString()}</div>
+            <div className="text-2xl font-bold">Rs. {(stats.totalSales || 0).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">Closed shifts today</p>
           </CardContent>
         </Card>

@@ -284,7 +284,7 @@ export default function OfficeStaffPage() {
       render: (value: unknown) => (
         <div className="flex items-center gap-1">
           <DollarSign className="h-4 w-4 text-green-600" />
-          <span>Rs. {(value as number).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span>Rs. {(value as (number) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
       )
     },

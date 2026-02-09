@@ -172,7 +172,7 @@ export default function CreditPaymentsPage() {
     if (customer && amount > customer.currentBalance) {
       toast({
         title: "Error",
-        description: `Payment amount exceeds outstanding balance of Rs. ${customer.currentBalance.toLocaleString()}`,
+        description: `Payment amount exceeds outstanding balance of Rs. ${(customer.currentBalance || 0).toLocaleString()}`,
         variant: "destructive"
       })
       return
@@ -334,7 +334,7 @@ export default function CreditPaymentsPage() {
         <div className="flex items-center gap-2">
           <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
           <span className="font-mono font-semibold text-green-700">
-            Rs. {(value as number)?.toLocaleString() || 0}
+            Rs. {((value as number) || 0).toLocaleString()}
           </span>
         </div>
       )
@@ -434,7 +434,7 @@ export default function CreditPaymentsPage() {
                       <div className="flex flex-col">
                         <span className="font-medium">{customer.name}</span>
                         <span className="text-xs text-muted-foreground">
-                          Outstanding: Rs. {customer.currentBalance.toLocaleString()}
+                          Outstanding: Rs. {(customer.currentBalance || 0).toLocaleString()}
                         </span>
                       </div>
                     </div>
@@ -445,8 +445,8 @@ export default function CreditPaymentsPage() {
             {selectedCustomerData && (
               <div className="mt-2 p-2 bg-orange-500/10 dark:bg-orange-500/20 rounded-md">
                 <div className="text-xs text-orange-700">
-                  <div>Credit Limit: Rs. {selectedCustomerData.creditLimit.toLocaleString()}</div>
-                  <div className="font-semibold">Outstanding Balance: Rs. {selectedCustomerData.currentBalance.toLocaleString()}</div>
+                  <div>Credit Limit: Rs. {(selectedCustomerData.creditLimit || 0).toLocaleString()}</div>
+                  <div className="font-semibold">Outstanding Balance: Rs. {(selectedCustomerData.currentBalance || 0).toLocaleString()}</div>
                 </div>
               </div>
             )}
@@ -665,7 +665,7 @@ export default function CreditPaymentsPage() {
                   <div>
                     <p className="text-xs text-muted-foreground">Amount</p>
                     <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                      Rs. {selectedPayment.amount.toLocaleString()}
+                      Rs. {(selectedPayment.amount || 0).toLocaleString()}
                     </p>
                   </div>
                   <div>

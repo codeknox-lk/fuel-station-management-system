@@ -461,7 +461,7 @@ export default function ShiftReportsPage() {
         const numValue = typeof value === 'number' ? value : 0
         return (
           <span className="font-semibold text-green-600 dark:text-green-400">
-            Rs. {numValue.toLocaleString()}
+            Rs. {(numValue || 0).toLocaleString()}
           </span>
         )
       }
@@ -474,7 +474,7 @@ export default function ShiftReportsPage() {
         return (
           <div className="text-center">
             <div className={`font-semibold ${getVarianceColor(row.variancePercentage)}`}>
-              {numValue >= 0 ? '+' : ''}Rs. {numValue.toLocaleString()}
+              {numValue >= 0 ? '+' : ''}Rs. {(numValue || 0).toLocaleString()}
             </div>
             <div className={`text-xs ${getVarianceColor(row.variancePercentage)}`}>
               {row.variancePercentage >= 0 ? '+' : ''}{row.variancePercentage.toFixed(3)}%
@@ -622,7 +622,7 @@ export default function ShiftReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-700">
-                  Rs. {shiftReport.tenderSummary.totalCalculated.toLocaleString()}
+                  Rs. {(shiftReport.tenderSummary.totalCalculated || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground flex gap-2">
                   <span>{shiftReport.nozzleReports.reduce((sum: number, report: NozzleReport) => sum + report.litersSold, 0).toFixed(1)}L Fuel</span>
@@ -637,7 +637,7 @@ export default function ShiftReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-700">
-                  Rs. {shiftReport.tenderSummary.shopSales.toLocaleString()}
+                  Rs. {(shiftReport.tenderSummary.shopSales || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {shiftReport.shopAssignment?.items.length || 0} items sold
@@ -651,7 +651,7 @@ export default function ShiftReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-700">
-                  Rs. {shiftReport.tenderSummary.totalDeclared.toLocaleString()}
+                  Rs. {(shiftReport.tenderSummary.totalDeclared || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   All payment methods
@@ -665,7 +665,7 @@ export default function ShiftReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className={`text-2xl font-bold ${getVarianceColor(shiftReport.variancePercentage)}`}>
-                  {shiftReport.totalVariance >= 0 ? '+' : ''}Rs. {shiftReport.totalVariance.toLocaleString()}
+                  {shiftReport.totalVariance >= 0 ? '+' : ''}Rs. {(shiftReport.totalVariance || 0).toLocaleString()}
                 </div>
                 <div className={`text-xs ${getVarianceColor(shiftReport.variancePercentage)}`}>
                   {shiftReport.variancePercentage >= 0 ? '+' : ''}{shiftReport.variancePercentage.toFixed(3)}%
@@ -715,7 +715,7 @@ export default function ShiftReportsPage() {
                   <div className="font-semibold text-foreground">Cash Payments</div>
                   <div className="flex justify-between">
                     <span>Cash Total:</span>
-                    <span className="font-semibold">Rs. {shiftReport.tenderSummary.cashTotal.toLocaleString()}</span>
+                    <span className="font-semibold">Rs. {(shiftReport.tenderSummary.cashTotal || 0).toLocaleString()}</span>
                   </div>
                 </div>
 
@@ -724,13 +724,13 @@ export default function ShiftReportsPage() {
                   {Object.entries(shiftReport.tenderSummary.cardTotals).map(([bank, amount]) => (
                     <div key={bank} className="flex justify-between">
                       <span>{bank}:</span>
-                      <span className="font-semibold">Rs. {amount.toLocaleString()}</span>
+                      <span className="font-semibold">Rs. {(amount || 0).toLocaleString()}</span>
                     </div>
                   ))}
                   <div className="flex justify-between border-t pt-2">
                     <span className="font-semibold">Card Total:</span>
                     <span className="font-semibold">
-                      Rs. {Object.values(shiftReport.tenderSummary.cardTotals).reduce((sum, amount) => sum + amount, 0).toLocaleString()}
+                      Rs. {Object.values(shiftReport.tenderSummary.cardTotals).reduce((sum, amount) => sum + amount, (0) || 0).toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -739,11 +739,11 @@ export default function ShiftReportsPage() {
                   <div className="font-semibold text-foreground">Other Payments</div>
                   <div className="flex justify-between">
                     <span>Credit:</span>
-                    <span className="font-semibold">Rs. {shiftReport.tenderSummary.creditTotal.toLocaleString()}</span>
+                    <span className="font-semibold">Rs. {(shiftReport.tenderSummary.creditTotal || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Cheques:</span>
-                    <span className="font-semibold">Rs. {shiftReport.tenderSummary.chequeTotal.toLocaleString()}</span>
+                    <span className="font-semibold">Rs. {(shiftReport.tenderSummary.chequeTotal || 0).toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -753,19 +753,19 @@ export default function ShiftReportsPage() {
                   <div className="text-center">
                     <div className="text-sm text-muted-foreground">Total Declared</div>
                     <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
-                      Rs. {shiftReport.tenderSummary.totalDeclared.toLocaleString()}
+                      Rs. {(shiftReport.tenderSummary.totalDeclared || 0).toLocaleString()}
                     </div>
                   </div>
                   <div className="text-center">
                     <div className="text-sm text-muted-foreground">Total Calculated</div>
                     <div className="text-xl font-bold text-green-600 dark:text-green-400">
-                      Rs. {shiftReport.tenderSummary.totalCalculated.toLocaleString()}
+                      Rs. {(shiftReport.tenderSummary.totalCalculated || 0).toLocaleString()}
                     </div>
                   </div>
                   <div className="text-center">
                     <div className="text-sm text-muted-foreground">Tender Variance</div>
                     <div className={`text-xl font-bold ${getVarianceColor((shiftReport.tenderSummary.variance / shiftReport.tenderSummary.totalDeclared) * 100)}`}>
-                      {shiftReport.tenderSummary.variance >= 0 ? '+' : ''}Rs. {shiftReport.tenderSummary.variance.toLocaleString()}
+                      {shiftReport.tenderSummary.variance >= 0 ? '+' : ''}Rs. {(shiftReport.tenderSummary.variance || 0).toLocaleString()}
                     </div>
                   </div>
                 </div>
@@ -801,7 +801,7 @@ export default function ShiftReportsPage() {
                       title: 'Revenue',
                       render: (val: unknown) => {
                         const numValue = typeof val === 'number' ? val : 0
-                        return <span className="font-semibold text-green-600">Rs. {numValue.toLocaleString()}</span>
+                        return <span className="font-semibold text-green-600">Rs. {(numValue || 0).toLocaleString()}</span>
                       }
                     }
                   ]}
@@ -812,7 +812,7 @@ export default function ShiftReportsPage() {
                   <div className="text-right">
                     <div className="text-sm text-muted-foreground">Shop Revenue</div>
                     <div className="text-xl font-bold text-orange-600">
-                      Rs. {shiftReport.shopAssignment.totalRevenue.toLocaleString()}
+                      Rs. {(shiftReport.shopAssignment.totalRevenue || 0).toLocaleString()}
                     </div>
                   </div>
                 </div>

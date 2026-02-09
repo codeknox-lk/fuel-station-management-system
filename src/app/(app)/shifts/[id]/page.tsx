@@ -102,7 +102,7 @@ const formatDuration = (hours: number): string => {
 
 // Function to format currency
 const formatCurrency = (amount: number): string => {
-  return `Rs. ${amount.toLocaleString()}`
+  return `Rs. ${(amount || 0).toLocaleString()}`
 }
 
 
@@ -608,19 +608,19 @@ export default function ShiftDetailsPage() {
                 <div className="grid grid-cols-4 gap-4 text-sm">
                   <div className="text-center">
                     <div className="text-orange-600 dark:text-orange-400 text-lg">
-                      {tenderSummary.salesBreakdown.totalPumpSales.toLocaleString()}L
+                      {(tenderSummary.salesBreakdown.totalPumpSales || 0).toLocaleString()}L
                     </div>
                     <div className="text-muted-foreground">Pump Sales</div>
                   </div>
                   <div className="text-center">
                     <div className="text-orange-600 dark:text-orange-400 text-lg">
-                      Rs. {(tenderSummary.salesBreakdown.oilSales?.totalAmount || 0).toLocaleString()}
+                      Rs. {(tenderSummary.salesBreakdown.oilSales?.totalAmount || (0) || 0).toLocaleString()}
                     </div>
                     <div className="text-muted-foreground">Oil Sales ({tenderSummary.salesBreakdown.oilSales?.salesCount || 0})</div>
                   </div>
                   <div className="text-center">
                     <div className="text-orange-600 dark:text-orange-400 text-lg font-bold">
-                      {tenderSummary.salesBreakdown.totalLitres.toLocaleString()}L
+                      {(tenderSummary.salesBreakdown.totalLitres || 0).toLocaleString()}L
                     </div>
                     <div className="text-muted-foreground">Total Fuel</div>
                   </div>
@@ -637,7 +637,7 @@ export default function ShiftDetailsPage() {
                       const stats = typeof shift.statistics === 'string'
                         ? (() => { try { return JSON.parse(shift.statistics as string) } catch { return {} } })()
                         : shift.statistics || {}
-                      return (stats?.totalSales ?? 0).toLocaleString()
+                      return ((stats?.totalSales ?? 0) || 0).toLocaleString()
                     })()}
                   </span>
                 </div>
@@ -646,18 +646,18 @@ export default function ShiftDetailsPage() {
                     <div className="flex justify-between text-xs px-2">
                       <span className="text-muted-foreground italic">- Nozzle Sales:</span>
                       <span className="text-muted-foreground">
-                        Rs. {(tenderSummary.nozzleSales ?? ((() => {
+                        Rs. {((tenderSummary.nozzleSales ?? ((() => {
                           const stats = typeof shift.statistics === 'string'
                             ? (() => { try { return JSON.parse(shift.statistics as string) } catch { return {} } })()
                             : shift.statistics || {}
                           return (stats?.totalSales ?? 0)
-                        })() - tenderSummary.shopSales)).toLocaleString()}
+                        })() - (tenderSummary.shopSales))) || 0).toLocaleString()}
                       </span>
                     </div>
                     <div className="flex justify-between text-xs px-2">
                       <span className="text-muted-foreground italic">- Shop Sales:</span>
                       <span className="text-muted-foreground">
-                        Rs. {tenderSummary.shopSales.toLocaleString()}
+                        Rs. {(tenderSummary.shopSales || 0).toLocaleString()}
                       </span>
                     </div>
                   </>
@@ -665,14 +665,14 @@ export default function ShiftDetailsPage() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Declared:</span>
                   <span className="font-semibold">
-                    Rs. {(tenderSummary?.totalDeclared ?? 0).toLocaleString()}
+                    Rs. {((tenderSummary?.totalDeclared ?? 0) || 0).toLocaleString()}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Variance:</span>
                   <span className={`font-semibold ${(tenderSummary?.variance ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                     }`}>
-                    Rs. {(tenderSummary?.variance ?? 0).toLocaleString()}
+                    Rs. {((tenderSummary?.variance ?? 0) || 0).toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -681,7 +681,7 @@ export default function ShiftDetailsPage() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Tolerance:</span>
                   <span>
-                    Rs. {(tenderSummary?.varianceClassification?.tolerance ?? 0).toLocaleString()}
+                    Rs. {((tenderSummary?.varianceClassification?.tolerance ?? 0) || 0).toLocaleString()}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -825,14 +825,14 @@ export default function ShiftDetailsPage() {
                   key: 'openingStock' as keyof ShopItem,
                   title: 'Opening + Added',
                   render: (_: unknown, row: ShopItem) => (
-                    <span className="font-mono">{(row.openingStock + row.addedStock).toLocaleString()} {row.product.unit}</span>
+                    <span className="font-mono">{(row.openingStock + (row.addedStock) || 0).toLocaleString()} {row.product.unit}</span>
                   )
                 },
                 {
                   key: 'closingStock' as keyof ShopItem,
                   title: 'Closing Stock',
                   render: (_: unknown, row: ShopItem) => (
-                    <span className="font-mono">{row.closingStock?.toLocaleString() || '-'}</span>
+                    <span className="font-mono">{(row.closingStock || 0).toLocaleString() || '-'}</span>
                   )
                 },
                 {
@@ -842,7 +842,7 @@ export default function ShiftDetailsPage() {
                     const sold = row.closingStock !== null
                       ? Math.max(0, (row.openingStock + row.addedStock) - row.closingStock)
                       : 0
-                    return <span className={`font-mono ${sold > 0 ? 'text-orange-600' : ''}`}>{sold.toLocaleString()}</span>
+                    return <span className={`font-mono ${sold > 0 ? 'text-orange-600' : ''}`}>{(sold || 0).toLocaleString()}</span>
                   }
                 },
                 {
@@ -853,7 +853,7 @@ export default function ShiftDetailsPage() {
                       ? Math.max(0, (row.openingStock + row.addedStock) - row.closingStock)
                       : 0
                     const revenue = sold * row.product.sellingPrice
-                    return <span className="font-mono font-semibold">Rs. {revenue.toLocaleString()}</span>
+                    return <span className="font-mono font-semibold">Rs. {(revenue || 0).toLocaleString()}</span>
                   }
                 }
               ]}
@@ -898,13 +898,13 @@ export default function ShiftDetailsPage() {
                       {breakdown.meterSales !== undefined && breakdown.meterSales > 0 && (
                         <div className="flex justify-between text-xs">
                           <span className="text-muted-foreground italic">Meter Sales:</span>
-                          <span className="font-mono">Rs. {(breakdown.meterSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="font-mono">Rs. {(breakdown.meterSales || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                       )}
                       {breakdown.shopSales !== undefined && breakdown.shopSales > 0 && (
                         <div className="flex justify-between text-xs">
                           <span className="text-muted-foreground italic">Shop Sales:</span>
-                          <span className="font-mono">Rs. {(breakdown.shopSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="font-mono">Rs. {(breakdown.shopSales || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                       )}
                       <div className={`flex justify-between text-sm ${breakdown.meterSales && breakdown.shopSales ? 'border-t pt-1 mt-1' : ''}`}>
@@ -915,7 +915,7 @@ export default function ShiftDetailsPage() {
                               : "Shop Calculated Sales")
                           }
                         </div>
-                        <div className="font-mono text-right font-bold">Rs. {(breakdown.calculatedSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div className="font-mono text-right font-bold">Rs. {(breakdown.calculatedSales || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                       </div>
                     </div>
 
@@ -923,7 +923,7 @@ export default function ShiftDetailsPage() {
                     {breakdown.declaredCash > 0 && (
                       <div className="space-y-2 border-t pt-2">
                         <div className="text-xs font-semibold text-muted-foreground uppercase">Cash</div>
-                        <div className="text-sm font-mono text-right">Rs. {breakdown.declaredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div className="text-sm font-mono text-right">Rs. {(breakdown.declaredCash || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                       </div>
                     )}
 
@@ -938,13 +938,13 @@ export default function ShiftDetailsPage() {
                             return (
                               <div key={terminalId} className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">{terminalName}:</span>
-                                <span className="font-mono">Rs. {amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <span className="font-mono">Rs. {(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                               </div>
                             )
                           })}
                           <div className="flex justify-between text-sm font-semibold pt-1 border-t">
                             <span>Total Card:</span>
-                            <span className="font-mono">Rs. {totalCard.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span className="font-mono">Rs. {(totalCard || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           </div>
                         </div>
                       </div>
@@ -961,13 +961,13 @@ export default function ShiftDetailsPage() {
                             return (
                               <div key={customerId} className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">{customerName}:</span>
-                                <span className="font-mono">Rs. {amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <span className="font-mono">Rs. {(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                               </div>
                             )
                           })}
                           <div className="flex justify-between text-sm font-semibold pt-1 border-t">
                             <span>Total Credit:</span>
-                            <span className="font-mono">Rs. {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span className="font-mono">Rs. {(totalCredit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           </div>
                         </div>
                       </div>
@@ -983,12 +983,12 @@ export default function ShiftDetailsPage() {
                               <span className="text-muted-foreground">
                                 #{cheque.chequeNumber} from {cheque.receivedFrom}{cheque.bankName ? ` (${cheque.bankName})` : ''}:
                               </span>
-                              <span className="font-mono">Rs. {(cheque.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="font-mono">Rs. {(cheque.amount || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                           ))}
                           <div className="flex justify-between text-sm font-semibold pt-1 border-t">
                             <span>Total Cheques:</span>
-                            <span className="font-mono">Rs. {totalCheques.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span className="font-mono">Rs. {(totalCheques || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           </div>
                         </div>
                       </div>
@@ -999,7 +999,7 @@ export default function ShiftDetailsPage() {
                       <div className="space-y-2 border-t pt-2">
                         <div className="text-xs font-semibold text-muted-foreground uppercase">Advances</div>
                         <div className="text-sm font-mono text-right text-orange-600 dark:text-orange-400">
-                          - Rs. {breakdown.advanceTaken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          - Rs. {(breakdown.advanceTaken || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </div>
                     )}
@@ -1012,7 +1012,7 @@ export default function ShiftDetailsPage() {
                           {(loans as (Expense & { loanGivenToName?: string })[]).map((loan, loanIdx) => (
                             <div key={loanIdx} className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Loan to {loan.loanGivenToName || 'Pumper'}:</span>
-                              <span className="font-mono text-orange-600 dark:text-orange-400">- Rs. {(loan.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="font-mono text-orange-600 dark:text-orange-400">- Rs. {(loan.amount || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                           ))}
                         </div>
@@ -1027,7 +1027,7 @@ export default function ShiftDetailsPage() {
                           {(bankDeposits as (Expense & { bankName?: string })[]).map((deposit, depIdx) => (
                             <div key={depIdx} className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Bank Deposit ({deposit.bankName || 'Bank'}):</span>
-                              <span className="font-mono text-orange-600 dark:text-orange-400">+ Rs. {(deposit.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="font-mono text-orange-600 dark:text-orange-400">+ Rs. {(deposit.amount || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                           ))}
                         </div>
@@ -1042,7 +1042,7 @@ export default function ShiftDetailsPage() {
                           {otherExpenses.map((expense, expIdx) => (
                             <div key={expIdx} className="flex justify-between text-sm">
                               <span className="text-muted-foreground">{expense.description || 'Other Expense'}:</span>
-                              <span className="font-mono text-orange-600 dark:text-orange-400">- Rs. {(expense.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="font-mono text-orange-600 dark:text-orange-400">- Rs. {(expense.amount || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                           ))}
                         </div>
@@ -1053,13 +1053,13 @@ export default function ShiftDetailsPage() {
                     <div className="space-y-2 border-t pt-2 bg-muted/50 p-2 rounded">
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div className="font-semibold">Total Declared:</div>
-                        <div className="font-mono text-right font-semibold">Rs. {(breakdown.declaredAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div className="font-mono text-right font-semibold">Rs. {(breakdown.declaredAmount || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         <div className="font-semibold">Variance:</div>
                         <div className={`font-mono text-right font-semibold ${(breakdown.variance || 0) > 20 ? 'text-red-600 dark:text-red-400' :
                           (breakdown.variance || 0) < -20 ? 'text-green-600 dark:text-green-400' :
                             'text-foreground'
                           }`}>
-                          {(breakdown.variance || 0) >= 0 ? '+' : ''}Rs. {(breakdown.variance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {(breakdown.variance || 0) >= 0 ? '+' : ''}Rs. {(breakdown.variance || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </div>
                     </div>
@@ -1101,66 +1101,66 @@ export default function ShiftDetailsPage() {
                     <div className="text-sm font-bold uppercase text-primary mb-2">Overall Totals</div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div className="font-semibold">Total Calculated Sales:</div>
-                      <div className="font-mono text-right font-semibold">Rs. {totalCalculatedSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                      <div className="font-mono text-right font-semibold">Rs. {(totalCalculatedSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
 
                       {totalDeclaredCash > 0 && (
                         <>
                           <div className="text-muted-foreground">Total Cash:</div>
-                          <div className="font-mono text-right">Rs. {totalDeclaredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          <div className="font-mono text-right">Rs. {(totalDeclaredCash || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         </>
                       )}
 
                       {totalDeclaredCard > 0 && (
                         <>
                           <div className="text-muted-foreground">Total Card:</div>
-                          <div className="font-mono text-right">Rs. {totalDeclaredCard.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          <div className="font-mono text-right">Rs. {(totalDeclaredCard || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         </>
                       )}
 
                       {totalDeclaredCredit > 0 && (
                         <>
                           <div className="text-muted-foreground">Total Credit:</div>
-                          <div className="font-mono text-right">Rs. {totalDeclaredCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          <div className="font-mono text-right">Rs. {(totalDeclaredCredit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         </>
                       )}
 
                       {totalDeclaredCheque > 0 && (
                         <>
                           <div className="text-muted-foreground">Total Cheques:</div>
-                          <div className="font-mono text-right">Rs. {totalDeclaredCheque.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          <div className="font-mono text-right">Rs. {(totalDeclaredCheque || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         </>
                       )}
 
                       {totalBankDeposits > 0 && (
                         <>
                           <div className="text-muted-foreground">Total Bank Deposits:</div>
-                          <div className="font-mono text-right text-orange-600 dark:text-orange-400">+ Rs. {totalBankDeposits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          <div className="font-mono text-right text-orange-600 dark:text-orange-400">+ Rs. {(totalBankDeposits || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         </>
                       )}
 
                       {totalAdvances > 0 && (
                         <>
                           <div className="text-muted-foreground">Total Advances:</div>
-                          <div className="font-mono text-right text-orange-600 dark:text-orange-400">- Rs. {totalAdvances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          <div className="font-mono text-right text-orange-600 dark:text-orange-400">- Rs. {(totalAdvances || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         </>
                       )}
 
                       {totalOtherExpenses > 0 && (
                         <>
                           <div className="text-muted-foreground">Total Other Expenses:</div>
-                          <div className="font-mono text-right text-orange-600 dark:text-orange-400">- Rs. {totalOtherExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          <div className="font-mono text-right text-orange-600 dark:text-orange-400">- Rs. {(totalOtherExpenses || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         </>
                       )}
 
                       <div className="font-bold text-base pt-2 border-t">Total Declared:</div>
-                      <div className="font-mono text-right font-bold text-base pt-2 border-t">Rs. {totalDeclared.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                      <div className="font-mono text-right font-bold text-base pt-2 border-t">Rs. {(totalDeclared || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
 
                       <div className="font-bold text-base">Total Variance:</div>
                       <div className={`font-mono text-right font-bold text-base ${totalVariance > 20 ? 'text-red-600 dark:text-red-400' :
                         totalVariance < -20 ? 'text-green-600 dark:text-green-400' :
                           'text-foreground'
                         }`}>
-                        {totalVariance >= 0 ? '+' : ''}Rs. {totalVariance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {totalVariance >= 0 ? '+' : ''}Rs. {(totalVariance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                     </div>
                   </div>

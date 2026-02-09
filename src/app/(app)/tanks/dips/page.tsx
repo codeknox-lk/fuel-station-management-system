@@ -423,7 +423,7 @@ export default function TankDipsPage() {
       title: 'Date & Time',
       render: (value: unknown) => {
         if (!value) return <span className="text-muted-foreground">-</span>
-        return new Date(value as string).toLocaleString()
+        return new Date(value as (string) || 0).toLocaleString()
       }
     },
     {
@@ -441,7 +441,7 @@ export default function TankDipsPage() {
       title: 'Dip Reading',
       render: (value: unknown) => {
         if (value == null) return <span className="text-muted-foreground">-</span>
-        return <span className="font-semibold">{(value as number).toLocaleString()}L</span>
+        return <span className="font-semibold">{(value as (number) || 0).toLocaleString()}L</span>
       }
     },
     {
@@ -457,7 +457,7 @@ export default function TankDipsPage() {
         }
         return (
           <span className={`${numValue >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {numValue > 0 ? '+' : ''}{numValue.toLocaleString()}L
+            {numValue > 0 ? '+' : ''}{(numValue || 0).toLocaleString()}L
           </span>
         )
       }
@@ -543,7 +543,7 @@ export default function TankDipsPage() {
                   <SelectContent>
                     {availableTanks.map((tank) => (
                       <SelectItem key={tank.id} value={tank.id}>
-                        Tank {tank.tankNumber} - {tank.fuel?.icon} {tank.fuel?.name} ({tank.capacity.toLocaleString()}L)
+                        Tank {tank.tankNumber} - {tank.fuel?.icon} {tank.fuel?.name} ({(tank.capacity || 0).toLocaleString()}L)
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -574,7 +574,7 @@ export default function TankDipsPage() {
                             Current System Stock
                             {updatingStock && <RefreshCw className="h-3 w-3 animate-spin" />}
                           </div>
-                          <div className="text-2xl font-bold">{systemLevel.toLocaleString()}L</div>
+                          <div className="text-2xl font-bold">{(systemLevel || 0).toLocaleString()}L</div>
                           {selectedTankData.updatedAt && (
                             <div className="text-xs text-muted-foreground mt-1">
                               Last updated: {new Date(selectedTankData.updatedAt).toLocaleString()}
@@ -597,7 +597,7 @@ export default function TankDipsPage() {
                   <CardContent className="pt-6">
                     <div className="text-center py-4 text-muted-foreground">
                       <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
-                      <p className="text-sm">Checking for shifts active at {dipTime.toLocaleString()}...</p>
+                      <p className="text-sm">Checking for shifts active at {(dipTime || 0).toLocaleString()}...</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -609,7 +609,7 @@ export default function TankDipsPage() {
                       Active Shifts Detected
                     </CardTitle>
                     <CardDescription>
-                      {activeShifts.length} shift(s) were running at {dipTime.toLocaleString()}. Enter current meter readings to calculate actual tank levels.
+                      {activeShifts.length} shift(s) were running at {(dipTime || 0).toLocaleString()}. Enter current meter readings to calculate actual tank levels.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -651,7 +651,7 @@ export default function TankDipsPage() {
                                 <div>
                                   <Label className="text-xs text-muted-foreground">Opening</Label>
                                   <div className="text-sm font-semibold">
-                                    {assignment.startMeterReading.toLocaleString()}L
+                                    {(assignment.startMeterReading || 0).toLocaleString()}L
                                   </div>
                                 </div>
                                 <div>
@@ -672,7 +672,7 @@ export default function TankDipsPage() {
                                 <div>
                                   <Label className="text-xs text-muted-foreground">Fuel Sold</Label>
                                   <div className={`text-sm font-semibold ${reading.fuelUsed > 0 ? 'text-orange-600' : ''}`}>
-                                    {reading.fuelUsed > 0 ? `${reading.fuelUsed.toLocaleString()}L` : '-'}
+                                    {reading.fuelUsed > 0 ? `${(reading.fuelUsed || 0).toLocaleString()}L` : '-'}
                                   </div>
                                 </div>
                               </div>
@@ -719,15 +719,15 @@ export default function TankDipsPage() {
                                   <div className="space-y-1">
                                     <div className="flex justify-between text-muted-foreground">
                                       <span>System:</span>
-                                      <span className="">{originalLevel.toLocaleString()}L</span>
+                                      <span className="">{(originalLevel || 0).toLocaleString()}L</span>
                                     </div>
                                     <div className="flex justify-between text-orange-600">
                                       <span>Sold:</span>
-                                      <span className="">-{fuelUsed.toLocaleString()}L</span>
+                                      <span className="">-{(fuelUsed || 0).toLocaleString()}L</span>
                                     </div>
                                     <div className="flex justify-between border-t pt-1 font-semibold text-green-600">
                                       <span>Actual:</span>
-                                      <span className="">{updatedLevel.toLocaleString()}L</span>
+                                      <span className="">{(updatedLevel || 0).toLocaleString()}L</span>
                                     </div>
                                   </div>
                                 </div>
@@ -744,7 +744,7 @@ export default function TankDipsPage() {
                   <CheckCircle className="h-4 w-4 text-green-600" />
                   <AlertTitle className="text-green-600">No Active Shifts</AlertTitle>
                   <AlertDescription className="text-green-600">
-                    No shifts were running at {dipTime.toLocaleString()}. System stock levels are accurate.
+                    No shifts were running at {(dipTime || 0).toLocaleString()}. System stock levels are accurate.
                   </AlertDescription>
                 </Alert>
               )
@@ -799,7 +799,7 @@ export default function TankDipsPage() {
                       <Input
                         id="dipLitres"
                         type="text"
-                        value={dipLitres ? parseFloat(dipLitres).toLocaleString() : ''}
+                        value={dipLitres ? (parseFloat(dipLitres) || 0).toLocaleString() : ''}
                         disabled
                         placeholder="Auto-calculated from depth"
                         className="bg-muted"
@@ -807,7 +807,7 @@ export default function TankDipsPage() {
                       <p className="text-xs text-muted-foreground mt-1">
                         {dipDepth && dipLitres ? (
                           <span className="text-green-600 font-semibold">
-                            ✓ {dipDepth}cm = {parseFloat(dipLitres).toLocaleString()}L
+                            ✓ {dipDepth}cm = {(parseFloat(dipLitres) || 0).toLocaleString()}L
                           </span>
                         ) : (
                           'Automatically calculated from depth measurement'
@@ -843,17 +843,17 @@ export default function TankDipsPage() {
                                 <span className="text-muted-foreground">
                                   {showUpdatedLevels ? 'Adjusted:' : 'System:'}
                                 </span>
-                                <span className="font-mono font-semibold">{adjustedLevel.toLocaleString()}L</span>
+                                <span className="font-mono font-semibold">{(adjustedLevel || 0).toLocaleString()}L</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-muted-foreground">Dip:</span>
-                                <span className="font-mono font-semibold">{dipReading.toLocaleString()}L</span>
+                                <span className="font-mono font-semibold">{(dipReading || 0).toLocaleString()}L</span>
                               </div>
                               <div className="flex justify-between border-t pt-2">
                                 <span className="font-semibold">Variance:</span>
                                 <div className="text-right">
                                   <div className={`font-mono font-bold ${variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {variance > 0 ? '+' : ''}{variance.toLocaleString()}L
+                                    {variance > 0 ? '+' : ''}{(variance || 0).toLocaleString()}L
                                   </div>
                                   <div className={`text-xs ${isWarning ? 'text-red-600' : 'text-green-600'}`}>
                                     ({variancePercentage > 0 ? '+' : ''}{variancePercentage.toFixed(2)}%)
@@ -931,13 +931,13 @@ export default function TankDipsPage() {
                 <div>
                   <Label className="text-xs text-muted-foreground">Dip Reading</Label>
                   <div className="font-mono font-bold text-lg">
-                    {selectedDip.dipLitres != null ? selectedDip.dipLitres.toLocaleString() : '-'}L
+                    {selectedDip.dipLitres != null ? (selectedDip.dipLitres || 0).toLocaleString() : '-'}L
                   </div>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Variance</Label>
                   <div className={`font-mono font-bold text-lg ${(selectedDip.variance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {(selectedDip.variance || 0) > 0 ? '+' : ''}{selectedDip.variance != null ? selectedDip.variance.toLocaleString() : '0'}L
+                    {(selectedDip.variance || 0) > 0 ? '+' : ''}{selectedDip.variance != null ? (selectedDip.variance || 0).toLocaleString() : '0'}L
                     <span className="text-sm ml-2">
                       ({(selectedDip.variancePercentage || 0) > 0 ? '+' : ''}{selectedDip.variancePercentage != null ? selectedDip.variancePercentage.toFixed(2) : '0'}%)
                     </span>

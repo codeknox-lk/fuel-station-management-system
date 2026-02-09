@@ -373,7 +373,7 @@ export default function PumperSalaryDetailsPage() {
                 <div>
                   <Label>Net Salary Amount</Label>
                   <Input
-                    value={`Rs. ${salaryData?.netSalary.toLocaleString() || 0}`}
+                    value={`Rs. ${(salaryData?.netSalary || 0).toLocaleString() || 0}`}
                     disabled
                     className="bg-muted"
                   />
@@ -465,7 +465,7 @@ export default function PumperSalaryDetailsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              Rs. {(salaryData.totalOvertimeAmount || 0).toLocaleString()}
+              Rs. {(salaryData.totalOvertimeAmount || (0) || 0).toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               {(salaryData.totalOvertimeHours || 0).toFixed(1)} hours
@@ -481,10 +481,10 @@ export default function PumperSalaryDetailsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              Rs. {(salaryData.commission || 0).toLocaleString()}
+              Rs. {(salaryData.commission || (0) || 0).toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              From Rs. {salaryData.totalSales.toLocaleString()} sales
+              From Rs. {(salaryData.totalSales || 0).toLocaleString()} sales
             </p>
           </CardContent>
         </Card>
@@ -513,7 +513,7 @@ export default function PumperSalaryDetailsPage() {
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${salaryData.netSalary >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              Rs. {salaryData.netSalary.toLocaleString()}
+              Rs. {(salaryData.netSalary || 0).toLocaleString()}
             </div>
           </CardContent>
         </Card>
@@ -531,27 +531,27 @@ export default function PumperSalaryDetailsPage() {
               <div className="flex justify-between items-center p-3 bg-card rounded-lg border">
                 <span className="text-sm font-medium">EPF (8%):</span>
                 <span className="font-semibold text-red-600 text-lg">
-                  -Rs. {salaryData.epf.toLocaleString()}
+                  -Rs. {(salaryData.epf || 0).toLocaleString()}
                 </span>
               </div>
             )}
             <div className="flex justify-between items-center p-3 bg-card rounded-lg border">
               <span className="text-sm font-medium">Advances Taken:</span>
               <span className="font-semibold text-red-600 text-lg">
-                -Rs. {salaryData.totalAdvances.toLocaleString()}
+                -Rs. {(salaryData.totalAdvances || 0).toLocaleString()}
               </span>
             </div>
             <div className="flex justify-between items-center p-3 bg-card rounded-lg border">
               <span className="text-sm font-medium">Loans:</span>
               <span className="font-semibold text-red-600 text-lg">
-                -Rs. {salaryData.totalLoans.toLocaleString()}
+                -Rs. {(salaryData.totalLoans || 0).toLocaleString()}
               </span>
             </div>
             {salaryData.varianceDeduct > 0 && (
               <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-red-500/30">
                 <span className="text-sm font-medium">Variance Deductions:</span>
                 <span className="font-semibold text-red-600 text-lg">
-                  -Rs. {salaryData.varianceDeduct.toLocaleString()}
+                  -Rs. {(salaryData.varianceDeduct || 0).toLocaleString()}
                 </span>
               </div>
             )}
@@ -559,7 +559,7 @@ export default function PumperSalaryDetailsPage() {
               <div className="flex justify-between items-center">
                 <span className="font-semibold">Total Deductions:</span>
                 <span className="font-bold text-red-600 text-xl">
-                  -Rs. {((salaryData.epf || 0) + salaryData.totalAdvances + salaryData.totalLoans + salaryData.varianceDeduct).toLocaleString()}
+                  -Rs. {((salaryData.epf || 0) + salaryData.totalAdvances + salaryData.totalLoans + (salaryData.varianceDeduct) || 0).toLocaleString()}
                 </span>
               </div>
             </div>
@@ -576,7 +576,7 @@ export default function PumperSalaryDetailsPage() {
               <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-green-500/30">
                 <span className="text-sm font-medium">Holiday Allowance:</span>
                 <span className="font-semibold text-green-600 text-lg">
-                  +Rs. {salaryData.holidayAllowance.toLocaleString()}
+                  +Rs. {(salaryData.holidayAllowance || 0).toLocaleString()}
                 </span>
                 {salaryData.restDaysTaken !== undefined && salaryData.restDaysTaken > 0 && (
                   <span className="text-xs text-muted-foreground ml-2">
@@ -589,7 +589,7 @@ export default function PumperSalaryDetailsPage() {
               <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-green-500/30">
                 <span className="text-sm font-medium">Overtime:</span>
                 <span className="font-semibold text-green-600 text-lg">
-                  +Rs. {salaryData.totalOvertimeAmount.toLocaleString()}
+                  +Rs. {(salaryData.totalOvertimeAmount || 0).toLocaleString()}
                 </span>
                 {salaryData.totalOvertimeHours && (
                   <span className="text-xs text-muted-foreground ml-2">
@@ -602,7 +602,7 @@ export default function PumperSalaryDetailsPage() {
               <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-green-500/30">
                 <span className="text-sm font-medium">Commission:</span>
                 <span className="font-semibold text-green-600 text-lg">
-                  +Rs. {salaryData.commission.toLocaleString()}
+                  +Rs. {(salaryData.commission || 0).toLocaleString()}
                 </span>
               </div>
             )}
@@ -610,7 +610,7 @@ export default function PumperSalaryDetailsPage() {
               <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-green-500/30">
                 <span className="text-sm font-medium">Variance Bonuses:</span>
                 <span className="font-semibold text-green-600 text-lg">
-                  +Rs. {salaryData.varianceAdd.toLocaleString()}
+                  +Rs. {(salaryData.varianceAdd || 0).toLocaleString()}
                 </span>
               </div>
             )}
@@ -618,7 +618,7 @@ export default function PumperSalaryDetailsPage() {
               <div className="flex justify-between items-center">
                 <span className="font-semibold">Total Additions:</span>
                 <span className="font-bold text-green-600 text-xl">
-                  +Rs. {((salaryData.holidayAllowance || 0) + (salaryData.totalOvertimeAmount || 0) + (salaryData.commission || 0) + salaryData.varianceAdd).toLocaleString()}
+                  +Rs. {((salaryData.holidayAllowance || 0) + (salaryData.totalOvertimeAmount || 0) + (salaryData.commission || 0) + (salaryData.varianceAdd) || 0).toLocaleString()}
                 </span>
               </div>
             </div>
@@ -637,19 +637,19 @@ export default function PumperSalaryDetailsPage() {
             <div className="flex justify-between items-center p-4 bg-card rounded-lg border">
               <span className="text-lg font-medium">Base Salary:</span>
               <span className="font-semibold text-lg">
-                Rs. {salaryData.baseSalary.toLocaleString()}
+                Rs. {(salaryData.baseSalary || 0).toLocaleString()}
               </span>
             </div>
             <div className="flex justify-between items-center p-4 bg-card rounded-lg border border-green-500/30">
               <span className="text-lg font-medium">Additions:</span>
               <span className="font-semibold text-green-600 text-lg">
-                +Rs. {((salaryData.holidayAllowance || 0) + (salaryData.totalOvertimeAmount || 0) + (salaryData.commission || 0) + salaryData.varianceAdd).toLocaleString()}
+                +Rs. {((salaryData.holidayAllowance || 0) + (salaryData.totalOvertimeAmount || 0) + (salaryData.commission || 0) + (salaryData.varianceAdd) || 0).toLocaleString()}
               </span>
             </div>
             <div className="flex justify-between items-center p-4 bg-card rounded-lg border border-red-500/30">
               <span className="text-lg font-medium">Deductions:</span>
               <span className="font-semibold text-red-600 text-lg">
-                -Rs. {((salaryData.epf || 0) + salaryData.totalAdvances + salaryData.totalLoans + salaryData.varianceDeduct).toLocaleString()}
+                -Rs. {((salaryData.epf || 0) + salaryData.totalAdvances + salaryData.totalLoans + (salaryData.varianceDeduct) || 0).toLocaleString()}
               </span>
             </div>
             <div className="flex justify-between items-center p-6 bg-primary/10 rounded-lg border-2 border-primary">
@@ -657,7 +657,7 @@ export default function PumperSalaryDetailsPage() {
               <div className="flex items-center gap-2">
                 <DollarSign className={`h-8 w-8 ${salaryData.netSalary >= 0 ? 'text-green-600' : 'text-red-600'}`} />
                 <span className={`text-4xl font-bold ${salaryData.netSalary >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  Rs. {salaryData.netSalary.toLocaleString()}
+                  Rs. {(salaryData.netSalary || 0).toLocaleString()}
                 </span>
               </div>
             </div>
@@ -718,7 +718,7 @@ export default function PumperSalaryDetailsPage() {
                         <div className="flex items-center gap-1">
                           <Clock className="h-4 w-4 text-orange-600" />
                           <span className="font-semibold text-orange-600 text-lg">
-                            Rs. {shift.overtimeAmount.toLocaleString()}
+                            Rs. {(shift.overtimeAmount || 0).toLocaleString()}
                           </span>
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
@@ -731,18 +731,18 @@ export default function PumperSalaryDetailsPage() {
                       <div className="flex items-center gap-1">
                         <TrendingUp className="h-4 w-4 text-green-600" />
                         <span className="font-semibold text-green-600 text-lg">
-                          Rs. {shift.sales.toLocaleString()}
+                          Rs. {(shift.sales || 0).toLocaleString()}
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        Commission: Rs. {Math.floor(shift.sales / 1000).toLocaleString()}
+                        Commission: Rs. {Math.floor(shift.sales / (1000) || 0).toLocaleString()}
                       </div>
                     </div>
 
                     <div className="p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
                       <div className="text-xs text-muted-foreground mb-1">Advance Taken</div>
                       <span className="font-semibold text-orange-600 text-lg">
-                        Rs. {shift.advance.toLocaleString()}
+                        Rs. {(shift.advance || 0).toLocaleString()}
                       </span>
                     </div>
 
@@ -758,7 +758,7 @@ export default function PumperSalaryDetailsPage() {
                           <>
                             <CheckCircle className="h-4 w-4 text-green-600" />
                             <span className="font-semibold text-green-600 text-lg">
-                              +Rs. {Math.abs(shift.variance).toLocaleString()}
+                              +Rs. {(Math.abs(shift.variance) || 0).toLocaleString()}
                             </span>
                           </>
                         )}
@@ -766,7 +766,7 @@ export default function PumperSalaryDetailsPage() {
                           <>
                             <XCircle className="h-4 w-4 text-red-600" />
                             <span className="font-semibold text-red-600 text-lg">
-                              -Rs. {shift.variance.toLocaleString()}
+                              -Rs. {(shift.variance || 0).toLocaleString()}
                             </span>
                           </>
                         )}
@@ -789,8 +789,8 @@ export default function PumperSalaryDetailsPage() {
                           }
                           // impact is negative = deduction, positive = addition
                           return impact >= 0
-                            ? `+Rs. ${impact.toLocaleString()}`
-                            : `-Rs. ${Math.abs(impact).toLocaleString()}`
+                            ? `+Rs. ${(impact || 0).toLocaleString()}`
+                            : `-Rs. ${(Math.abs(impact) || 0).toLocaleString()}`
                         })()}
                       </span>
                     </div>
@@ -864,7 +864,7 @@ export default function PumperSalaryDetailsPage() {
                         {payment.status}
                       </Badge>
                       <div className="font-mono font-bold text-lg mt-2">
-                        Rs. {payment.netSalary.toLocaleString()}
+                        Rs. {(payment.netSalary || 0).toLocaleString()}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         Paid by: {payment.paidBy}
@@ -888,13 +888,13 @@ export default function PumperSalaryDetailsPage() {
           <CardDescription>
             {salaryData.totalLoanAmount && salaryData.totalLoanAmount > 0 ? (
               <div className="space-y-1">
-                <div>Total loan amount: Rs. {salaryData.totalLoanAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div>Total loan amount: Rs. {(salaryData.totalLoanAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 {salaryData.totalLoans > 0 && (
-                  <div>Total monthly rental deduction: Rs. {salaryData.totalLoans.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  <div>Total monthly rental deduction: Rs. {(salaryData.totalLoans || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 )}
               </div>
             ) : salaryData.totalLoans > 0 ? (
-              `Total monthly rental deduction: Rs. ${salaryData.totalLoans.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              `Total monthly rental deduction: Rs. ${(salaryData.totalLoans || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
             ) : (
               'No active loans with monthly rental deduction'
             )}

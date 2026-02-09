@@ -146,7 +146,7 @@ export default function POSPage() {
         ...slipsData.map((slip) => ({
           id: `slip-${slip.id}`,
           type: 'MISSING_SLIP' as const,
-          description: `Missing slip reported - Rs. ${slip.amount.toLocaleString()}`,
+          description: `Missing slip reported - Rs. ${(slip.amount || 0).toLocaleString()}`,
           amount: slip.amount,
           status: 'PENDING',
           timestamp: new Date(slip.timestamp).toISOString()
@@ -243,7 +243,7 @@ export default function POSPage() {
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-          <span className="">{(value as number)?.toLocaleString() || 0}</span>
+          Rs. {((value as number) || 0).toLocaleString()}
         </div>
       )
     },
@@ -254,7 +254,7 @@ export default function POSPage() {
         <div className="flex items-center gap-2">
           <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
           <span className="font-semibold text-green-700">
-            Rs. {(value as number)?.toLocaleString() || 0}
+            Rs. {(value as number || 0).toLocaleString()}
           </span>
         </div>
       )
@@ -278,7 +278,7 @@ export default function POSPage() {
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm">
-            {new Date(value as string).toLocaleString()}
+            {new Date(value as (string) || 0).toLocaleString()}
           </span>
         </div>
       )
@@ -306,7 +306,7 @@ export default function POSPage() {
       render: (value: unknown) => (
         value ? (
           <span className="text-sm">
-            Rs. {(value as number).toLocaleString()}
+            Rs. {(value as (number) || 0).toLocaleString()}
           </span>
         ) : (
           <span className="text-muted-foreground">-</span>
@@ -345,16 +345,16 @@ export default function POSPage() {
         <Card className="p-4">
           <h3 className="text-lg font-semibold text-foreground">Today&apos;s Transactions</h3>
           <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
-            {stats.totalTransactions.toLocaleString()}
+            {(stats.totalTransactions || 0).toLocaleString()}
           </p>
         </Card>
         <Card className="p-4">
           <h3 className="text-lg font-semibold text-foreground">Today&apos;s Amount</h3>
           <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
-            Rs. {stats.totalAmount.toLocaleString()}
+            Rs. {(stats.totalAmount || 0).toLocaleString()}
           </p>
           <p className="text-sm text-muted-foreground">
-            Avg: Rs. {stats.averageTransaction.toLocaleString()}
+            Avg: Rs. {(stats.averageTransaction || 0).toLocaleString()}
           </p>
         </Card>
         <Card className="p-4">

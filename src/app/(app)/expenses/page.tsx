@@ -245,7 +245,7 @@ export default function ExpensesPage() {
         <div className="flex items-center gap-2">
           <DollarSign className="h-4 w-4 text-red-600 dark:text-red-400" />
           <span className="font-mono font-semibold text-red-700">
-            Rs. {(value as number)?.toLocaleString() || 0}
+            Rs. {((value as number) || 0).toLocaleString()}
           </span>
         </div>
       )

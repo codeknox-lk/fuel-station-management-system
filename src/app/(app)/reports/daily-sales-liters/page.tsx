@@ -346,7 +346,7 @@ export default function DailySalesLitersReportPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {(salesData.totalLitersByFuelType[fuelType] || 0).toLocaleString()} L
+                  {(salesData.totalLitersByFuelType[fuelType] || (0) || 0).toLocaleString()} L
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   Total for {months.find(m => m.value === selectedMonth)?.label} {selectedYear}
@@ -363,7 +363,7 @@ export default function DailySalesLitersReportPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-orange-600">
-                {salesData.dailySales.reduce((sum, day) => sum + day.totalLiters, 0).toLocaleString()} L
+                {salesData.dailySales.reduce((sum, day) => sum + day.totalLiters, (0) || 0).toLocaleString()} L
               </div>
               <div className="text-xs text-muted-foreground mt-1">
                 All fuel types combined
@@ -396,7 +396,7 @@ export default function DailySalesLitersReportPage() {
                   tickFormatter={(value) => `${(value / 1000).toFixed(1)}k L`}
                 />
                 <Tooltip
-                  formatter={(value: number) => `${value.toLocaleString()} L`}
+                  formatter={(value: number) => `${(value || 0).toLocaleString()} L`}
                   labelFormatter={(date) => {
                     const d = new Date(date)
                     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -457,11 +457,11 @@ export default function DailySalesLitersReportPage() {
                     <td className="p-3 font-medium">Day {day.day}</td>
                     {salesData.fuelTypes.map(fuelType => (
                       <td key={fuelType} className="text-right p-3 text-sm">
-                        {(day.liters[fuelType] || 0).toLocaleString()} L
+                        {(day.liters[fuelType] || (0) || 0).toLocaleString()} L
                       </td>
                     ))}
                     <td className="text-right p-3 font-semibold text-orange-600 dark:text-orange-400">
-                      {day.totalLiters.toLocaleString()} L
+                      {(day.totalLiters || 0).toLocaleString()} L
                     </td>
                   </tr>
                 ))}
@@ -469,11 +469,11 @@ export default function DailySalesLitersReportPage() {
                   <td className="p-3 text-lg">TOTAL</td>
                   {salesData.fuelTypes.map(fuelType => (
                     <td key={fuelType} className="text-right p-3 text-base" style={{ color: fuelTypeColors[fuelType] || '#666' }}>
-                      {(salesData.totalLitersByFuelType[fuelType] || 0).toLocaleString()} L
+                      {(salesData.totalLitersByFuelType[fuelType] || (0) || 0).toLocaleString()} L
                     </td>
                   ))}
                   <td className="text-right p-3 text-lg text-orange-600 dark:text-orange-400">
-                    {salesData.dailySales.reduce((sum, day) => sum + day.totalLiters, 0).toLocaleString()} L
+                    {salesData.dailySales.reduce((sum, day) => sum + day.totalLiters, (0) || 0).toLocaleString()} L
                   </td>
                 </tr>
               </tbody>

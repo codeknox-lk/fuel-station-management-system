@@ -140,14 +140,14 @@ export default function DashboardPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-orange-600">Rs. {(stats.todaySales || 0).toLocaleString()}</div>
+            <div className="text-3xl font-bold text-orange-600">Rs. {(stats.todaySales || (0) || 0).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {stats.todayTransactions} transactions
             </p>
             <div className="mt-2 pt-2 border-t">
               <p className="text-xs font-medium">
                 {stats.todaySales > 0 ? (
-                  <>Avg: Rs. {Math.round((stats.todaySales || 0) / (stats.todayTransactions || 1)).toLocaleString()}/sale</>
+                  <>Avg: Rs. {Math.round((stats.todaySales || 0) / (stats.todayTransactions || (1)) || 0).toLocaleString()}/sale</>
                 ) : (
                   'No sales yet today'
                 )}
@@ -184,11 +184,11 @@ export default function DashboardPage() {
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">Rs. {(stats.safeBalance || 0).toLocaleString()}</div>
+            <div className="text-2xl font-bold text-orange-600">Rs. {(stats.safeBalance || (0) || 0).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground mt-1">Safe balance</p>
             <div className="mt-2 pt-2 border-t">
               <p className="text-xs font-medium text-orange-600">
-                Credit: Rs. {(stats.creditOutstanding || 0).toLocaleString()}
+                Credit: Rs. {(stats.creditOutstanding || (0) || 0).toLocaleString()}
               </p>
             </div>
           </CardContent>
@@ -204,7 +204,7 @@ export default function DashboardPage() {
                 <div className="flex justify-between text-sm">
                   <span className="font-medium">{fuel.name}</span>
                   <span className="text-muted-foreground">
-                    {(fuel.stock || 0).toLocaleString()} / {(fuel.capacity || 0).toLocaleString()} L
+                    {(fuel.stock || (0) || 0).toLocaleString()} / {(fuel.capacity || (0) || 0).toLocaleString()} L
                   </span>
                 </div>
                 <div className="w-full bg-muted rounded-full h-2">

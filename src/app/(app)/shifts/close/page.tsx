@@ -725,7 +725,7 @@ export default function CloseShiftPage() {
     const availableAdvanceLimit = ADVANCE_LIMIT - monthlyRental
 
     if (amount > availableAdvanceLimit) {
-      setError(`Advance limit exceeded for ${pumperName}! Monthly loan rental: Rs. ${(monthlyRental || 0).toLocaleString()}, Available advance limit: Rs. ${(availableAdvanceLimit || 0).toLocaleString()}. Total (rental + advance) cannot exceed Rs. ${(ADVANCE_LIMIT || 0).toLocaleString()}.`)
+      setError(`Advance limit exceeded for ${pumperName}! Monthly loan rental: Rs. ${(monthlyRental || (0) || 0).toLocaleString()}, Available advance limit: Rs. ${(availableAdvanceLimit || (0) || 0).toLocaleString()}. Total (rental + advance) cannot exceed Rs. ${(ADVANCE_LIMIT || (0) || 0).toLocaleString()}.`)
       setTimeout(() => setError(''), 7000)
       return
     }
@@ -737,7 +737,7 @@ export default function CloseShiftPage() {
     const totalAdvances = amount + otherAdvancesTotal
 
     if (totalAdvances > currentCash && currentCash > 0) {
-      setError(`Total advances (taken: Rs. ${(amount || 0).toLocaleString()} + given: Rs. ${(otherAdvancesTotal || 0).toLocaleString()}) cannot exceed cash declared (Rs. ${(currentCash || 0).toLocaleString()}). Advances can only come from cash.`)
+      setError(`Total advances (taken: Rs. ${(amount || (0) || 0).toLocaleString()} + given: Rs. ${(otherAdvancesTotal || (0) || 0).toLocaleString()}) cannot exceed cash declared (Rs. ${(currentCash || (0) || 0).toLocaleString()}). Advances can only come from cash.`)
       setTimeout(() => setError(''), 5000)
       return
     }
@@ -773,7 +773,7 @@ export default function CloseShiftPage() {
         const newAmount = value as number
 
         if (newAmount > availableAdvanceLimit) {
-          setError(`Advance limit exceeded for ${receivingPumperName}! Monthly loan rental: Rs. ${(monthlyRental || 0).toLocaleString()}, Available advance limit: Rs. ${(availableAdvanceLimit || 0).toLocaleString()}. Total (rental + advance) cannot exceed Rs. ${(ADVANCE_LIMIT || 0).toLocaleString()}.`)
+          setError(`Advance limit exceeded for ${receivingPumperName}! Monthly loan rental: Rs. ${(monthlyRental || (0) || 0).toLocaleString()}, Available advance limit: Rs. ${(availableAdvanceLimit || (0) || 0).toLocaleString()}. Total (rental + advance) cannot exceed Rs. ${(ADVANCE_LIMIT || (0) || 0).toLocaleString()}.`)
           setTimeout(() => setError(''), 7000)
           return prev // Don't update if validation fails
         }
@@ -785,7 +785,7 @@ export default function CloseShiftPage() {
         const totalAdvances = advanceTaken + otherAdvancesTotal + newAmount
 
         if (totalAdvances > currentCash && currentCash > 0) {
-          setError(`Total advances (taken: Rs. ${(advanceTaken || 0).toLocaleString()} + given: Rs. ${((otherAdvancesTotal || 0) + (newAmount || 0)).toLocaleString()}) cannot exceed cash declared (Rs. ${(currentCash || 0).toLocaleString()}). Advances can only come from cash.`)
+          setError(`Total advances (taken: Rs. ${(advanceTaken || (0) || 0).toLocaleString()} + given: Rs. ${((otherAdvancesTotal || 0) + (newAmount || (0)) || 0).toLocaleString()}) cannot exceed cash declared (Rs. ${(currentCash || (0) || 0).toLocaleString()}). Advances can only come from cash.`)
           setTimeout(() => setError(''), 5000)
           return prev // Don't update if validation fails
         }
@@ -940,7 +940,7 @@ export default function CloseShiftPage() {
         // Also show a global error message
         const terminal = posTerminals.find(t => t.id === duplicateSlip.terminalId)
         const duplicateTime = new Date(duplicateSlip.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-        setError(`⚠️ FRAUD ALERT: Card ending in ${updatedSlip.lastFourDigits} (${updatedSlip.cardType}) was already added today at ${duplicateTime} for Rs. ${duplicateSlip.amount.toLocaleString()} on ${terminal?.name || 'same terminal'}. The same card with same type cannot be used twice on the same terminal at the same time!`)
+        setError(`⚠️ FRAUD ALERT: Card ending in ${updatedSlip.lastFourDigits} (${updatedSlip.cardType}) was already added today at ${duplicateTime} for Rs. ${(duplicateSlip.amount || 0).toLocaleString()} on ${terminal?.name || 'same terminal'}. The same card with same type cannot be used twice on the same terminal at the same time!`)
         setTimeout(() => setError(''), 8000)
       } else {
         // Clear error if card number is valid
@@ -1254,7 +1254,7 @@ export default function CloseShiftPage() {
             if (customer) {
               const availableCredit = customer.creditLimit - customer.currentBalance
               if (amount > availableCredit) {
-                setError(`Credit amount for ${customer.name} (Rs. ${amount.toLocaleString()}) exceeds available credit (Rs. ${availableCredit.toLocaleString()})`)
+                setError(`Credit amount for ${customer.name} (Rs. ${(amount || 0).toLocaleString()}) exceeds available credit (Rs. ${(availableCredit || 0).toLocaleString()})`)
                 return
               }
             }
@@ -1946,7 +1946,7 @@ export default function CloseShiftPage() {
         const numValue = value as number
         return (
           <span className="font-mono">
-            {numValue != null ? numValue.toLocaleString() : '-'}
+            {numValue != null ? (numValue || 0).toLocaleString() : '-'}
           </span>
         )
       }
@@ -1971,7 +1971,7 @@ export default function CloseShiftPage() {
         const pumpSales = row.pumpSales ?? 0
         return (
           <span className="font-mono text-orange-600 dark:text-orange-400">
-            {pumpSales.toLocaleString()}
+            {(pumpSales || 0).toLocaleString()}
           </span>
         )
       }
@@ -1985,7 +1985,7 @@ export default function CloseShiftPage() {
         const delta = endReading - startReading
         return (
           <span className={`font-mono ${delta >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-            {delta.toLocaleString()}
+            {(delta || 0).toLocaleString()}
           </span>
         )
       }
@@ -2123,7 +2123,7 @@ export default function CloseShiftPage() {
                   key: 'openingStock',
                   title: 'Opening + Added',
                   render: (_: unknown, row: ShopShiftItem) => (
-                    <span className="font-mono">{(row.openingStock + row.addedStock).toLocaleString()} {row.product.unit}</span>
+                    <span className="font-mono">{(row.openingStock + (row.addedStock) || 0).toLocaleString()} {row.product.unit}</span>
                   )
                 },
                 {
@@ -2145,7 +2145,7 @@ export default function CloseShiftPage() {
                   render: (_: unknown, row: ShopShiftItem) => {
                     const closing = shopClosingStocks[row.id] ?? (row.openingStock + row.addedStock)
                     const sold = Math.max(0, (row.openingStock + row.addedStock) - closing)
-                    return <span className="font-mono text-orange-600">{sold.toLocaleString()}</span>
+                    return <span className="font-mono text-orange-600">{(sold || 0).toLocaleString()}</span>
                   }
                 },
                 {
@@ -2155,7 +2155,7 @@ export default function CloseShiftPage() {
                     const closing = shopClosingStocks[row.id] ?? (row.openingStock + row.addedStock)
                     const sold = Math.max(0, (row.openingStock + row.addedStock) - closing)
                     const revenue = sold * row.product.sellingPrice
-                    return <span className="font-mono font-semibold">Rs. {revenue.toLocaleString()}</span>
+                    return <span className="font-mono font-semibold">Rs. {(revenue || 0).toLocaleString()}</span>
                   }
                 }
               ]}
@@ -2170,7 +2170,7 @@ export default function CloseShiftPage() {
                     const closing = shopClosingStocks[item.id] ?? (item.openingStock + item.addedStock)
                     const sold = Math.max(0, (item.openingStock + item.addedStock) - closing)
                     return sum + (sold * item.product.sellingPrice)
-                  }, 0).toLocaleString()}
+                  }, (0) || 0).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -2245,7 +2245,7 @@ export default function CloseShiftPage() {
                             <Fuel className="h-3 w-3 text-muted-foreground" />
                             <span className="text-sm text-muted-foreground">Meter Sales:</span>
                           </div>
-                          <span className="font-mono font-medium">Rs. {breakdown.meterSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="font-mono font-medium">Rs. {(breakdown.meterSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                       )}
 
@@ -2255,7 +2255,7 @@ export default function CloseShiftPage() {
                             <ShoppingBag className="h-3 w-3 text-muted-foreground" />
                             <span className="text-sm text-muted-foreground">Shop Sales:</span>
                           </div>
-                          <span className="font-mono font-medium">Rs. {breakdown.shopSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="font-mono font-medium">Rs. {(breakdown.shopSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                       )}
 
@@ -2263,7 +2263,7 @@ export default function CloseShiftPage() {
 
                       <div className="flex justify-between items-center">
                         <span className="text-sm font-semibold">Total Calculated:</span>
-                        <span className="font-mono font-bold text-lg text-primary">Rs. {breakdown.calculatedSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span className="font-mono font-bold text-lg text-primary">Rs. {(breakdown.calculatedSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
                     </div>
 
@@ -2370,7 +2370,7 @@ export default function CloseShiftPage() {
                                                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                                                   <Label className="text-sm font-medium">POS Slip - {slip.lastFourDigits || 'Incomplete'}</Label>
                                                   {terminal && <span className="text-xs text-muted-foreground">({terminal.name})</span>}
-                                                  <span className="text-xs text-green-600 dark:text-green-400">Rs. {slip.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                  <span className="text-xs text-green-600 dark:text-green-400">Rs. {(slip.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                                 </div>
                                               </div>
                                             ) : (
@@ -2475,7 +2475,7 @@ export default function CloseShiftPage() {
                                                         <div>This card (ending in {error.cardNumber}, {slip.cardType}) was already added today:</div>
                                                         <div className="mt-1 ml-2">
                                                           • Time: {duplicateTime}<br />
-                                                          • Amount: Rs. {duplicateSlip.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<br />
+                                                          • Amount: Rs. {(duplicateSlip.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<br />
                                                           • Card Type: {duplicateSlip.cardType}<br />
                                                           {terminal && <span>• Terminal: {terminal.name} ({terminal.terminalNumber})</span>}
                                                         </div>
@@ -2555,7 +2555,7 @@ export default function CloseShiftPage() {
                                                   {terminal?.name || 'Unknown'}:
                                                 </span>
                                                 <span className="font-mono text-green-600 dark:text-green-400">
-                                                  Rs. {terminalTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                  Rs. {(terminalTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </span>
                                               </div>
                                             )
@@ -2570,7 +2570,7 @@ export default function CloseShiftPage() {
                                           {Object.entries(totalsByCardType).map(([type, amount]) => (
                                             <div key={type} className="flex justify-between">
                                               <span className="text-muted-foreground">{type}:</span>
-                                              <span className="font-mono">Rs. {amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                              <span className="font-mono">Rs. {(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                             </div>
                                           ))}
                                         </div>
@@ -2582,7 +2582,7 @@ export default function CloseShiftPage() {
                                           <div className="flex justify-between items-center">
                                             <Label className="text-sm font-semibold">Total Card Sales (from slips):</Label>
                                             <div className="font-mono font-bold text-base text-green-600 dark:text-green-400">
-                                              Rs. {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                              Rs. {(grandTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </div>
                                           </div>
                                         </div>
@@ -2653,7 +2653,7 @@ export default function CloseShiftPage() {
                                                           <ChevronDown className="h-4 w-4 text-muted-foreground" />
                                                           <Label className="text-sm font-medium">Missing Slip - {slip.lastFourDigits || 'Incomplete'}</Label>
                                                           {terminal && <span className="text-xs text-muted-foreground">({terminal.name})</span>}
-                                                          <span className="text-xs text-orange-600 dark:text-orange-400">Rs. {slip.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                          <span className="text-xs text-orange-600 dark:text-orange-400">Rs. {(slip.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                                         </div>
                                                       </div>
                                                     ) : (
@@ -2832,12 +2832,12 @@ export default function CloseShiftPage() {
                                 />
                                 {amount > 0 && amount > availableCredit && (
                                   <p className="text-xs text-red-600 dark:text-red-400 ml-1">
-                                    Warning: Amount exceeds available credit by Rs. {(amount - availableCredit).toLocaleString()}
+                                    Warning: Amount exceeds available credit by Rs. {(amount - (availableCredit) || 0).toLocaleString()}
                                   </p>
                                 )}
                                 {amount > 0 && amount <= availableCredit && (
                                   <p className="text-xs text-muted-foreground ml-1">
-                                    Available credit: Rs. {availableCredit.toLocaleString()}
+                                    Available credit: Rs. {(availableCredit || 0).toLocaleString()}
                                   </p>
                                 )}
                               </div>
@@ -3023,7 +3023,7 @@ export default function CloseShiftPage() {
                             <div className="flex justify-between items-center pt-2 border-t">
                               <Label className="text-sm font-medium">Total Cheque Amount:</Label>
                               <div className="font-mono font-semibold">
-                                Rs. {breakdown.declaredCheque.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                Rs. {(breakdown.declaredCheque || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </div>
                             </div>
                           </div>
@@ -3196,13 +3196,13 @@ export default function CloseShiftPage() {
                             return (
                               <>
                                 <span className="block mt-1 text-orange-600 dark:text-orange-400 font-medium">
-                                  💰 Advance Limit: Rs. {availableLimit.toLocaleString()}
-                                  {monthlyRental > 0 && ` (Limit: Rs. 50,000 - Monthly Rental: Rs. ${monthlyRental.toLocaleString()})`}
+                                  💰 Advance Limit: Rs. {(availableLimit || 0).toLocaleString()}
+                                  {monthlyRental > 0 && ` (Limit: Rs. 50,000 - Monthly Rental: Rs. ${(monthlyRental || 0).toLocaleString()})`}
                                 </span>
                                 {breakdown.advanceTaken > 0 && breakdown.declaredCash >= 0 && (
                                   <span className="block mt-1 text-orange-600 dark:text-orange-400">
-                                    Cash after advance: Rs. {(breakdown.declaredCash - breakdown.advanceTaken).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    (Rs. {breakdown.declaredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} declared - Rs. {breakdown.advanceTaken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} advance)
+                                    Cash after advance: Rs. {(breakdown.declaredCash - (breakdown.advanceTaken) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    (Rs. {(breakdown.declaredCash || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} declared - Rs. {(breakdown.advanceTaken || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} advance)
                                   </span>
                                 )}
                                 {breakdown.advanceTaken > (breakdown.declaredCash || 0) && (
@@ -3323,20 +3323,20 @@ export default function CloseShiftPage() {
                                 <div className="pt-2 border-t space-y-1">
                                   <div className="flex justify-between text-xs">
                                     <span className="text-muted-foreground">Advance Taken:</span>
-                                    <span className="font-mono">Rs. {advanceTaken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <span className="font-mono">Rs. {(advanceTaken || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                   </div>
                                   <div className="flex justify-between text-xs">
                                     <span className="text-muted-foreground">Advances Given:</span>
-                                    <span className="font-mono">Rs. {otherAdvancesTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <span className="font-mono">Rs. {(otherAdvancesTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                   </div>
                                   <div className="flex justify-between text-xs font-medium">
                                     <span>Total Advances:</span>
-                                    <span className="font-mono">Rs. {totalAdvances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <span className="font-mono">Rs. {(totalAdvances || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                   </div>
                                   <div className="flex justify-between text-xs font-medium">
                                     <span>Cash After All Advances:</span>
                                     <span className={`font-mono ${cashAfterAllAdvances < 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-                                      Rs. {cashAfterAllAdvances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      Rs. {(cashAfterAllAdvances || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
                                   </div>
                                   {totalAdvances > availableCash && (
@@ -3612,7 +3612,7 @@ export default function CloseShiftPage() {
                           </div>
                           <div className="grid grid-cols-2 gap-2 text-xs">
                             <div className="text-muted-foreground">Cash (full amount):</div>
-                            <div className="font-mono text-right">Rs. {breakdown.declaredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            <div className="font-mono text-right">Rs. {(breakdown.declaredCash || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
 
                             {(() => {
                               const otherAdvances = otherPumperAdvances[breakdown.pumperName] || []
@@ -3625,23 +3625,23 @@ export default function CloseShiftPage() {
                                   <>
                                     <div className="text-muted-foreground text-orange-600 dark:text-orange-400">Advance Taken (deducted from cash):</div>
                                     <div className="font-mono text-right text-orange-600 dark:text-orange-400">
-                                      - Rs. {advanceTaken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      - Rs. {(advanceTaken || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </div>
                                     {otherAdvancesTotal > 0 && (
                                       <>
                                         <div className="text-muted-foreground text-orange-600 dark:text-orange-400">Advances Given (deducted from cash):</div>
                                         <div className="font-mono text-right text-orange-600 dark:text-orange-400">
-                                          - Rs. {otherAdvancesTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                          - Rs. {(otherAdvancesTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </div>
                                       </>
                                     )}
                                     <div className="text-muted-foreground font-medium">Total Advances:</div>
                                     <div className="font-mono text-right font-medium text-orange-600 dark:text-orange-400">
-                                      - Rs. {totalAdvances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      - Rs. {(totalAdvances || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </div>
                                     <div className="text-muted-foreground font-medium">Cash After All Advances:</div>
                                     <div className="font-mono text-right font-medium">
-                                      Rs. {(breakdown.declaredCash - totalAdvances).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      Rs. {(breakdown.declaredCash - (totalAdvances) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </div>
                                   </>
                                 )
@@ -3651,16 +3651,16 @@ export default function CloseShiftPage() {
 
                             <div className="text-muted-foreground">Card:</div>
                             <div className="font-mono text-right">
-                              Rs. {Object.values(breakdown.declaredCardAmounts).reduce((sum, amount) => sum + amount, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              Rs. {Object.values(breakdown.declaredCardAmounts).reduce((sum, amount) => sum + amount, (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
 
                             <div className="text-muted-foreground">Credit:</div>
                             <div className="font-mono text-right">
-                              Rs. {Object.values(breakdown.declaredCreditAmounts).reduce((sum, amount) => sum + amount, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              Rs. {Object.values(breakdown.declaredCreditAmounts).reduce((sum, amount) => sum + amount, (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
 
                             <div className="text-muted-foreground">Cheque:</div>
-                            <div className="font-mono text-right">Rs. {breakdown.declaredCheque.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            <div className="font-mono text-right">Rs. {(breakdown.declaredCheque || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
 
                             {(() => {
                               const bankDeposits = breakdown.expenses.filter(exp => exp.type === 'BANK_DEPOSIT')
@@ -3670,7 +3670,7 @@ export default function CloseShiftPage() {
                                   <>
                                     <div className="text-muted-foreground">Bank Deposits:</div>
                                     <div className="font-mono text-right text-orange-600 dark:text-orange-400">
-                                      + Rs. {totalBankDeposits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      + Rs. {(totalBankDeposits || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </div>
                                   </>
                                 )
@@ -3682,10 +3682,10 @@ export default function CloseShiftPage() {
                           <div className="flex justify-between items-center pt-2 border-t mt-2">
                             <Label className="text-sm font-semibold">Total Declared:</Label>
                             <div className="font-mono font-bold text-base">
-                              Rs. {breakdown.declaredAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              Rs. {(breakdown.declaredAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              (Cash {breakdown.declaredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + Card + Credit + Cheque + Bank Deposits)
+                              (Cash {(breakdown.declaredCash || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + Card + Credit + Cheque + Bank Deposits)
                             </div>
                           </div>
                         </div>
@@ -3705,7 +3705,7 @@ export default function CloseShiftPage() {
                                   <div className="flex justify-between items-center text-xs">
                                     <span className="text-orange-700 dark:text-orange-300 font-medium">Advance Taken (from cash):</span>
                                     <span className="font-mono text-orange-700 dark:text-orange-300 font-semibold">
-                                      Rs. {breakdown.advanceTaken.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      Rs. {(breakdown.advanceTaken || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
                                   </div>
                                   <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
@@ -3720,7 +3720,7 @@ export default function CloseShiftPage() {
                                   <div className="flex justify-between items-center text-xs">
                                     <span className="text-muted-foreground">Other Expenses (Loans/Other):</span>
                                     <span className="font-mono text-orange-600 dark:text-orange-400">
-                                      - Rs. {totalOtherExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      - Rs. {(totalOtherExpenses || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
                                   </div>
                                 </>
@@ -3729,7 +3729,7 @@ export default function CloseShiftPage() {
                               <div className="flex justify-between items-center pt-1 border-t mt-1">
                                 <Label className="text-sm font-semibold">Effective Declared Amount (for variance):</Label>
                                 <div className="font-mono font-bold text-base">
-                                  Rs. {(breakdown.declaredAmount - totalOtherExpenses).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  Rs. {(breakdown.declaredAmount - (totalOtherExpenses) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </div>
                                 <div className="text-xs text-muted-foreground ml-2">
                                   (Advance excluded)
@@ -3752,13 +3752,13 @@ export default function CloseShiftPage() {
                           ? 'text-green-600 dark:text-green-400'
                           : 'text-foreground'
                         }`}>
-                        {breakdown.variance >= 0 ? '+' : ''}Rs. {breakdown.variance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {breakdown.variance >= 0 ? '+' : ''}Rs. {(breakdown.variance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                       {breakdown.varianceStatus !== 'NORMAL' && (
                         <p className="text-xs mt-1">
                           {breakdown.varianceStatus === 'ADD_TO_SALARY'
-                            ? `Add Rs. ${Math.abs(breakdown.variance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} to salary`
-                            : `Deduct Rs. ${Math.abs(breakdown.variance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} from salary`}
+                            ? `Add Rs. ${(Math.abs(breakdown.variance) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} to salary`
+                            : `Deduct Rs. ${(Math.abs(breakdown.variance) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} from salary`}
                         </p>
                       )}
                     </div>
@@ -3802,13 +3802,13 @@ export default function CloseShiftPage() {
                 <div className="text-center p-4 bg-orange-500/10 dark:bg-orange-500/20 rounded-lg border border-orange-500/20">
                   <div className="text-sm text-muted-foreground mb-1">Total Calculated Sales</div>
                   <div className="font-mono font-bold text-lg text-orange-700 dark:text-orange-300">
-                    Rs. {pumperBreakdowns.reduce((sum, b) => sum + b.calculatedSales, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Rs. {pumperBreakdowns.reduce((sum, b) => sum + b.calculatedSales, (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
                 <div className="text-center p-4 bg-green-500/10 dark:bg-green-500/20 rounded-lg border border-green-500/20">
                   <div className="text-sm text-muted-foreground mb-1">Total Declared Amount</div>
                   <div className="font-mono font-bold text-lg text-green-700 dark:text-green-300">
-                    Rs. {pumperBreakdowns.reduce((sum, b) => sum + b.declaredAmount, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Rs. {pumperBreakdowns.reduce((sum, b) => sum + b.declaredAmount, (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
                 <div className={`text-center p-4 rounded-lg border ${pumperBreakdowns.reduce((sum, b) => sum + b.variance, 0) >= 0
@@ -3821,7 +3821,7 @@ export default function CloseShiftPage() {
                     : 'text-green-700 dark:text-green-300'
                     }`}>
                     {pumperBreakdowns.reduce((sum, b) => sum + b.variance, 0) >= 0 ? '+' : ''}
-                    Rs. {pumperBreakdowns.reduce((sum, b) => sum + b.variance, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Rs. {pumperBreakdowns.reduce((sum, b) => sum + b.variance, (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
               </div>
@@ -3833,27 +3833,27 @@ export default function CloseShiftPage() {
                   <div className="text-center p-3 bg-orange-500/10 dark:bg-orange-500/20 rounded-lg border border-orange-500/20">
                     <div className="text-xs text-muted-foreground mb-1">Cash</div>
                     <div className="font-mono font-semibold text-orange-700 dark:text-orange-300">
-                      Rs. {pumperBreakdowns.reduce((sum, b) => sum + b.declaredCash, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      Rs. {pumperBreakdowns.reduce((sum, b) => sum + b.declaredCash, (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
                   <div className="text-center p-3 bg-green-500/10 dark:bg-green-500/20 rounded-lg border border-green-500/20">
                     <div className="text-xs text-muted-foreground mb-1">Card</div>
                     <div className="font-mono font-semibold text-green-700 dark:text-green-300">
                       Rs. {(pumperBreakdowns.reduce((sum, b) =>
-                        sum + Object.values(b.declaredCardAmounts).reduce((cardSum, amount) => cardSum + (amount || 0), 0), 0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        sum + Object.values(b.declaredCardAmounts).reduce((cardSum, amount) => cardSum + (amount || 0), 0), 0) || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
                   <div className="text-center p-3 bg-orange-500/10 dark:bg-orange-500/20 rounded-lg border border-orange-500/20">
                     <div className="text-xs text-muted-foreground mb-1">Credit</div>
                     <div className="font-mono font-semibold text-orange-700 dark:text-orange-300">
                       Rs. {(pumperBreakdowns.reduce((sum, b) =>
-                        sum + Object.values(b.declaredCreditAmounts).reduce((creditSum, amount) => creditSum + (amount || 0), 0), 0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        sum + Object.values(b.declaredCreditAmounts).reduce((creditSum, amount) => creditSum + (amount || 0), 0), 0) || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
                   <div className="text-center p-3 bg-orange-500/10 dark:bg-orange-500/20 rounded-lg border border-orange-500/20">
                     <div className="text-xs text-muted-foreground mb-1">Cheque</div>
                     <div className="font-mono font-semibold text-orange-700 dark:text-orange-300">
-                      Rs. {(pumperBreakdowns.reduce((sum, b) => sum + (b.declaredCheque || 0), 0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      Rs. {(pumperBreakdowns.reduce((sum, b) => sum + (b.declaredCheque || 0), 0) || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
                 </div>

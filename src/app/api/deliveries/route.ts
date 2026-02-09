@@ -206,7 +206,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'Delivery may exceed tank capacity',
-          details: `Tank capacity: ${tank.capacity.toLocaleString()}L, Current: ${tank.currentLevel.toLocaleString()}L, Invoice: ${invoiceQuantity.toLocaleString()}L. Available space: ${availableSpace.toFixed(1)}L`
+          details: `Tank capacity: ${(tank.capacity || 0).toLocaleString()}L, Current: ${(tank.currentLevel || 0).toLocaleString()}L, Invoice: ${(invoiceQuantity || 0).toLocaleString()}L. Available space: ${availableSpace.toFixed(1)}L`
         },
         { status: 400 }
       )

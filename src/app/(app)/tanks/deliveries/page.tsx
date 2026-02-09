@@ -483,7 +483,7 @@ export default function TankDeliveriesPage() {
       title: 'Date & Time',
       render: (value: unknown) => {
         if (!value) return '-'
-        return new Date(value as string).toLocaleString()
+        return new Date(value as (string) || 0).toLocaleString()
       }
     },
     {
@@ -506,7 +506,7 @@ export default function TankDeliveriesPage() {
       title: 'Invoice Qty',
       render: (value: unknown) => {
         if (value == null) return '-'
-        return <span>{(value as number).toLocaleString()}L</span>
+        return <span>{(value as (number) || 0).toLocaleString()}L</span>
       }
     },
     {
@@ -514,7 +514,7 @@ export default function TankDeliveriesPage() {
       title: 'Actual Received',
       render: (value: unknown) => {
         if (value == null) return <span className="text-muted-foreground">Pending</span>
-        return <span className="font-semibold text-green-600">{(value as number).toLocaleString()}L</span>
+        return <span className="font-semibold text-green-600">{(value as (number) || 0).toLocaleString()}L</span>
       }
     },
     {
@@ -706,7 +706,7 @@ export default function TankDeliveriesPage() {
                           <div className="flex items-center justify-between">
                             <div>
                               <div className="text-sm text-muted-foreground mb-1">Current System Stock</div>
-                              <div className="text-2xl font-bold">{tank.currentLevel.toLocaleString()}L</div>
+                              <div className="text-2xl font-bold">{(tank.currentLevel || 0).toLocaleString()}L</div>
                             </div>
                             <Droplets className="h-12 w-12 text-orange-600 opacity-20" />
                           </div>
@@ -761,7 +761,7 @@ export default function TankDeliveriesPage() {
                         <div>
                           <CardTitle className="text-orange-600">Before Delivery Dip Reading</CardTitle>
                           <CardDescription>
-                            Measured at: {beforeDipTime.toLocaleString()}
+                            Measured at: {(beforeDipTime || 0).toLocaleString()}
                           </CardDescription>
                         </div>
                       </div>
@@ -840,7 +840,7 @@ export default function TankDeliveriesPage() {
                                               </div>
                                               <div className="text-right">
                                                 <div className="text-xs text-muted-foreground">Shift Opening</div>
-                                                <div className="font-mono font-semibold text-sm">{assignment.startMeterReading.toLocaleString()}L</div>
+                                                <div className="font-mono font-semibold text-sm">{(assignment.startMeterReading || 0).toLocaleString()}L</div>
                                               </div>
                                             </div>
 
@@ -862,7 +862,7 @@ export default function TankDeliveriesPage() {
                                               <div>
                                                 <Label className="text-xs text-muted-foreground">Fuel Sold So Far</Label>
                                                 <div className={`h-9 flex items-center font-mono font-semibold text-lg ${reading?.fuelUsed && reading.fuelUsed > 0 ? 'text-orange-600' : 'text-muted-foreground'}`}>
-                                                  {reading?.fuelUsed && reading.fuelUsed > 0 ? `${reading.fuelUsed.toLocaleString()}L` : '-'}
+                                                  {reading?.fuelUsed && reading.fuelUsed > 0 ? `${(reading.fuelUsed || 0).toLocaleString()}L` : '-'}
                                                 </div>
                                               </div>
                                             </div>
@@ -889,7 +889,7 @@ export default function TankDeliveriesPage() {
                             <div className="mt-4 pt-3 border-t">
                               <div className="flex justify-between items-center">
                                 <span className="font-semibold">Total Fuel Sold:</span>
-                                <span className="font-mono font-bold text-lg">{calculateTotalFuelSold(pumpReadings, selectedTank).toLocaleString()}L</span>
+                                <span className="font-mono font-bold text-lg">{calculateTotalFuelSold(pumpReadings, (selectedTank) || 0).toLocaleString()}L</span>
                               </div>
                             </div>
                           </div>
@@ -952,7 +952,7 @@ export default function TankDeliveriesPage() {
                                 <Input
                                   id="beforeDipReading"
                                   type="text"
-                                  value={beforeDipReading ? parseFloat(beforeDipReading).toLocaleString() : ''}
+                                  value={beforeDipReading ? (parseFloat(beforeDipReading) || 0).toLocaleString() : ''}
                                   disabled
                                   placeholder="Auto-calculated from depth"
                                   className="mt-2 bg-muted"
@@ -960,7 +960,7 @@ export default function TankDeliveriesPage() {
                                 <p className="text-xs text-muted-foreground mt-2 flex items-start gap-2">
                                   {beforeDipDepth && beforeDipReading ? (
                                     <span className="text-green-600 font-semibold">
-                                      ✓ {beforeDipDepth}cm = {parseFloat(beforeDipReading).toLocaleString()}L
+                                      ✓ {beforeDipDepth}cm = {(parseFloat(beforeDipReading) || 0).toLocaleString()}L
                                     </span>
                                   ) : (
                                     <>
@@ -999,16 +999,16 @@ export default function TankDeliveriesPage() {
                             <div className="space-y-2 text-sm">
                               <div className="flex justify-between items-center">
                                 <span>System Stock (Current):</span>
-                                <span className="font-semibold">{tank.currentLevel.toLocaleString()}L</span>
+                                <span className="font-semibold">{(tank.currentLevel || 0).toLocaleString()}L</span>
                               </div>
                               <div className="flex justify-between items-center text-orange-600">
                                 <span>- Fuel Sold Before Dip:</span>
-                                <span className="font-semibold">-{fuelSoldBeforeDip.toLocaleString()}L</span>
+                                <span className="font-semibold">-{(fuelSoldBeforeDip || 0).toLocaleString()}L</span>
                               </div>
                               <div className="flex justify-between items-center pt-2 border-t font-semibold">
                                 <span>Expected Level:</span>
                                 <span className="text-orange-600">
-                                  {expectedLevel.toLocaleString()}L
+                                  {(expectedLevel || 0).toLocaleString()}L
                                   <span className="text-xs text-muted-foreground ml-1">
                                     (~{expectedDepth.toFixed(1)}cm)
                                   </span>
@@ -1016,7 +1016,7 @@ export default function TankDeliveriesPage() {
                               </div>
                               <div className="flex justify-between items-center">
                                 <span>Physical Dip:</span>
-                                <span className="text-green-600 font-semibold">{physicalDip.toLocaleString()}L</span>
+                                <span className="text-green-600 font-semibold">{(physicalDip || 0).toLocaleString()}L</span>
                               </div>
                               <div className="flex justify-between items-center pt-2 border-t font-bold">
                                 <span>Variance:</span>
@@ -1190,7 +1190,7 @@ export default function TankDeliveriesPage() {
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Invoice Quantity</div>
-                  <div className="font-mono font-bold text-xl">{verifyingDelivery.invoiceQuantity.toLocaleString()}L</div>
+                  <div className="font-mono font-bold text-xl">{(verifyingDelivery.invoiceQuantity || 0).toLocaleString()}L</div>
                 </div>
               </div>
 
@@ -1216,11 +1216,11 @@ export default function TankDeliveriesPage() {
                     </div>
                     <div className="p-3 bg-background rounded-lg">
                       <div className="text-xs text-muted-foreground mb-1">Before Dip Reading</div>
-                      <div className="font-mono font-bold text-xl text-orange-600">{verifyingDelivery.beforeDipReading?.toLocaleString() || '-'}L</div>
+                      <div className="font-mono text-orange-600">{(verifyingDelivery.beforeDipReading || 0).toLocaleString()}L</div>
                     </div>
                     <div className="p-3 bg-background rounded-lg">
                       <div className="text-xs text-muted-foreground mb-1">Fuel Sold (Before Dip)</div>
-                      <div className="font-mono font-bold text-xl text-orange-600">{verifyingDelivery.fuelSoldDuring?.toLocaleString() || '0'}L</div>
+                      <div className="font-mono font-bold text-xl text-orange-600">{(verifyingDelivery.fuelSoldDuring || 0).toLocaleString()}L</div>
                     </div>
                   </div>
                 </CardContent>
@@ -1309,7 +1309,7 @@ export default function TankDeliveriesPage() {
                                         </div>
                                         <div className="text-right">
                                           <div className="text-xs text-muted-foreground">Before Dip Meter</div>
-                                          <div className="font-semibold text-orange-600">{beforeDipMeter.toLocaleString()}L</div>
+                                          <div className="font-semibold text-orange-600">{(beforeDipMeter || 0).toLocaleString()}L</div>
                                         </div>
                                       </div>
 
@@ -1331,7 +1331,7 @@ export default function TankDeliveriesPage() {
                                         <div>
                                           <Label className="text-xs text-muted-foreground">Sold While Delivering</Label>
                                           <div className={`h-9 flex items-center font-semibold text-lg ${reading?.fuelUsed && reading.fuelUsed > 0 ? 'text-orange-600' : 'text-muted-foreground'}`}>
-                                            {reading?.fuelUsed && reading.fuelUsed > 0 ? `${reading.fuelUsed.toLocaleString()}L` : '-'}
+                                            {reading?.fuelUsed && reading.fuelUsed > 0 ? `${(reading.fuelUsed || 0).toLocaleString()}L` : '-'}
                                           </div>
                                         </div>
                                       </div>
@@ -1358,7 +1358,7 @@ export default function TankDeliveriesPage() {
                       <div className="mt-4 pt-3 border-t">
                         <div className="flex justify-between items-center">
                           <span className="font-semibold">Total Fuel Sold:</span>
-                          <span className="font-bold text-lg">{calculateTotalFuelSold(afterPumpReadings, verifyingDelivery.tankId).toLocaleString()}L</span>
+                          <span className="font-bold text-lg">{calculateTotalFuelSold(afterPumpReadings, (verifyingDelivery.tankId) || 0).toLocaleString()}L</span>
                         </div>
                       </div>
                     </AlertDescription>
@@ -1431,7 +1431,7 @@ export default function TankDeliveriesPage() {
                           <Input
                             id="afterDipReading"
                             type="text"
-                            value={afterDipReading ? parseFloat(afterDipReading).toLocaleString() : ''}
+                            value={afterDipReading ? (parseFloat(afterDipReading) || 0).toLocaleString() : ''}
                             disabled
                             placeholder="Auto-calculated from depth"
                             className="mt-2 bg-muted"
@@ -1439,7 +1439,7 @@ export default function TankDeliveriesPage() {
                           <p className="text-xs text-muted-foreground mt-2 flex items-start gap-2">
                             {afterDipDepth && afterDipReading ? (
                               <span className="text-green-600 font-semibold">
-                                ✓ {afterDipDepth}cm = {parseFloat(afterDipReading).toLocaleString()}L
+                                ✓ {afterDipDepth}cm = {(parseFloat(afterDipReading) || 0).toLocaleString()}L
                               </span>
                             ) : (
                               <>
@@ -1482,19 +1482,19 @@ export default function TankDeliveriesPage() {
                           <div className="space-y-2 text-sm">
                             <div className="flex justify-between items-center">
                               <span>Before Dip Reading:</span>
-                              <span className="font-semibold">{verifyingDelivery.beforeDipReading.toLocaleString()}L</span>
+                              <span className="font-semibold">{(verifyingDelivery.beforeDipReading || 0).toLocaleString()}L</span>
                             </div>
                             <div className="flex justify-between items-center text-green-600">
                               <span>+ Invoice Quantity:</span>
-                              <span className="font-mono font-semibold">+{verifyingDelivery.invoiceQuantity.toLocaleString()}L</span>
+                              <span className="font-mono font-semibold">+{(verifyingDelivery.invoiceQuantity || 0).toLocaleString()}L</span>
                             </div>
                             <div className="flex justify-between items-center text-orange-600">
                               <span>- Fuel Sold During Delivery:</span>
-                              <span className="font-mono font-semibold">-{fuelSoldDuring.toLocaleString()}L</span>
+                              <span className="font-mono font-semibold">-{(fuelSoldDuring || 0).toLocaleString()}L</span>
                             </div>
                             <div className="flex justify-between items-center pt-2 border-t font-bold text-base">
                               <span>Expected After Dip:</span>
-                              <span className="font-mono text-orange-600">{(verifyingDelivery.beforeDipReading + verifyingDelivery.invoiceQuantity - fuelSoldDuring).toLocaleString()}L</span>
+                              <span className="font-mono text-orange-600">{(verifyingDelivery.beforeDipReading + verifyingDelivery.invoiceQuantity - (fuelSoldDuring) || 0).toLocaleString()}L</span>
                             </div>
                           </div>
                         </div>
@@ -1503,11 +1503,11 @@ export default function TankDeliveriesPage() {
                         <div className="grid grid-cols-2 gap-3">
                           <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/30">
                             <div className="text-xs text-muted-foreground mb-1">After Dip (Physical)</div>
-                            <div className="font-mono font-bold text-2xl text-green-600">{parseFloat(afterDipReading).toLocaleString()}L</div>
+                            <div className="font-mono font-bold text-2xl text-green-600">{(parseFloat(afterDipReading) || 0).toLocaleString()}L</div>
                           </div>
                           <div className="p-4 bg-orange-500/10 rounded-lg border border-orange-500/30">
                             <div className="text-xs text-muted-foreground mb-1">Expected After Dip</div>
-                            <div className="font-mono font-bold text-2xl text-orange-600">{(verifyingDelivery.beforeDipReading + verifyingDelivery.invoiceQuantity - fuelSoldDuring).toLocaleString()}L</div>
+                            <div className="font-mono font-bold text-2xl text-orange-600">{(verifyingDelivery.beforeDipReading + verifyingDelivery.invoiceQuantity - (fuelSoldDuring) || 0).toLocaleString()}L</div>
                           </div>
                         </div>
 
@@ -1517,20 +1517,20 @@ export default function TankDeliveriesPage() {
                           <div className="space-y-1 text-sm mb-3">
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">After Dip:</span>
-                              <span className="font-mono">{parseFloat(afterDipReading).toLocaleString()}L</span>
+                              <span className="font-mono">{(parseFloat(afterDipReading) || 0).toLocaleString()}L</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Before Dip:</span>
-                              <span className="font-mono">-{verifyingDelivery.beforeDipReading.toLocaleString()}L</span>
+                              <span className="font-mono">-{(verifyingDelivery.beforeDipReading || 0).toLocaleString()}L</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Fuel Sold During:</span>
-                              <span className="font-mono">+{fuelSoldDuring.toLocaleString()}L</span>
+                              <span className="font-mono">+{(fuelSoldDuring || 0).toLocaleString()}L</span>
                             </div>
                           </div>
                           <div className="flex justify-between items-center pt-3 border-t">
                             <span className="font-bold">Actual Received:</span>
-                            <span className="font-mono font-bold text-3xl text-orange-600">{actualReceived.toLocaleString()}L</span>
+                            <span className="font-mono font-bold text-3xl text-orange-600">{(actualReceived || 0).toLocaleString()}L</span>
                           </div>
                         </div>
 
@@ -1538,7 +1538,7 @@ export default function TankDeliveriesPage() {
                         <div className="grid grid-cols-2 gap-4">
                           <div className="p-3 bg-background rounded-lg">
                             <div className="text-xs text-muted-foreground mb-1">Invoice Quantity</div>
-                            <div className="font-mono font-bold text-xl">{verifyingDelivery.invoiceQuantity.toLocaleString()}L</div>
+                            <div className="font-mono font-bold text-xl">{(verifyingDelivery.invoiceQuantity || 0).toLocaleString()}L</div>
                           </div>
                           <div className="p-3 bg-background rounded-lg">
                             <div className="text-xs text-muted-foreground mb-1">Variance from Invoice</div>
@@ -1594,23 +1594,23 @@ export default function TankDeliveriesPage() {
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Invoice Quantity</Label>
-                  <div className="font-mono font-semibold">{selectedDelivery.invoiceQuantity.toLocaleString()}L</div>
+                  <div className="font-mono font-semibold">{(selectedDelivery.invoiceQuantity || 0).toLocaleString()}L</div>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Actual Received</Label>
-                  <div className="font-mono font-semibold text-green-600">{selectedDelivery.actualReceived?.toLocaleString() || '-'}L</div>
+                  <div className="font-mono font-semibold text-green-600">{(selectedDelivery.actualReceived || 0).toLocaleString()}L</div>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Before Dip</Label>
-                  <div className="font-mono">{selectedDelivery.beforeDipReading?.toLocaleString() || '-'}L</div>
+                  <div className="font-mono">{(selectedDelivery.beforeDipReading || 0).toLocaleString()}L</div>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">After Dip</Label>
-                  <div className="font-mono">{selectedDelivery.afterDipReading?.toLocaleString() || '-'}L</div>
+                  <div className="font-mono">{(selectedDelivery.afterDipReading || 0).toLocaleString()}L</div>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Fuel Sold During</Label>
-                  <div className="font-mono text-orange-600">{selectedDelivery.fuelSoldDuring?.toLocaleString() || '0'}L</div>
+                  <div className="font-mono text-orange-600">{(selectedDelivery.fuelSoldDuring || 0).toLocaleString()}L</div>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Variance</Label>

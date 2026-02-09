@@ -374,7 +374,7 @@ export async function POST(request: NextRequest) {
     // VALIDATION: Check for excessively large amounts (potential data entry error)
     const MAX_SAFE_AMOUNT = 10000000 // Rs. 10 million
     if (amount > MAX_SAFE_AMOUNT) {
-      console.warn(`⚠️ Large transaction amount detected: Rs.${amount.toLocaleString()} (${type})`)
+      console.warn(`⚠️ Large transaction amount detected: Rs.${(amount || 0).toLocaleString()} (${type})`)
       // Allow but log warning - legitimate large transactions may occur
     }
 

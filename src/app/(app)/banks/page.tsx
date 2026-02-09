@@ -153,7 +153,7 @@ export default function BankAccountsPage() {
 
       toast({
         title: "Success",
-        description: `Successfully ${isDeposit ? 'added' : 'removed'} Rs. ${parseFloat(manualTransactionForm.amount).toLocaleString()} ${isDeposit ? 'to' : 'from'} ${selectedBankForTransaction.name}`
+        description: `Successfully ${isDeposit ? 'added' : 'removed'} Rs. ${(parseFloat(manualTransactionForm.amount) || 0).toLocaleString()} ${isDeposit ? 'to' : 'from'} ${selectedBankForTransaction.name}`
       })
 
       fetchBankAccounts()
@@ -220,7 +220,7 @@ export default function BankAccountsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              Rs. {overallBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs. {(overallBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div className="text-sm text-muted-foreground mt-1">Across all accounts</div>
           </CardContent>
@@ -231,7 +231,7 @@ export default function BankAccountsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              Rs. {overallDeposits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs. {(overallDeposits || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div className="text-sm text-muted-foreground mt-1">All time</div>
           </CardContent>
@@ -242,7 +242,7 @@ export default function BankAccountsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
-              Rs. {overallPendingCheques.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs. {(overallPendingCheques || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div className="text-sm text-muted-foreground mt-1">Awaiting clearance</div>
           </CardContent>
@@ -275,7 +275,7 @@ export default function BankAccountsPage() {
               <div className="p-4 bg-muted/50 rounded-lg">
                 <div className="text-sm text-muted-foreground mb-1">Current Balance</div>
                 <div className="text-2xl font-bold text-green-600">
-                  Rs. {bank.currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  Rs. {(bank.currentBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </div>
               </div>
 
@@ -284,25 +284,25 @@ export default function BankAccountsPage() {
                 <div>
                   <div className="text-muted-foreground">Deposits</div>
                   <div className="font-mono font-semibold">
-                    Rs. {bank.totalDeposits.toLocaleString()}
+                    Rs. {(bank.totalDeposits || 0).toLocaleString()}
                   </div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Cheques</div>
                   <div className="font-mono font-semibold">
-                    Rs. {bank.totalCheques.toLocaleString()}
+                    Rs. {(bank.totalCheques || 0).toLocaleString()}
                   </div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Credit Payments</div>
                   <div className="font-mono font-semibold text-green-600">
-                    Rs. {bank.totalCreditPayments.toLocaleString()}
+                    Rs. {(bank.totalCreditPayments || 0).toLocaleString()}
                   </div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Pending</div>
                   <div className="font-mono font-semibold text-yellow-600">
-                    Rs. {bank.pendingCheques.toLocaleString()}
+                    Rs. {(bank.pendingCheques || 0).toLocaleString()}
                   </div>
                 </div>
               </div>
@@ -371,7 +371,7 @@ export default function BankAccountsPage() {
             <div className="p-3 bg-muted/50 rounded-lg">
               <div className="text-sm text-muted-foreground">Current Balance</div>
               <div className="text-xl font-bold text-green-600">
-                Rs. {selectedBankForTransaction?.currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                Rs. {(selectedBankForTransaction?.currentBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </div>
             </div>
 
@@ -465,7 +465,7 @@ export default function BankAccountsPage() {
                       selectedBankForTransaction.currentBalance +
                       (['DEPOSIT', 'TRANSFER_IN', 'INTEREST', 'ADJUSTMENT'].includes(manualTransactionForm.type) ? 1 : -1) *
                       parseFloat(manualTransactionForm.amount || '0')
-                    ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    () || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </div>
                 </div>
               </div>

@@ -352,7 +352,7 @@ export default function DailyReportsPage() {
       title: 'Visa',
       render: (value: unknown) => (
         <span className="text-sm text-orange-600">
-          Rs. {(value as number || 0).toLocaleString()}
+          Rs. {(value as number || (0) || 0).toLocaleString()}
         </span>
       )
     },
@@ -361,7 +361,7 @@ export default function DailyReportsPage() {
       title: 'Mastercard',
       render: (value: unknown) => (
         <span className="text-sm text-red-600">
-          Rs. {(value as number || 0).toLocaleString()}
+          Rs. {(value as number || (0) || 0).toLocaleString()}
         </span>
       )
     },
@@ -370,7 +370,7 @@ export default function DailyReportsPage() {
       title: 'Amex',
       render: (value: unknown) => (
         <span className="text-sm text-green-600">
-          Rs. {(value as number || 0).toLocaleString()}
+          Rs. {(value as number || (0) || 0).toLocaleString()}
         </span>
       )
     },
@@ -379,7 +379,7 @@ export default function DailyReportsPage() {
       title: 'QR',
       render: (value: unknown) => (
         <span className="text-sm text-orange-600">
-          Rs. {(value as number || 0).toLocaleString()}
+          Rs. {(value as number || (0) || 0).toLocaleString()}
         </span>
       )
     },
@@ -388,7 +388,7 @@ export default function DailyReportsPage() {
       title: 'Dialog Touch',
       render: (value: unknown) => (
         <span className="text-sm text-orange-600">
-          Rs. {(value as number || 0).toLocaleString()}
+          Rs. {(value as number || (0) || 0).toLocaleString()}
         </span>
       )
     },
@@ -397,7 +397,7 @@ export default function DailyReportsPage() {
       title: 'Total',
       render: (value: unknown) => (
         <span className="font-bold">
-          Rs. {(value as number || 0).toLocaleString()}
+          Rs. {(value as number || (0) || 0).toLocaleString()}
         </span>
       )
     },
@@ -439,7 +439,7 @@ export default function DailyReportsPage() {
       title: 'Total Sales',
       render: (value: unknown) => (
         <span className="font-semibold text-green-600">
-          Rs. {(value as number || 0).toLocaleString()}
+          Rs. {(value as number || (0) || 0).toLocaleString()}
         </span>
       )
     },
@@ -448,7 +448,7 @@ export default function DailyReportsPage() {
       title: 'Avg Transaction',
       render: (value: unknown) => (
         <span className="text-sm">
-          Rs. {(value as number || 0).toLocaleString()}
+          Rs. {(value as number || (0) || 0).toLocaleString()}
         </span>
       )
     },
@@ -457,7 +457,7 @@ export default function DailyReportsPage() {
       title: 'Credit Limit',
       render: (value: unknown) => (
         <span className="text-sm text-muted-foreground">
-          Rs. {(value as number || 0).toLocaleString()}
+          Rs. {(value as number || (0) || 0).toLocaleString()}
         </span>
       )
     },
@@ -469,7 +469,7 @@ export default function DailyReportsPage() {
         return (
           <div>
             <span className="font-semibold">
-              Rs. {(value as number || 0).toLocaleString()}
+              Rs. {(value as number || (0) || 0).toLocaleString()}
             </span>
             <div className="text-xs text-muted-foreground">
               {usagePercent.toFixed(1)}% used
@@ -483,7 +483,7 @@ export default function DailyReportsPage() {
       title: 'Payment Received',
       render: (value: unknown) => (
         <span className="font-semibold text-orange-600">
-          Rs. {(value as number || 0).toLocaleString()}
+          Rs. {(value as number || (0) || 0).toLocaleString()}
         </span>
       )
     }
@@ -510,7 +510,7 @@ export default function DailyReportsPage() {
       title: 'Amount',
       render: (value: unknown) => (
         <span className="font-semibold text-green-600">
-          Rs. {(value as number || 0).toLocaleString()}
+          Rs. {(value as number || (0) || 0).toLocaleString()}
         </span>
       )
     },
@@ -570,7 +570,7 @@ export default function DailyReportsPage() {
       title: 'Amount',
       render: (value: unknown) => (
         <span className="font-semibold text-red-600 dark:text-red-400">
-          Rs. {(value as number)?.toLocaleString() || 0}
+          Rs. {(value as number || 0).toLocaleString()}
         </span>
       )
     },
@@ -721,7 +721,7 @@ export default function DailyReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-green-600">
-                  Rs. {(dailyReport.totalSales || 0).toLocaleString()}
+                  Rs. {(dailyReport.totalSales || (0) || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {dailyReport.transactionCount} transactions
@@ -753,7 +753,7 @@ export default function DailyReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-orange-600">
-                  Rs. {Math.round(dailyReport.averageTransaction || 0).toLocaleString()}
+                  Rs. {Math.round(dailyReport.averageTransaction || (0) || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   Per transaction
@@ -769,7 +769,7 @@ export default function DailyReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className={`text-3xl font-bold ${(dailyReport.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  Rs. {(dailyReport.netProfit || 0).toLocaleString()}
+                  Rs. {(dailyReport.netProfit || (0) || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   After expenses
@@ -792,7 +792,7 @@ export default function DailyReportsPage() {
                 <div className="p-4 bg-orange-500/10 rounded-lg border border-orange-500/20">
                   <div className="text-sm text-muted-foreground mb-1">Petrol 92</div>
                   <div className="text-xl font-bold text-orange-600">
-                    Rs. {(dailyReport.petrolSales || 0).toLocaleString()}
+                    Rs. {(dailyReport.petrolSales || (0) || 0).toLocaleString()}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
                     {((dailyReport.petrolSales / dailyReport.totalSales) * 100).toFixed(1)}%
@@ -801,7 +801,7 @@ export default function DailyReportsPage() {
                 <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
                   <div className="text-sm text-muted-foreground mb-1">Diesel</div>
                   <div className="text-xl font-bold text-green-600">
-                    Rs. {dailyReport.dieselSales.toLocaleString()}
+                    Rs. {(dailyReport.dieselSales || 0).toLocaleString()}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
                     {((dailyReport.dieselSales / dailyReport.totalSales) * 100).toFixed(1)}%
@@ -810,7 +810,7 @@ export default function DailyReportsPage() {
                 <div className="p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
                   <div className="text-sm text-muted-foreground mb-1">Super Diesel</div>
                   <div className="text-xl font-bold text-emerald-600">
-                    Rs. {dailyReport.superDieselSales.toLocaleString()}
+                    Rs. {(dailyReport.superDieselSales || 0).toLocaleString()}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
                     {((dailyReport.superDieselSales / dailyReport.totalSales) * 100).toFixed(1)}%
@@ -819,7 +819,7 @@ export default function DailyReportsPage() {
                 <div className="p-4 bg-orange-500/10 rounded-lg border border-orange-500/20">
                   <div className="text-sm text-muted-foreground mb-1">Oil Sales</div>
                   <div className="text-xl font-bold text-orange-600">
-                    Rs. {dailyReport.oilSales.toLocaleString()}
+                    Rs. {(dailyReport.oilSales || 0).toLocaleString()}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
                     {((dailyReport.oilSales / dailyReport.totalSales) * 100).toFixed(1)}%
@@ -831,7 +831,7 @@ export default function DailyReportsPage() {
                     <div className="text-sm text-muted-foreground">Shop Sales</div>
                   </div>
                   <div className="text-xl font-bold text-orange-600">
-                    Rs. {dailyReport.shopSales.toLocaleString()}
+                    Rs. {(dailyReport.shopSales || 0).toLocaleString()}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
                     {((dailyReport.shopSales / dailyReport.totalSales) * 100).toFixed(1)}%
@@ -840,7 +840,7 @@ export default function DailyReportsPage() {
                 <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
                   <div className="text-sm text-muted-foreground mb-1">Total Fuel</div>
                   <div className="text-xl font-bold text-primary">
-                    Rs. {dailyReport.totalFuelSales.toLocaleString()}
+                    Rs. {(dailyReport.totalFuelSales || 0).toLocaleString()}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
                     {((dailyReport.totalFuelSales / dailyReport.totalSales) * 100).toFixed(1)}%
@@ -867,7 +867,7 @@ export default function DailyReportsPage() {
                     <span className="text-sm font-medium">Cash</span>
                   </div>
                   <div className="text-2xl font-bold text-green-600">
-                    Rs. {dailyReport.cashAmount.toLocaleString()}
+                    Rs. {(dailyReport.cashAmount || 0).toLocaleString()}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
                     {dailyReport.cashPercentage.toFixed(1)}% of total
@@ -879,7 +879,7 @@ export default function DailyReportsPage() {
                     <span className="text-sm font-medium">Card (POS)</span>
                   </div>
                   <div className="text-2xl font-bold text-orange-600">
-                    Rs. {dailyReport.cardAmount.toLocaleString()}
+                    Rs. {(dailyReport.cardAmount || 0).toLocaleString()}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
                     {dailyReport.cardPercentage.toFixed(1)}% of total
@@ -891,7 +891,7 @@ export default function DailyReportsPage() {
                     <span className="text-sm font-medium">Credit</span>
                   </div>
                   <div className="text-2xl font-bold text-orange-600">
-                    Rs. {dailyReport.creditAmount.toLocaleString()}
+                    Rs. {(dailyReport.creditAmount || 0).toLocaleString()}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
                     {dailyReport.creditPercentage.toFixed(1)}% of total
@@ -903,7 +903,7 @@ export default function DailyReportsPage() {
                     <span className="text-sm font-medium">Cheque</span>
                   </div>
                   <div className="text-2xl font-bold text-orange-600">
-                    Rs. {dailyReport.chequeAmount.toLocaleString()}
+                    Rs. {(dailyReport.chequeAmount || 0).toLocaleString()}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
                     {dailyReport.chequePercentage.toFixed(1)}% of total
@@ -939,37 +939,37 @@ export default function DailyReportsPage() {
                   <div className="text-center p-3 bg-orange-500/10 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">Total Visa</div>
                     <div className="font-bold text-orange-600">
-                      Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.visaAmount, 0).toLocaleString()}
+                      Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.visaAmount, (0) || 0).toLocaleString()}
                     </div>
                   </div>
                   <div className="text-center p-3 bg-red-500/10 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">Total Mastercard</div>
                     <div className="font-bold text-red-600">
-                      Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.mastercardAmount, 0).toLocaleString()}
+                      Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.mastercardAmount, (0) || 0).toLocaleString()}
                     </div>
                   </div>
                   <div className="text-center p-3 bg-green-500/10 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">Total Amex</div>
                     <div className="font-bold text-green-600">
-                      Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.amexAmount, 0).toLocaleString()}
+                      Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.amexAmount, (0) || 0).toLocaleString()}
                     </div>
                   </div>
                   <div className="text-center p-3 bg-orange-500/10 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">Total QR</div>
                     <div className="font-bold text-orange-600">
-                      Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.qrAmount, 0).toLocaleString()}
+                      Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.qrAmount, (0) || 0).toLocaleString()}
                     </div>
                   </div>
                   <div className="text-center p-3 bg-orange-500/10 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">Total Dialog Touch</div>
                     <div className="font-bold text-orange-600">
-                      Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.dialogTouchAmount, 0).toLocaleString()}
+                      Rs. {dailyReport.posTerminals.reduce((sum, t) => sum + t.dialogTouchAmount, (0) || 0).toLocaleString()}
                     </div>
                   </div>
                   <div className="text-center p-3 bg-primary/10 rounded-lg border-2 border-primary">
                     <div className="text-xs text-muted-foreground mb-1">Total POS</div>
                     <div className="font-bold text-primary text-lg">
-                      Rs. {dailyReport.totalPOSAmount.toLocaleString()}
+                      Rs. {(dailyReport.totalPOSAmount || 0).toLocaleString()}
                     </div>
                   </div>
                 </div>
@@ -1003,13 +1003,13 @@ export default function DailyReportsPage() {
                   <div className="p-3 bg-orange-500/10 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">Total Credit Sales</div>
                     <div className="font-bold text-orange-600 text-lg">
-                      Rs. {dailyReport.totalCreditSales.toLocaleString()}
+                      Rs. {(dailyReport.totalCreditSales || 0).toLocaleString()}
                     </div>
                   </div>
                   <div className="p-3 bg-orange-500/10 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">Total Payments Received</div>
                     <div className="font-bold text-orange-600 text-lg">
-                      Rs. {dailyReport.creditCustomers.reduce((sum, c) => sum + c.paymentReceived, 0).toLocaleString()}
+                      Rs. {dailyReport.creditCustomers.reduce((sum, c) => sum + c.paymentReceived, (0) || 0).toLocaleString()}
                     </div>
                   </div>
                   <div className="p-3 bg-orange-500/10 rounded-lg">
@@ -1021,7 +1021,7 @@ export default function DailyReportsPage() {
                   <div className="p-3 bg-red-500/10 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">Total Outstanding</div>
                     <div className="font-bold text-red-600 text-lg">
-                      Rs. {dailyReport.creditCustomers.reduce((sum, c) => sum + c.currentBalance, 0).toLocaleString()}
+                      Rs. {dailyReport.creditCustomers.reduce((sum, c) => sum + c.currentBalance, (0) || 0).toLocaleString()}
                     </div>
                   </div>
                 </div>
@@ -1055,25 +1055,25 @@ export default function DailyReportsPage() {
                   <div className="p-3 bg-orange-500/10 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">Total Cheques</div>
                     <div className="font-bold text-orange-600 text-lg">
-                      Rs. {dailyReport.totalChequeAmount.toLocaleString()}
+                      Rs. {(dailyReport.totalChequeAmount || 0).toLocaleString()}
                     </div>
                   </div>
                   <div className="p-3 bg-green-500/10 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">Cleared</div>
                     <div className="font-bold text-green-600 text-lg">
-                      Rs. {dailyReport.cheques.filter(c => c.status === 'CLEARED').reduce((sum, c) => sum + c.amount, 0).toLocaleString()}
+                      Rs. {dailyReport.cheques.filter(c => c.status === 'CLEARED').reduce((sum, c) => sum + c.amount, (0) || 0).toLocaleString()}
                     </div>
                   </div>
                   <div className="p-3 bg-yellow-500/10 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">Pending</div>
                     <div className="font-bold text-yellow-600 text-lg">
-                      Rs. {dailyReport.cheques.filter(c => c.status === 'PENDING').reduce((sum, c) => sum + c.amount, 0).toLocaleString()}
+                      Rs. {dailyReport.cheques.filter(c => c.status === 'PENDING').reduce((sum, c) => sum + c.amount, (0) || 0).toLocaleString()}
                     </div>
                   </div>
                   <div className="p-3 bg-red-500/10 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">Bounced</div>
                     <div className="font-bold text-red-600 text-lg">
-                      Rs. {dailyReport.cheques.filter(c => c.status === 'BOUNCED').reduce((sum, c) => sum + c.amount, 0).toLocaleString()}
+                      Rs. {dailyReport.cheques.filter(c => c.status === 'BOUNCED').reduce((sum, c) => sum + c.amount, (0) || 0).toLocaleString()}
                     </div>
                   </div>
                 </div>
@@ -1092,7 +1092,7 @@ export default function DailyReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-600">
-                  Rs. {dailyReport.totalExpenses.toLocaleString()}
+                  Rs. {(dailyReport.totalExpenses || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {((dailyReport.totalExpenses / dailyReport.totalSales) * 100).toFixed(1)}% of sales
@@ -1108,7 +1108,7 @@ export default function DailyReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-600">
-                  Rs. {dailyReport.totalDeposits.toLocaleString()}
+                  Rs. {(dailyReport.totalDeposits || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {((dailyReport.totalDeposits / dailyReport.totalSales) * 100).toFixed(1)}% of sales
@@ -1124,7 +1124,7 @@ export default function DailyReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-600">
-                  Rs. {dailyReport.totalLoans.toLocaleString()}
+                  Rs. {(dailyReport.totalLoans || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   External & pumper loans
@@ -1147,7 +1147,7 @@ export default function DailyReportsPage() {
                 <div className="text-center p-4 bg-muted rounded-lg">
                   <div className="text-sm text-muted-foreground mb-2">Total Variance</div>
                   <div className={`text-3xl font-bold ${getVarianceColor(dailyReport.variancePercentage)}`}>
-                    {dailyReport.totalVariance >= 0 ? '+' : ''}Rs. {dailyReport.totalVariance.toLocaleString()}
+                    {dailyReport.totalVariance >= 0 ? '+' : ''}Rs. {(dailyReport.totalVariance || 0).toLocaleString()}
                   </div>
                   <div className="text-xs text-muted-foreground mt-2">
                     {dailyReport.variancePercentage >= 0 ? '+' : ''}{dailyReport.variancePercentage.toFixed(2)}% of total sales
@@ -1219,7 +1219,7 @@ export default function DailyReportsPage() {
                     <div className="flex items-center justify-between p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
                       <span className="font-medium">Total Missing Slip Amount:</span>
                       <span className="font-bold text-yellow-600 text-lg">
-                        Rs. {(dailyReport.missingSlips.reduce((sum, s) => sum + (s.amount || 0), 0) || 0).toLocaleString()}
+                        Rs. {(dailyReport.missingSlips.reduce((sum, s) => sum + (s.amount || 0), 0) || (0) || 0).toLocaleString()}
                       </span>
                     </div>
                   </div>

@@ -467,7 +467,7 @@ export default function TanksSettingsPage() {
       key: 'capacity' as keyof Tank,
       title: 'Capacity',
       render: (value: unknown) => (
-        <Badge variant="outline">{(value as number).toLocaleString()} L</Badge>
+        <Badge variant="outline">{(value as (number) || 0).toLocaleString()} L</Badge>
       )
     },
     {
@@ -476,7 +476,7 @@ export default function TanksSettingsPage() {
       render: (value: unknown, row: Tank) => (
         <div className="space-y-1">
           <div className="flex justify-between text-xs">
-            <span>{(value as number).toLocaleString()} L</span>
+            <span>{(value as (number) || 0).toLocaleString()} L</span>
             <span className="text-muted-foreground">{Math.round(((value as number) / row.capacity) * 100)}%</span>
           </div>
           <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
@@ -860,7 +860,7 @@ export default function TanksSettingsPage() {
                               <span className="text-muted-foreground">-</span>
                               <span>{tank.fuel?.name || 'Unknown'}</span>
                               <span className="text-xs text-muted-foreground">
-                                ({tank.capacity.toLocaleString()}L)
+                                ({(tank.capacity || 0).toLocaleString()}L)
                               </span>
                             </div>
                           </SelectItem>

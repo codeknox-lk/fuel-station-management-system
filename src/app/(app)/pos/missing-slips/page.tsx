@@ -181,7 +181,7 @@ export default function MissingSlipsPage() {
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm">
-            {new Date(value as string).toLocaleString()}
+            {new Date(value as (string) || 0).toLocaleString()}
           </span>
         </div>
       )
@@ -231,7 +231,7 @@ export default function MissingSlipsPage() {
         <div className="flex items-center gap-2">
           <DollarSign className="h-4 w-4 text-red-600 dark:text-red-400" />
           <span className="font-mono font-semibold text-red-700">
-            Rs. {(value as number)?.toLocaleString() || '0'}
+            Rs. {((value as number) || 0).toLocaleString()}
           </span>
         </div>
       )
@@ -243,7 +243,7 @@ export default function MissingSlipsPage() {
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm">
-            {new Date(value as string).toLocaleString()}
+            {new Date(value as (string) || 0).toLocaleString()}
           </span>
         </div>
       )
@@ -322,7 +322,7 @@ export default function MissingSlipsPage() {
                         <span className="font-medium">{batch.batchNumber}</span>
                         <span className="text-xs text-muted-foreground">
                           {new Date(batch.batchDate).toLocaleDateString()} -
-                          Rs. {batch.totalAmount.toLocaleString()}
+                          Rs. {(batch.totalAmount || 0).toLocaleString()}
                         </span>
                       </div>
                     </div>

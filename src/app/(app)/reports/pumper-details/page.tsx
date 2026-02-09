@@ -384,10 +384,10 @@ export default function PumperDetailsReport() {
                   <h3 className="text-sm font-semibold text-muted-foreground">Total Sales</h3>
                 </div>
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                  Rs. {reportData.summary.totalSales.toLocaleString()}
+                  Rs. {(reportData.summary.totalSales || 0).toLocaleString()}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {reportData.summary.totalLiters.toLocaleString()} L sold
+                  {(reportData.summary.totalLiters || 0).toLocaleString()} L sold
                 </p>
               </CardContent>
             </Card>
@@ -419,7 +419,7 @@ export default function PumperDetailsReport() {
                   {reportData.summary.totalActiveLoans}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Rs. {reportData.summary.totalLoanBalance.toLocaleString()} balance
+                  Rs. {(reportData.summary.totalLoanBalance || 0).toLocaleString()} balance
                 </p>
               </CardContent>
             </Card>
@@ -447,15 +447,15 @@ export default function PumperDetailsReport() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Base Salary</Label>
-                <p className="font-medium">Rs. {selectedPumperData.baseSalary.toLocaleString()}</p>
+                <p className="font-medium">Rs. {(selectedPumperData.baseSalary || 0).toLocaleString()}</p>
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Holiday Allowance</Label>
-                <p className="font-medium">Rs. {selectedPumperData.holidayAllowance.toLocaleString()}</p>
+                <p className="font-medium">Rs. {(selectedPumperData.holidayAllowance || 0).toLocaleString()}</p>
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Advance Limit</Label>
-                <p className="font-medium text-orange-600">Rs. {selectedPumperData.advanceLimit.toLocaleString()}</p>
+                <p className="font-medium text-orange-600">Rs. {(selectedPumperData.advanceLimit || 0).toLocaleString()}</p>
               </div>
             </div>
           </FormCard>
@@ -471,18 +471,18 @@ export default function PumperDetailsReport() {
             <Card>
               <CardContent className="p-4">
                 <h3 className="text-sm font-semibold text-muted-foreground mb-2">Total Sales</h3>
-                <p className="text-3xl font-bold text-green-600">Rs. {selectedPumperData.totalSales.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-green-600">Rs. {(selectedPumperData.totalSales || 0).toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Avg: Rs. {selectedPumperData.averageSalesPerShift.toLocaleString()}/shift
+                  Avg: Rs. {(selectedPumperData.averageSalesPerShift || 0).toLocaleString()}/shift
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
                 <h3 className="text-sm font-semibold text-muted-foreground mb-2">Total Liters</h3>
-                <p className="text-3xl font-bold text-orange-600">{selectedPumperData.totalLiters.toLocaleString()} L</p>
+                <p className="text-3xl font-bold text-orange-600">{(selectedPumperData.totalLiters || 0).toLocaleString()} L</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Avg: {selectedPumperData.averageLitersPerShift.toLocaleString()} L/shift
+                  Avg: {(selectedPumperData.averageLitersPerShift || 0).toLocaleString()} L/shift
                 </p>
               </CardContent>
             </Card>
@@ -509,7 +509,7 @@ export default function PumperDetailsReport() {
                       <Fuel className="h-4 w-4 text-orange-600" />
                       <h3 className="text-sm font-semibold">{formatFuelName(fuel.fuelName)}</h3>
                     </div>
-                    <p className="text-2xl font-bold">{fuel.liters.toLocaleString()} L</p>
+                    <p className="text-2xl font-bold">{(fuel.liters || 0).toLocaleString()} L</p>
                     <p className="text-xs text-muted-foreground mt-1">{fuel.shifts} shifts</p>
                   </CardContent>
                 </Card>
@@ -523,21 +523,21 @@ export default function PumperDetailsReport() {
               <Card>
                 <CardContent className="p-4">
                   <h3 className="text-sm font-semibold text-muted-foreground mb-2">Salary Paid</h3>
-                  <p className="text-2xl font-bold text-green-600">Rs. {selectedPumperData.totalSalaryPaid.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-green-600">Rs. {(selectedPumperData.totalSalaryPaid || 0).toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground mt-1">This period</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-4">
                   <h3 className="text-sm font-semibold text-muted-foreground mb-2">Total Advances</h3>
-                  <p className="text-2xl font-bold text-orange-600">Rs. {selectedPumperData.totalAdvances.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-orange-600">Rs. {(selectedPumperData.totalAdvances || 0).toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground mt-1">Deducted</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-4">
                   <h3 className="text-sm font-semibold text-muted-foreground mb-2">Loan Balance</h3>
-                  <p className="text-2xl font-bold text-red-600">Rs. {selectedPumperData.totalLoanBalance.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-red-600">Rs. {(selectedPumperData.totalLoanBalance || 0).toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     {selectedPumperData.activeLoansCount} active loans
                   </p>
@@ -564,11 +564,11 @@ export default function PumperDetailsReport() {
                     {selectedPumperData.activeLoans.map((loan) => (
                       <tr key={loan.id} className="border-b">
                         <td className="p-3">{loan.description || 'N/A'}</td>
-                        <td className="text-right p-3">Rs. {loan.amount.toLocaleString()}</td>
+                        <td className="text-right p-3">Rs. {(loan.amount || 0).toLocaleString()}</td>
                         <td className="text-right p-3 text-red-600 font-semibold">
-                          Rs. {loan.balance.toLocaleString()}
+                          Rs. {(loan.balance || 0).toLocaleString()}
                         </td>
-                        <td className="text-right p-3">Rs. {(loan.monthlyRental || 0).toLocaleString()}</td>
+                        <td className="text-right p-3">Rs. {(loan.monthlyRental || (0) || 0).toLocaleString()}</td>
                         <td className="p-3">{new Date(loan.createdAt).toLocaleDateString()}</td>
                       </tr>
                     ))}
@@ -598,21 +598,21 @@ export default function PumperDetailsReport() {
                     {selectedPumperData.recentSalaryPayments.map((payment) => (
                       <tr key={payment.id} className="border-b">
                         <td className="p-3">{new Date(payment.paymentDate).toLocaleDateString()}</td>
-                        <td className="text-right p-3">Rs. {payment.baseSalary.toLocaleString()}</td>
+                        <td className="text-right p-3">Rs. {(payment.baseSalary || 0).toLocaleString()}</td>
                         <td className="text-right p-3 text-green-600">
-                          +Rs. {payment.varianceAdd.toLocaleString()}
+                          +Rs. {(payment.varianceAdd || 0).toLocaleString()}
                         </td>
                         <td className="text-right p-3 text-orange-600">
-                          -Rs. {payment.varianceDeduct.toLocaleString()}
+                          -Rs. {(payment.varianceDeduct || 0).toLocaleString()}
                         </td>
                         <td className="text-right p-3 text-orange-600">
-                          -Rs. {payment.advances.toLocaleString()}
+                          -Rs. {(payment.advances || 0).toLocaleString()}
                         </td>
                         <td className="text-right p-3 text-red-600">
-                          -Rs. {payment.loans.toLocaleString()}
+                          -Rs. {(payment.loans || 0).toLocaleString()}
                         </td>
                         <td className="text-right p-3 font-semibold text-orange-600">
-                          Rs. {payment.netSalary.toLocaleString()}
+                          Rs. {(payment.netSalary || 0).toLocaleString()}
                         </td>
                       </tr>
                     ))}
@@ -652,8 +652,8 @@ export default function PumperDetailsReport() {
                       </div>
                     </td>
                     <td className="text-right p-3">{pumper.totalShifts}</td>
-                    <td className="text-right p-3">Rs. {pumper.totalSales.toLocaleString()}</td>
-                    <td className="text-right p-3">{pumper.totalLiters.toLocaleString()} L</td>
+                    <td className="text-right p-3">Rs. {(pumper.totalSales || 0).toLocaleString()}</td>
+                    <td className="text-right p-3">{(pumper.totalLiters || 0).toLocaleString()} L</td>
                     <td className="text-right p-3">
                       <span className={pumper.varianceRate > 15 ? 'text-red-600 font-semibold' : ''}>
                         {pumper.varianceRate}%
@@ -667,12 +667,12 @@ export default function PumperDetailsReport() {
                     <td className="text-right p-3">
                       {pumper.activeLoansCount > 0 && (
                         <div>
-                          <p className="text-red-600">Rs. {pumper.totalLoanBalance.toLocaleString()}</p>
+                          <p className="text-red-600">Rs. {(pumper.totalLoanBalance || 0).toLocaleString()}</p>
                           <p className="text-xs text-muted-foreground">{pumper.activeLoansCount} loans</p>
                         </div>
                       )}
                     </td>
-                    <td className="text-right p-3">Rs. {pumper.totalSalaryPaid.toLocaleString()}</td>
+                    <td className="text-right p-3">Rs. {(pumper.totalSalaryPaid || 0).toLocaleString()}</td>
                     <td className="text-center p-3">
                       <Button
                         size="sm"

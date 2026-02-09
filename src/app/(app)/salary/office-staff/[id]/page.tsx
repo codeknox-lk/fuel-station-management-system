@@ -220,7 +220,7 @@ export default function OfficeStaffSalaryDetailsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              Rs. {salaryData.baseSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs. {(salaryData.baseSalary || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </CardContent>
         </Card>
@@ -233,7 +233,7 @@ export default function OfficeStaffSalaryDetailsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              Rs. {salaryData.totalAllowances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs. {(salaryData.totalAllowances || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </CardContent>
         </Card>
@@ -246,7 +246,7 @@ export default function OfficeStaffSalaryDetailsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              Rs. {salaryData.totalDeductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs. {(salaryData.totalDeductions || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </CardContent>
         </Card>
@@ -259,7 +259,7 @@ export default function OfficeStaffSalaryDetailsPage() {
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${salaryData.netSalary >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              Rs. {salaryData.netSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs. {(salaryData.netSalary || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </CardContent>
         </Card>
@@ -277,7 +277,7 @@ export default function OfficeStaffSalaryDetailsPage() {
               <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-green-500/30">
                 <span className="text-sm font-medium">Special Allowance:</span>
                 <span className="font-mono font-semibold text-green-600 text-lg">
-                  +Rs. {salaryData.specialAllowance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  +Rs. {(salaryData.specialAllowance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
             )}
@@ -285,7 +285,7 @@ export default function OfficeStaffSalaryDetailsPage() {
               <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-green-500/30">
                 <span className="text-sm font-medium">Other Allowances:</span>
                 <span className="font-mono font-semibold text-green-600 text-lg">
-                  +Rs. {salaryData.otherAllowances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  +Rs. {(salaryData.otherAllowances || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
             )}
@@ -293,7 +293,7 @@ export default function OfficeStaffSalaryDetailsPage() {
               <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-green-500/30">
                 <span className="text-sm font-medium">Medical Allowance:</span>
                 <span className="font-mono font-semibold text-green-600 text-lg">
-                  +Rs. {salaryData.medicalAllowance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  +Rs. {(salaryData.medicalAllowance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
             )}
@@ -301,7 +301,7 @@ export default function OfficeStaffSalaryDetailsPage() {
               <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-green-500/30">
                 <span className="text-sm font-medium">Holiday Allowance:</span>
                 <span className="font-mono font-semibold text-green-600 text-lg">
-                  +Rs. {salaryData.holidayAllowance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  +Rs. {(salaryData.holidayAllowance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
             )}
@@ -309,7 +309,7 @@ export default function OfficeStaffSalaryDetailsPage() {
               <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-green-500/30">
                 <span className="text-sm font-medium">Fuel Allowance:</span>
                 <span className="font-mono font-semibold text-green-600 text-lg">
-                  +Rs. {salaryData.fuelAllowance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  +Rs. {(salaryData.fuelAllowance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
                 <span className="text-xs text-muted-foreground ml-2">(Manager only)</span>
               </div>
@@ -323,7 +323,7 @@ export default function OfficeStaffSalaryDetailsPage() {
               <div className="flex justify-between items-center">
                 <span className="font-semibold">Total Allowances:</span>
                 <span className="font-mono font-bold text-green-600 text-xl">
-                  +Rs. {salaryData.totalAllowances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  +Rs. {(salaryData.totalAllowances || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
             </div>
@@ -340,7 +340,7 @@ export default function OfficeStaffSalaryDetailsPage() {
               <div className="flex justify-between items-center p-3 bg-card rounded-lg border">
                 <span className="text-sm font-medium">Advances Taken:</span>
                 <span className="font-mono font-semibold text-red-600 text-lg">
-                  -Rs. {salaryData.advances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  -Rs. {(salaryData.advances || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
             )}
@@ -348,7 +348,7 @@ export default function OfficeStaffSalaryDetailsPage() {
               <div className="flex justify-between items-center p-3 bg-card rounded-lg border">
                 <span className="text-sm font-medium">Loans:</span>
                 <span className="font-mono font-semibold text-red-600 text-lg">
-                  -Rs. {salaryData.loans.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  -Rs. {(salaryData.loans || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
             )}
@@ -356,7 +356,7 @@ export default function OfficeStaffSalaryDetailsPage() {
               <div className="flex justify-between items-center p-3 bg-card rounded-lg border">
                 <span className="text-sm font-medium">Absent Days ({salaryData.absentDays} days):</span>
                 <span className="font-mono font-semibold text-red-600 text-lg">
-                  -Rs. {salaryData.absentDeduction.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  -Rs. {(salaryData.absentDeduction || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
             )}
@@ -364,7 +364,7 @@ export default function OfficeStaffSalaryDetailsPage() {
               <div className="flex justify-between items-center p-3 bg-card rounded-lg border">
                 <span className="text-sm font-medium">EPF (8%):</span>
                 <span className="font-mono font-semibold text-red-600 text-lg">
-                  -Rs. {salaryData.epf.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  -Rs. {(salaryData.epf || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
             )}
@@ -377,7 +377,7 @@ export default function OfficeStaffSalaryDetailsPage() {
               <div className="flex justify-between items-center">
                 <span className="font-semibold">Total Deductions:</span>
                 <span className="font-mono font-bold text-red-600 text-xl">
-                  -Rs. {salaryData.totalDeductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  -Rs. {(salaryData.totalDeductions || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
             </div>
@@ -396,25 +396,25 @@ export default function OfficeStaffSalaryDetailsPage() {
             <div className="flex justify-between items-center p-4 bg-card rounded-lg border">
               <span className="text-lg font-medium">Base Salary:</span>
               <span className="font-mono font-semibold text-lg">
-                Rs. {salaryData.baseSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                Rs. {(salaryData.baseSalary || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
             <div className="flex justify-between items-center p-4 bg-card rounded-lg border border-green-500/30">
               <span className="text-lg font-medium">Additions (Allowances):</span>
               <span className="font-mono font-semibold text-green-600 text-lg">
-                +Rs. {salaryData.totalAllowances.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                +Rs. {(salaryData.totalAllowances || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
             <div className="flex justify-between items-center p-4 bg-card rounded-lg border">
               <span className="text-lg font-medium">Gross Salary:</span>
               <span className="font-mono font-semibold text-lg">
-                Rs. {salaryData.grossSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                Rs. {(salaryData.grossSalary || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
             <div className="flex justify-between items-center p-4 bg-card rounded-lg border border-red-500/30">
               <span className="text-lg font-medium">Deductions:</span>
               <span className="font-mono font-semibold text-red-600 text-lg">
-                -Rs. {salaryData.totalDeductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                -Rs. {(salaryData.totalDeductions || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
             <div className="flex justify-between items-center p-6 bg-primary/10 rounded-lg border-2 border-primary">
@@ -422,7 +422,7 @@ export default function OfficeStaffSalaryDetailsPage() {
               <div className="flex items-center gap-2">
                 <DollarSign className={`h-8 w-8 ${salaryData.netSalary >= 0 ? 'text-green-600' : 'text-red-600'}`} />
                 <span className={`text-4xl font-bold ${salaryData.netSalary >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  Rs. {salaryData.netSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  Rs. {(salaryData.netSalary || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
             </div>

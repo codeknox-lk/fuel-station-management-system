@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
                 data: {
                   stationId: lastSale.shift?.stationId || null,
                   title: 'Credit Payment Overdue',
-                  message: `${customer.name} payment is ${daysSinceLastSale} days overdue (Rs. ${customer.currentBalance.toLocaleString()})`,
+                  message: `${customer.name} payment is ${daysSinceLastSale} days overdue (Rs. ${(customer.currentBalance || 0).toLocaleString()})`,
                   type: 'ERROR',
                   priority: daysSinceLastSale > 14 ? 'CRITICAL' : 'HIGH',
                   category: 'CREDIT',
@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
                 data: {
                   stationId: shift.stationId,
                   title: 'Shift Variance Alert',
-                  message: `Shift closed with ${variancePercentage.toFixed(2)}% variance (Rs. ${Math.abs(statistics.variance || 0).toLocaleString()}) - ${variancePercentage > 2.0 ? 'requires immediate review' : 'needs review'}`,
+                  message: `Shift closed with ${variancePercentage.toFixed(2)}% variance (Rs. ${Math.abs(statistics.variance || (0) || 0).toLocaleString()}) - ${variancePercentage > 2.0 ? 'requires immediate review' : 'needs review'}`,
                   type: variancePercentage > 2.0 ? 'ERROR' : 'WARNING',
                   priority: variancePercentage > 2.0 ? 'CRITICAL' : variancePercentage > 1.5 ? 'HIGH' : 'MEDIUM',
                   category: 'SHIFT',

@@ -8,12 +8,12 @@ import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
-import { 
-  Users, 
-  DollarSign, 
-  AlertTriangle, 
-  AlertCircle, 
-  Plus, 
+import {
+  Users,
+  DollarSign,
+  AlertTriangle,
+  AlertCircle,
+  Plus,
   BarChart3,
   FileText,
   CreditCard,
@@ -70,8 +70,8 @@ export default function CreditPage() {
         ...customer,
         availableCredit: customer.creditLimit - customer.currentBalance,
         daysPastDue: Math.floor(Math.random() * 120), // Mock data
-        riskLevel: customer.currentBalance > customer.creditLimit * 0.8 ? 'HIGH' : 
-                  customer.currentBalance > customer.creditLimit * 0.6 ? 'MEDIUM' : 'LOW'
+        riskLevel: customer.currentBalance > customer.creditLimit * 0.8 ? 'HIGH' :
+          customer.currentBalance > customer.creditLimit * 0.6 ? 'MEDIUM' : 'LOW'
       }))
 
       setCustomers(transformedCustomers)
@@ -172,7 +172,7 @@ export default function CreditPage() {
       title: 'Credit Limit',
       render: (value: unknown) => (
         <span className="font-mono text-orange-600 dark:text-orange-400">
-          Rs. {(value as number)?.toLocaleString() || 0}
+          {row.type === 'SALE' ? '+' : '-'}Rs. {((value as number) || 0).toLocaleString()}
         </span>
       )
     },
@@ -181,7 +181,7 @@ export default function CreditPage() {
       title: 'Outstanding',
       render: (value: unknown) => (
         <span className="font-mono font-semibold text-red-600 dark:text-red-400">
-          Rs. {(value as number)?.toLocaleString() || 0}
+          {row.type === 'SALE' ? '+' : '-'}Rs. {((value as number) || 0).toLocaleString()}
         </span>
       )
     },
@@ -192,7 +192,7 @@ export default function CreditPage() {
         const numValue = value as number
         return (
           <span className={`font-mono font-semibold ${numValue > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-            Rs. {numValue?.toLocaleString() || 0}
+            Rs. {(numValue || 0).toLocaleString()}
           </span>
         )
       }
@@ -205,11 +205,10 @@ export default function CreditPage() {
         return (
           <div className="flex items-center gap-1">
             <Clock className="h-4 w-4 text-muted-foreground" />
-            <span className={`font-semibold ${
-              days > 90 ? 'text-red-600 dark:text-red-400' : 
-              days > 60 ? 'text-orange-600 dark:text-orange-400' : 
-              days > 30 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'
-            }`}>
+            <span className={`font-semibold ${days > 90 ? 'text-red-600 dark:text-red-400' :
+              days > 60 ? 'text-orange-600 dark:text-orange-400' :
+                days > 30 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'
+              }`}>
               {days} days
             </span>
           </div>
@@ -270,10 +269,9 @@ export default function CreditPage() {
       key: 'amount' as keyof RecentActivity,
       title: 'Amount',
       render: (value: unknown, row: RecentActivity) => (
-        <span className={`font-mono font-semibold ${
-          row.type === 'SALE' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
-        }`}>
-          {row.type === 'SALE' ? '+' : '-'}Rs. {(value as number)?.toLocaleString() || 0}
+        <span className={`font-mono font-semibold ${row.type === 'SALE' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+          }`}>
+          {row.type === 'SALE' ? '+' : '-'}Rs. {(value as number || 0).toLocaleString()}
         </span>
       )
     },
@@ -317,17 +315,17 @@ export default function CreditPage() {
         <Card className="p-4">
           <h3 className="text-lg font-semibold text-foreground">Total Credit Limit</h3>
           <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
-            Rs. {stats.totalCreditLimit.toLocaleString()}
+            Rs. {(stats.totalCreditLimit || 0).toLocaleString()}
           </p>
           <p className="text-sm text-muted-foreground">{stats.utilizationRate}% utilized</p>
         </Card>
         <Card className="p-4">
           <h3 className="text-lg font-semibold text-foreground">Outstanding Balance</h3>
           <p className="text-3xl font-bold text-red-600 dark:text-red-400">
-            Rs. {stats.totalOutstanding.toLocaleString()}
+            Rs. {(stats.totalOutstanding || 0).toLocaleString()}
           </p>
           <p className="text-sm text-muted-foreground">
-            Available: Rs. {stats.availableCredit.toLocaleString()}
+            Available: Rs. {(stats.availableCredit || 0).toLocaleString()}
           </p>
         </Card>
         <Card className="p-4">
@@ -363,7 +361,7 @@ export default function CreditPage() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Attention Required</AlertTitle>
           <AlertDescription>
-            You have {stats.highRiskCustomers} high-risk customers that require immediate attention. 
+            You have {stats.highRiskCustomers} high-risk customers that require immediate attention.
             Consider reviewing their credit limits or initiating collection procedures.
           </AlertDescription>
         </Alert>

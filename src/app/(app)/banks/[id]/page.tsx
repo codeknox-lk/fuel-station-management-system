@@ -220,7 +220,7 @@ export default function BankTransactionDetailsPage() {
             render: (value: unknown) => (
                 <div className="flex items-center gap-1 justify-end">
                     <span className="font-mono font-semibold">
-                        Rs. {(value as number).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        Rs. {(value as (number) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                 </div>
             )
@@ -279,7 +279,7 @@ export default function BankTransactionDetailsPage() {
                 <CardContent className="pt-6">
                     <div className="text-sm text-muted-foreground mb-1">Current Balance</div>
                     <div className="text-3xl font-bold text-green-600">
-                        Rs. {bankAccount.currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        Rs. {(bankAccount.currentBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                 </CardContent>
             </Card>
@@ -292,7 +292,7 @@ export default function BankTransactionDetailsPage() {
                         <div className="flex flex-col gap-1">
                             <div className="text-xs font-medium text-orange-700 dark:text-orange-400 uppercase tracking-wide">Deposits</div>
                             <div className="text-lg font-bold text-orange-900 dark:text-orange-100 font-mono">
-                                Rs. {transactionSummary.totalDeposits.toLocaleString()}
+                                Rs. {(transactionSummary.totalDeposits || 0).toLocaleString()}
                             </div>
                         </div>
                         <TrendingUp className="absolute right-2 bottom-2 h-8 w-8 text-orange-300 dark:text-orange-800 opacity-50" />
@@ -303,7 +303,7 @@ export default function BankTransactionDetailsPage() {
                         <div className="flex flex-col gap-1">
                             <div className="text-xs font-medium text-green-700 dark:text-green-400 uppercase tracking-wide">Cleared</div>
                             <div className="text-lg font-bold text-green-900 dark:text-green-100 font-mono">
-                                Rs. {transactionSummary.clearedCheques.toLocaleString()}
+                                Rs. {(transactionSummary.clearedCheques || 0).toLocaleString()}
                             </div>
                         </div>
                         <CheckCircle className="absolute right-2 bottom-2 h-8 w-8 text-green-300 dark:text-green-800 opacity-50" />
@@ -314,7 +314,7 @@ export default function BankTransactionDetailsPage() {
                         <div className="flex flex-col gap-1">
                             <div className="text-xs font-medium text-yellow-700 dark:text-yellow-400 uppercase tracking-wide">Pending</div>
                             <div className="text-lg font-bold text-yellow-900 dark:text-yellow-100 font-mono">
-                                Rs. {transactionSummary.pendingCheques.toLocaleString()}
+                                Rs. {(transactionSummary.pendingCheques || 0).toLocaleString()}
                             </div>
                         </div>
                         <Clock className="absolute right-2 bottom-2 h-8 w-8 text-yellow-300 dark:text-yellow-800 opacity-50" />
@@ -325,7 +325,7 @@ export default function BankTransactionDetailsPage() {
                         <div className="flex flex-col gap-1">
                             <div className="text-xs font-medium text-red-700 dark:text-red-400 uppercase tracking-wide">Bounced</div>
                             <div className="text-lg font-bold text-red-900 dark:text-red-100 font-mono">
-                                Rs. {transactionSummary.bouncedCheques.toLocaleString()}
+                                Rs. {(transactionSummary.bouncedCheques || 0).toLocaleString()}
                             </div>
                         </div>
                         <XCircle className="absolute right-2 bottom-2 h-8 w-8 text-red-300 dark:text-red-800 opacity-50" />
@@ -336,7 +336,7 @@ export default function BankTransactionDetailsPage() {
                         <div className="flex flex-col gap-1">
                             <div className="text-xs font-medium text-blue-700 dark:text-blue-400 uppercase tracking-wide">Credit</div>
                             <div className="text-lg font-bold text-blue-900 dark:text-blue-100 font-mono">
-                                Rs. {transactionSummary.totalCreditPayments.toLocaleString()}
+                                Rs. {(transactionSummary.totalCreditPayments || 0).toLocaleString()}
                             </div>
                         </div>
                         <CreditCard className="absolute right-2 bottom-2 h-8 w-8 text-blue-300 dark:text-blue-800 opacity-50" />

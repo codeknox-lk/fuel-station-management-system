@@ -233,7 +233,7 @@ export default function PumperLoansPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              Rs. {totalOutstanding.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs. {(totalOutstanding || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </CardContent>
         </Card>
@@ -243,7 +243,7 @@ export default function PumperLoansPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              Rs. {totalMonthlyRental.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs. {(totalMonthlyRental || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </CardContent>
         </Card>
@@ -253,7 +253,7 @@ export default function PumperLoansPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              Rs. {totalPaidAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs. {(totalPaidAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </CardContent>
         </Card>
@@ -313,13 +313,13 @@ export default function PumperLoansPage() {
                     return (
                       <TableRow key={loan.id}>
                         <TableCell className="font-mono">
-                          Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          Rs. {(loan.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell className="font-mono text-green-600">
-                          Rs. {paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          Rs. {(paidAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell className="font-mono font-semibold text-orange-600">
-                          Rs. {remainingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          Rs. {(remainingAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell>
                           {editingLoanId === loan.id ? (
@@ -349,7 +349,7 @@ export default function PumperLoansPage() {
                               onClick={() => handleStartEdit(loan)}
                               title="Click to edit monthly rental"
                             >
-                              Rs. {(loan.monthlyRental || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              Rs. {(loan.monthlyRental || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                           )}
                         </TableCell>
@@ -441,16 +441,16 @@ export default function PumperLoansPage() {
                   return (
                     <TableRow key={loan.id}>
                       <TableCell className="font-mono">
-                        Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        Rs. {(loan.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </TableCell>
                       <TableCell className="font-mono text-green-600">
-                        Rs. {paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        Rs. {(paidAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </TableCell>
                       <TableCell className="font-mono font-semibold text-muted-foreground">
-                        Rs. {remainingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        Rs. {(remainingAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </TableCell>
                       <TableCell className="font-mono">
-                        Rs. {(loan.monthlyRental || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        Rs. {(loan.monthlyRental || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">
@@ -496,10 +496,10 @@ export default function PumperLoansPage() {
               <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
                 <div className="text-sm font-medium mb-2">Loan Details</div>
                 <div className="text-sm space-y-1 text-muted-foreground">
-                  <div>Loan Amount: Rs. {selectedLoanForPayment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                  <div>Paid: Rs. {(selectedLoanForPayment.paidAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                  <div>Remaining: Rs. {(selectedLoanForPayment.amount - (selectedLoanForPayment.paidAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                  <div>Monthly Rental: Rs. {(selectedLoanForPayment.monthlyRental || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  <div>Loan Amount: Rs. {(selectedLoanForPayment.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  <div>Paid: Rs. {(selectedLoanForPayment.paidAmount || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  <div>Remaining: Rs. {(selectedLoanForPayment.amount - (selectedLoanForPayment.paidAmount || (0)) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  <div>Monthly Rental: Rs. {(selectedLoanForPayment.monthlyRental || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                   <div>Reason: {selectedLoanForPayment.reason}</div>
                 </div>
               </div>
@@ -511,7 +511,7 @@ export default function PumperLoansPage() {
                   placeholder="Enter payment amount"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Remaining: Rs. {(selectedLoanForPayment.amount - (selectedLoanForPayment.paidAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  Remaining: Rs. {(selectedLoanForPayment.amount - (selectedLoanForPayment.paidAmount || (0)) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
               <div>

@@ -307,7 +307,7 @@ export default function TanksPage() {
       title: 'Capacity (L)',
       render: (value: unknown) => (
         <span>
-          {(value as number)?.toLocaleString() || 0}L
+          {((value as number) || 0).toLocaleString()}L
         </span>
       )
     },
@@ -318,7 +318,7 @@ export default function TanksPage() {
         <div className="flex items-center gap-2">
           <Droplets className="h-4 w-4 text-orange-600 dark:text-orange-400" />
           <span className="font-semibold">
-            {(value as number)?.toLocaleString() || 0}L
+            {((value as number) || 0).toLocaleString()}L
           </span>
         </div>
       )
@@ -384,10 +384,10 @@ export default function TanksPage() {
         {Object.entries(stats.fuelTypes).map(([fuelName, data]) => (
           <FormCard key={fuelName} className="p-4" title={fuelName}>
             <p className={`text-3xl font-bold ${getFuelTypeColor(fuelName)}`}>
-              {data.capacity.toLocaleString()}L
+              {(data.capacity || 0).toLocaleString()}L
             </p>
             <p className="text-sm text-muted-foreground">
-              Stock: {data.stock.toLocaleString()}L
+              Stock: {(data.stock || 0).toLocaleString()}L
               {data.capacity > 0 && ` (${Math.round((data.stock / data.capacity) * 100)}%)`}
             </p>
           </FormCard>
@@ -468,7 +468,7 @@ export default function TanksPage() {
                             {fillPercentage}% full
                           </Badge>
                           <span className="text-xs text-muted-foreground ml-auto">
-                            {tank.currentLevel.toLocaleString()}L / {tank.capacity.toLocaleString()}L
+                            {(tank.currentLevel || 0).toLocaleString()}L / {(tank.capacity || 0).toLocaleString()}L
                           </span>
                         </button>
                         {isExpanded && tank.nozzles.length > 0 && (
@@ -578,13 +578,13 @@ export default function TanksPage() {
                 <div className="p-4 border rounded-lg">
                   <Label className="text-xs text-muted-foreground mb-2 block">Capacity</Label>
                   <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                    {tankDetails.capacity?.toLocaleString() || 0}L
+                    {((tankDetails.capacity) || 0).toLocaleString()}L
                   </div>
                 </div>
                 <div className="p-4 border rounded-lg">
                   <Label className="text-xs text-muted-foreground mb-2 block">Current Level</Label>
                   <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    {tankDetails.currentLevel?.toLocaleString() || 0}L
+                    {((tankDetails.currentLevel) || 0).toLocaleString()}L
                   </div>
                   <div className="text-sm text-muted-foreground mt-1">
                     {tankDetails.capacity ?
@@ -611,7 +611,7 @@ export default function TanksPage() {
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground mt-1">
                     <span>0L</span>
-                    <span>{tankDetails.capacity.toLocaleString()}L</span>
+                    <span>{(tankDetails.capacity || 0).toLocaleString()}L</span>
                   </div>
                 </div>
               )}
@@ -647,7 +647,7 @@ export default function TanksPage() {
                     {tankDetails.recentDips.map((dip) => (
                       <div key={dip.id} className="flex items-center justify-between text-sm p-2 bg-muted rounded">
                         <div>
-                          <div className="font-medium">{dip.reading?.toLocaleString() || 0}L</div>
+                          <div className="font-medium">{((dip.reading) || 0).toLocaleString()}L</div>
                           <div className="text-xs text-muted-foreground">
                             {new Date(dip.dipDate).toLocaleString()}
                           </div>
@@ -671,7 +671,7 @@ export default function TanksPage() {
                       <div key={delivery.id} className="flex items-center justify-between text-sm p-2 bg-muted rounded">
                         <div>
                           <div className="font-medium text-green-600 dark:text-green-400">
-                            +{delivery.quantity?.toLocaleString() || 0}L
+                            +{((delivery.quantity) || 0).toLocaleString()}L
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {delivery.supplier} • {delivery.invoiceNumber || 'N/A'}

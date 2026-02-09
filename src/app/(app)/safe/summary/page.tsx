@@ -274,7 +274,7 @@ export default function SafeSummaryPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">
-                    Rs. {safeSummary.actualBalance.toLocaleString()}
+                    Rs. {(safeSummary.actualBalance || 0).toLocaleString()}
                   </div>
                   <div className="text-sm text-muted-foreground">Actual Balance</div>
                 </div>
@@ -310,7 +310,7 @@ export default function SafeSummaryPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-foreground">
-                  Rs. {safeSummary.openingBalance.toLocaleString()}
+                  Rs. {(safeSummary.openingBalance || 0).toLocaleString()}
                 </div>
               </CardContent>
             </Card>
@@ -321,7 +321,7 @@ export default function SafeSummaryPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-700">
-                  + Rs. {safeSummary.totalInflows.toLocaleString()}
+                  + Rs. {(safeSummary.totalInflows || 0).toLocaleString()}
                 </div>
               </CardContent>
             </Card>
@@ -332,7 +332,7 @@ export default function SafeSummaryPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-700">
-                  - Rs. {safeSummary.totalOutflows.toLocaleString()}
+                  - Rs. {(safeSummary.totalOutflows || 0).toLocaleString()}
                 </div>
               </CardContent>
             </Card>
@@ -343,7 +343,7 @@ export default function SafeSummaryPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-700">
-                  Rs. {safeSummary.expectedBalance.toLocaleString()}
+                  Rs. {(safeSummary.expectedBalance || 0).toLocaleString()}
                 </div>
               </CardContent>
             </Card>
@@ -359,19 +359,19 @@ export default function SafeSummaryPage() {
                 <div className="text-center">
                   <div className="text-lg font-semibold text-muted-foreground">Expected</div>
                   <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                    Rs. {safeSummary.expectedBalance.toLocaleString()}
+                    Rs. {(safeSummary.expectedBalance || 0).toLocaleString()}
                   </div>
                 </div>
                 <div className="text-center">
                   <div className="text-lg font-semibold text-muted-foreground">Actual</div>
                   <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                    Rs. {safeSummary.actualBalance.toLocaleString()}
+                    Rs. {(safeSummary.actualBalance || 0).toLocaleString()}
                   </div>
                 </div>
                 <div className="text-center">
                   <div className="text-lg font-semibold text-muted-foreground">Variance</div>
                   <div className={`text-2xl font-bold ${getVarianceColor(safeSummary.variance)}`}>
-                    {safeSummary.variance >= 0 ? '+' : ''}Rs. {safeSummary.variance.toLocaleString()}
+                    {safeSummary.variance >= 0 ? '+' : ''}Rs. {(safeSummary.variance || 0).toLocaleString()}
                   </div>
                 </div>
               </div>
@@ -386,7 +386,7 @@ export default function SafeSummaryPage() {
                   <CardTitle className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Plus className="h-5 w-5 text-green-600 dark:text-green-400" />
-                      Inflows - Rs. {safeSummary.totalInflows.toLocaleString()}
+                      Inflows - Rs. {(safeSummary.totalInflows || 0).toLocaleString()}
                     </div>
                     {inflowsExpanded ? (
                       <ChevronDown className="h-4 w-4" />
@@ -411,7 +411,7 @@ export default function SafeSummaryPage() {
                           </div>
                         </div>
                         <div className="font-semibold text-green-700">
-                          Rs. {inflow.amount.toLocaleString()}
+                          Rs. {(inflow.amount || 0).toLocaleString()}
                         </div>
                       </div>
                     ))}
@@ -429,7 +429,7 @@ export default function SafeSummaryPage() {
                   <CardTitle className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Minus className="h-5 w-5 text-red-600 dark:text-red-400" />
-                      Outflows - Rs. {safeSummary.totalOutflows.toLocaleString()}
+                      Outflows - Rs. {(safeSummary.totalOutflows || 0).toLocaleString()}
                     </div>
                     {outflowsExpanded ? (
                       <ChevronDown className="h-4 w-4" />
@@ -455,7 +455,7 @@ export default function SafeSummaryPage() {
                           </div>
                         </div>
                         <div className="font-semibold text-red-700">
-                          Rs. {outflow.amount.toLocaleString()}
+                          Rs. {(outflow.amount || 0).toLocaleString()}
                         </div>
                       </div>
                     ))}
@@ -471,7 +471,7 @@ export default function SafeSummaryPage() {
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Action Required</AlertTitle>
               <AlertDescription>
-                The safe is not balanced. Variance of Rs. {Math.abs(safeSummary.variance).toLocaleString()}
+                The safe is not balanced. Variance of Rs. {(Math.abs(safeSummary.variance) || 0).toLocaleString()}
                 {safeSummary.variance > 0 ? ' excess' : ' shortage'} detected.
                 Please verify all transactions and investigate the discrepancy.
               </AlertDescription>

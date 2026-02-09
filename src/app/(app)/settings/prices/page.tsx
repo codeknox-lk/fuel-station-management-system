@@ -718,7 +718,7 @@ export default function FuelsPage() {
                 <Droplet className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{totalCapacity.toLocaleString()}</div>
+                <div className="text-2xl font-bold">{(totalCapacity || 0).toLocaleString()}</div>
                 <p className="text-xs text-muted-foreground">Liters across all tanks</p>
               </CardContent>
             </Card>
@@ -729,7 +729,7 @@ export default function FuelsPage() {
                 <BarChart3 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{totalStock.toLocaleString()}</div>
+                <div className="text-2xl font-bold">{(totalStock || 0).toLocaleString()}</div>
                 <p className="text-xs text-muted-foreground">{stockPercentage.toFixed(1)}% capacity</p>
               </CardContent>
             </Card>
@@ -787,11 +787,11 @@ export default function FuelsPage() {
                       <div className="pt-3 border-t space-y-1">
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Capacity:</span>
-                          <span className="font-medium">{stats.totalCapacity.toLocaleString()} L</span>
+                          <span className="font-medium">{(stats.totalCapacity || 0).toLocaleString()} L</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Stock:</span>
-                          <span className="font-medium">{stats.currentStock.toLocaleString()} L</span>
+                          <span className="font-medium">{(stats.currentStock || 0).toLocaleString()} L</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Fill Level:</span>
@@ -917,16 +917,16 @@ export default function FuelsPage() {
                           <div className="grid gap-3 md:grid-cols-4 text-sm">
                             <div>
                               <p className="text-muted-foreground">Total Capacity</p>
-                              <p className="text-lg font-semibold">{totalCap.toLocaleString()} L</p>
+                              <p className="text-lg font-semibold">{(totalCap || 0).toLocaleString()} L</p>
                             </div>
                             <div>
                               <p className="text-muted-foreground">Current Stock</p>
-                              <p className="text-lg font-semibold">{currentStock.toLocaleString()} L</p>
+                              <p className="text-lg font-semibold">{(currentStock || 0).toLocaleString()} L</p>
                             </div>
                             <div>
                               <p className="text-muted-foreground">Available Space</p>
                               <p className="text-lg font-semibold">
-                                {(totalCap - currentStock).toLocaleString()} L
+                                {(totalCap - (currentStock) || 0).toLocaleString()} L
                               </p>
                             </div>
                             <div>
@@ -966,8 +966,8 @@ export default function FuelsPage() {
                                       </span>
                                     </div>
                                     <div className="flex justify-between text-xs">
-                                      <span>Stock: {tank.currentLevel.toLocaleString()} L</span>
-                                      <span>Cap: {tank.capacity.toLocaleString()} L</span>
+                                      <span>Stock: {(tank.currentLevel || 0).toLocaleString()} L</span>
+                                      <span>Cap: {(tank.capacity || 0).toLocaleString()} L</span>
                                     </div>
                                     <div className="w-full bg-background rounded-full h-1 mt-1">
                                       <div

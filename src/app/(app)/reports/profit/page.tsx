@@ -287,7 +287,7 @@ export default function ProfitReportsPage() {
       title: 'Amount',
       render: (value: unknown) => (
         <span className="font-semibold text-green-600 dark:text-green-400">
-          Rs. {Math.floor(value as number).toLocaleString()}
+          Rs. {Math.floor(value as (number) || 0).toLocaleString()}
         </span>
       )
     },
@@ -325,7 +325,7 @@ export default function ProfitReportsPage() {
       title: 'Amount',
       render: (value: unknown) => (
         <span className="font-semibold text-red-600 dark:text-red-400">
-          Rs. {Math.floor(value as number).toLocaleString()}
+          Rs. {Math.floor(value as (number) || 0).toLocaleString()}
         </span>
       )
     },
@@ -457,10 +457,10 @@ export default function ProfitReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-700">
-                  Rs. {profitReport.totalRevenue.toLocaleString()}
+                  Rs. {(profitReport.totalRevenue || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  Daily avg: Rs. {Math.floor(profitReport.totalRevenue / profitReport.dailyData.length).toLocaleString()}
+                  Daily avg: Rs. {Math.floor(profitReport.totalRevenue / (profitReport.dailyData.length) || 0).toLocaleString()}
                 </div>
               </CardContent>
             </Card>
@@ -471,7 +471,7 @@ export default function ProfitReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-700">
-                  Rs. {profitReport.totalExpenses.toLocaleString()}
+                  Rs. {(profitReport.totalExpenses || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {((profitReport.totalExpenses / profitReport.totalRevenue) * 100).toFixed(1)}% of revenue
@@ -485,7 +485,7 @@ export default function ProfitReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className={`text-2xl font-bold ${profitReport.totalProfit >= 0 ? 'text-orange-700' : 'text-red-700'}`}>
-                  Rs. {profitReport.totalProfit.toLocaleString()}
+                  Rs. {(profitReport.totalProfit || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {profitReport.averageMargin.toFixed(1)}% margin
@@ -535,7 +535,7 @@ export default function ProfitReportsPage() {
                     />
                     <Tooltip
                       formatter={(value: number, name: string) => [
-                        `Rs. ${value.toLocaleString()}`,
+                        `Rs. ${(value || 0).toLocaleString()}`,
                         name === 'profit' ? 'Profit' : name === 'revenue' ? 'Revenue' : 'Expenses'
                       ]}
                       labelFormatter={(date) => {
@@ -584,15 +584,15 @@ export default function ProfitReportsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span>Revenue:</span>
-                    <span className="text-green-600 dark:text-green-400">Rs. {profitReport.bestDay.revenue.toLocaleString()}</span>
+                    <span className="text-green-600 dark:text-green-400">Rs. {(profitReport.bestDay.revenue || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Expenses:</span>
-                    <span className="text-red-600 dark:text-red-400">Rs. {profitReport.bestDay.expenses.toLocaleString()}</span>
+                    <span className="text-red-600 dark:text-red-400">Rs. {(profitReport.bestDay.expenses || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between border-t pt-2">
                     <span className="font-semibold">Profit:</span>
-                    <span className="font-bold text-orange-600 dark:text-orange-400">Rs. {profitReport.bestDay.profit.toLocaleString()}</span>
+                    <span className="font-bold text-orange-600 dark:text-orange-400">Rs. {(profitReport.bestDay.profit || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Margin:</span>
@@ -614,15 +614,15 @@ export default function ProfitReportsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span>Revenue:</span>
-                    <span className="text-green-600 dark:text-green-400">Rs. {profitReport.worstDay.revenue.toLocaleString()}</span>
+                    <span className="text-green-600 dark:text-green-400">Rs. {(profitReport.worstDay.revenue || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Expenses:</span>
-                    <span className="text-red-600 dark:text-red-400">Rs. {profitReport.worstDay.expenses.toLocaleString()}</span>
+                    <span className="text-red-600 dark:text-red-400">Rs. {(profitReport.worstDay.expenses || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between border-t pt-2">
                     <span className="font-semibold">Profit:</span>
-                    <span className="font-bold text-orange-600 dark:text-orange-400">Rs. {profitReport.worstDay.profit.toLocaleString()}</span>
+                    <span className="font-bold text-orange-600 dark:text-orange-400">Rs. {(profitReport.worstDay.profit || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Margin:</span>

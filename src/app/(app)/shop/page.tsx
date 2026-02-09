@@ -171,7 +171,7 @@ export default function ShopPage() {
         {
             key: 'sellingPrice',
             title: 'Selling Price',
-            render: (val) => <span className="font-medium">Rs. {(val as number).toLocaleString()}</span>
+            render: (val) => <span className="font-medium">Rs. {(val as (number) || 0).toLocaleString()}</span>
         },
         {
             key: 'batches',
@@ -197,7 +197,7 @@ export default function ShopPage() {
 
     const purchaseColumns: Column<Purchase>[] = [
         { key: 'product', title: 'Product', render: (val) => (val as { name: string }).name },
-        { key: 'costPrice', title: 'Cost Price', render: (val) => `Rs. ${(val as number).toLocaleString()}` },
+        { key: 'costPrice', title: 'Cost Price', render: (val) => `Rs. ${(val as (number) || 0).toLocaleString()}` },
         { key: 'originalQuantity', title: 'Qty Received' },
         { key: 'currentQuantity', title: 'Qty Remaining' },
         { key: 'purchaseDate', title: 'Date', render: (val) => new Date(val as string).toLocaleDateString() },

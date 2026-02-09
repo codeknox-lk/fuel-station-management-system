@@ -70,13 +70,13 @@ const StartMeterCell = ({
         />
         {!loading && lastReading !== null && (
           <span className="text-xs text-muted-foreground whitespace-nowrap">
-            Last: {lastReading.toLocaleString()}
+            Last: {(lastReading || 0).toLocaleString()}
           </span>
         )}
       </div>
       {hasMismatch && (
         <p className="text-xs text-amber-600">
-          ⚠️ Differs from last reading ({lastReading?.toLocaleString()})
+          ⚠️ Differs from last reading ({(lastReading || 0).toLocaleString()})
         </p>
       )}
     </div>

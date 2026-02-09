@@ -337,10 +337,10 @@ export default function CreditReportPage() {
                   <h3 className="text-sm font-semibold text-muted-foreground">Outstanding</h3>
                 </div>
                 <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                  Rs. {reportData.summary.totalOutstanding.toLocaleString()}
+                  Rs. {(reportData.summary.totalOutstanding || 0).toLocaleString()}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Avg: Rs. {reportData.summary.averageBalance.toLocaleString()}
+                  Avg: Rs. {(reportData.summary.averageBalance || 0).toLocaleString()}
                 </p>
               </CardContent>
             </Card>
@@ -352,7 +352,7 @@ export default function CreditReportPage() {
                   <h3 className="text-sm font-semibold text-muted-foreground">Credit Sales</h3>
                 </div>
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                  Rs. {reportData.summary.totalCreditSales.toLocaleString()}
+                  Rs. {(reportData.summary.totalCreditSales || 0).toLocaleString()}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   This period
@@ -394,7 +394,7 @@ export default function CreditReportPage() {
                   />
                   <YAxis tickFormatter={(value) => `Rs. ${(value / 1000).toFixed(0)}k`} />
                   <Tooltip
-                    formatter={(value: number) => `Rs. ${value.toLocaleString()}`}
+                    formatter={(value: number) => `Rs. ${(value || 0).toLocaleString()}`}
                     labelFormatter={(date) => new Date(date).toLocaleDateString()}
                   />
                   <Legend />
@@ -440,7 +440,7 @@ export default function CreditReportPage() {
                         <Cell key={`cell-${index}`} fill={AGING_COLORS[entry.name as keyof typeof AGING_COLORS]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value: number) => `Rs. ${value.toLocaleString()}`} />
+                    <Tooltip formatter={(value: number) => `Rs. ${(value || 0).toLocaleString()}`} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -460,7 +460,7 @@ export default function CreditReportPage() {
                         <p className="text-sm text-muted-foreground">{data.count} customers</p>
                       </div>
                     </div>
-                    <p className="font-semibold">Rs. {data.amount.toLocaleString()}</p>
+                    <p className="font-semibold">Rs. {(data.amount || 0).toLocaleString()}</p>
                   </div>
                 ))}
               </div>
@@ -495,11 +495,11 @@ export default function CreditReportPage() {
                       </td>
                       <td className="text-right p-3">
                         <span className={customer.currentBalance > 0 ? 'text-red-600 font-semibold' : ''}>
-                          Rs. {customer.currentBalance.toLocaleString()}
+                          Rs. {(customer.currentBalance || 0).toLocaleString()}
                         </span>
                       </td>
                       <td className="text-right p-3">
-                        Rs. {customer.creditLimit.toLocaleString()}
+                        Rs. {(customer.creditLimit || 0).toLocaleString()}
                       </td>
                       <td className="text-right p-3">
                         <span className={`px-2 py-1 rounded text-xs ${customer.utilizationPercent > 80 ? 'bg-red-100 text-red-700' :
@@ -509,8 +509,8 @@ export default function CreditReportPage() {
                           {customer.utilizationPercent.toFixed(0)}%
                         </span>
                       </td>
-                      <td className="text-right p-3">Rs. {customer.salesInPeriod.toLocaleString()}</td>
-                      <td className="text-right p-3">Rs. {customer.paymentsInPeriod.toLocaleString()}</td>
+                      <td className="text-right p-3">Rs. {(customer.salesInPeriod || 0).toLocaleString()}</td>
+                      <td className="text-right p-3">Rs. {(customer.paymentsInPeriod || 0).toLocaleString()}</td>
                       <td className="p-3">
                         {customer.lastPaymentDate
                           ? new Date(customer.lastPaymentDate).toLocaleDateString()

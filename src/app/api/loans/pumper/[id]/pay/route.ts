@@ -136,7 +136,7 @@ export async function POST(
       safeTransaction,
       message: newPaidAmount >= loan.amount
         ? 'Loan fully paid and marked as PAID'
-        : `Payment of Rs. ${paymentAmount.toLocaleString()} recorded. Remaining: Rs. ${remainingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        : `Payment of Rs. ${(paymentAmount || 0).toLocaleString()} recorded. Remaining: Rs. ${(remainingAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     })
   } catch (error) {
     console.error('Error processing loan payment:', error)

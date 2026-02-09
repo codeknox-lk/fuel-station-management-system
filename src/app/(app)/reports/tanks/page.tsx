@@ -351,7 +351,7 @@ export default function TanksReportsPage() {
       key: 'capacity' as keyof TankMovement,
       title: 'Capacity',
       render: (value: unknown) => (
-        <span className="text-sm">{(value as number)?.toLocaleString() || 0}L</span>
+        <span className="text-sm">{(value as number || 0).toLocaleString()}L</span>
       )
     },
     {
@@ -359,9 +359,9 @@ export default function TanksReportsPage() {
       title: 'Opening Stock',
       render: (value: unknown, row: TankMovement) => (
         <div>
-          <div className="text-sm font-semibold">{(value as number)?.toLocaleString() || 0}L</div>
+          <div className="text-sm font-semibold">{((value as number) || 0).toLocaleString()}L</div>
           <div className="text-xs text-muted-foreground">
-            Book: {row.openingBook?.toLocaleString() || 0}L
+            Book: {(row.openingBook || 0).toLocaleString()}L
           </div>
           <div className="text-xs text-muted-foreground">
             {row.openingPercentage?.toFixed(1) || 0}%
@@ -375,7 +375,7 @@ export default function TanksReportsPage() {
       render: (value: unknown, row: TankMovement) => (
         <div>
           <div className="font-semibold text-green-600 dark:text-green-400">
-            +{(value as number)?.toLocaleString() || 0}L
+            +{(value as number || 0).toLocaleString()}L
           </div>
           {row.deliveryCount > 0 && (
             <div className="text-xs text-muted-foreground">
@@ -391,7 +391,7 @@ export default function TanksReportsPage() {
       render: (value: unknown, row: TankMovement) => (
         <div>
           <div className="font-semibold text-red-600 dark:text-red-400">
-            -{(value as number)?.toLocaleString() || 0}L
+            -{(value as number || 0).toLocaleString()}L
           </div>
           <div className="text-xs text-muted-foreground">
             {row.salesTransactionCount} transactions
@@ -404,7 +404,7 @@ export default function TanksReportsPage() {
       title: 'Test Returns',
       render: (value: unknown) => (
         <div className="font-semibold text-orange-600 dark:text-orange-400">
-          +{(value as number)?.toLocaleString() || 0}L
+          +{(value as number || 0).toLocaleString()}L
         </div>
       )
     },
@@ -413,9 +413,9 @@ export default function TanksReportsPage() {
       title: 'Closing Stock',
       render: (value: unknown, row: TankMovement) => (
         <div>
-          <div className="text-sm font-semibold">{(value as number)?.toLocaleString() || 0}L</div>
+          <div className="text-sm font-semibold">{((value as number) || 0).toLocaleString()}L</div>
           <div className="text-xs text-muted-foreground">
-            Book: {row.closingBook?.toLocaleString() || 0}L
+            Book: {(row.closingBook || 0).toLocaleString()}L
           </div>
           <div className="text-xs text-muted-foreground">
             {row.closingPercentage?.toFixed(1) || 0}%
@@ -429,7 +429,7 @@ export default function TanksReportsPage() {
       render: (value: unknown, row: TankMovement) => (
         <div>
           <div className={`font-semibold ${getVarianceColor(row.variancePercentage)}`}>
-            {(value as number) >= 0 ? '+' : ''}{(value as number)?.toLocaleString() || 0}L
+            {(value as number) >= 0 ? '+' : ''}{((value as number) || 0).toLocaleString()}L
           </div>
           <div className={`text-xs ${getVarianceColor(row.variancePercentage)}`}>
             {row.variancePercentage >= 0 ? '+' : ''}{row.variancePercentage.toFixed(2)}%
@@ -497,7 +497,7 @@ export default function TanksReportsPage() {
       title: 'Quantity',
       render: (value: unknown) => (
         <span className="font-semibold text-green-600">
-          +{(value as number)?.toLocaleString() || 0}L
+          +{(value as number || 0).toLocaleString()}L
         </span>
       )
     },
@@ -542,7 +542,7 @@ export default function TanksReportsPage() {
       title: 'Amount',
       render: (value: unknown) => (
         <span className="font-semibold text-orange-600">
-          {(value as number)?.toLocaleString() || 0}L
+          {(value as number || 0).toLocaleString()}L
         </span>
       )
     },
@@ -688,7 +688,7 @@ export default function TanksReportsPage() {
                   {summary.totalTanks}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  {summary.totalCapacity.toLocaleString()}L capacity
+                  {(summary.totalCapacity || 0).toLocaleString()}L capacity
                 </div>
               </CardContent>
             </Card>
@@ -701,7 +701,7 @@ export default function TanksReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-green-600">
-                  {summary.totalDeliveries.toLocaleString()}L
+                  {(summary.totalDeliveries || 0).toLocaleString()}L
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {tankMovements.filter(t => t.deliveryCount > 0).length} tanks
@@ -717,7 +717,7 @@ export default function TanksReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-red-600">
-                  {summary.totalSales.toLocaleString()}L
+                  {(summary.totalSales || 0).toLocaleString()}L
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {tankMovements.reduce((sum, t) => sum + t.salesTransactionCount, 0)} transactions
@@ -733,7 +733,7 @@ export default function TanksReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-orange-600">
-                  {summary.totalVariance.toLocaleString()}L
+                  {(summary.totalVariance || 0).toLocaleString()}L
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   Avg: {summary.averageVariancePercentage.toFixed(2)}%
@@ -749,7 +749,7 @@ export default function TanksReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-orange-600">
-                  {summary.totalClosingStock.toLocaleString()}L
+                  {(summary.totalClosingStock || 0).toLocaleString()}L
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {((summary.totalClosingStock / summary.totalCapacity) * 100).toFixed(1)}% of capacity
@@ -860,7 +860,7 @@ export default function TanksReportsPage() {
                       {tank.tankName} - {tank.fuelName}
                     </CardTitle>
                     <CardDescription>
-                      {tank.tankNumber} • Capacity: {tank.capacity.toLocaleString()}L
+                      {tank.tankNumber} • Capacity: {(tank.capacity || 0).toLocaleString()}L
                     </CardDescription>
                   </div>
                   <Badge className={getStatusColor(tank.varianceStatus)}>
@@ -874,22 +874,22 @@ export default function TanksReportsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="p-4 bg-muted rounded-lg">
                     <div className="text-sm text-muted-foreground mb-2">Opening Stock</div>
-                    <div className="text-2xl font-bold">{tank.openingDip.toLocaleString()}L</div>
+                    <div className="text-2xl font-bold">{(tank.openingDip || 0).toLocaleString()}L</div>
                     <div className="text-xs text-muted-foreground mt-1">
-                      {tank.openingPercentage.toFixed(1)}% • Book: {tank.openingBook.toLocaleString()}L
+                      {tank.openingPercentage.toFixed(1)}% • Book: {(tank.openingBook || 0).toLocaleString()}L
                     </div>
                   </div>
                   <div className="p-4 bg-muted rounded-lg">
                     <div className="text-sm text-muted-foreground mb-2">Closing Stock</div>
-                    <div className="text-2xl font-bold">{tank.closingDip.toLocaleString()}L</div>
+                    <div className="text-2xl font-bold">{(tank.closingDip || 0).toLocaleString()}L</div>
                     <div className="text-xs text-muted-foreground mt-1">
-                      {tank.closingPercentage.toFixed(1)}% • Book: {tank.closingBook.toLocaleString()}L
+                      {tank.closingPercentage.toFixed(1)}% • Book: {(tank.closingBook || 0).toLocaleString()}L
                     </div>
                   </div>
                   <div className="p-4 bg-muted rounded-lg">
                     <div className="text-sm text-muted-foreground mb-2">Variance</div>
                     <div className={`text-2xl font-bold ${getVarianceColor(tank.variancePercentage)}`}>
-                      {tank.variance >= 0 ? '+' : ''}{tank.variance.toLocaleString()}L
+                      {tank.variance >= 0 ? '+' : ''}{(tank.variance || 0).toLocaleString()}L
                     </div>
                     <div className={`text-xs mt-1 ${getVarianceColor(tank.variancePercentage)}`}>
                       {tank.variancePercentage >= 0 ? '+' : ''}{tank.variancePercentage.toFixed(2)}%
@@ -905,7 +905,7 @@ export default function TanksReportsPage() {
                       <span className="text-sm font-medium">Deliveries</span>
                     </div>
                     <div className="text-xl font-bold text-green-600">
-                      +{tank.deliveries.toLocaleString()}L
+                      +{(tank.deliveries || 0).toLocaleString()}L
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {tank.deliveryCount} delivery{tank.deliveryCount !== 1 ? 's' : ''}
@@ -917,7 +917,7 @@ export default function TanksReportsPage() {
                       <span className="text-sm font-medium">Sales</span>
                     </div>
                     <div className="text-xl font-bold text-red-600">
-                      -{tank.sales.toLocaleString()}L
+                      -{(tank.sales || 0).toLocaleString()}L
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {tank.salesTransactionCount} transactions
@@ -929,7 +929,7 @@ export default function TanksReportsPage() {
                       <span className="text-sm font-medium">Test Returns</span>
                     </div>
                     <div className="text-xl font-bold text-orange-600">
-                      +{tank.testReturns.toLocaleString()}L
+                      +{(tank.testReturns || 0).toLocaleString()}L
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {tank.testPourDetails.length} test{tank.testPourDetails.length !== 1 ? 's' : ''}
@@ -944,7 +944,7 @@ export default function TanksReportsPage() {
                       {tank.daysUntilEmpty.toFixed(1)}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      Avg sales: {tank.averageDailySales.toLocaleString()}L/day
+                      Avg sales: {(tank.averageDailySales || 0).toLocaleString()}L/day
                     </div>
                   </div>
                 </div>
@@ -989,7 +989,7 @@ export default function TanksReportsPage() {
                     <AlertDescription>
                       Recommended delivery date: <strong>{new Date(tank.recommendedDeliveryDate).toLocaleDateString()}</strong>
                       {tank.lastDeliveryDate && (
-                        <> • Last delivery: {new Date(tank.lastDeliveryDate).toLocaleDateString()} ({tank.lastDeliveryQuantity?.toLocaleString()}L)</>
+                        <> • Last delivery: {new Date(tank.lastDeliveryDate).toLocaleDateString()} ({(tank.lastDeliveryQuantity || 0).toLocaleString()}L)</>
                       )}
                     </AlertDescription>
                   </Alert>

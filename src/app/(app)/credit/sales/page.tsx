@@ -144,7 +144,7 @@ export default function CreditSalesPage() {
     // Check customer credit limit
     const customer = customers.find(c => c.id === selectedCustomer)
     if (customer && amount > customer.availableCredit) {
-      setError(`Amount exceeds available credit limit of Rs. ${customer.availableCredit.toLocaleString()}`)
+      setError(`Amount exceeds available credit limit of Rs. ${(customer.availableCredit || 0).toLocaleString()}`)
       return
     }
 
@@ -262,7 +262,7 @@ export default function CreditSalesPage() {
         <div className="flex items-center gap-2">
           <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
           <span className="font-mono font-semibold text-green-700">
-            Rs. {(value as number)?.toLocaleString() || 0}
+            Rs. {((value as number) || 0).toLocaleString()}
           </span>
         </div>
       )
@@ -363,7 +363,7 @@ export default function CreditSalesPage() {
                         <div className="flex flex-col">
                           <span className="font-medium">{customer.name}</span>
                           <span className="text-xs text-muted-foreground">
-                            Available: Rs. {customer.availableCredit.toLocaleString()}
+                            Available: Rs. {(customer.availableCredit || 0).toLocaleString()}
                           </span>
                         </div>
                       </div>
@@ -374,9 +374,9 @@ export default function CreditSalesPage() {
               {selectedCustomerData && (
                 <div className="mt-2 p-2 bg-orange-500/10 dark:bg-orange-500/20 rounded-md">
                   <div className="text-xs text-orange-700">
-                    <div>Credit Limit: Rs. {selectedCustomerData.creditLimit.toLocaleString()}</div>
-                    <div>Current Balance: Rs. {selectedCustomerData.currentBalance.toLocaleString()}</div>
-                    <div className="font-semibold">Available: Rs. {selectedCustomerData.availableCredit.toLocaleString()}</div>
+                    <div>Credit Limit: Rs. {(selectedCustomerData.creditLimit || 0).toLocaleString()}</div>
+                    <div>Current Balance: Rs. {(selectedCustomerData.currentBalance || 0).toLocaleString()}</div>
+                    <div className="font-semibold">Available: Rs. {(selectedCustomerData.availableCredit || 0).toLocaleString()}</div>
                   </div>
                 </div>
               )}

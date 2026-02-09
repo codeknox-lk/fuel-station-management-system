@@ -819,7 +819,7 @@ export default function SafePage() {
     if (depositAmount > currentBalance) {
       toast({
         title: "Deposit Amount Error",
-        description: `Cannot deposit more than the current safe cash balance: Rs. ${(currentBalance || 0).toLocaleString()}`,
+        description: `Cannot deposit more than the current safe cash balance: Rs. ${(currentBalance || (0) || 0).toLocaleString()}`,
         variant: "destructive",
       })
       return
@@ -990,7 +990,7 @@ export default function SafePage() {
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm">{new Date(value as string).toLocaleString()}</span>
+          <span className="text-sm">{new Date(value as (string) || 0).toLocaleString()}</span>
         </div>
       )
     },
@@ -1051,10 +1051,10 @@ export default function SafePage() {
 
           const breakdown = row.breakdown
           const parts: string[] = []
-          if (breakdown && breakdown.cash > 0) parts.push(`Cash: Rs. ${breakdown.cash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
-          if (breakdown && breakdown.card > 0) parts.push(`Card: Rs. ${breakdown.card.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
-          if (breakdown && breakdown.credit > 0) parts.push(`Credit: Rs. ${breakdown.credit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
-          if (breakdown && breakdown.cheque > 0) parts.push(`Cheque: Rs. ${breakdown.cheque.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+          if (breakdown && breakdown.cash > 0) parts.push(`Cash: Rs. ${(breakdown.cash || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+          if (breakdown && breakdown.card > 0) parts.push(`Card: Rs. ${(breakdown.card || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+          if (breakdown && breakdown.credit > 0) parts.push(`Credit: Rs. ${(breakdown.credit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+          if (breakdown && breakdown.cheque > 0) parts.push(`Cheque: Rs. ${(breakdown.cheque || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
 
           return (
             <div className="space-y-1">
@@ -1068,7 +1068,7 @@ export default function SafePage() {
                   {parts.join(' • ')}
                   {breakdown && breakdown.total > 0 && (
                     <span className="ml-2 font-semibold text-foreground">
-                      • Total: Rs. {breakdown.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      • Total: Rs. {(breakdown.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   )}
                 </div>
@@ -1138,7 +1138,7 @@ export default function SafePage() {
           <div className={`flex items-center gap-2 font-mono ${isIncome ? 'text-green-700' : 'text-red-700'}`}>
             {isIncome ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
             <span className="font-semibold">
-              Rs. {Math.abs(value as number).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs. {Math.abs(value as (number) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
         )
@@ -1150,7 +1150,7 @@ export default function SafePage() {
       render: (value: unknown) => (
         <div className="flex items-center gap-2 font-mono">
           <Wallet className="h-4 w-4 text-muted-foreground" />
-          <span className="font-semibold">Rs. {(value as number).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span className="font-semibold">Rs. {(value as (number) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
       )
     },
@@ -1258,7 +1258,7 @@ export default function SafePage() {
             <div className="flex-1">
               <h3 className="text-sm font-medium text-muted-foreground">Opening Balance</h3>
               <p className="text-2xl font-bold text-foreground mt-1">
-                Rs. {safe?.openingBalance.toLocaleString() || '0'}
+                Rs. {(safe?.openingBalance || 0).toLocaleString() || '0'}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 Starting cash at beginning of period
@@ -1273,7 +1273,7 @@ export default function SafePage() {
             <div className="flex-1">
               <h3 className="text-sm font-medium text-muted-foreground">Physical Cash</h3>
               <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
-                Rs. {safe?.currentBalance.toLocaleString() || '0'}
+                Rs. {(safe?.currentBalance || 0).toLocaleString() || '0'}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 Actual cash in safe
@@ -1288,7 +1288,7 @@ export default function SafePage() {
             <div className="flex-1">
               <h3 className="text-sm font-medium text-muted-foreground">Outstanding Credit</h3>
               <p className="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1">
-                Rs. {outstandingCredit.toLocaleString()}
+                Rs. {(outstandingCredit || 0).toLocaleString()}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 Credit slips (not cash)
@@ -1303,7 +1303,7 @@ export default function SafePage() {
             <div className="flex-1">
               <h3 className="text-sm font-medium text-muted-foreground">Total Assets</h3>
               <p className="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1">
-                Rs. {((safe?.currentBalance || 0) + outstandingCredit).toLocaleString()}
+                Rs. {((safe?.currentBalance || 0) + (outstandingCredit) || 0).toLocaleString()}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 Cash + Outstanding Credit
@@ -1336,7 +1336,7 @@ export default function SafePage() {
                       const loanRepaid = groupedTransactions
                         .filter(t => !('isGrouped' in t && t.isGrouped) && t.type === 'LOAN_REPAID')
                         .reduce((sum, t) => sum + t.amount, 0)
-                      return (loanGiven - loanRepaid).toLocaleString()
+                      return (loanGiven - (loanRepaid) || 0).toLocaleString()
                     })()}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -1364,7 +1364,7 @@ export default function SafePage() {
                             ['CASH_FUEL_SALES', 'POS_CARD_PAYMENT', 'CREDIT_PAYMENT', 'CHEQUE_RECEIVED', 'LOAN_REPAID'].includes(t.type)
                         })
                         .reduce((sum, t) => sum + t.amount, 0)
-                      return todayCollections.toLocaleString()
+                      return (todayCollections || 0).toLocaleString()
                     })()}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -1393,7 +1393,7 @@ export default function SafePage() {
                       const deposits = groupedTransactions
                         .filter(t => !('isGrouped' in t && t.isGrouped) && t.type === 'BANK_DEPOSIT' && new Date(t.timestamp) >= weekAgo)
                         .reduce((sum, t) => sum + t.amount, 0)
-                      return deposits.toLocaleString()
+                      return (deposits || 0).toLocaleString()
                     })()}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -1421,7 +1421,7 @@ export default function SafePage() {
                       const largest = todayTx.length > 0
                         ? Math.max(...todayTx.map(t => t.amount))
                         : 0
-                      return largest.toLocaleString()
+                      return (largest || 0).toLocaleString()
                     })()}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -1808,7 +1808,7 @@ export default function SafePage() {
                     />
                     {safe && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        Available in safe: Rs. {(safe.currentBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        Available in safe: Rs. {(safe.currentBalance || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                     )}
                   </div>
@@ -1902,7 +1902,7 @@ export default function SafePage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Total Pending Value</p>
-                    <p className="text-2xl font-bold">Rs. {cheques.filter(c => c.status === 'PENDING').reduce((sum, c) => sum + c.amount, 0).toLocaleString()}</p>
+                    <p className="text-2xl font-bold">Rs. {cheques.filter(c => c.status === 'PENDING').reduce((sum, c) => sum + c.amount, (0) || 0).toLocaleString()}</p>
                   </div>
                   <DollarSign className="h-8 w-8 text-yellow-500" />
                 </div>
@@ -1923,7 +1923,7 @@ export default function SafePage() {
                 { key: 'chequeDate', title: 'Cheque Date', render: (val) => val ? new Date(val as string).toLocaleDateString() : '-' },
                 { key: 'chequeNumber', title: 'Cheque No.' },
                 { key: 'bank', title: 'Bank', render: (_, row) => row.bank?.name || '-' },
-                { key: 'amount', title: 'Amount', render: (val) => `Rs. ${Number(val).toLocaleString()}` },
+                { key: 'amount', title: 'Amount', render: (val) => `Rs. ${(Number(val) || 0).toLocaleString()}` },
                 { key: 'receivedFrom', title: 'Received From', render: (val, row) => row.creditPayment?.customer?.name || (val as string) },
                 {
                   key: 'status', title: 'Status', render: (val) => (
@@ -2001,7 +2001,7 @@ export default function SafePage() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label className="text-right">Amount</Label>
-              <div className="col-span-3 font-medium">Rs. {(selectedCheque?.amount || 0).toLocaleString()}</div>
+              <div className="col-span-3 font-medium">Rs. {(selectedCheque?.amount || (0) || 0).toLocaleString()}</div>
             </div>
 
             {chequeAction === 'DEPOSIT' && (

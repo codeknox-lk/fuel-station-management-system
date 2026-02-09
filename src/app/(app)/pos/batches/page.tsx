@@ -255,7 +255,7 @@ export default function POSBatchesPage() {
         <div className="flex items-center gap-1">
           <Badge className="bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300 text-xs">VISA</Badge>
           <span className="font-mono text-xs">
-            {(value as number)?.toLocaleString() || '0'}
+            {((value as number) || 0).toLocaleString()}
           </span>
         </div>
       )
@@ -267,7 +267,7 @@ export default function POSBatchesPage() {
         <div className="flex items-center gap-1">
           <Badge className="bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300 text-xs">MC</Badge>
           <span className="font-mono text-xs">
-            {(value as number)?.toLocaleString() || '0'}
+            {((value as number) || 0).toLocaleString()}
           </span>
         </div>
       )
@@ -279,7 +279,7 @@ export default function POSBatchesPage() {
         <div className="flex items-center gap-1">
           <Badge className="bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300 text-xs">QR</Badge>
           <span className="font-mono text-xs">
-            {(value as number)?.toLocaleString() || '0'}
+            {((value as number) || 0).toLocaleString()}
           </span>
         </div>
       )
@@ -291,7 +291,7 @@ export default function POSBatchesPage() {
         <div className="flex items-center gap-2">
           <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
           <span className="font-mono font-semibold text-green-700">
-            {(value as number)?.toLocaleString() || '0'}
+            {((value as number) || 0).toLocaleString()}
           </span>
         </div>
       )
@@ -408,7 +408,7 @@ export default function POSBatchesPage() {
             </div>
             <div className="flex items-end">
               <div className="text-sm text-muted-foreground">
-                <strong>Total Amount: Rs. {totalAmount.toLocaleString()}</strong>
+                <strong>Total Amount: Rs. {(totalAmount || 0).toLocaleString()}</strong>
               </div>
             </div>
           </div>
@@ -466,7 +466,7 @@ export default function POSBatchesPage() {
                 />
                 <Label htmlFor="addToSafeBatch" className="flex items-center gap-2 cursor-pointer">
                   <Wallet className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  <span className="font-medium">Put batch total (Rs. {totalAmount.toLocaleString()}) into Safe</span>
+                  <span className="font-medium">Put batch total (Rs. {(totalAmount || 0).toLocaleString()}) into Safe</span>
                 </Label>
               </div>
               <p className="text-sm text-muted-foreground mt-2 ml-7">

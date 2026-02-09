@@ -297,7 +297,7 @@ export default function PumperVariancePage() {
       title: 'Total Variance',
       render: (value: unknown) => (
         <span className="font-semibold text-red-600 dark:text-red-400">
-          Rs. {(value as number)?.toLocaleString() || 0}
+          Rs. {((value as number) || 0).toLocaleString()}
         </span>
       )
     },
@@ -306,7 +306,7 @@ export default function PumperVariancePage() {
       title: 'Amount Due',
       render: (value: unknown) => (
         <span className="font-semibold text-orange-600 dark:text-orange-400">
-          Rs. {(value as number)?.toLocaleString() || 0}
+          Rs. {((value as number) || 0).toLocaleString()}
         </span>
       )
     },
@@ -315,7 +315,7 @@ export default function PumperVariancePage() {
       title: 'Max Shortage',
       render: (value: unknown) => (
         <span className="font-semibold text-red-700">
-          Rs. {(value as number)?.toLocaleString() || 0}
+          Rs. {((value as number) || 0).toLocaleString()}
         </span>
       )
     },
@@ -501,7 +501,7 @@ export default function PumperVariancePage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-700">
-                  Rs. {totalVarianceAmount.toLocaleString()}
+                  Rs. {(totalVarianceAmount || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground">All pumpers combined</div>
               </CardContent>
@@ -513,7 +513,7 @@ export default function PumperVariancePage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-700">
-                  Rs. {totalDueAmount.toLocaleString()}
+                  Rs. {(totalDueAmount || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground">From pumpers</div>
               </CardContent>
@@ -594,7 +594,7 @@ export default function PumperVariancePage() {
               <DollarSign className="h-4 w-4" />
               <AlertTitle>High Recovery Amount</AlertTitle>
               <AlertDescription>
-                Total amount due from pumpers is Rs. {totalDueAmount.toLocaleString()}.
+                Total amount due from pumpers is Rs. {(totalDueAmount || 0).toLocaleString()}.
                 Consider implementing stricter controls and recovery procedures.
               </AlertDescription>
             </Alert>

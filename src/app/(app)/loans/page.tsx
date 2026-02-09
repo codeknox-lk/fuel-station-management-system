@@ -302,7 +302,7 @@ export default function LoansPage() {
           <CardContent>
             <div className="text-2xl font-bold">{activePumperLoans.length}</div>
             <div className="text-sm text-muted-foreground mt-1">
-              Rs. {totalActivePumper.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs. {(totalActivePumper || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </CardContent>
         </Card>
@@ -312,7 +312,7 @@ export default function LoansPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              Rs. {totalMonthlyRental.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs. {(totalMonthlyRental || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </CardContent>
         </Card>
@@ -323,7 +323,7 @@ export default function LoansPage() {
           <CardContent>
             <div className="text-2xl font-bold">{activeExternalLoans.length}</div>
             <div className="text-sm text-muted-foreground mt-1">
-              Rs. {totalActiveExternal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs. {(totalActiveExternal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </CardContent>
         </Card>
@@ -399,16 +399,16 @@ export default function LoansPage() {
                           <TableRow key={loan.id}>
                             <TableCell className="font-medium">{loan.pumperName}</TableCell>
                             <TableCell className="text-right font-mono">
-                              Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              Rs. {(loan.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </TableCell>
                             <TableCell className="text-right font-mono text-green-600">
-                              Rs. {paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              Rs. {(paidAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </TableCell>
                             <TableCell className="text-right font-mono font-semibold text-orange-600">
-                              Rs. {remainingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              Rs. {(remainingAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </TableCell>
                             <TableCell className="text-right font-mono">
-                              Rs. {(loan.monthlyRental || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              Rs. {(loan.monthlyRental || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </TableCell>
                             <TableCell className="max-w-xs truncate" title={loan.reason}>
                               {loan.reason}
@@ -476,10 +476,10 @@ export default function LoansPage() {
                         <TableRow key={loan.id}>
                           <TableCell className="font-medium">{loan.pumperName}</TableCell>
                           <TableCell className="text-right font-mono">
-                            Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            Rs. {(loan.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </TableCell>
                           <TableCell className="text-right font-mono">
-                            Rs. {(loan.monthlyRental || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            Rs. {(loan.monthlyRental || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </TableCell>
                           <TableCell className="max-w-xs truncate" title={loan.reason}>
                             {loan.reason}
@@ -543,7 +543,7 @@ export default function LoansPage() {
                         <TableRow key={loan.id}>
                           <TableCell className="font-medium">{loan.borrowerName}</TableCell>
                           <TableCell className="text-right font-mono">
-                            Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            Rs. {(loan.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </TableCell>
                           <TableCell>{new Date(loan.dueDate).toLocaleDateString()}</TableCell>
                           <TableCell>
@@ -603,7 +603,7 @@ export default function LoansPage() {
                         <TableRow key={loan.id}>
                           <TableCell className="font-medium">{loan.borrowerName}</TableCell>
                           <TableCell className="text-right font-mono">
-                            Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            Rs. {(loan.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </TableCell>
                           <TableCell>{new Date(loan.dueDate).toLocaleDateString()}</TableCell>
                           <TableCell>
@@ -668,16 +668,16 @@ export default function LoansPage() {
                           <TableRow key={loan.id}>
                             <TableCell className="font-medium">{loan.staffName}</TableCell>
                             <TableCell className="text-right font-mono">
-                              Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              Rs. {(loan.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </TableCell>
                             <TableCell className="text-right font-mono text-green-600 dark:text-green-400">
-                              Rs. {(loan.paidAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              Rs. {(loan.paidAmount || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </TableCell>
                             <TableCell className="text-right font-mono font-bold text-orange-600 dark:text-orange-400">
-                              Rs. {balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              Rs. {(balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </TableCell>
                             <TableCell className="text-right font-mono">
-                              Rs. {(loan.monthlyRental || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              Rs. {(loan.monthlyRental || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </TableCell>
                             <TableCell>{new Date(loan.dueDate).toLocaleDateString()}</TableCell>
                             <TableCell>
@@ -739,7 +739,7 @@ export default function LoansPage() {
                         <TableRow key={loan.id}>
                           <TableCell className="font-medium">{loan.staffName}</TableCell>
                           <TableCell className="text-right font-mono">
-                            Rs. {loan.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            Rs. {(loan.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </TableCell>
                           <TableCell>{new Date(loan.dueDate).toLocaleDateString()}</TableCell>
                           <TableCell>
@@ -796,12 +796,12 @@ export default function LoansPage() {
                   <TableRow key={payment.id}>
                     <TableCell>{new Date(payment.timestamp).toLocaleString()}</TableCell>
                     <TableCell className="font-mono font-semibold text-green-600">
-                      Rs. {payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      Rs. {(payment.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </TableCell>
                     <TableCell>{payment.description}</TableCell>
                     <TableCell>{payment.performedBy}</TableCell>
                     <TableCell className="font-mono">
-                      Rs. {payment.balanceAfter.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      Rs. {(payment.balanceAfter || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -825,11 +825,11 @@ export default function LoansPage() {
               <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
                 <div className="text-sm font-medium mb-2">Loan Details</div>
                 <div className="text-sm space-y-1 text-muted-foreground">
-                  <div>Loan Amount: Rs. {selectedLoanForPayment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  <div>Loan Amount: Rs. {(selectedLoanForPayment.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                   {selectedLoanForPayment.paidAmount !== undefined && (
                     <>
-                      <div>Paid: Rs. {selectedLoanForPayment.paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                      <div>Remaining: Rs. {(selectedLoanForPayment.amount - (selectedLoanForPayment.paidAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                      <div>Paid: Rs. {(selectedLoanForPayment.paidAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                      <div>Remaining: Rs. {(selectedLoanForPayment.amount - (selectedLoanForPayment.paidAmount || (0)) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                     </>
                   )}
                   <div>Loan Type: {selectedLoanForPayment.type === 'PUMPER' ? 'Pumper Loan' : 'External Loan'}</div>
@@ -844,12 +844,12 @@ export default function LoansPage() {
                 />
                 {selectedLoanForPayment.paidAmount !== undefined && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    Remaining: Rs. {(selectedLoanForPayment.amount - (selectedLoanForPayment.paidAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Remaining: Rs. {(selectedLoanForPayment.amount - (selectedLoanForPayment.paidAmount || (0)) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 )}
                 {selectedLoanForPayment.paidAmount === undefined && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    Full amount: Rs. {selectedLoanForPayment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Full amount: Rs. {(selectedLoanForPayment.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 )}
               </div>

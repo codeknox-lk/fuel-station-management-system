@@ -282,7 +282,7 @@ export default function TankReportPage() {
                 </div>
                 <div className="text-center">
                   <div className={`text-2xl font-bold ${report.totalVariance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {report.totalVariance >= 0 ? '+' : ''}{report.totalVariance.toLocaleString()}L
+                    {report.totalVariance >= 0 ? '+' : ''}{(report.totalVariance || 0).toLocaleString()}L
                   </div>
                   <div className="text-sm text-muted-foreground">Total Variance</div>
                 </div>
@@ -321,7 +321,7 @@ export default function TankReportPage() {
                         <Droplets className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                         <span className="font-medium">Opening</span>
                       </div>
-                      <div className="text-lg">{tank.openingStock.toLocaleString()}L</div>
+                      <div className="text-lg">{(tank.openingStock || 0).toLocaleString()}L</div>
                     </div>
 
                     {/* Deliveries */}
@@ -330,7 +330,7 @@ export default function TankReportPage() {
                         <Truck className="h-4 w-4 text-green-600 dark:text-green-400" />
                         <span className="font-medium">Deliveries</span>
                       </div>
-                      <div className="text-lg text-green-600 dark:text-green-400">+{tank.deliveries.toLocaleString()}L</div>
+                      <div className="text-lg text-green-600 dark:text-green-400">+{(tank.deliveries || 0).toLocaleString()}L</div>
                     </div>
 
                     {/* Sales */}
@@ -339,7 +339,7 @@ export default function TankReportPage() {
                         <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
                         <span className="font-medium">Sales</span>
                       </div>
-                      <div className="text-lg text-red-600 dark:text-red-400">-{tank.sales.toLocaleString()}L</div>
+                      <div className="text-lg text-red-600 dark:text-red-400">-{(tank.sales || 0).toLocaleString()}L</div>
                     </div>
 
                     {/* Test Returns */}
@@ -348,7 +348,7 @@ export default function TankReportPage() {
                         <TestTube className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                         <span className="font-medium">Test Returns</span>
                       </div>
-                      <div className="text-lg text-orange-600 dark:text-orange-400">+{tank.testReturns.toLocaleString()}L</div>
+                      <div className="text-lg text-orange-600 dark:text-orange-400">+{(tank.testReturns || 0).toLocaleString()}L</div>
                     </div>
 
                     {/* Book Stock */}
@@ -357,7 +357,7 @@ export default function TankReportPage() {
                         <Calculator className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">Book Stock</span>
                       </div>
-                      <div className="text-lg">{tank.closingBookStock.toLocaleString()}L</div>
+                      <div className="text-lg">{(tank.closingBookStock || 0).toLocaleString()}L</div>
                     </div>
 
                     {/* Dip Stock */}
@@ -366,7 +366,7 @@ export default function TankReportPage() {
                         <Droplets className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                         <span className="font-medium">Dip Stock</span>
                       </div>
-                      <div className="text-lg font-semibold">{tank.closingDipStock.toLocaleString()}L</div>
+                      <div className="text-lg font-semibold">{(tank.closingDipStock || 0).toLocaleString()}L</div>
                     </div>
 
                     {/* Variance */}
@@ -380,7 +380,7 @@ export default function TankReportPage() {
                         <span className="font-medium">Variance</span>
                       </div>
                       <div className={`text-lg font-bold ${tank.variance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                        {tank.variance >= 0 ? '+' : ''}{tank.variance.toLocaleString()}L
+                        {tank.variance >= 0 ? '+' : ''}{(tank.variance || 0).toLocaleString()}L
                       </div>
                       <div className={`text-xs ${Math.abs(tank.variancePercentage) <= 2 ? 'text-muted-foreground' : 'text-red-600 dark:text-red-400'}`}>
                         ({tank.variancePercentage >= 0 ? '+' : ''}{tank.variancePercentage.toFixed(2)}%)
@@ -392,7 +392,7 @@ export default function TankReportPage() {
                   <div className="mt-4 pt-4 border-t">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">
-                        Tolerance Limit: ±{tank.toleranceLimit.toLocaleString()}L
+                        Tolerance Limit: ±{(tank.toleranceLimit || 0).toLocaleString()}L
                       </span>
                       <span className={`font-medium ${tank.toleranceStatus === 'NORMAL' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                         {Math.abs(tank.variance) <= tank.toleranceLimit ? 'Within Tolerance' : 'Exceeds Tolerance'}

@@ -84,7 +84,7 @@ export async function POST(
       return NextResponse.json(
         {
           error: 'After dip reading exceeds tank capacity',
-          details: `Tank capacity: ${delivery.tank.capacity.toLocaleString()}L, After dip: ${afterDipReading.toLocaleString()}L`
+          details: `Tank capacity: ${(delivery.tank.capacity || 0).toLocaleString()}L, After dip: ${(afterDipReading || 0).toLocaleString()}L`
         },
         { status: 400 }
       )

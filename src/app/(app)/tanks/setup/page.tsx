@@ -409,7 +409,7 @@ export default function InfrastructureSetupPage() {
                               <Fuel className="h-4 w-4" />
                               <span>{tank.fuel?.name || tank.fuelName || 'Unknown'}</span>
                               <span className="text-xs text-muted-foreground">
-                                ({tank.capacity.toLocaleString()}L)
+                                ({(tank.capacity || 0).toLocaleString()}L)
                               </span>
                             </div>
                           </SelectItem>

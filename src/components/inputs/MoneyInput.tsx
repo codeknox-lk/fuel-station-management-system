@@ -15,7 +15,7 @@ export const MoneyInput = forwardRef<HTMLInputElement, MoneyInputProps>(
   ({ value, onChange, currency = 'Rs.', allowNegative = false, className, ...props }, ref) => {
     const formatValue = (val: number | undefined): string => {
       if (val === undefined || val === null) return ''
-      return val.toLocaleString('en-US', {
+      return (val || 0).toLocaleString('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
       })
