@@ -1,16 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { id } = await params
 
     // Check if transaction exists
-    const transaction = await prisma.bankTransaction.findUnique({
-      where: { id }
+    const transaction = await prisma.bankTransaction.findFirst({
+      where: { id, organizationId: user.organizationId }
     })
 
     if (!transaction) {
@@ -22,7 +28,7 @@ export async function DELETE(
 
     // Delete transaction
     await prisma.bankTransaction.delete({
-      where: { id }
+      where: { id_organizationId: { id, organizationId: user.organizationId } }
     })
 
     return NextResponse.json({ message: 'Transaction deleted successfully' })
@@ -37,12 +43,17 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { id } = await params
     const body = await request.json()
 
     // Check if transaction exists
-    const existing = await prisma.bankTransaction.findUnique({
-      where: { id }
+    const existing = await prisma.bankTransaction.findFirst({
+      where: { id, organizationId: user.organizationId }
     })
 
     if (!existing) {
@@ -54,7 +65,7 @@ export async function PUT(
 
     // Update transaction
     const transaction = await prisma.bankTransaction.update({
-      where: { id },
+      where: { id_organizationId: { id, organizationId: user.organizationId } },
       data: {
         type: body.type || existing.type,
         amount: body.amount ? parseFloat(body.amount) : existing.amount,

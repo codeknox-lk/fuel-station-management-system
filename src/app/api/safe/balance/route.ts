@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
 
 // POST: Update opening balance (daily reset)
 export async function POST(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { stationId, openingBalance, countedBy } = body
 
@@ -15,14 +21,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Get or create safe
-    let safe = await prisma.safe.findUnique({
-      where: { stationId }
+    let safe = await prisma.safe.findFirst({
+      where: { stationId, organizationId: user.organizationId }
     })
 
     if (!safe) {
       safe = await prisma.safe.create({
         data: {
           stationId,
+          organizationId: user.organizationId,
           openingBalance: parseFloat(openingBalance),
           currentBalance: parseFloat(openingBalance)
         }
@@ -34,6 +41,7 @@ export async function POST(request: NextRequest) {
     const transactionsBefore = await prisma.safeTransaction.findMany({
       where: {
         safeId: safe.id,
+        organizationId: user.organizationId,
         timestamp: { lt: new Date() }
       },
       orderBy: { timestamp: 'asc' }
@@ -67,6 +75,7 @@ export async function POST(request: NextRequest) {
     const transaction = await prisma.safeTransaction.create({
       data: {
         safeId: safe.id,
+        organizationId: user.organizationId,
         type: 'OPENING_BALANCE',
         amount: newOpeningBalance,
         balanceBefore,

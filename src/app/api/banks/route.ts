@@ -1,17 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 import { CreateBankSchema } from '@/lib/schemas'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const active = searchParams.get('active')
     const id = searchParams.get('id')
 
     if (id) {
       // OPTIMIZED: Use select instead of include
-      const bank = await prisma.bank.findUnique({
-        where: { id },
+      const bank = await prisma.bank.findFirst({
+        where: {
+          id,
+          organizationId: user.organizationId
+        },
         select: {
           id: true,
           code: true,
@@ -55,8 +65,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(bank)
     }
 
-    // OPTIMIZED: Use select for faster query
-    const where = active === 'true' ? { isActive: true } : {}
+    // Filter by Organization
+    const where: Prisma.BankWhereInput = {
+      organizationId: user.organizationId,
+      ...(active === 'true' ? { isActive: true } : {})
+    }
+
     const banks = await prisma.bank.findMany({
       where,
       select: {
@@ -88,6 +102,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
 
     // Zod Validation
@@ -102,19 +121,23 @@ export async function POST(request: NextRequest) {
 
     const { code, name, branch, accountNumber, accountName, swiftCode, contactPerson, phone, email, status } = result.data
 
+    // Use Prisma.BankUncheckedCreateInput to correctly type the input including organizationId
+    const bankData: Prisma.BankUncheckedCreateInput = {
+      organizationId: user.organizationId,
+      code: code || null,
+      name,
+      branch: branch || null,
+      accountNumber: accountNumber || null,
+      accountName: accountName || null,
+      swiftCode: swiftCode || null,
+      contactPerson: contactPerson || null,
+      phone: phone || null,
+      email: email || null,
+      isActive: status === 'active'
+    }
+
     const newBank = await prisma.bank.create({
-      data: {
-        code: code || null,
-        name,
-        branch: branch || null,
-        accountNumber: accountNumber || null,
-        accountName: accountName || null,
-        swiftCode: swiftCode || null,
-        contactPerson: contactPerson || null,
-        phone: phone || null,
-        email: email || null,
-        isActive: status === 'active'
-      }
+      data: bankData
     })
 
     return NextResponse.json(newBank, { status: 201 })

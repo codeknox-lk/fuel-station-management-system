@@ -6,12 +6,19 @@ import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const stationId = searchParams.get('stationId')
     const activeOnly = searchParams.get('active') === 'true'
     const role = searchParams.get('role')
 
-    const where: Prisma.OfficeStaffWhereInput = {}
+    const where: Prisma.OfficeStaffWhereInput = {
+      organizationId: user.organizationId
+    }
 
     if (stationId) {
       where.stationId = stationId
@@ -51,8 +58,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
-    console.log('🔄 POST /api/office-staff - Creating new office staff:', body)
 
     // Zod Validation
     const result = CreateOfficeStaffSchema.safeParse(body)
@@ -91,6 +102,7 @@ export async function POST(request: NextRequest) {
       // Find the highest existing employee ID for office staff
       const allOfficeStaff = await prisma.officeStaff.findMany({
         where: {
+          organizationId: user.organizationId,
           employeeId: { not: null }
         },
         select: {
@@ -118,9 +130,9 @@ export async function POST(request: NextRequest) {
     // Check for duplicates
     const existing = await prisma.officeStaff.findFirst({
       where: {
+        organizationId: user.organizationId,
         name: name.trim(),
-        employeeId: finalEmployeeId,
-        stationId
+        employeeId: finalEmployeeId
       }
     })
 
@@ -170,7 +182,8 @@ export async function POST(request: NextRequest) {
         holidayAllowance: holidayAllowance,
         fuelAllowance: finalFuelAllowance,
         hireDate: hireDate || null,
-        isActive: isActive !== undefined ? isActive : true
+        isActive: isActive !== undefined ? isActive : true,
+        organizationId: user.organizationId
       },
       include: {
         station: {
@@ -184,21 +197,19 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Office staff created successfully:', newOfficeStaff.id)
 
-    // Get current user for audit log
-    const currentUser = await getServerUser()
-
     // Create audit log for office staff creation
     try {
       await prisma.auditLog.create({
         data: {
-          userId: currentUser?.userId || 'system',
-          userName: currentUser?.username || 'System User',
-          userRole: currentUser?.role || 'MANAGER',
+          userId: user.userId,
+          userName: user.username,
+          userRole: user.role,
           action: 'CREATE',
           entity: 'Office Staff',
           entityId: newOfficeStaff.id,
           details: `Created office staff: ${newOfficeStaff.name} (${newOfficeStaff.employeeId}) - ${newOfficeStaff.role}`,
-          stationId: newOfficeStaff.stationId
+          stationId: newOfficeStaff.stationId,
+          organizationId: user.organizationId
         }
       })
     } catch (auditError) {

@@ -214,7 +214,7 @@ export default function ShiftsPage() {
       const data = await response.json()
 
       // Handle new API response format
-      const shiftsData = data.shifts || data // Support both old and new format
+      const shiftsData = Array.isArray(data.shifts) ? data.shifts : (Array.isArray(data) ? data : [])
       const summary = data.summary || {}
 
       // Transform the data to include station names and use real statistics

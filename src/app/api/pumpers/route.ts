@@ -9,13 +9,20 @@ export async function GET(request: NextRequest) {
     const activeOnly = searchParams.get('active') === 'true'
     const shiftId = searchParams.get('shiftId')
     const stationId = searchParams.get('stationId')
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     let pumpers
 
     // If shiftId is provided, get pumpers from shift assignments
     if (shiftId) {
       const assignments = await prisma.shiftAssignment.findMany({
-        where: { shiftId },
+        where: {
+          shiftId,
+          organizationId: user.organizationId
+        },
         select: {
           pumperName: true
         },
@@ -24,19 +31,11 @@ export async function GET(request: NextRequest) {
 
       const pumperNames = assignments.map(a => a.pumperName)
 
-      interface PumperWhereInput {
-        name?: { in: string[] }
-        stationId?: string
-        isActive?: boolean
-      }
-      const where: PumperWhereInput = {
-        name: { in: pumperNames }
-      }
-      if (stationId) {
-        where.stationId = stationId
-      }
-      if (activeOnly) {
-        where.isActive = true
+      const where = {
+        organizationId: user.organizationId,
+        name: { in: pumperNames },
+        ...(stationId && { stationId }),
+        ...(activeOnly && { isActive: true })
       }
 
       pumpers = await prisma.pumper.findMany({
@@ -63,14 +62,10 @@ export async function GET(request: NextRequest) {
       })
     } else {
       // OPTIMIZED: Get all pumpers with ALL needed fields
-      interface PumperWhereInput {
-        name?: { in: string[] }
-        stationId?: string
-        isActive?: boolean
-      }
-      const where: PumperWhereInput = activeOnly ? { isActive: true } : {}
-      if (stationId) {
-        where.stationId = stationId
+      const where = {
+        organizationId: user.organizationId,
+        ...(stationId && { stationId }),
+        ...(activeOnly && { isActive: true })
       }
       pumpers = await prisma.pumper.findMany({
         where,
@@ -105,6 +100,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     console.log('🔄 POST /api/pumpers - Creating new pumper')
 
@@ -141,6 +141,7 @@ export async function POST(request: NextRequest) {
     // Find the highest existing employee ID
     const allPumpers = await prisma.pumper.findMany({
       where: {
+        organizationId: user.organizationId,
         employeeId: { not: null }
       },
       select: {
@@ -170,6 +171,7 @@ export async function POST(request: NextRequest) {
     // Check by name + employeeId
     const existing = await prisma.pumper.findFirst({
       where: {
+        organizationId: user.organizationId,
         name: name.trim(),
         employeeId: finalEmployeeId
       }
@@ -187,6 +189,7 @@ export async function POST(request: NextRequest) {
     if (phoneToUse) {
       const existingByPhone = await prisma.pumper.findFirst({
         where: {
+          organizationId: user.organizationId,
           name: name.trim(),
           phone: phoneToUse
         }
@@ -219,27 +222,26 @@ export async function POST(request: NextRequest) {
         specializations: specializations,
         baseSalary: baseSalary,
         holidayAllowance: holidayAllowance,
-        isActive: isActive !== undefined ? isActive : true
+        isActive: isActive !== undefined ? isActive : true,
+        organizationId: user.organizationId
       }
     })
 
     console.log('✅ Pumper created successfully:', newPumper.id)
 
-    // Get current user for audit log
-    const currentUser = await getServerUser()
-
     // Create audit log for pumper creation
     try {
       await prisma.auditLog.create({
         data: {
-          userId: currentUser?.userId || 'system',
-          userName: currentUser?.username || 'System User',
-          userRole: currentUser?.role || 'MANAGER',
+          userId: user.userId,
+          userName: user.username,
+          userRole: user.role,
           action: 'CREATE',
           entity: 'Pumper',
           entityId: newPumper.id,
           details: `Created pumper: ${newPumper.name} (${newPumper.employeeId})`,
-          stationId: newPumper.stationId || undefined
+          stationId: newPumper.stationId || undefined,
+          organizationId: user.organizationId
         }
       })
     } catch (auditError) {

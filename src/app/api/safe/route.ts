@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { safeParseFloat } from '@/lib/validation'
+import { getServerUser } from '@/lib/auth-server'
 
 // GET: Get safe for station(s) or create if doesn't exist
 export async function GET(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const stationId = searchParams.get('stationId')
 
@@ -12,6 +18,7 @@ export async function GET(request: NextRequest) {
     if (!stationId) {
       // Use select instead of include for faster query
       const allSafes = await prisma.safe.findMany({
+        where: { organizationId: user.organizationId },
         select: {
           id: true,
           currentBalance: true,
@@ -37,6 +44,15 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // Verify station belongs to user's organization if stationId is provided
+    const stationExists = await prisma.station.findFirst({
+      where: { id: stationId, organizationId: user.organizationId }
+    })
+
+    if (!stationExists) {
+      return NextResponse.json({ error: 'Station not found or access denied' }, { status: 404 })
+    }
+
     // OPTIMIZED: Use select, avoid fetching all transactions
     // OPTIMIZED: Use upsert to handle race conditions
     const safe = await prisma.safe.upsert({
@@ -44,6 +60,7 @@ export async function GET(request: NextRequest) {
       update: {}, // No updates needed if it exists
       create: {
         stationId,
+        organizationId: user.organizationId,
         openingBalance: 0,
         currentBalance: 0
       },
@@ -73,6 +90,11 @@ export async function GET(request: NextRequest) {
 // POST: Create a safe transaction
 export async function POST(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     interface SafeTransactionBody {
       stationId?: string
       type?: string
@@ -116,15 +138,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Verify station belongs to user's organization
+    const station = await prisma.station.findFirst({
+      where: { id: stationId, organizationId: user.organizationId }
+    })
+
+    if (!station) {
+      return NextResponse.json({ error: 'Station not found or access denied' }, { status: 404 })
+    }
+
     // Get or create safe
-    let safe = await prisma.safe.findUnique({
-      where: { stationId }
+    let safe = await prisma.safe.findFirst({
+      where: { stationId, organizationId: user.organizationId }
     })
 
     if (!safe) {
       safe = await prisma.safe.create({
         data: {
           stationId,
+          organizationId: user.organizationId,
           openingBalance: 0,
           currentBalance: 0
         }
@@ -136,6 +168,7 @@ export async function POST(request: NextRequest) {
     const allTransactions = await prisma.safeTransaction.findMany({
       where: {
         safeId: safe.id,
+        organizationId: user.organizationId,
         timestamp: { lte: transactionTimestamp }
       },
       orderBy: [{ timestamp: 'asc' }, { createdAt: 'asc' }]
@@ -173,6 +206,7 @@ export async function POST(request: NextRequest) {
         const transaction = await tx.safeTransaction.create({
           data: {
             safeId: safe.id,
+            organizationId: user.organizationId,
             type: type as import('@prisma/client').SafeTransactionType,
             amount: amountVal,
             balanceBefore,
@@ -210,6 +244,7 @@ export async function POST(request: NextRequest) {
           data: {
             bankId,
             stationId,
+            organizationId: user.organizationId,
             type: 'DEPOSIT',
             amount: amountVal,
             description: `Cash deposit from safe${bankDepositNotes ? `: ${bankDepositNotes}` : ''}`,
@@ -230,6 +265,7 @@ export async function POST(request: NextRequest) {
     const transaction = await prisma.safeTransaction.create({
       data: {
         safeId: safe.id,
+        organizationId: user.organizationId,
         type: type as import('@prisma/client').SafeTransactionType,
         amount: amountVal,
         balanceBefore,
@@ -268,6 +304,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-
-
-

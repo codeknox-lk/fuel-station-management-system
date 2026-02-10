@@ -1,15 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 import bcrypt from 'bcrypt'
 import { CreateUserSchema } from '@/lib/schemas'
 import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const activeOnly = searchParams.get('active') === 'true'
 
-    const where = activeOnly ? { isActive: true } : {}
+    const where: Prisma.UserWhereInput = {
+      organizationId: user.organizationId,
+      ...(activeOnly ? { isActive: true } : {})
+    }
 
     const users = await prisma.user.findMany({
       where,
@@ -18,6 +27,7 @@ export async function GET(request: NextRequest) {
         username: true,
         email: true,
         role: true,
+        organizationId: true,
         stationId: true,
         isActive: true,
         lastLogin: true,
@@ -34,17 +44,17 @@ export async function GET(request: NextRequest) {
     })
 
     // Map to frontend format
-    const formattedUsers = users.map(user => ({
-      id: user.id,
-      name: user.username,
-      email: user.email,
-      role: user.role,
-      status: user.isActive ? 'active' : 'inactive',
-      lastLogin: user.lastLogin ? user.lastLogin.toISOString() : null,
-      stationId: user.stationId,
-      stationName: user.station?.name,
-      createdAt: user.createdAt.toISOString(),
-      updatedAt: user.updatedAt.toISOString()
+    const formattedUsers = users.map(u => ({
+      id: u.id,
+      name: u.username,
+      email: u.email,
+      role: u.role,
+      status: u.isActive ? 'active' : 'inactive',
+      lastLogin: u.lastLogin ? u.lastLogin.toISOString() : null,
+      stationId: u.stationId,
+      stationName: u.station?.name,
+      createdAt: u.createdAt.toISOString(),
+      updatedAt: u.updatedAt.toISOString()
     }))
 
     return NextResponse.json(formattedUsers)
@@ -56,6 +66,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Get current user (creator)
+    const currentUser = await getServerUser()
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
 
     // Zod Validation
@@ -91,22 +107,25 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    // Create user
+    // Create user linked to Creator's Organization
     const newUser = await prisma.user.create({
       data: {
+        organizationId: currentUser.organizationId,
         username: username.trim(),
         email: email.trim(),
         password: hashedPassword,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         role: (role as any),
         stationId: stationId || null,
-        isActive: status === 'active'
+        isActive: status === 'active',
+        isFirstLogin: true // New users created by admin should probably change password
       },
       select: {
         id: true,
         username: true,
         email: true,
         role: true,
+        organizationId: true,
         stationId: true,
         isActive: true,
         createdAt: true,
@@ -134,16 +153,14 @@ export async function POST(request: NextRequest) {
       updatedAt: newUser.updatedAt.toISOString()
     }
 
-    // Get current user for audit log
-    const currentUser = await getServerUser()
-
     // Create audit log for user creation
     try {
       await prisma.auditLog.create({
         data: {
-          userId: currentUser?.userId || 'system',
-          userName: currentUser?.username || 'System User',
-          userRole: currentUser?.role || 'OWNER',
+          userId: currentUser.userId,
+          userName: currentUser.username,
+          userRole: currentUser.role,
+          organizationId: currentUser.organizationId,
           action: 'CREATE',
           entity: 'User',
           entityId: newUser.id,

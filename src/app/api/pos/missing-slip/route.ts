@@ -5,6 +5,11 @@ import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const shiftId = searchParams.get('shiftId')
     const terminalId = searchParams.get('terminalId')
@@ -15,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     if (id) {
       const slip = await prisma.posMissingSlip.findUnique({
-        where: { id },
+        where: { id_organizationId: { id, organizationId: user.organizationId } },
         include: {
           terminal: {
             select: {
@@ -41,7 +46,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(slip)
     }
 
-    const where: Prisma.PosMissingSlipWhereInput = {}
+    const where: Prisma.PosMissingSlipWhereInput = {
+      organizationId: user.organizationId
+    }
     if (shiftId) {
       where.shiftId = shiftId
     }
@@ -87,31 +94,25 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    interface MissingSlipBody {
-      terminalId?: string
-      amount?: number
-      lastFourDigits?: string
-      timestamp?: string | Date
-      reportedBy?: string
-      notes?: string
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    const body = await request.json() as MissingSlipBody
-    const { terminalId, amount, lastFourDigits, timestamp, reportedBy, notes } = body
 
-    // Get current user to override client-provided reportedBy if available
-    const currentUser = await getServerUser()
-    const secureReportedBy = currentUser ? currentUser.username : (reportedBy || 'System User')
+    const body = await request.json()
+    const { terminalId, amount, lastFourDigits, timestamp, notes } = body
+    const secureReportedBy = user.username
 
-    if (!terminalId || amount === undefined || !lastFourDigits || !timestamp || !secureReportedBy) {
+    if (!terminalId || amount === undefined || !lastFourDigits || !timestamp) {
       return NextResponse.json(
-        { error: 'Terminal ID, amount, last four digits, timestamp, and reported by are required' },
+        { error: 'Terminal ID, amount, last four digits, and timestamp are required' },
         { status: 400 }
       )
     }
 
-    // Find terminal to get station
+    // Find terminal
     const terminal = await prisma.posTerminal.findUnique({
-      where: { id: terminalId },
+      where: { id_organizationId: { id: terminalId, organizationId: user.organizationId } },
       include: { station: true }
     })
 
@@ -119,21 +120,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Terminal not found' }, { status: 404 })
     }
 
-    // Find or create active shift (similar to test pours and batches)
+    // Find or create active shift
     let shift = await prisma.shift.findFirst({
       where: {
         stationId: terminal.stationId,
-        status: 'OPEN'
+        status: 'OPEN',
+        organizationId: user.organizationId
       },
       orderBy: { startTime: 'desc' }
     })
 
     if (!shift) {
-      // Find or create default template
       let template = await prisma.shiftTemplate.findFirst({
         where: {
           stationId: terminal.stationId,
-          isActive: true
+          isActive: true,
+          organizationId: user.organizationId
         }
       })
 
@@ -144,19 +146,20 @@ export async function POST(request: NextRequest) {
             name: 'Default Template',
             startTime: '00:00',
             endTime: '23:59',
-            isActive: true
+            isActive: true,
+            organizationId: user.organizationId
           }
         })
       }
 
-      // Create new shift
       shift = await prisma.shift.create({
         data: {
           stationId: terminal.stationId,
           templateId: template.id,
           startTime: new Date(timestamp),
           openedBy: secureReportedBy,
-          status: 'OPEN'
+          status: 'OPEN',
+          organizationId: user.organizationId
         }
       })
     }
@@ -169,7 +172,8 @@ export async function POST(request: NextRequest) {
         lastFourDigits,
         timestamp: new Date(timestamp),
         reportedBy: secureReportedBy,
-        notes: notes || null
+        notes: notes || null,
+        organizationId: user.organizationId
       },
       include: {
         terminal: {
@@ -193,16 +197,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newSlip, { status: 201 })
   } catch (error) {
     console.error('Error creating missing slip:', error)
-
-    // Handle foreign key constraint violations
-    if (error instanceof Error && error.message.includes('Foreign key constraint')) {
-      return NextResponse.json(
-        { error: 'Invalid terminal or shift ID' },
-        { status: 400 }
-      )
-    }
-
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-

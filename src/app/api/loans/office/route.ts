@@ -10,9 +10,17 @@ export async function GET(request: NextRequest) {
     const id = searchParams.get('id')
     const status = searchParams.get('status')
 
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     if (id) {
-      const loan = await prisma.loanOfficeStaff.findUnique({
-        where: { id },
+      const loan = await prisma.loanOfficeStaff.findFirst({
+        where: {
+          id,
+          organizationId: user.organizationId
+        },
         include: {
           station: {
             select: {
@@ -29,7 +37,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(loan)
     }
 
-    const where: Prisma.LoanOfficeStaffWhereInput = {}
+    const where: Prisma.LoanOfficeStaffWhereInput = {
+      organizationId: user.organizationId
+    }
     if (stationId) {
       where.stationId = stationId
     }
@@ -80,9 +90,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get current user
-    const currentUser = await getServerUser()
-    const secureGivenBy = currentUser ? currentUser.username : (givenBy || 'System User')
+    // Get current user for organizationId and secureGivenBy
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const secureGivenBy = user.username
 
     const newLoan = await prisma.loanOfficeStaff.create({
       data: {
@@ -93,7 +106,8 @@ export async function POST(request: NextRequest) {
         reason,
         givenBy: secureGivenBy,
         dueDate: new Date(dueDate),
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        organizationId: user.organizationId
       },
       include: {
         station: {
@@ -118,7 +132,8 @@ export async function POST(request: NextRequest) {
             data: {
               stationId,
               openingBalance: 0,
-              currentBalance: 0
+              currentBalance: 0,
+              organizationId: user.organizationId
             }
           })
         }
@@ -163,7 +178,8 @@ export async function POST(request: NextRequest) {
             loanId: newLoan.id,
             description: `Office staff loan given: ${staffName} - ${reason}`,
             performedBy: secureGivenBy,
-            timestamp: loanTimestamp
+            timestamp: loanTimestamp,
+            organizationId: user.organizationId
           }
         })
 

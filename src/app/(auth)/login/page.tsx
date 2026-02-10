@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2 } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const [username, setUsername] = useState('')
@@ -37,6 +38,9 @@ export default function LoginPage() {
           username: string
           role: string
           station_id?: string
+          organization_id: string
+          organization_name?: string
+          organization_slug?: string
         }
         requireChangePassword?: boolean
         detail?: string
@@ -52,6 +56,15 @@ export default function LoginPage() {
       localStorage.setItem('userRole', data.user.role)
       localStorage.setItem('userId', data.user.id)
       localStorage.setItem('username', data.user.username)
+
+      // SaaS: Store Organization Details
+      if (data.user.organization_id) {
+        localStorage.setItem('organizationId', data.user.organization_id)
+      }
+      if (data.user.organization_slug) {
+        localStorage.setItem('organizationSlug', data.user.organization_slug)
+      }
+
       if (data.user.station_id) {
         localStorage.setItem('stationId', data.user.station_id)
       }
@@ -162,14 +175,13 @@ export default function LoginPage() {
 
             {/* Footer */}
             <p className="mt-8 text-sm text-gray-400 text-center">
-              Need an account?{' '}
-              <button
-                type="button"
-                onClick={() => setShowSignUpInfo(true)}
+              New to FuelSync?{' '}
+              <Link
+                href="/register"
                 className="text-orange-600 font-semibold hover:text-orange-700 transition-colors"
               >
-                Contact Administrator
-              </button>
+                Register Your Station
+              </Link>
             </p>
           </div>
         </div>

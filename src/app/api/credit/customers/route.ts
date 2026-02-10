@@ -1,15 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const active = searchParams.get('active')
     const id = searchParams.get('id')
 
     if (id) {
-      const customer = await prisma.creditCustomer.findUnique({
-        where: { id },
+      const customer = await prisma.creditCustomer.findFirst({
+        where: {
+          id,
+          organizationId: user.organizationId
+        },
         include: {
           creditSales: {
             take: 10,
@@ -28,7 +38,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(customer)
     }
 
-    const where = active === 'true' ? { isActive: true } : {}
+    // Filter by Organization
+    const where: Prisma.CreditCustomerWhereInput = {
+      organizationId: user.organizationId,
+      ...(active === 'true' ? { isActive: true } : {})
+    }
+
     const customers = await prisma.creditCustomer.findMany({
       where,
       orderBy: { name: 'asc' }
@@ -43,6 +58,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { name, company, address, phone, email, creditLimit } = body
 
@@ -55,6 +75,7 @@ export async function POST(request: NextRequest) {
 
     const newCustomer = await prisma.creditCustomer.create({
       data: {
+        organizationId: user.organizationId,
         name,
         company: company || null,
         address: address || '',

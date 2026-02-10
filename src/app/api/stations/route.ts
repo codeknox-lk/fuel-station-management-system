@@ -1,16 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 import { auditOperations } from '@/lib/auditMiddleware'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const active = searchParams.get('active')
     const id = searchParams.get('id')
 
     if (id) {
-      const station = await prisma.station.findUnique({
-        where: { id },
+      const station = await prisma.station.findFirst({
+        where: {
+          id,
+          organizationId: user.organizationId
+        },
         include: {
           _count: {
             select: {
@@ -28,7 +38,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(station)
     }
 
-    const where = active === 'true' ? { isActive: true } : {}
+    const where: Prisma.StationWhereInput = {
+      organizationId: user.organizationId,
+      ...(active === 'true' ? { isActive: true } : {})
+    }
 
     // Optimized: Only select needed fields, skip counts for list view
     const stations = await prisma.station.findMany({
@@ -57,12 +70,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // PERMISSION CHECK: Only DEVELOPER can add stations
-    const userRole = request.headers.get('x-user-role')
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    if (userRole !== 'DEVELOPER') {
+    // PERMISSION CHECK: Only OWNER or DEVELOPER can add stations
+    if (user.role !== 'OWNER' && user.role !== 'DEVELOPER' && user.username !== 'developer') { // keep dev check for safety
       return NextResponse.json(
-        { error: 'Permission denied. Only DEVELOPER role can add stations.' },
+        { error: 'Permission denied. Only OWNER role can add stations.' },
         { status: 403 }
       )
     }
@@ -88,6 +104,7 @@ export async function POST(request: NextRequest) {
 
     const newStation = await prisma.station.create({
       data: {
+        organizationId: user.organizationId,
         name,
         address,
         city,

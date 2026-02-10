@@ -12,9 +12,17 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate')
     const bankId = searchParams.get('bankId')
 
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     if (id) {
-      const deposit = await prisma.deposit.findUnique({
-        where: { id },
+      const deposit = await prisma.deposit.findFirst({
+        where: {
+          id,
+          organizationId: user.organizationId
+        },
         include: {
           station: {
             select: {
@@ -38,6 +46,7 @@ export async function GET(request: NextRequest) {
     }
 
     interface DepositWhereInput {
+      organizationId: string
       stationId?: string
       bankId?: string
       depositDate?: {
@@ -45,7 +54,9 @@ export async function GET(request: NextRequest) {
         lte: Date
       }
     }
-    const where: DepositWhereInput = {}
+    const where: DepositWhereInput = {
+      organizationId: user.organizationId
+    }
     if (stationId) {
       where.stationId = stationId
     }
@@ -87,6 +98,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     interface DepositBody {
       stationId?: string
       amount?: string | number
@@ -97,7 +113,6 @@ export async function POST(request: NextRequest) {
       depositDate?: string | Date
     }
     const body = await request.json() as DepositBody
-
     const { stationId, amount, bankId, accountId, depositSlip, depositedBy, depositDate } = body
 
     // Validate required fields
@@ -107,19 +122,15 @@ export async function POST(request: NextRequest) {
     if (validateRequired(accountId, 'Account ID')) errors.push(validateRequired(accountId, 'Account ID')!)
     if (validateRequired(depositedBy, 'Deposited by')) errors.push(validateRequired(depositedBy, 'Deposited by')!)
     if (validateDate(String(depositDate), 'Deposit date')) errors.push(validateDate(String(depositDate), 'Deposit date')!)
-
-    // Validate amount
     const amountError = validateAmount(amount, 'Amount')
     if (amountError) errors.push(amountError)
 
     if (errors.length > 0) {
-      return NextResponse.json(
-        { error: errors.join(', ') },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: errors.join(', ') }, { status: 400 })
     }
 
     const validatedAmount = safeParseFloat(amount)
+    const depositTimestamp = new Date(depositDate!)
 
     // Create deposit and deduct from safe in a transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -131,57 +142,34 @@ export async function POST(request: NextRequest) {
           accountId: accountId!,
           depositSlip: depositSlip || null,
           depositedBy: depositedBy!,
-          depositDate: new Date(depositDate!)
+          depositDate: depositTimestamp,
+          organizationId: user.organizationId
         },
         include: {
-          station: {
-            select: { id: true, name: true }
-          },
-          bank: {
-            select: { id: true, name: true }
-          }
+          station: { select: { id: true, name: true } },
+          bank: { select: { id: true, name: true } }
         }
       })
 
       // Deduct from safe
-      let safe = await tx.safe.findUnique({
-        where: { stationId }
-      })
-
+      let safe = await tx.safe.findFirst({ where: { stationId, organizationId: user.organizationId } })
       if (!safe) {
         safe = await tx.safe.create({
-          data: {
-            stationId: stationId!,
-            openingBalance: 0,
-            currentBalance: 0
-          }
+          data: { stationId: stationId!, openingBalance: 0, currentBalance: 0, organizationId: user.organizationId }
         })
       }
 
-      // Calculate balance before transaction chronologically
-      const depositTimestamp = new Date(depositDate!)
+      // Calculate balance before transaction
       const allTransactions = await tx.safeTransaction.findMany({
-        where: {
-          safeId: safe.id,
-          timestamp: { lte: depositTimestamp }
-        },
+        where: { safeId: safe.id, organizationId: user.organizationId, timestamp: { lte: depositTimestamp } },
         orderBy: [{ timestamp: 'asc' }, { createdAt: 'asc' }]
       })
 
-      // Calculate balance before transaction chronologically
-      // OPENING_BALANCE transactions set the balance, they don't add/subtract
       let balanceBefore = safe.openingBalance
       for (const safeTx of allTransactions) {
-        if (safeTx.type === 'OPENING_BALANCE') {
-          balanceBefore = safeTx.amount
-        } else {
-          const txIsIncome = [
-            'CASH_FUEL_SALES',
-            'POS_CARD_PAYMENT',
-            'CREDIT_PAYMENT',
-            'CHEQUE_RECEIVED',
-            'LOAN_REPAID'
-          ].includes(safeTx.type)
+        if (safeTx.type === 'OPENING_BALANCE') balanceBefore = safeTx.amount
+        else {
+          const txIsIncome = ['CASH_FUEL_SALES', 'POS_CARD_PAYMENT', 'CREDIT_PAYMENT', 'CHEQUE_RECEIVED', 'LOAN_REPAID'].includes(safeTx.type)
           balanceBefore += txIsIncome ? safeTx.amount : -safeTx.amount
         }
       }
@@ -199,17 +187,15 @@ export async function POST(request: NextRequest) {
           depositId: deposit.id,
           description: `Bank deposit - ${deposit.bank.name} (${accountId})${depositSlip ? ` - Slip: ${depositSlip}` : ''}`,
           performedBy: depositedBy!,
-          timestamp: depositTimestamp
+          timestamp: depositTimestamp,
+          organizationId: user.organizationId
         }
       })
 
       // Update safe balance
-      await tx.safe.update({
-        where: { id: safe.id },
-        data: { currentBalance: balanceAfter }
-      })
+      await tx.safe.update({ where: { id: safe.id }, data: { currentBalance: balanceAfter } })
 
-      // Create bank transaction record for tracking in bank accounts page
+      // Create bank transaction record
       await tx.bankTransaction.create({
         data: {
           bankId: bankId!,
@@ -220,28 +206,27 @@ export async function POST(request: NextRequest) {
           referenceNumber: depositSlip || null,
           transactionDate: depositTimestamp,
           createdBy: depositedBy!,
-          notes: `Bank deposit recorded via deposits page`
+          notes: `Bank deposit recorded via deposits page`,
+          organizationId: user.organizationId
         }
       })
 
       return deposit
     })
 
-    // Get current user for audit log
-    const currentUser = await getServerUser()
-
-    // Create audit log for deposit
+    // Create audit log
     try {
       await prisma.auditLog.create({
         data: {
-          userId: currentUser?.userId || 'system',
-          userName: currentUser?.username || depositedBy!,
-          userRole: currentUser?.role || 'MANAGER',
+          userId: user.userId,
+          userName: user.username,
+          userRole: user.role,
           action: 'CREATE',
           entity: 'Deposit',
           entityId: result.id,
           details: `Deposited Rs. ${(validatedAmount || 0).toLocaleString()} to ${result.bank.name}`,
-          stationId: stationId!
+          stationId: stationId!,
+          organizationId: user.organizationId
         }
       })
     } catch (auditError) {
@@ -251,15 +236,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result, { status: 201 })
   } catch (error) {
     console.error('Error creating deposit:', error)
-
-    // Handle foreign key constraint violations
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
-      return NextResponse.json(
-        { error: 'Invalid station or bank ID' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid station or bank ID' }, { status: 400 })
     }
-
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

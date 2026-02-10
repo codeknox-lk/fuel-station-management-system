@@ -889,7 +889,7 @@ export default function TankDeliveriesPage() {
                             <div className="mt-4 pt-3 border-t">
                               <div className="flex justify-between items-center">
                                 <span className="font-semibold">Total Fuel Sold:</span>
-                                <span className="font-mono font-bold text-lg">{calculateTotalFuelSold(pumpReadings, (selectedTank) || 0).toLocaleString()}L</span>
+                                <span className="font-mono font-bold text-lg">{calculateTotalFuelSold(pumpReadings, selectedTank || '').toLocaleString()}L</span>
                               </div>
                             </div>
                           </div>
@@ -1358,7 +1358,7 @@ export default function TankDeliveriesPage() {
                       <div className="mt-4 pt-3 border-t">
                         <div className="flex justify-between items-center">
                           <span className="font-semibold">Total Fuel Sold:</span>
-                          <span className="font-bold text-lg">{calculateTotalFuelSold(afterPumpReadings, (verifyingDelivery.tankId) || 0).toLocaleString()}L</span>
+                          <span className="font-bold text-lg">{calculateTotalFuelSold(afterPumpReadings, verifyingDelivery.tankId || '').toLocaleString()}L</span>
                         </div>
                       </div>
                     </AlertDescription>

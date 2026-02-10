@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useStation } from '@/contexts/StationContext'
+import { useOrganization } from '@/contexts/OrganizationContext'
 import { Button } from '@/components/ui/button'
 import { FormCard } from '@/components/ui/FormCard'
 import {
@@ -44,6 +45,7 @@ interface AlertItem {
 export default function DashboardPage() {
   const router = useRouter()
   const { selectedStation, isAllStations } = useStation()
+  const { organization } = useOrganization()
   const [stats, setStats] = useState({
     todaySales: 0,
     todayTransactions: 0,
@@ -105,7 +107,9 @@ export default function DashboardPage() {
       <div className="bg-gradient-to-r from-orange-600 to-orange-700 rounded-lg p-6 text-white">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
+            <h1 className="text-3xl font-bold mb-2">
+              Welcome, {organization?.name || 'Dashboard'}
+            </h1>
             <p className="text-orange-100">
               {isAllStations ? 'All Stations Overview' : 'Station Operations Overview'}
             </p>

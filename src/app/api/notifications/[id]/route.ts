@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
+import { Prisma } from '@prisma/client'
 
 // PATCH - Update notification (mark as read/unread, update fields)
 export async function PATCH(
@@ -8,16 +10,15 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { isRead, ...otherFields } = body
 
-    interface NotificationUpdateInput {
-      isRead?: boolean
-      readAt?: Date | null
-      [key: string]: unknown
-    }
-
-    const updateData: NotificationUpdateInput = { ...otherFields }
+    const updateData: any = { ...otherFields }
     if (isRead !== undefined) {
       updateData.isRead = isRead
       if (isRead) {
@@ -27,23 +28,8 @@ export async function PATCH(
       }
     }
 
-    // Check if notification model exists
-    if (!('notification' in prisma)) {
-      return NextResponse.json(
-        { error: 'Prisma client needs to be regenerated. Please restart your dev server.' },
-        { status: 500 }
-      )
-    }
-
-    interface PrismaWithNotification {
-      notification: {
-        update: (args: unknown) => Promise<unknown>
-        delete: (args: unknown) => Promise<unknown>
-      }
-    }
-
-    const notification = await (prisma as unknown as PrismaWithNotification).notification.update({
-      where: { id },
+    const notification = await prisma.notification.update({
+      where: { id_organizationId: { id, organizationId: user.organizationId } },
       data: updateData,
       include: {
         station: {
@@ -72,24 +58,13 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-
-    // Check if notification model exists
-    if (!('notification' in prisma)) {
-      return NextResponse.json(
-        { error: 'Prisma client needs to be regenerated. Please restart your dev server.' },
-        { status: 500 }
-      )
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    interface PrismaWithNotification {
-      notification: {
-        update: (args: unknown) => Promise<unknown>
-        delete: (args: unknown) => Promise<unknown>
-      }
-    }
-
-    await (prisma as unknown as PrismaWithNotification).notification.delete({
-      where: { id }
+    await prisma.notification.delete({
+      where: { id_organizationId: { id, organizationId: user.organizationId } }
     })
 
     return NextResponse.json({ success: true })
@@ -101,4 +76,3 @@ export async function DELETE(
     )
   }
 }
-

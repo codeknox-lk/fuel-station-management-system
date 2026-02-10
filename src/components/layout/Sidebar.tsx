@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import { useOrganization } from '@/contexts/OrganizationContext'
 import {
   LayoutDashboard,
   Clock,
@@ -132,8 +134,13 @@ const navigation: NavItem[] = [
   }
 ]
 
+
+
+// ... (imports)
+
 export function Sidebar({ userRole }: SidebarProps) {
   const pathname = usePathname()
+  const { organization } = useOrganization()
 
   const filteredNavigation = navigation.filter(item =>
     item.roles.includes(userRole)
@@ -143,15 +150,34 @@ export function Sidebar({ userRole }: SidebarProps) {
     <div className="w-64 bg-sidebar border-r border-border h-screen flex flex-col">
       {/* Header */}
       <div className="p-4 flex-shrink-0">
-        <div className="relative w-full h-24">
+        <div className="relative w-full h-16 mb-2">
           <Image
             src="/images/fuelsync-logo-full.png"
             alt="FuelSync"
             fill
-            className="object-contain object-center"
+            className="object-contain object-left"
             priority
           />
         </div>
+
+        {/* Organization Info */}
+        {organization && (
+          <div className="mt-2 px-1">
+            <Link href="/settings/organization" className="block group">
+              <div className="text-sm font-bold text-sidebar-foreground truncate group-hover:text-primary transition-colors">
+                {organization.name}
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-sidebar-foreground/20 text-sidebar-foreground/70">
+                  {organization.plan}
+                </Badge>
+                <div className="text-[10px] text-muted-foreground truncate">
+                  {organization.slug}
+                </div>
+              </div>
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Navigation - takes remaining space */}

@@ -6,6 +6,11 @@ import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const customerId = searchParams.get('customerId')
     const shiftId = searchParams.get('shiftId')
@@ -13,8 +18,13 @@ export async function GET(request: NextRequest) {
 
     if (id) {
       // OPTIMIZED: Use select for single sale
-      const sale = await prisma.creditSale.findUnique({
-        where: { id },
+      const sale = await prisma.creditSale.findFirst({
+        where: {
+          id,
+          customer: {
+            organizationId: user.organizationId
+          }
+        },
         select: {
           id: true,
           customerId: true,
@@ -53,7 +63,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(sale)
     }
 
-    const where: Prisma.CreditSaleWhereInput = {}
+    const where: Prisma.CreditSaleWhereInput = {
+      customer: {
+        organizationId: user.organizationId
+      }
+    }
     if (customerId) {
       where.customerId = customerId
     }
@@ -97,6 +111,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
 
     // Zod Validation
@@ -112,13 +131,24 @@ export async function POST(request: NextRequest) {
 
     const { customerId, shiftId, nozzleId, amount, liters, price, slipPhoto, signedBy, timestamp } = result.data
 
+    // Validate Customer belongs to Organization
+    const customer = await prisma.creditCustomer.findFirst({
+      where: {
+        id: customerId,
+        organizationId: user.organizationId
+      }
+    })
+
+    if (!customer) {
+      return NextResponse.json({ error: 'Customer not found or access denied' }, { status: 404 })
+    }
+
     // Calculate liters if not provided
     const calculatedLiters = liters || (price > 0 ? amount / price : 0)
     const calculatedPrice = price || (calculatedLiters > 0 ? amount / calculatedLiters : 0)
 
     // Get current user for recordedBy
-    const currentUser = await getServerUser()
-    const recordedBy = currentUser ? currentUser.username : 'System User'
+    const recordedBy = user.username
 
     // Create credit sale and update customer balance in a transaction
     const transactionResult = await prisma.$transaction(async (tx) => {

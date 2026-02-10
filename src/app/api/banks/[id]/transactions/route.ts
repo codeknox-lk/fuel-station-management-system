@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { id: bankId } = await params
     const { searchParams } = new URL(request.url)
     const stationId = searchParams.get('stationId')
@@ -19,15 +25,26 @@ export async function GET(
       lte: new Date(endDate)
     } : undefined
 
-    // Fetch deposits
+    // 1. Deposits
     const deposits = (!type || type === 'all' || type === 'deposit')
       ? await prisma.deposit.findMany({
         where: {
           bankId,
+          organizationId: user.organizationId,
           ...(stationId && { stationId }),
           ...(dateFilter && { depositDate: dateFilter })
         },
-        include: {
+        select: {
+          id: true,
+          amount: true,
+          depositDate: true,
+          depositSlip: true,
+          depositedBy: true,
+          bankId: true,
+          stationId: true,
+          accountId: true,
+          createdAt: true,
+          updatedAt: true,
           station: { select: { name: true } }
         },
         orderBy: { depositDate: 'desc' }
@@ -39,6 +56,7 @@ export async function GET(
       ? await prisma.cheque.findMany({
         where: {
           bankId,
+          organizationId: user.organizationId,
           // Only fetch if linked to credit payment when type is credit_payment
           ...(type === 'credit_payment' ? { creditPaymentId: { not: null } } : {}),
           ...(dateFilter && {
@@ -59,25 +77,39 @@ export async function GET(
       })
       : []
 
-    // Fetch credit payments
+    // 3. Credit payments
     const creditPayments = (!type || type === 'all' || type === 'credit_payment')
       ? await prisma.creditPayment.findMany({
         where: {
           bankId,
+          organizationId: user.organizationId,
           paymentType: { not: 'CHEQUE' }, // Exclude cheques as they are handled separately
           ...(dateFilter && { paymentDate: dateFilter })
         },
-        include: {
+        select: {
+          id: true,
+          amount: true,
+          paymentDate: true,
+          paymentType: true,
+          referenceNumber: true,
+          chequeNumber: true,
+          receivedBy: true,
+          bankId: true,
+          customerId: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
           customer: { select: { name: true } }
         },
         orderBy: { paymentDate: 'desc' }
       })
       : []
 
-    // Fetch manual bank transactions (deposits made from safe, manual adjustments, etc.)
+    // 4. Manual bank transactions
     const bankTransactions = await prisma.bankTransaction.findMany({
       where: {
         bankId,
+        organizationId: user.organizationId,
         ...(stationId && { stationId }),
         ...(dateFilter && { transactionDate: dateFilter })
       },
@@ -88,58 +120,48 @@ export async function GET(
     })
 
     // Combine and format all transactions
+    const mappedDeposits = deposits.map((d: any) => ({
+      id: d.id,
+      date: d.depositDate,
+      type: 'DEPOSIT',
+      amount: d.amount,
+      reference: d.depositSlip || 'N/A',
+      details: `Deposit from ${d.station?.name || 'Station'}`,
+      status: 'COMPLETED'
+    }))
+    const mappedCheques = cheques.map((c: any) => ({
+      id: c.id,
+      date: c.depositDate || c.createdAt,
+      type: 'CHEQUE',
+      amount: c.amount,
+      reference: c.chequeNumber,
+      details: `Cheque Deposit - ${c.station?.name || 'Station'}`,
+      status: c.status
+    }))
+    const mappedCreditPayments = creditPayments.map((cp: any) => ({
+      id: cp.id,
+      date: cp.paymentDate,
+      type: 'CREDIT_PAYMENT',
+      amount: cp.amount,
+      reference: cp.referenceNumber || cp.chequeNumber || 'N/A',
+      details: `Credit Payment - ${cp.customer?.name || 'Customer'}`,
+      status: cp.status
+    }))
+    const mappedBankTransactions = bankTransactions.map((bt: any) => ({
+      id: bt.id,
+      date: bt.createdAt,
+      type: bt.type,
+      amount: bt.amount,
+      reference: bt.description,
+      details: bt.type === 'TRANSFER' ? 'Bank Transfer' : (bt.station?.name || 'Direct Transaction'),
+      status: 'COMPLETED'
+    }))
+
     const allTransactions = [
-      ...deposits.map(d => ({
-        id: d.id,
-        type: 'DEPOSIT' as const,
-        amount: d.amount,
-        date: d.depositDate,
-        station: d.station.name,
-        description: `Deposit by ${d.depositedBy}`,
-        depositSlip: d.depositSlip,
-        depositedBy: d.depositedBy,
-        accountId: d.accountId,
-        createdAt: d.createdAt
-      })),
-      ...cheques.map((c) => ({
-        id: c.id,
-        type: 'CHEQUE' as const,
-        amount: c.amount,
-        date: c.receivedDate,
-        station: c.station.name,
-        status: c.status,
-        description: `Cheque ${c.chequeNumber} from ${c.receivedFrom}`,
-        chequeNumber: c.chequeNumber,
-        receivedFrom: c.receivedFrom,
-        clearedDate: c.clearedDate,
-        notes: c.notes,
-        createdAt: c.createdAt
-      })),
-      ...creditPayments.map(cp => ({
-        id: cp.id,
-        type: 'CREDIT_PAYMENT' as const,
-        amount: cp.amount,
-        date: cp.paymentDate,
-        station: 'N/A', // CreditPayment doesn't have stationId
-        description: `Credit payment from ${cp.customer.name}`,
-        customer: cp.customer.name,
-        chequeNumber: cp.chequeNumber,
-        referenceNumber: cp.referenceNumber,
-        createdAt: cp.createdAt
-      })),
-      ...bankTransactions.map(bt => ({
-        id: bt.id,
-        type: 'MANUAL' as const,
-        amount: bt.amount,
-        date: bt.transactionDate,
-        station: bt.station?.name || 'N/A',
-        status: bt.type, // BankTransactionType (DEPOSIT, WITHDRAWAL, etc.)
-        description: bt.description,
-        referenceNumber: bt.referenceNumber,
-        notes: bt.notes,
-        createdBy: bt.createdBy,
-        createdAt: bt.createdAt
-      }))
+      ...mappedDeposits,
+      ...mappedCheques,
+      ...mappedCreditPayments,
+      ...mappedBankTransactions
     ]
 
     // Sort by date descending

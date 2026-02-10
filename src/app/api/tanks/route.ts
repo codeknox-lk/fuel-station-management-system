@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
 
 import { CreateTankSchema } from '@/lib/schemas'
 
@@ -10,10 +11,14 @@ export async function GET(request: NextRequest) {
     const id = searchParams.get('id')
     const type = searchParams.get('type') // tanks, pumps, nozzles
 
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     if (id) {
-      // OPTIMIZED: Get specific tank with select
-      const tank = await prisma.tank.findUnique({
-        where: { id },
+      const tank = await prisma.tank.findFirst({
+        where: { id, organizationId: user.organizationId },
         select: {
           id: true,
           tankNumber: true,
@@ -61,7 +66,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (type === 'pumps') {
-      const where = stationId ? { stationId } : {}
+      const where = {
+        organizationId: user.organizationId,
+        ...(stationId && { stationId })
+      }
       // Optimized: Use select for better performance
       const pumps = await prisma.pump.findMany({
         where,
@@ -96,7 +104,10 @@ export async function GET(request: NextRequest) {
 
       if (pumpId) {
         const nozzles = await prisma.nozzle.findMany({
-          where: { pumpId },
+          where: {
+            pumpId,
+            organizationId: user.organizationId
+          },
           include: {
             pump: {
               select: {
@@ -125,7 +136,7 @@ export async function GET(request: NextRequest) {
 
       // Get pumps for the station first
       const pumps = await prisma.pump.findMany({
-        where: { stationId },
+        where: { stationId, organizationId: user.organizationId },
         select: { id: true }
       })
 
@@ -139,7 +150,8 @@ export async function GET(request: NextRequest) {
       // Note: Nozzle has tankId directly, not through pump
       const nozzles = await prisma.nozzle.findMany({
         where: {
-          pumpId: { in: pumpIds }
+          pumpId: { in: pumpIds },
+          organizationId: user.organizationId
         },
         include: {
           pump: {
@@ -168,11 +180,12 @@ export async function GET(request: NextRequest) {
 
     // Get tanks
     interface TankWhereInput {
+      organizationId: string
       stationId?: string
     }
-    const where: TankWhereInput = {}
-    if (stationId) {
-      where.stationId = stationId
+    const where: TankWhereInput = {
+      organizationId: user.organizationId,
+      ...(stationId && { stationId })
     }
 
     // Filter out oil tanks for dipping operations if type is 'tanks'
@@ -240,6 +253,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
 
     // Zod Validation
@@ -273,7 +291,7 @@ export async function POST(request: NextRequest) {
 
     // Verify station exists and is active
     const station = await prisma.station.findUnique({
-      where: { id: stationId }
+      where: { id: stationId, organizationId: user.organizationId }
     })
 
     if (!station) {
@@ -297,7 +315,8 @@ export async function POST(request: NextRequest) {
       // because tankNumber must be unique per station
       const existingTanks = await prisma.tank.findMany({
         where: {
-          stationId
+          stationId,
+          organizationId: user.organizationId
         },
         select: { tankNumber: true }
       })
@@ -316,7 +335,8 @@ export async function POST(request: NextRequest) {
       const existingTank = await prisma.tank.findFirst({
         where: {
           stationId,
-          tankNumber
+          tankNumber,
+          organizationId: user.organizationId
         }
       })
 
@@ -336,7 +356,8 @@ export async function POST(request: NextRequest) {
         fuelId,
         capacity,
         currentLevel: initialLevel,
-        isActive: true
+        isActive: true,
+        organizationId: user.organizationId
       },
       include: {
         station: {

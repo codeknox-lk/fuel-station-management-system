@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import bcrypt from 'bcrypt'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(
   request: NextRequest,
@@ -9,9 +10,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    const currentUser = await getServerUser()
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    const user = await prisma.user.findUnique({
-      where: { id },
+    const user = await prisma.user.findFirst({
+      where: { id, organizationId: currentUser.organizationId },
       select: {
         id: true,
         username: true,
@@ -60,19 +65,24 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
+    const currentUser = await getServerUser()
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { username, email, password, role, stationId, status } = body
 
-    // Check if user exists
-    const existingUser = await prisma.user.findUnique({
-      where: { id }
+    // Check if user exists and belongs to organization
+    const existingUser = await prisma.user.findFirst({
+      where: { id, organizationId: currentUser.organizationId }
     })
 
     if (!existingUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // Check for duplicate username or email (excluding current user)
+    // Check for duplicate username or email (globally unique)
     if (username || email) {
       const duplicateUser = await prisma.user.findFirst({
         where: {
@@ -147,14 +157,6 @@ export async function PUT(
     return NextResponse.json(formattedUser)
   } catch (error) {
     console.error('Error updating user:', error)
-
-    if (error instanceof Error && error.message.includes('Unique constraint')) {
-      return NextResponse.json(
-        { error: 'A user with this username or email already exists' },
-        { status: 400 }
-      )
-    }
-
     return NextResponse.json({ error: 'Failed to update user' }, { status: 500 })
   }
 }
@@ -165,10 +167,14 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
+    const currentUser = await getServerUser()
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    // Check if user exists
-    const user = await prisma.user.findUnique({
-      where: { id },
+    // Check if user exists and belongs to organization
+    const user = await prisma.user.findFirst({
+      where: { id, organizationId: currentUser.organizationId },
       select: { role: true }
     })
 
@@ -177,8 +183,7 @@ export async function DELETE(
     }
 
     // Prevent deletion of DEVELOPER users (only DEVELOPER can delete DEVELOPER)
-    const userRole = request.headers.get('x-user-role')
-    if (user.role === 'DEVELOPER' && userRole !== 'DEVELOPER') {
+    if (user.role === 'DEVELOPER' && currentUser.role !== 'DEVELOPER') {
       return NextResponse.json(
         { error: 'Only developers can delete developer accounts' },
         { status: 403 }
@@ -193,15 +198,6 @@ export async function DELETE(
     return NextResponse.json({ success: true, message: 'User deleted successfully' })
   } catch (error) {
     console.error('Error deleting user:', error)
-
-    if (error instanceof Error && error.message.includes('Foreign key constraint')) {
-      return NextResponse.json(
-        { error: 'Cannot delete user. They may have associated audit logs or other records.' },
-        { status: 400 }
-      )
-    }
-
     return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 })
   }
 }
-

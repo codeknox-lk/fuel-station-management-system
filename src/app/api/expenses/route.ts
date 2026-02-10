@@ -13,10 +13,18 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate')
     const category = searchParams.get('category')
 
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     if (id) {
       // OPTIMIZED: Use select
-      const expense = await prisma.expense.findUnique({
-        where: { id },
+      const expense = await prisma.expense.findFirst({
+        where: {
+          id,
+          organizationId: user.organizationId
+        },
         select: {
           id: true,
           stationId: true,
@@ -45,6 +53,7 @@ export async function GET(request: NextRequest) {
     }
 
     interface ExpenseWhereInput {
+      organizationId: string
       stationId?: string
       category?: string
       expenseDate?: {
@@ -52,7 +61,9 @@ export async function GET(request: NextRequest) {
         lte: Date
       }
     }
-    const where: ExpenseWhereInput = {}
+    const where: ExpenseWhereInput = {
+      organizationId: user.organizationId
+    }
     if (stationId) {
       where.stationId = stationId
     }
@@ -117,8 +128,11 @@ export async function POST(request: NextRequest) {
     const validatedAmount = amount // Already a number
 
     // Get current user for recordedBy
-    const currentUser = await getServerUser()
-    const recordedBy = currentUser ? currentUser.username : 'System User'
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const recordedBy = user.username
 
     const newExpense = await prisma.expense.create({
       data: {
@@ -130,7 +144,8 @@ export async function POST(request: NextRequest) {
         paidBy,
         proof: proof || null,
         expenseDate,
-        recordedBy
+        recordedBy,
+        organizationId: user.organizationId
       },
       include: {
         station: {
@@ -143,14 +158,15 @@ export async function POST(request: NextRequest) {
     if (fromSafe && validatedAmount > 0) {
       try {
         // Get or create safe
-        let safe = await prisma.safe.findUnique({
-          where: { stationId }
+        let safe = await prisma.safe.findFirst({
+          where: { stationId, organizationId: user.organizationId }
         })
 
         if (!safe) {
           safe = await prisma.safe.create({
             data: {
               stationId: stationId!,
+              organizationId: user.organizationId,
               openingBalance: 0,
               currentBalance: 0
             }
@@ -162,6 +178,7 @@ export async function POST(request: NextRequest) {
         const allTransactions = await prisma.safeTransaction.findMany({
           where: {
             safeId: safe.id,
+            organizationId: user.organizationId,
             timestamp: { lte: expenseTimestamp }
           },
           orderBy: [{ timestamp: 'asc' }, { createdAt: 'asc' }]
@@ -191,6 +208,7 @@ export async function POST(request: NextRequest) {
         await prisma.safeTransaction.create({
           data: {
             safeId: safe.id,
+            organizationId: user.organizationId,
             type: 'EXPENSE',
             amount: validatedAmount,
             balanceBefore,

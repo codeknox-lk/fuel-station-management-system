@@ -5,13 +5,20 @@ import { Prisma } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
     try {
+        const user = await getServerUser()
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
         const { searchParams } = new URL(request.url)
         const stationId = searchParams.get('stationId')
         const productId = searchParams.get('productId')
 
-        const where: Prisma.ShopPurchaseBatchWhereInput = {}
+        const where: Prisma.ShopPurchaseBatchWhereInput = {
+            organizationId: user.organizationId
+        }
         if (stationId) {
-            where.product = { stationId }
+            where.product = { stationId, organizationId: user.organizationId }
         }
         if (productId) {
             where.productId = productId
@@ -36,6 +43,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
+        const user = await getServerUser()
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
         const body = await request.json()
         const {
             productId,
@@ -44,8 +56,8 @@ export async function POST(request: NextRequest) {
             expiryDate,
             supplierId,
             createExpense,
-            bankId, // Required if createExpense is true
-            stationId // Required if createExpense is true
+            bankId,
+            stationId
         } = body
 
         if (!productId || costPrice === undefined || quantity === undefined) {
@@ -55,8 +67,7 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        const currentUser = await getServerUser()
-        const username = currentUser ? currentUser.username : 'System'
+        const username = user.username
 
         // Create the batch in a transaction
         const result = await prisma.$transaction(async (tx) => {
@@ -68,7 +79,8 @@ export async function POST(request: NextRequest) {
                     currentQuantity: parseFloat(quantity),
                     expiryDate: expiryDate ? new Date(expiryDate) : null,
                     supplierId,
-                    recordedBy: username
+                    recordedBy: username,
+                    organizationId: user.organizationId
                 }
             })
 
@@ -82,7 +94,8 @@ export async function POST(request: NextRequest) {
                         amount: parseFloat(costPrice) * parseFloat(quantity),
                         expenseDate: new Date(),
                         paidBy: username,
-                        fromSafe: !bankId // This logic might need review if bankId is not stored on Expense
+                        fromSafe: !bankId,
+                        organizationId: user.organizationId
                     }
                 })
             }

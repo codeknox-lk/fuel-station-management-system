@@ -24,7 +24,8 @@ import {
   Sun,
   Moon,
   Monitor,
-  RefreshCw
+  RefreshCw,
+  User
 } from 'lucide-react'
 
 type UserRole = 'DEVELOPER' | 'OWNER' | 'MANAGER' | 'ACCOUNTS'
@@ -435,10 +436,29 @@ export function TopBar({ userRole }: TopBarProps) {
           </DropdownMenu>
 
           {/* Logout Button */}
-          <Button variant="ghost" size="sm" className="gap-2" onClick={handleLogout}>
-            <LogOut className="h-4 w-4" />
-            <span className="hidden sm:inline">Logout</span>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-2">
+                <User className="h-4 w-4" />
+                <span className="hidden sm:inline">Account</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => router.push('/settings/organization')} className="cursor-pointer">
+                <Building2 className="mr-2 h-4 w-4" />
+                Organization
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/settings/profile')} className="cursor-pointer">
+                <User className="mr-2 h-4 w-4" />
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 focus:text-red-700">
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>

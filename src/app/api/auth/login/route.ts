@@ -35,6 +35,14 @@ export async function POST(request: NextRequest) {
             id: true,
             name: true
           }
+        },
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            plan: true
+          }
         }
       }
     })
@@ -147,7 +155,9 @@ export async function POST(request: NextRequest) {
       {
         sub: user.username,
         userId: user.id,
-        role: user.role
+        role: user.role,
+        organizationId: user.organizationId,
+        plan: user.organization?.plan
       },
       getJwtSecret(),
       { expiresIn: tokenDuration }
@@ -164,6 +174,9 @@ export async function POST(request: NextRequest) {
         email: user.email,
         role: user.role,
         station_id: user.stationId || null,
+        organization_id: user.organizationId,
+        organization_name: user.organization?.name,
+        organization_slug: user.organization?.slug,
         is_active: user.isActive
       }
     })

@@ -10,9 +10,17 @@ export async function GET(request: NextRequest) {
     const id = searchParams.get('id')
     const status = searchParams.get('status')
 
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     if (id) {
-      const loan = await prisma.loanPumper.findUnique({
-        where: { id },
+      const loan = await prisma.loanPumper.findFirst({
+        where: {
+          id,
+          organizationId: user.organizationId
+        },
         include: {
           station: {
             select: {
@@ -31,7 +39,9 @@ export async function GET(request: NextRequest) {
 
     const pumperName = searchParams.get('pumperName')
 
-    const where: Prisma.LoanPumperWhereInput = {}
+    const where: Prisma.LoanPumperWhereInput = {
+      organizationId: user.organizationId
+    }
     if (stationId) {
       where.stationId = stationId
     }
@@ -100,9 +110,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get current user for givenBy
-    const currentUser = await getServerUser()
-    const secureGivenBy = currentUser ? currentUser.username : (givenBy || 'System User')
+    // Get current user for givenBy and organizationId
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const secureGivenBy = user.username
 
     const newLoan = await prisma.loanPumper.create({
       data: {
@@ -113,7 +126,8 @@ export async function POST(request: NextRequest) {
         reason,
         givenBy: secureGivenBy,
         dueDate: new Date(dueDate),
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        organizationId: user.organizationId
       },
       include: {
         station: {
@@ -129,8 +143,8 @@ export async function POST(request: NextRequest) {
     if (fromSafe && parseFloat(String(amount)) > 0) {
       try {
         // Get or create safe
-        let safe = await prisma.safe.findUnique({
-          where: { stationId }
+        let safe = await prisma.safe.findFirst({
+          where: { stationId, organizationId: user.organizationId }
         })
 
         if (!safe) {
@@ -138,7 +152,8 @@ export async function POST(request: NextRequest) {
             data: {
               stationId,
               openingBalance: 0,
-              currentBalance: 0
+              currentBalance: 0,
+              organizationId: user.organizationId
             }
           })
         }
@@ -148,6 +163,7 @@ export async function POST(request: NextRequest) {
         const allTransactions = await prisma.safeTransaction.findMany({
           where: {
             safeId: safe.id,
+            organizationId: user.organizationId,
             timestamp: { lte: loanTimestamp }
           },
           orderBy: [{ timestamp: 'asc' }, { createdAt: 'asc' }]
@@ -183,8 +199,9 @@ export async function POST(request: NextRequest) {
             balanceAfter,
             loanId: newLoan.id,
             description: `Pumper loan given: ${pumperName} - ${reason}`,
-            performedBy: 'System',
-            timestamp: loanTimestamp
+            performedBy: secureGivenBy,
+            timestamp: loanTimestamp,
+            organizationId: user.organizationId
           }
         })
 

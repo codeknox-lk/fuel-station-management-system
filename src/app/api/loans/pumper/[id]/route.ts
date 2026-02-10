@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(
   request: NextRequest,
@@ -8,9 +9,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     const loan = await prisma.loanPumper.findUnique({
-      where: { id },
+      where: { id_organizationId: { id, organizationId: user.organizationId } },
       include: {
         station: {
           select: {
@@ -38,13 +43,17 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
 
     console.log('🔄 PUT /api/loans/pumper/[id] - Updating loan:', id)
-    console.log('📦 Request body:', JSON.stringify(body, null, 2))
 
     const loan = await prisma.loanPumper.findUnique({
-      where: { id }
+      where: { id_organizationId: { id, organizationId: user.organizationId } }
     })
 
     if (!loan) {
@@ -88,7 +97,7 @@ export async function PUT(
     }
 
     const updatedLoan = await prisma.loanPumper.update({
-      where: { id },
+      where: { id_organizationId: { id, organizationId: user.organizationId } },
       data: updateData,
       include: {
         station: {
@@ -100,19 +109,9 @@ export async function PUT(
       }
     })
 
-    console.log('✅ Loan updated successfully:', {
-      id: updatedLoan.id,
-      pumperName: updatedLoan.pumperName,
-      status: updatedLoan.status
-    })
-
     return NextResponse.json(updatedLoan)
   } catch (error) {
     console.error('❌ Error updating pumper loan:', error)
-    if (error instanceof Error) {
-      console.error('Error message:', error.message)
-      console.error('Error stack:', error.stack)
-    }
     return NextResponse.json({
       error: 'Failed to update loan',
       details: error instanceof Error ? error.message : 'Unknown error occurred'
@@ -126,9 +125,13 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     const loan = await prisma.loanPumper.findUnique({
-      where: { id }
+      where: { id_organizationId: { id, organizationId: user.organizationId } }
     })
 
     if (!loan) {
@@ -144,7 +147,7 @@ export async function DELETE(
     }
 
     await prisma.loanPumper.delete({
-      where: { id }
+      where: { id_organizationId: { id, organizationId: user.organizationId } }
     })
 
     return NextResponse.json({ success: true, message: 'Loan deleted successfully' })
@@ -156,4 +159,3 @@ export async function DELETE(
     }, { status: 500 })
   }
 }
-

@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { calculateShiftSummary, classifyVariance } from '@/lib/calc'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function POST(request: NextRequest) {
     try {
+        const user = await getServerUser()
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
         const body = await request.json()
         const {
             shiftId,
@@ -27,6 +34,7 @@ export async function POST(request: NextRequest) {
         const testPour = await prisma.testPour.create({
             data: {
                 shiftId,
+                organizationId: user.organizationId,
                 nozzleId,
                 amount: parseFloat(litres),
                 testType: reason === 'L5' ? 'L5' : reason === 'L50' ? 'L50' : 'L100', // Basic mapping to enum

@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getServerUser } from '@/lib/auth-server'
+import { Prisma } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const current = searchParams.get('current')
     const fuelId = searchParams.get('fuelId')
@@ -11,23 +17,16 @@ export async function GET(request: NextRequest) {
     const datetime = searchParams.get('datetime')
     const stationId = searchParams.get('stationId')
 
-    interface PriceWhereInput {
-      fuelId?: string
-      fuel?: { name: string }
-      isActive?: boolean
-      stationId?: string
-      effectiveDate?: { lte: Date }
-    }
-
     if (fuelId || fuelType) {
-      const where: PriceWhereInput = {
-        isActive: true
+      const where: Prisma.PriceWhereInput = {
+        isActive: true,
+        organizationId: user.organizationId
       }
 
       if (fuelId) {
         where.fuelId = fuelId
       } else if (fuelType) {
-        where.fuel = { name: fuelType }
+        where.fuel = { name: fuelType, organizationId: user.organizationId }
       }
 
       if (stationId) {
@@ -35,18 +34,12 @@ export async function GET(request: NextRequest) {
       }
 
       if (datetime) {
-        // Get price at specific date/time
         where.effectiveDate = { lte: new Date(datetime) }
         const price = await prisma.price.findFirst({
           where,
           orderBy: { effectiveDate: 'desc' },
           include: {
-            station: {
-              select: {
-                id: true,
-                name: true
-              }
-            },
+            station: { select: { id: true, name: true } },
             fuel: true
           }
         })
@@ -57,7 +50,6 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(price)
       }
 
-      // Get current price
       const price = await prisma.price.findFirst({
         where: {
           ...where,
@@ -65,12 +57,7 @@ export async function GET(request: NextRequest) {
         },
         orderBy: { effectiveDate: 'desc' },
         include: {
-          station: {
-            select: {
-              id: true,
-              name: true
-            }
-          },
+          station: { select: { id: true, name: true } },
           fuel: true
         }
       })
@@ -82,10 +69,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (current === 'true') {
-      // Get current active prices
       const prices = await prisma.price.findMany({
         where: {
           isActive: true,
+          organizationId: user.organizationId,
           effectiveDate: { lte: new Date() },
           ...(stationId ? { stationId } : {})
         },
@@ -94,25 +81,17 @@ export async function GET(request: NextRequest) {
           { fuelId: 'asc' },
           { effectiveDate: 'desc' }
         ],
-        distinct: ['stationId', 'fuelId'],
         include: {
-          station: {
-            select: {
-              id: true,
-              name: true
-            }
-          },
+          station: { select: { id: true, name: true } },
           fuel: true
         }
       })
       return NextResponse.json(prices)
     }
 
-    // Get all prices
-    interface PriceWhereInput {
-      stationId?: string
+    const where: Prisma.PriceWhereInput = {
+      organizationId: user.organizationId
     }
-    const where: PriceWhereInput = {}
     if (stationId) {
       where.stationId = stationId
     }
@@ -120,12 +99,7 @@ export async function GET(request: NextRequest) {
     const prices = await prisma.price.findMany({
       where,
       include: {
-        station: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
+        station: { select: { id: true, name: true } },
         fuel: true
       },
       orderBy: [
@@ -144,8 +118,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
+    const body = await request.json()
     const { stationId, fuelId, price, effectiveDate } = body
 
     if (!stationId || !fuelId || price === undefined || !effectiveDate) {
@@ -155,9 +133,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get current user for updatedBy
-    const currentUser = await getServerUser()
-    const updatedBy = currentUser ? currentUser.username : 'System User'
+    const updatedBy = user.username
 
     const newPrice = await prisma.price.create({
       data: {
@@ -166,15 +142,11 @@ export async function POST(request: NextRequest) {
         price: parseFloat(price),
         effectiveDate: new Date(effectiveDate),
         isActive: true,
-        updatedBy
+        updatedBy,
+        organizationId: user.organizationId
       },
       include: {
-        station: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
+        station: { select: { id: true, name: true } },
         fuel: true
       }
     })
@@ -182,16 +154,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newPrice, { status: 201 })
   } catch (error) {
     console.error('Error creating price:', error)
-
-    // Handle foreign key constraint violations
-    if (error instanceof Error && error.message.includes('Foreign key constraint')) {
-      return NextResponse.json(
-        { error: 'Invalid station ID or fuel ID' },
-        { status: 400 }
-      )
-    }
-
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-

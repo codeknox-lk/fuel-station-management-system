@@ -2,16 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { UpdateBankSchema } from '@/lib/schemas'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { id } = await params
 
-    const bank = await prisma.bank.findUnique({
-      where: { id },
+    const bank = await prisma.bank.findFirst({
+      where: { id, organizationId: user.organizationId },
       include: {
         _count: {
           select: {
@@ -41,6 +47,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { id } = await params
     const body = await request.json()
 
@@ -56,8 +67,8 @@ export async function PUT(
 
     const { code, name, branch, accountNumber, accountName, swiftCode, contactPerson, phone, email, status } = result.data
 
-    const bank = await prisma.bank.findUnique({
-      where: { id }
+    const bank = await prisma.bank.findFirst({
+      where: { id, organizationId: user.organizationId }
     })
 
     if (!bank) {
@@ -78,7 +89,7 @@ export async function PUT(
     if (email !== undefined) updateData.email = email
 
     const updatedBank = await prisma.bank.update({
-      where: { id },
+      where: { id_organizationId: { id, organizationId: user.organizationId } },
       data: updateData
     })
 
@@ -94,10 +105,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { id } = await params
 
-    const bank = await prisma.bank.findUnique({
-      where: { id }
+    const bank = await prisma.bank.findFirst({
+      where: { id, organizationId: user.organizationId }
     })
 
     if (!bank) {
@@ -105,9 +121,9 @@ export async function DELETE(
     }
 
     // Check for dependencies
-    const hasDeposits = await prisma.deposit.count({ where: { bankId: id } }) > 0
-    const hasCheques = await prisma.cheque.count({ where: { bankId: id } }) > 0
-    const hasCreditPayments = await prisma.creditPayment.count({ where: { bankId: id } }) > 0
+    const hasDeposits = await prisma.deposit.count({ where: { bankId: id, organizationId: user.organizationId } }) > 0
+    const hasCheques = await prisma.cheque.count({ where: { bankId: id, organizationId: user.organizationId } }) > 0
+    const hasCreditPayments = await prisma.creditPayment.count({ where: { bankId: id, organizationId: user.organizationId } }) > 0
 
     if (hasDeposits || hasCheques || hasCreditPayments) {
       return NextResponse.json({
@@ -116,7 +132,7 @@ export async function DELETE(
     }
 
     await prisma.bank.delete({
-      where: { id }
+      where: { id_organizationId: { id, organizationId: user.organizationId } }
     })
 
     return NextResponse.json({ success: true, message: 'Bank deleted successfully' })

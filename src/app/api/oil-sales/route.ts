@@ -13,15 +13,23 @@ export async function GET(request: NextRequest) {
     const summary = searchParams.get('summary')
     const limit = parseInt(searchParams.get('limit') || '100')
 
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     // Build where clause
     interface OilSaleWhereInput {
+      organizationId: string
       stationId?: string
       saleDate?: {
         gte: Date
         lte: Date
       }
     }
-    const where: OilSaleWhereInput = {}
+    const where: OilSaleWhereInput = {
+      organizationId: user.organizationId
+    }
     if (stationId) {
       where.stationId = stationId
     }
@@ -104,11 +112,15 @@ export async function POST(request: NextRequest) {
 
     // Get current user for recordedBy
     const currentUser = await getServerUser()
-    const recordedBy = currentUser ? currentUser.username : 'System User'
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const recordedBy = currentUser.username
 
     const newSale = await prisma.oilSale.create({
       data: {
         stationId,
+        organizationId: currentUser.organizationId,
         productName,
         quantity,
         unit: unit || 'liters',

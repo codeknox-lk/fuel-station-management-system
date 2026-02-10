@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function POST(
   request: NextRequest,
@@ -7,8 +8,14 @@ export async function POST(
 ) {
   try {
     const { id } = await params
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
-    const { amount, performedBy, notes } = body
+    const { amount, notes } = body
+    const performedBy = user.username
 
     if (!amount || amount <= 0) {
       return NextResponse.json(
@@ -19,7 +26,7 @@ export async function POST(
 
     // Get the loan
     const loan = await prisma.loanOfficeStaff.findUnique({
-      where: { id },
+      where: { id_organizationId: { id, organizationId: user.organizationId } },
       include: {
         station: true
       }
@@ -46,7 +53,7 @@ export async function POST(
 
     // Update loan
     const updatedLoan = await prisma.loanOfficeStaff.update({
-      where: { id },
+      where: { id_organizationId: { id, organizationId: user.organizationId } },
       data: {
         paidAmount: newPaidAmount,
         status: newPaidAmount >= loan.amount ? 'PAID' : 'ACTIVE'
@@ -55,8 +62,8 @@ export async function POST(
 
     // Add to safe
     try {
-      let safe = await prisma.safe.findUnique({
-        where: { stationId: loan.stationId }
+      let safe = await prisma.safe.findFirst({
+        where: { stationId: loan.stationId, organizationId: user.organizationId }
       })
 
       if (!safe) {
@@ -64,15 +71,17 @@ export async function POST(
           data: {
             stationId: loan.stationId,
             openingBalance: 0,
-            currentBalance: 0
+            currentBalance: 0,
+            organizationId: user.organizationId
           }
         })
       }
 
       const paymentTimestamp = new Date()
       const allTransactions = await prisma.safeTransaction.findMany({
-        where: { 
+        where: {
           safeId: safe.id,
+          organizationId: user.organizationId,
           timestamp: { lte: paymentTimestamp }
         },
         orderBy: [{ timestamp: 'asc' }, { createdAt: 'asc' }]
@@ -105,13 +114,14 @@ export async function POST(
           balanceAfter,
           loanId: loan.id,
           description: `Office staff loan repayment: ${loan.staffName}${notes ? ` - ${notes}` : ''}`,
-          performedBy: performedBy || 'System',
-          timestamp: paymentTimestamp
+          performedBy,
+          timestamp: paymentTimestamp,
+          organizationId: user.organizationId
         }
       })
 
       await prisma.safe.update({
-        where: { id: safe.id },
+        where: { id_organizationId: { id: safe.id, organizationId: user.organizationId } },
         data: { currentBalance: balanceAfter }
       })
     } catch (safeError) {

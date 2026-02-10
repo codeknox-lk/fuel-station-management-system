@@ -10,9 +10,17 @@ export async function GET(request: NextRequest) {
     const id = searchParams.get('id')
     const status = searchParams.get('status')
 
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     if (id) {
-      const loan = await prisma.loanExternal.findUnique({
-        where: { id },
+      const loan = await prisma.loanExternal.findFirst({
+        where: {
+          id,
+          organizationId: user.organizationId
+        },
         include: {
           station: {
             select: {
@@ -29,7 +37,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(loan)
     }
 
-    const where: Prisma.LoanExternalWhereInput = {}
+    const where: Prisma.LoanExternalWhereInput = {
+      organizationId: user.organizationId
+    }
     if (stationId) {
       where.stationId = stationId
     }
@@ -59,8 +69,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
+    const body = await request.json()
     const { stationId, borrowerName, borrowerPhone, amount, interestRate, dueDate, notes, fromSafe } = body
 
     if (!stationId || !borrowerName || !borrowerPhone || !amount || !dueDate) {
@@ -70,37 +84,32 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const validatedAmount = parseFloat(String(amount))
+    const loanTimestamp = new Date(dueDate)
+    const securePerformedBy = user.username
+
     const newLoan = await prisma.loanExternal.create({
       data: {
         stationId,
         borrowerName,
         borrowerPhone,
-        amount: parseFloat(amount),
-        interestRate: interestRate ? parseFloat(interestRate) : null,
-        dueDate: new Date(dueDate),
+        amount: validatedAmount,
+        interestRate: interestRate ? parseFloat(String(interestRate)) : null,
+        dueDate: loanTimestamp,
         notes: notes || null,
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        organizationId: user.organizationId
       },
       include: {
-        station: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
+        station: { select: { id: true, name: true } }
       }
     })
 
-    // Get current user for performedBy
-    const currentUser = await getServerUser()
-    const securePerformedBy = currentUser ? currentUser.username : 'System User'
-
     // Deduct from safe if fromSafe is true
-    if (fromSafe && parseFloat(amount) > 0) {
+    if (fromSafe && validatedAmount > 0) {
       try {
-        // Get or create safe
-        let safe = await prisma.safe.findUnique({
-          where: { stationId }
+        let safe = await prisma.safe.findFirst({
+          where: { stationId, organizationId: user.organizationId }
         })
 
         if (!safe) {
@@ -108,80 +117,65 @@ export async function POST(request: NextRequest) {
             data: {
               stationId,
               openingBalance: 0,
-              currentBalance: 0
+              currentBalance: 0,
+              organizationId: user.organizationId
             }
           })
         }
 
-        // Calculate balance before transaction chronologically
-        const loanTimestamp = new Date(dueDate) // Use loan date, or could use createdAt
+        // Calculate balance before transaction
         const allTransactions = await prisma.safeTransaction.findMany({
           where: {
             safeId: safe.id,
+            organizationId: user.organizationId,
             timestamp: { lte: loanTimestamp }
           },
           orderBy: [{ timestamp: 'asc' }, { createdAt: 'asc' }]
         })
 
-        // Calculate balance before transaction chronologically
-        // OPENING_BALANCE transactions set the balance, they don't add/subtract
         let balanceBefore = safe.openingBalance
         for (const tx of allTransactions) {
-          if (tx.type === 'OPENING_BALANCE') {
-            balanceBefore = tx.amount
-          } else {
-            const isIncome = [
-              'CASH_FUEL_SALES',
-              'POS_CARD_PAYMENT',
-              'CREDIT_PAYMENT',
-              'CHEQUE_RECEIVED',
-              'LOAN_REPAID'
-            ].includes(tx.type)
+          if (tx.type === 'OPENING_BALANCE') balanceBefore = tx.amount
+          else {
+            const isIncome = ['CASH_FUEL_SALES', 'POS_CARD_PAYMENT', 'CREDIT_PAYMENT', 'CHEQUE_RECEIVED', 'LOAN_REPAID'].includes(tx.type)
             balanceBefore += isIncome ? tx.amount : -tx.amount
           }
         }
 
-        const balanceAfter = balanceBefore - parseFloat(amount)
+        const balanceAfter = balanceBefore - validatedAmount
 
         // Create safe transaction
         await prisma.safeTransaction.create({
           data: {
             safeId: safe.id,
             type: 'LOAN_GIVEN',
-            amount: parseFloat(amount),
+            amount: validatedAmount,
             balanceBefore,
             balanceAfter,
             loanId: newLoan.id,
             description: `External loan given: ${borrowerName}${notes ? ` - ${notes}` : ''}`,
             performedBy: securePerformedBy,
-            timestamp: loanTimestamp
+            timestamp: loanTimestamp,
+            organizationId: user.organizationId
           }
         })
 
         // Update safe balance
         await prisma.safe.update({
-          where: { id: safe.id },
+          where: { id_organizationId: { id: safe.id, organizationId: user.organizationId } },
           data: { currentBalance: balanceAfter }
         })
       } catch (safeError) {
         console.error('Error deducting loan from safe:', safeError)
-        // Don't fail loan creation if safe transaction fails
       }
     }
 
     return NextResponse.json(newLoan, { status: 201 })
   } catch (error) {
     console.error('Error creating external loan:', error)
-
-    // Handle foreign key constraint violations
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
-      return NextResponse.json(
-        { error: 'Invalid station ID' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid station ID' }, { status: 400 })
     }
-
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-

@@ -22,7 +22,8 @@ vi.mock('@/lib/auth-server', () => ({
         userId: 'test-user-id',
         username: 'Test Manager',
         role: 'MANAGER',
-        stationId: 'test-station-id'
+        stationId: 'test-station-id',
+        organizationId: 'test-org-id'
     })
 }));
 
@@ -39,7 +40,8 @@ describe('Integration: Credit Flow (Customer -> Sale -> Payment)', () => {
                 name: 'Credit Flow Station',
                 address: '789 Credit Rd',
                 city: 'Credit City',
-                isActive: true
+                isActive: true,
+                organizationId: 'test-org-id'
             }
         });
         stationId = station.id;
@@ -47,12 +49,13 @@ describe('Integration: Credit Flow (Customer -> Sale -> Payment)', () => {
         // 2. Setup Fuel & Infrastructure (needed for Sale)
         // Use upsert to avoid unique constraint errors
         const fuel = await prisma.fuel.upsert({
-            where: { code: 'C-DSL' },
+            where: { code_organizationId: { code: 'C-DSL', organizationId: 'test-org-id' } },
             update: {},
             create: {
                 name: 'Credit Diesel',
                 code: 'C-DSL',
-                category: 'FUEL'
+                category: 'FUEL',
+                organizationId: 'test-org-id'
             }
         });
 
@@ -62,16 +65,17 @@ describe('Integration: Credit Flow (Customer -> Sale -> Payment)', () => {
                 fuelId: fuel.id,
                 capacity: 10000,
                 currentLevel: 5000,
-                tankNumber: 'T-C1'
+                tankNumber: 'T-C1',
+                organizationId: 'test-org-id'
             }
         });
 
         const pump = await prisma.pump.create({
-            data: { stationId, pumpNumber: 'P-C1' }
+            data: { stationId, pumpNumber: 'P-C1', organizationId: 'test-org-id' }
         });
 
         const nozzle = await prisma.nozzle.create({
-            data: { pumpId: pump.id, tankId: tank.id, nozzleNumber: 'N-C1' }
+            data: { pumpId: pump.id, tankId: tank.id, nozzleNumber: 'N-C1', organizationId: 'test-org-id' }
         });
         nozzleId = nozzle.id;
 
@@ -81,7 +85,8 @@ describe('Integration: Credit Flow (Customer -> Sale -> Payment)', () => {
                 stationId,
                 name: 'Credit Template',
                 startTime: '06:00',
-                endTime: '14:00'
+                endTime: '14:00',
+                organizationId: 'test-org-id'
             }
         });
 
@@ -91,7 +96,8 @@ describe('Integration: Credit Flow (Customer -> Sale -> Payment)', () => {
                 templateId: template.id,
                 startTime: new Date(),
                 status: 'OPEN',
-                openedBy: 'Credit Mgr'
+                openedBy: 'Credit Mgr',
+                organizationId: 'test-org-id'
             }
         });
         shiftId = shift.id;

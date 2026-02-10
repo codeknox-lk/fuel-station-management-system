@@ -156,7 +156,7 @@ export async function DELETE(request: NextRequest) {
       shifts: shifts.map(shift => ({
         id: shift.id,
         station: shift.station.name,
-        template: shift.template.name,
+        template: shift.template?.name || 'N/A',
         status: shift.status,
         startTime: shift.startTime,
         endTime: shift.endTime,

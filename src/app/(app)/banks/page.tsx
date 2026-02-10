@@ -465,7 +465,7 @@ export default function BankAccountsPage() {
                       selectedBankForTransaction.currentBalance +
                       (['DEPOSIT', 'TRANSFER_IN', 'INTEREST', 'ADJUSTMENT'].includes(manualTransactionForm.type) ? 1 : -1) *
                       parseFloat(manualTransactionForm.amount || '0')
-                    () || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </div>
                 </div>
               </div>

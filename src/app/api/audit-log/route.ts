@@ -2,13 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAuditLogManual } from '@/lib/audit'
 import { AuditAction } from '@/lib/audit'
 
+import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
+
 export async function POST(request: NextRequest) {
     try {
+        const user = await getServerUser()
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
         const body = await request.json()
         const {
-            userId,
-            userName,
-            userRole,
             action,
             entity,
             entityId,
@@ -18,7 +23,7 @@ export async function POST(request: NextRequest) {
         } = body
 
         // Validate required fields
-        if (!userId || !userName || !action || !entity || !details) {
+        if (!action || !entity || !details) {
             return NextResponse.json(
                 { error: 'Missing required audit log fields' },
                 { status: 400 }
@@ -35,9 +40,10 @@ export async function POST(request: NextRequest) {
                 stationId,
                 stationName
             },
-            userId,
-            userName,
-            userRole
+            user.userId,
+            user.username,
+            user.role,
+            user.organizationId
         )
 
         return NextResponse.json({ success: true }, { status: 201 })

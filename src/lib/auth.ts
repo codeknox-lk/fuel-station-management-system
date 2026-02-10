@@ -6,8 +6,10 @@
 export interface CurrentUser {
   id: string
   username: string
-  role: 'OWNER' | 'MANAGER' | 'ACCOUNTS'
+  role: 'OWNER' | 'MANAGER' | 'ACCOUNTS' | 'DEVELOPER'
   stationId?: string | null
+  organizationId?: string | null
+  organizationSlug?: string | null
 }
 
 /**
@@ -21,14 +23,18 @@ export function getCurrentUser(): CurrentUser | null {
     const username = localStorage.getItem('username')
     const role = localStorage.getItem('userRole')
     const stationId = localStorage.getItem('stationId')
+    const organizationId = localStorage.getItem('organizationId')
+    const organizationSlug = localStorage.getItem('organizationSlug')
 
     if (!userId || !username || !role) return null
 
     return {
       id: userId,
       username,
-      role: role as 'OWNER' | 'MANAGER' | 'ACCOUNTS',
-      stationId: stationId || null
+      role: role as 'OWNER' | 'MANAGER' | 'ACCOUNTS' | 'DEVELOPER',
+      stationId: stationId || null,
+      organizationId: organizationId || null,
+      organizationSlug: organizationSlug || null
     }
   } catch {
     return null
@@ -60,7 +66,10 @@ export function logout() {
   localStorage.removeItem('userRole')
   localStorage.removeItem('userId')
   localStorage.removeItem('username')
+  localStorage.removeItem('username')
   localStorage.removeItem('stationId')
+  localStorage.removeItem('organizationId')
+  localStorage.removeItem('organizationSlug')
 
   // Clear any other session data
   sessionStorage.clear()

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
 
 /**
  * GET: Get closed shifts that haven't been added to the safe yet
@@ -7,6 +8,11 @@ import { prisma } from '@/lib/db'
  */
 export async function GET(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const stationId = searchParams.get('stationId')
 
@@ -20,6 +26,7 @@ export async function GET(request: NextRequest) {
 
     const shifts = await prisma.shift.findMany({
       where: {
+        organizationId: user.organizationId,
         stationId,
         status: 'CLOSED',
         endTime: {
@@ -115,7 +122,7 @@ export async function GET(request: NextRequest) {
 
       return {
         id: shift.id,
-        templateName: shift.template.name,
+        templateName: shift.template?.name || 'Manual',
         startTime: shift.startTime,
         endTime: shift.endTime,
         totalSales,

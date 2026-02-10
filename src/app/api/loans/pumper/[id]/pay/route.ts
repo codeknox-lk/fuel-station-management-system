@@ -8,12 +8,17 @@ export async function POST(
 ) {
   try {
     const { id } = await params
-    const body = await request.json()
-    const { stationId, amount, notes, performedBy } = body
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    if (!stationId || !amount || !performedBy) {
+    const body = await request.json()
+    const { stationId, amount, notes } = body
+
+    if (!stationId || !amount) {
       return NextResponse.json({
-        error: 'Station ID, amount, and performedBy are required'
+        error: 'Station ID and amount are required'
       }, { status: 400 })
     }
 
@@ -26,7 +31,7 @@ export async function POST(
 
     // Get the loan
     const loan = await prisma.loanPumper.findUnique({
-      where: { id }
+      where: { id_organizationId: { id, organizationId: user.organizationId } }
     })
 
     if (!loan) {
@@ -40,8 +45,8 @@ export async function POST(
     }
 
     // Get or create safe
-    let safe = await prisma.safe.findUnique({
-      where: { stationId }
+    let safe = await prisma.safe.findFirst({
+      where: { stationId, organizationId: user.organizationId }
     })
 
     if (!safe) {
@@ -49,7 +54,8 @@ export async function POST(
         data: {
           stationId,
           openingBalance: 0,
-          currentBalance: 0
+          currentBalance: 0,
+          organizationId: user.organizationId
         }
       })
     }
@@ -59,6 +65,7 @@ export async function POST(
     const allTransactions = await prisma.safeTransaction.findMany({
       where: {
         safeId: safe.id,
+        organizationId: user.organizationId,
         timestamp: { lte: paymentTimestamp }
       },
       orderBy: [{ timestamp: 'asc' }, { createdAt: 'asc' }]
@@ -82,11 +89,7 @@ export async function POST(
     }
 
     const balanceAfter = balanceBefore + paymentAmount
-
-    // Create safe transaction
-    // Get current user for performedBy
-    const currentUser = await getServerUser()
-    const securePerformedBy = currentUser ? currentUser.username : (performedBy || 'System User')
+    const securePerformedBy = user.username
 
     const safeTransaction = await prisma.safeTransaction.create({
       data: {
@@ -98,13 +101,14 @@ export async function POST(
         loanId: loan.id,
         description: `Loan repayment from ${loan.pumperName}${notes ? `: ${notes}` : ''}`,
         performedBy: securePerformedBy,
-        timestamp: paymentTimestamp
+        timestamp: paymentTimestamp,
+        organizationId: user.organizationId
       }
     })
 
     // Update safe balance
     await prisma.safe.update({
-      where: { id: safe.id },
+      where: { id_organizationId: { id: safe.id, organizationId: user.organizationId } },
       data: { currentBalance: balanceAfter }
     })
 
@@ -115,7 +119,7 @@ export async function POST(
 
     // Update loan: increment paidAmount and update status if fully paid
     const updatedLoan = await prisma.loanPumper.update({
-      where: { id },
+      where: { id_organizationId: { id, organizationId: user.organizationId } },
       data: {
         paidAmount: newPaidAmount,
         status: newPaidAmount >= loan.amount ? 'PAID' : loan.status

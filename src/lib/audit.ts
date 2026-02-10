@@ -29,6 +29,7 @@ interface UserInfo {
     userId: string
     userName: string
     userRole: string
+    organizationId: string
 }
 
 /**
@@ -51,13 +52,15 @@ function getUserFromRequest(request?: NextRequest): UserInfo | null {
             sub?: string
             username?: string
             role?: string
+            organizationId?: string
         }
         const decoded = jwt.verify(token, getJwtSecret()) as unknown as DecodedToken
 
         return {
             userId: decoded.userId || decoded.sub || 'unknown',
             userName: decoded.sub || decoded.username || 'Unknown User',
-            userRole: decoded.role || 'MANAGER'
+            userRole: decoded.role || 'MANAGER',
+            organizationId: decoded.organizationId || ''
         }
     } catch (error) {
         console.error('Failed to extract user from token:', error)
@@ -98,6 +101,7 @@ export async function createAuditLog(
                 userId: user.userId,
                 userName: user.userName,
                 userRole: user.userRole as import('@prisma/client').UserRole,
+                organizationId: user.organizationId || null,
                 action: params.action,
                 entity: params.entity,
                 entityId: params.entityId,
@@ -122,11 +126,13 @@ export async function createAuditLogManual(
     params: Omit<AuditLogParams, 'request'>,
     userId: string,
     userName: string,
-    userRole: string
+    userRole: string,
+    organizationId: string
 ): Promise<void> {
     await createAuditLog(params, {
         userId,
         userName,
-        userRole
+        userRole,
+        organizationId
     })
 }

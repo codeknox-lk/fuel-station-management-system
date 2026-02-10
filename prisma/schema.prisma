@@ -8,28 +8,102 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id             String     @id @default(uuid())
-  username       String     @unique
-  email          String     @unique
-  password       String
-  role           UserRole   @default(MANAGER)
-  stationId      String?
-  isActive       Boolean    @default(true)
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-  lastLogin      DateTime?
-  failedAttempts Int        @default(0)
-  isFirstLogin   Boolean    @default(true)
-  lockoutUntil   DateTime?
-  mfaEnabled     Boolean    @default(false)
-  mfaSecret      String?
-  auditLogs      AuditLog[]
-  station        Station?   @relation(fields: [stationId], references: [id])
+model Organization {
+  id                        String                     @id @default(uuid())
+  name                      String
+  slug                      String                     @unique
+  plan                      PlanType                   @default(BASIC)
+  isActive                  Boolean                    @default(true)
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+  banks                     Bank[]
+  customers                 CreditCustomer[]
+  fuels                     Fuel[]
+  shopProducts              ShopProduct[]
+  stations                  Station[]
+  subscription              Subscription?
+  users                     User[]
+  shifts                    Shift[]
+  shiftAssignments          ShiftAssignment[]
+  auditLogs                 AuditLog[]
+  expenses                  Expense[]
+  deposits                  Deposit[]
+  tanks                     Tank[]
+  tankDips                  TankDip[]
+  deliveries                Delivery[]
+  pumpers                   Pumper[]
+  officeStaff               OfficeStaff[]
+  pumps                     Pump[]
+  nozzles                   Nozzle[]
+  prices                    Price[]
+  safes                     Safe[]
+  safeTransactions          SafeTransaction[]
+  bankTransactions          BankTransaction[]
+  notifications             Notification[]
+  meterAudits               MeterAudit[]
+  testPours                 TestPour[]
+  oilSales                  OilSale[]
+  tenders                   Tender[]
+  cheques                   Cheque[]
+  creditSales               CreditSale[]
+  creditPayments            CreditPayment[]
+  salaryPayments            SalaryPayment[]
+  officeStaffSalaryPayments OfficeStaffSalaryPayment[]
+  pumperLoans               LoanPumper[]
+  officeStaffLoans          LoanOfficeStaff[]
+  externalLoans             LoanExternal[]
+  shiftTemplates            ShiftTemplate[]
+  posTerminals              PosTerminal[]
+  posBatches                PosBatch[]
+  posBatchEntries           PosBatchTerminalEntry[]
+  posMissingSlips           PosMissingSlip[]
+  shopPurchaseBatches       ShopPurchaseBatch[]
+  shopAssignments           ShopAssignment[]
+  shopShiftItems            ShopShiftItem[]
+  shopSales                 ShopSale[]
+  shopWastages              ShopWastage[]
 
+  @@index([slug])
+}
+
+model Subscription {
+  id               String             @id @default(uuid())
+  organizationId   String             @unique
+  planId           PlanType
+  status           SubscriptionStatus @default(ACTIVE)
+  stripeCustomerId String?
+  currentPeriodEnd DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  organization     Organization       @relation(fields: [organizationId], references: [id])
+}
+
+model User {
+  id             String        @id @default(uuid())
+  username       String        @unique
+  email          String        @unique
+  password       String
+  role           UserRole      @default(MANAGER)
+  stationId      String?
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  lastLogin      DateTime?
+  failedAttempts Int           @default(0)
+  isFirstLogin   Boolean       @default(true)
+  lockoutUntil   DateTime?
+  mfaEnabled     Boolean       @default(false)
+  mfaSecret      String?
+  organizationId String?
+  auditLogs      AuditLog[]
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  station        Station?      @relation(fields: [stationId], references: [id])
+
+  @@unique([id, organizationId])
   @@index([username])
   @@index([email])
   @@index([stationId])
+  @@index([organizationId])
 }
 
 model Station {
@@ -43,6 +117,7 @@ model Station {
   email                     String?
   openingHours              String?
   phone                     String?
+  organizationId            String?
   bankTransactions          BankTransaction[]
   cheques                   Cheque[]
   deliveries                Delivery[]
@@ -63,18 +138,21 @@ model Station {
   salaryPayments            SalaryPayment[]
   shifts                    Shift[]
   shiftTemplates            ShiftTemplate[]
+  shopProducts              ShopProduct[]
+  organization              Organization?              @relation(fields: [organizationId], references: [id])
   tanks                     Tank[]
   tankDips                  TankDip[]
   users                     User[]
-  shopProducts              ShopProduct[]
 
+  @@unique([id, organizationId])
   @@index([isActive])
+  @@index([organizationId])
 }
 
 model Shift {
   id              String            @id @default(uuid())
   stationId       String
-  templateId      String
+  templateId      String?
   startTime       DateTime
   endTime         DateTime?
   status          ShiftStatus       @default(OPEN)
@@ -89,36 +167,45 @@ model Shift {
   posBatches      PosBatch[]
   posMissingSlips PosMissingSlip[]
   station         Station           @relation(fields: [stationId], references: [id])
-  template        ShiftTemplate     @relation(fields: [templateId], references: [id])
+  template        ShiftTemplate?    @relation(fields: [templateId], references: [id])
   assignments     ShiftAssignment[]
+  shopAssignment  ShopAssignment?
   tenders         Tender[]
   testPours       TestPour[]
-  shopAssignment  ShopAssignment?
+  organizationId  String?
+  organization    Organization?     @relation(fields: [organizationId], references: [id])
+  shiftNumber     String?
 
+  @@unique([id, organizationId])
   @@index([stationId])
   @@index([status])
   @@index([startTime])
   @@index([stationId, status])
   @@index([status, createdAt])
+  @@index([organizationId])
 }
 
 model ShiftTemplate {
-  id             String   @id @default(uuid())
+  id             String        @id @default(uuid())
   stationId      String
   name           String
   startTime      String
   endTime        String
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  breakDuration  Int      @default(0)
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  breakDuration  Int           @default(0)
   breakStartTime String?
   description    String?
-  icon           String?  @default("sun")
+  icon           String?       @default("sun")
   shifts         Shift[]
-  station        Station  @relation(fields: [stationId], references: [id])
+  station        Station       @relation(fields: [stationId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([stationId])
+  @@index([organizationId])
 }
 
 model ShiftAssignment {
@@ -135,68 +222,85 @@ model ShiftAssignment {
   updatedAt         DateTime         @updatedAt
   nozzle            Nozzle           @relation(fields: [nozzleId], references: [id])
   shift             Shift            @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  organizationId    String?
+  organization      Organization?    @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([shiftId])
   @@index([nozzleId])
   @@index([status])
   @@index([shiftId, status])
+  @@index([organizationId])
 }
 
 model Tank {
-  id           String     @id @default(uuid())
-  stationId    String
-  capacity     Float
-  currentLevel Float
-  isActive     Boolean    @default(true)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  tankNumber   String     @default("TANK-1")
-  fuelId       String
-  deliveries   Delivery[]
-  nozzles      Nozzle[]
-  fuel         Fuel       @relation(fields: [fuelId], references: [id])
-  station      Station    @relation(fields: [stationId], references: [id])
-  tankDips     TankDip[]
+  id             String        @id @default(uuid())
+  stationId      String
+  capacity       Float
+  currentLevel   Float
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  tankNumber     String        @default("TANK-1")
+  fuelId         String
+  deliveries     Delivery[]
+  nozzles        Nozzle[]
+  fuel           Fuel          @relation(fields: [fuelId], references: [id])
+  station        Station       @relation(fields: [stationId], references: [id])
+  tankDips       TankDip[]
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 
   @@unique([stationId, tankNumber])
+  @@unique([id, organizationId])
   @@index([stationId])
   @@index([fuelId])
   @@index([stationId, isActive])
   @@index([currentLevel])
+  @@index([organizationId])
 }
 
 model Fuel {
-  id          String   @id @default(uuid())
-  code        String   @unique
-  name        String
-  category    String
-  description String?
-  icon        String?
-  isActive    Boolean  @default(true)
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  prices      Price[]
-  tanks       Tank[]
+  id             String        @id @default(uuid())
+  code           String
+  name           String
+  category       String
+  description    String?
+  icon           String?
+  isActive       Boolean       @default(true)
+  sortOrder      Int           @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  prices         Price[]
+  tanks          Tank[]
 
+  @@unique([code, organizationId])
+  @@unique([id, organizationId])
   @@index([code])
   @@index([category])
   @@index([isActive])
+  @@index([organizationId])
 }
 
 model Pump {
-  id         String   @id @default(uuid())
-  stationId  String
-  pumpNumber String
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  nozzles    Nozzle[]
-  station    Station  @relation(fields: [stationId], references: [id])
+  id             String        @id @default(uuid())
+  stationId      String
+  pumpNumber     String
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  nozzles        Nozzle[]
+  station        Station       @relation(fields: [stationId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 
   @@unique([stationId, pumpNumber])
+  @@unique([id, organizationId])
   @@index([stationId])
   @@index([stationId, isActive])
+  @@index([organizationId])
 }
 
 model Nozzle {
@@ -214,28 +318,36 @@ model Nozzle {
   tank              Tank              @relation(fields: [tankId], references: [id])
   assignments       ShiftAssignment[]
   testPours         TestPour[]
+  organizationId    String?
+  organization      Organization?     @relation(fields: [organizationId], references: [id])
 
   @@unique([pumpId, nozzleNumber])
+  @@unique([id, organizationId])
   @@index([tankId])
   @@index([pumpId, isActive])
+  @@index([organizationId])
 }
 
 model TankDip {
-  id         String   @id @default(uuid())
-  stationId  String
-  tankId     String
-  reading    Float
-  recordedBy String
-  dipDate    DateTime
-  notes      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  station    Station  @relation(fields: [stationId], references: [id])
-  tank       Tank     @relation(fields: [tankId], references: [id])
+  id             String        @id @default(uuid())
+  stationId      String
+  tankId         String
+  reading        Float
+  recordedBy     String
+  dipDate        DateTime
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  station        Station       @relation(fields: [stationId], references: [id])
+  tank           Tank          @relation(fields: [tankId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([stationId])
   @@index([tankId])
   @@index([dipDate])
+  @@index([organizationId])
 }
 
 model Delivery {
@@ -263,111 +375,135 @@ model Delivery {
   beforeMeterReadings Json?
   station             Station        @relation(fields: [stationId], references: [id])
   tank                Tank           @relation(fields: [tankId], references: [id])
+  organizationId      String?
+  organization        Organization?  @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([stationId])
   @@index([tankId])
   @@index([deliveryDate])
   @@index([verificationStatus])
+  @@index([organizationId])
 }
 
 model Expense {
-  id          String   @id @default(uuid())
-  stationId   String
-  category    String
-  description String
-  amount      Float
-  fromSafe    Boolean  @default(false)
-  paidBy      String
-  proof       String?
-  expenseDate DateTime
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  recordedBy  String   @default("System")
-  station     Station  @relation(fields: [stationId], references: [id])
+  id             String        @id @default(uuid())
+  stationId      String
+  category       String
+  description    String
+  amount         Float
+  fromSafe       Boolean       @default(false)
+  paidBy         String
+  proof          String?
+  expenseDate    DateTime
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  recordedBy     String        @default("System")
+  station        Station       @relation(fields: [stationId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([stationId])
   @@index([expenseDate])
   @@index([category])
+  @@index([organizationId])
 }
 
 model Deposit {
-  id          String   @id @default(uuid())
-  stationId   String
-  amount      Float
-  bankId      String
-  accountId   String
-  depositSlip String?
-  depositedBy String
-  depositDate DateTime
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  bank        Bank     @relation(fields: [bankId], references: [id])
-  station     Station  @relation(fields: [stationId], references: [id])
+  id             String        @id @default(uuid())
+  stationId      String
+  amount         Float
+  bankId         String
+  accountId      String
+  depositSlip    String?
+  depositedBy    String
+  depositDate    DateTime
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  bank           Bank          @relation(fields: [bankId], references: [id])
+  station        Station       @relation(fields: [stationId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([stationId])
   @@index([bankId])
   @@index([depositDate])
+  @@index([organizationId])
 }
 
 model LoanExternal {
-  id            String     @id @default(uuid())
-  stationId     String
-  borrowerName  String
-  borrowerPhone String
-  amount        Float
-  interestRate  Float?
-  dueDate       DateTime
-  status        LoanStatus @default(ACTIVE)
-  notes         String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  station       Station    @relation(fields: [stationId], references: [id])
+  id             String        @id @default(uuid())
+  stationId      String
+  borrowerName   String
+  borrowerPhone  String
+  amount         Float
+  interestRate   Float?
+  dueDate        DateTime
+  status         LoanStatus    @default(ACTIVE)
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  station        Station       @relation(fields: [stationId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([stationId])
   @@index([status])
   @@index([dueDate])
+  @@index([organizationId])
 }
 
 model LoanPumper {
-  id            String     @id @default(uuid())
-  stationId     String
-  pumperName    String
-  amount        Float
-  reason        String
-  dueDate       DateTime
-  status        LoanStatus @default(ACTIVE)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  monthlyRental Float?     @default(0)
-  givenBy       String?
-  paidAmount    Float      @default(0)
-  station       Station    @relation(fields: [stationId], references: [id])
+  id             String        @id @default(uuid())
+  stationId      String
+  pumperName     String
+  amount         Float
+  reason         String
+  dueDate        DateTime
+  status         LoanStatus    @default(ACTIVE)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  monthlyRental  Float?        @default(0)
+  givenBy        String?
+  paidAmount     Float         @default(0)
+  station        Station       @relation(fields: [stationId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([stationId])
   @@index([status])
   @@index([dueDate])
   @@index([stationId, status])
   @@index([status, createdAt])
+  @@index([organizationId])
 }
 
 model LoanOfficeStaff {
-  id            String     @id @default(uuid())
-  stationId     String
-  staffName     String
-  amount        Float
-  paidAmount    Float      @default(0)
-  monthlyRental Float?     @default(0)
-  reason        String
-  givenBy       String?
-  dueDate       DateTime
-  status        LoanStatus @default(ACTIVE)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  station       Station    @relation(fields: [stationId], references: [id])
+  id             String        @id @default(uuid())
+  stationId      String
+  staffName      String
+  amount         Float
+  paidAmount     Float         @default(0)
+  monthlyRental  Float?        @default(0)
+  reason         String
+  givenBy        String?
+  dueDate        DateTime
+  status         LoanStatus    @default(ACTIVE)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  station        Station       @relation(fields: [stationId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([stationId])
   @@index([status])
   @@index([dueDate])
+  @@index([organizationId])
 }
 
 model Cheque {
@@ -387,16 +523,20 @@ model Cheque {
   chequeDate      DateTime         @default(now())
   creditPaymentId String?          @unique
   depositDate     DateTime?
+  organizationId  String?
+  organization    Organization?    @relation(fields: [organizationId], references: [id])
   bankTransaction BankTransaction?
   bank            Bank             @relation(fields: [bankId], references: [id])
   creditPayment   CreditPayment?   @relation(fields: [creditPaymentId], references: [id])
   station         Station          @relation(fields: [stationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([stationId])
   @@index([bankId])
   @@index([status])
   @@index([receivedDate])
   @@index([chequeDate])
+  @@index([organizationId])
 }
 
 model CreditCustomer {
@@ -411,33 +551,41 @@ model CreditCustomer {
   isActive       Boolean         @default(true)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+  organizationId String?
+  organization   Organization?   @relation(fields: [organizationId], references: [id])
   creditPayments CreditPayment[]
   creditSales    CreditSale[]
 
+  @@unique([id, organizationId])
   @@index([phone])
   @@index([isActive])
+  @@index([organizationId])
 }
 
 model CreditSale {
-  id         String         @id @default(uuid())
-  customerId String
-  shiftId    String
-  nozzleId   String
-  amount     Float
-  liters     Float
-  price      Float
-  slipPhoto  String?
-  signedBy   String
-  timestamp  DateTime
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-  recordedBy String         @default("System")
-  customer   CreditCustomer @relation(fields: [customerId], references: [id])
-  shift      Shift          @relation(fields: [shiftId], references: [id])
+  id             String         @id @default(uuid())
+  customerId     String
+  shiftId        String
+  nozzleId       String
+  amount         Float
+  liters         Float
+  price          Float
+  slipPhoto      String?
+  signedBy       String
+  timestamp      DateTime
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  recordedBy     String         @default("System")
+  customer       CreditCustomer @relation(fields: [customerId], references: [id])
+  shift          Shift          @relation(fields: [shiftId], references: [id])
+  organizationId String?
+  organization   Organization?  @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([customerId])
   @@index([shiftId])
   @@index([timestamp])
+  @@index([organizationId])
 }
 
 model CreditPayment {
@@ -456,9 +604,13 @@ model CreditPayment {
   cheque          Cheque?
   bank            Bank?               @relation(fields: [bankId], references: [id])
   customer        CreditCustomer      @relation(fields: [customerId], references: [id])
+  organizationId  String?
+  organization    Organization?       @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([customerId])
   @@index([paymentDate])
+  @@index([organizationId])
 }
 
 model PosTerminal {
@@ -474,10 +626,14 @@ model PosTerminal {
   missingSlips   PosMissingSlip[]
   bank           Bank?                   @relation(fields: [bankId], references: [id])
   station        Station                 @relation(fields: [stationId], references: [id])
+  organizationId String?
+  organization   Organization?           @relation(fields: [organizationId], references: [id])
 
   @@unique([stationId, terminalNumber])
+  @@unique([id, organizationId])
   @@index([stationId])
   @@index([bankId])
+  @@index([organizationId])
 }
 
 model PosBatch {
@@ -492,34 +648,42 @@ model PosBatch {
   notes           String?
   shift           Shift                   @relation(fields: [shiftId], references: [id])
   terminalEntries PosBatchTerminalEntry[]
+  organizationId  String?
+  organization    Organization?           @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([shiftId])
   @@index([isReconciled])
+  @@index([organizationId])
 }
 
 model PosBatchTerminalEntry {
-  id                String      @id @default(uuid())
+  id                String        @id @default(uuid())
   batchId           String
   terminalId        String
   startNumber       String
   endNumber         String
   transactionCount  Int
-  visaAmount        Float       @default(0)
-  masterAmount      Float       @default(0)
-  amexAmount        Float       @default(0)
-  qrAmount          Float       @default(0)
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-  dialogTouchAmount Float       @default(0)
-  batch             PosBatch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  terminal          PosTerminal @relation(fields: [terminalId], references: [id])
+  visaAmount        Float         @default(0)
+  masterAmount      Float         @default(0)
+  amexAmount        Float         @default(0)
+  qrAmount          Float         @default(0)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  dialogTouchAmount Float         @default(0)
+  batch             PosBatch      @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  terminal          PosTerminal   @relation(fields: [terminalId], references: [id])
+  organizationId    String?
+  organization      Organization? @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([batchId])
   @@index([terminalId])
+  @@index([organizationId])
 }
 
 model PosMissingSlip {
-  id             String      @id @default(uuid())
+  id             String        @id @default(uuid())
   terminalId     String
   shiftId        String
   amount         Float
@@ -527,14 +691,18 @@ model PosMissingSlip {
   timestamp      DateTime
   reportedBy     String
   notes          String?
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-  shift          Shift       @relation(fields: [shiftId], references: [id])
-  terminal       PosTerminal @relation(fields: [terminalId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  shift          Shift         @relation(fields: [shiftId], references: [id])
+  terminal       PosTerminal   @relation(fields: [terminalId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([terminalId])
   @@index([shiftId])
   @@index([timestamp])
+  @@index([organizationId])
 }
 
 model Safe {
@@ -548,55 +716,67 @@ model Safe {
   updatedAt      DateTime          @updatedAt
   station        Station           @relation(fields: [stationId], references: [id])
   transactions   SafeTransaction[]
+  organizationId String?
+  organization   Organization?     @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([stationId])
+  @@index([organizationId])
 }
 
 model SafeTransaction {
-  id            String              @id @default(uuid())
-  safeId        String
-  type          SafeTransactionType
-  amount        Float
-  balanceBefore Float
-  balanceAfter  Float
-  shiftId       String?
-  batchId       String?
-  creditSaleId  String?
-  chequeId      String?
-  expenseId     String?
-  loanId        String?
-  depositId     String?
-  description   String
-  performedBy   String
-  timestamp     DateTime
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-  safe          Safe                @relation(fields: [safeId], references: [id], onDelete: Cascade)
+  id             String              @id @default(uuid())
+  safeId         String
+  type           SafeTransactionType
+  amount         Float
+  balanceBefore  Float
+  balanceAfter   Float
+  shiftId        String?
+  batchId        String?
+  creditSaleId   String?
+  chequeId       String?
+  expenseId      String?
+  loanId         String?
+  depositId      String?
+  description    String
+  performedBy    String
+  timestamp      DateTime
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  safe           Safe                @relation(fields: [safeId], references: [id], onDelete: Cascade)
+  organizationId String?
+  organization   Organization?       @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([safeId])
   @@index([type])
   @@index([timestamp])
   @@index([safeId, timestamp])
   @@index([shiftId])
+  @@index([organizationId])
 }
 
 model Price {
-  id            String   @id @default(uuid())
-  stationId     String
-  price         Float
-  effectiveDate DateTime
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  fuelId        String
-  updatedBy     String   @default("System")
-  fuel          Fuel     @relation(fields: [fuelId], references: [id])
-  station       Station  @relation(fields: [stationId], references: [id])
+  id             String        @id @default(uuid())
+  stationId      String
+  price          Float
+  effectiveDate  DateTime
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  fuelId         String
+  updatedBy      String        @default("System")
+  fuel           Fuel          @relation(fields: [fuelId], references: [id])
+  station        Station       @relation(fields: [stationId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([stationId])
   @@index([fuelId])
   @@index([effectiveDate])
   @@index([isActive])
+  @@index([organizationId])
 }
 
 model Bank {
@@ -613,13 +793,17 @@ model Bank {
   email            String?
   phone            String?
   swiftCode        String?
+  organizationId   String?
+  organization     Organization?     @relation(fields: [organizationId], references: [id])
   bankTransactions BankTransaction[]
   cheques          Cheque[]
   creditPayments   CreditPayment[]
   deposits         Deposit[]
   posTerminals     PosTerminal[]
 
+  @@unique([id, organizationId])
   @@index([isActive])
+  @@index([organizationId])
 }
 
 model BankTransaction {
@@ -639,11 +823,15 @@ model BankTransaction {
   bank            Bank                @relation(fields: [bankId], references: [id])
   cheque          Cheque?             @relation(fields: [chequeId], references: [id])
   station         Station?            @relation(fields: [stationId], references: [id])
+  organizationId  String?
+  organization    Organization?       @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([bankId])
   @@index([stationId])
   @@index([transactionDate])
   @@index([type])
+  @@index([organizationId])
 }
 
 model Pumper {
@@ -665,11 +853,15 @@ model Pumper {
   holidayAllowance Float?          @default(4500)
   station          Station?        @relation(fields: [stationId], references: [id])
   salaryPayments   SalaryPayment[]
+  organizationId   String?
+  organization     Organization?   @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([stationId])
   @@index([status])
   @@index([isActive])
   @@index([stationId, isActive])
+  @@index([organizationId])
 }
 
 model OfficeStaff {
@@ -692,10 +884,14 @@ model OfficeStaff {
   specialAllowance Float                      @default(0)
   station          Station                    @relation(fields: [stationId], references: [id])
   salaryPayments   OfficeStaffSalaryPayment[]
+  organizationId   String?
+  organization     Organization?              @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([stationId])
   @@index([role])
   @@index([isActive])
+  @@index([organizationId])
 }
 
 model SalaryPayment {
@@ -719,12 +915,16 @@ model SalaryPayment {
   updatedAt        DateTime            @updatedAt
   pumper           Pumper              @relation(fields: [pumperId], references: [id])
   station          Station             @relation(fields: [stationId], references: [id])
+  organizationId   String?
+  organization     Organization?       @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([stationId])
   @@index([pumperId])
   @@index([paymentMonth])
   @@index([paymentDate])
   @@index([status])
+  @@index([organizationId])
 }
 
 model OfficeStaffSalaryPayment {
@@ -747,16 +947,20 @@ model OfficeStaffSalaryPayment {
   updatedAt        DateTime            @updatedAt
   officeStaff      OfficeStaff         @relation(fields: [officeStaffId], references: [id])
   station          Station             @relation(fields: [stationId], references: [id])
+  organizationId   String?
+  organization     Organization?       @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([stationId])
   @@index([officeStaffId])
   @@index([paymentMonth])
   @@index([paymentDate])
   @@index([status])
+  @@index([organizationId])
 }
 
 model MeterAudit {
-  id              String       @id @default(uuid())
+  id              String        @id @default(uuid())
   shiftId         String?
   nozzleId        String
   reading         Float
@@ -769,83 +973,103 @@ model MeterAudit {
   auditTime       DateTime
   auditedBy       String
   notes           String?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  nozzle          Nozzle       @relation(fields: [nozzleId], references: [id])
-  shift           Shift?       @relation(fields: [shiftId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  nozzle          Nozzle        @relation(fields: [nozzleId], references: [id])
+  shift           Shift?        @relation(fields: [shiftId], references: [id])
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([shiftId])
   @@index([nozzleId])
   @@index([timestamp])
+  @@index([organizationId])
 }
 
 model TestPour {
-  id          String       @id @default(uuid())
-  shiftId     String
-  nozzleId    String
-  amount      Float
-  testType    TestPourType
-  timestamp   DateTime
-  performedBy String
-  returned    Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  notes       String?
-  nozzle      Nozzle       @relation(fields: [nozzleId], references: [id])
-  shift       Shift        @relation(fields: [shiftId], references: [id])
+  id             String        @id @default(uuid())
+  shiftId        String
+  nozzleId       String
+  amount         Float
+  testType       TestPourType
+  timestamp      DateTime
+  performedBy    String
+  returned       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  notes          String?
+  nozzle         Nozzle        @relation(fields: [nozzleId], references: [id])
+  shift          Shift         @relation(fields: [shiftId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([shiftId])
   @@index([nozzleId])
+  @@index([organizationId])
 }
 
 model OilSale {
-  id           String   @id @default(uuid())
-  stationId    String
-  productName  String
-  quantity     Float
-  unit         String   @default("liters")
-  price        Float
-  totalAmount  Float
-  customerName String?
-  saleDate     DateTime
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  recordedBy   String   @default("System")
-  station      Station  @relation(fields: [stationId], references: [id])
+  id             String        @id @default(uuid())
+  stationId      String
+  productName    String
+  quantity       Float
+  unit           String        @default("liters")
+  price          Float
+  totalAmount    Float
+  customerName   String?
+  saleDate       DateTime
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  recordedBy     String        @default("System")
+  station        Station       @relation(fields: [stationId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([stationId])
   @@index([saleDate])
+  @@index([organizationId])
 }
 
 model Tender {
-  id         String   @id @default(uuid())
-  shiftId    String
-  amount     Float
-  tenderType String
-  notes      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  shift      Shift    @relation(fields: [shiftId], references: [id])
+  id             String        @id @default(uuid())
+  shiftId        String
+  amount         Float
+  tenderType     String
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  shift          Shift         @relation(fields: [shiftId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([shiftId])
+  @@index([organizationId])
 }
 
 model AuditLog {
-  id          String      @id @default(uuid())
-  userId      String
-  userName    String
-  userRole    UserRole
-  action      AuditAction
-  entity      String
-  entityId    String?
-  details     String
-  ipAddress   String?
-  stationId   String?
-  stationName String?
-  timestamp   DateTime    @default(now())
-  createdAt   DateTime    @default(now())
-  user        User        @relation(fields: [userId], references: [id])
+  id             String        @id @default(uuid())
+  userId         String
+  userName       String
+  userRole       UserRole
+  action         AuditAction
+  entity         String
+  entityId       String?
+  details        String
+  ipAddress      String?
+  stationId      String?
+  stationName    String?
+  timestamp      DateTime      @default(now())
+  createdAt      DateTime      @default(now())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  user           User          @relation(fields: [userId], references: [id])
 
+  @@unique([id, organizationId])
+  @@index([organizationId])
   @@index([userId])
   @@index([entity])
   @@index([action])
@@ -854,20 +1078,23 @@ model AuditLog {
 }
 
 model Notification {
-  id        String               @id @default(uuid())
-  stationId String?
-  title     String
-  message   String
-  type      NotificationType
-  priority  NotificationPriority @default(MEDIUM)
-  category  NotificationCategory
-  isRead    Boolean              @default(false)
-  actionUrl String?
-  metadata  Json?
-  createdAt DateTime             @default(now())
-  readAt    DateTime?
-  station   Station?             @relation(fields: [stationId], references: [id])
+  id             String               @id @default(uuid())
+  stationId      String?
+  title          String
+  message        String
+  type           NotificationType
+  priority       NotificationPriority @default(MEDIUM)
+  category       NotificationCategory
+  isRead         Boolean              @default(false)
+  actionUrl      String?
+  metadata       Json?
+  createdAt      DateTime             @default(now())
+  readAt         DateTime?
+  station        Station?             @relation(fields: [stationId], references: [id])
+  organizationId String?
+  organization   Organization?        @relation(fields: [organizationId], references: [id])
 
+  @@unique([id, organizationId])
   @@index([stationId])
   @@index([isRead])
   @@index([type])
@@ -876,6 +1103,145 @@ model Notification {
   @@index([createdAt])
   @@index([stationId, isRead])
   @@index([isRead, createdAt])
+  @@index([organizationId])
+}
+
+model ShopProduct {
+  id             String              @id @default(uuid())
+  stationId      String
+  name           String
+  category       String?
+  unit           String              @default("piece")
+  sellingPrice   Float
+  reorderLevel   Float               @default(5)
+  isActive       Boolean             @default(true)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  organizationId String?
+  organization   Organization?       @relation(fields: [organizationId], references: [id])
+  station        Station             @relation(fields: [stationId], references: [id])
+  batches        ShopPurchaseBatch[]
+  sales          ShopSale[]
+  shiftItems     ShopShiftItem[]
+  wastage        ShopWastage[]
+
+  @@unique([id, organizationId])
+  @@index([stationId])
+  @@index([organizationId])
+}
+
+model ShopPurchaseBatch {
+  id               String        @id @default(uuid())
+  productId        String
+  costPrice        Float
+  originalQuantity Float
+  currentQuantity  Float
+  expiryDate       DateTime?
+  purchaseDate     DateTime      @default(now())
+  supplierId       String?
+  recordedBy       String
+  createdAt        DateTime      @default(now())
+  product          ShopProduct   @relation(fields: [productId], references: [id])
+  sales            ShopSale[]
+  organizationId   String?
+  organization     Organization? @relation(fields: [organizationId], references: [id])
+
+  @@unique([id, organizationId])
+  @@index([productId])
+  @@index([organizationId])
+}
+
+model ShopAssignment {
+  id             String          @id @default(uuid())
+  shiftId        String          @unique
+  pumperId       String
+  pumperName     String
+  status         String          @default("OPEN")
+  totalRevenue   Float           @default(0)
+  totalShortage  Float           @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  shift          Shift           @relation(fields: [shiftId], references: [id])
+  sales          ShopSale[]
+  items          ShopShiftItem[]
+  organizationId String?
+  organization   Organization?   @relation(fields: [organizationId], references: [id])
+
+  @@unique([id, organizationId])
+  @@unique([shiftId, organizationId])
+  @@index([organizationId])
+}
+
+model ShopShiftItem {
+  id             String         @id @default(uuid())
+  assignmentId   String
+  productId      String
+  openingStock   Float
+  addedStock     Float          @default(0)
+  closingStock   Float?
+  soldQuantity   Float          @default(0)
+  revenue        Float          @default(0)
+  assignment     ShopAssignment @relation(fields: [assignmentId], references: [id])
+  product        ShopProduct    @relation(fields: [productId], references: [id])
+  organizationId String?
+  organization   Organization?  @relation(fields: [organizationId], references: [id])
+
+  @@unique([id, organizationId])
+  @@index([assignmentId])
+  @@index([productId])
+  @@index([organizationId])
+}
+
+model ShopSale {
+  id             String             @id @default(uuid())
+  assignmentId   String
+  productId      String
+  batchId        String?
+  quantity       Float
+  unitPrice      Float
+  totalAmount    Float
+  costPrice      Float
+  timestamp      DateTime           @default(now())
+  assignment     ShopAssignment     @relation(fields: [assignmentId], references: [id])
+  batch          ShopPurchaseBatch? @relation(fields: [batchId], references: [id])
+  product        ShopProduct        @relation(fields: [productId], references: [id])
+  organizationId String?
+  organization   Organization?      @relation(fields: [organizationId], references: [id])
+
+  @@unique([id, organizationId])
+  @@index([assignmentId])
+  @@index([productId])
+  @@index([organizationId])
+}
+
+model ShopWastage {
+  id             String        @id @default(uuid())
+  productId      String
+  quantity       Float
+  reason         String
+  costPrice      Float
+  recordedBy     String
+  timestamp      DateTime      @default(now())
+  product        ShopProduct   @relation(fields: [productId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  @@unique([id, organizationId])
+  @@index([productId])
+  @@index([organizationId])
+}
+
+enum PlanType {
+  BASIC
+  PREMIUM
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  TRIALING
 }
 
 enum UserRole {
@@ -1028,110 +1394,4 @@ enum NotificationCategory {
   SHIFT
   CREDIT
   POS
-}
-
-// ============================================
-// Shop & Inventory
-// ============================================
-
-model ShopProduct {
-  id              String         @id @default(uuid())
-  stationId       String
-  station         Station        @relation(fields: [stationId], references: [id])
-  name            String
-  category        String?        // OIL, DRINK, WATER, etc.
-  unit            String         @default("piece")
-  sellingPrice    Float
-  reorderLevel    Float          @default(5)
-  isActive        Boolean        @default(true)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-
-  batches         ShopPurchaseBatch[]
-  sales           ShopSale[]
-  wastage         ShopWastage[]
-  shiftItems      ShopShiftItem[]
-
-  @@index([stationId])
-}
-
-model ShopPurchaseBatch {
-  id              String         @id @default(uuid())
-  productId       String
-  product         ShopProduct    @relation(fields: [productId], references: [id])
-  costPrice       Float
-  originalQuantity Float
-  currentQuantity  Float
-  expiryDate      DateTime?
-  purchaseDate    DateTime       @default(now())
-  supplierId      String?
-  recordedBy      String
-  createdAt       DateTime       @default(now())
-
-  sales           ShopSale[]
-
-  @@index([productId])
-}
-
-model ShopAssignment {
-  id              String         @id @default(uuid())
-  shiftId         String         @unique
-  shift           Shift          @relation(fields: [shiftId], references: [id])
-  pumperId        String
-  pumperName      String
-  status          String         @default("OPEN") // OPEN, CLOSED
-  totalRevenue    Float          @default(0)
-  totalShortage   Float          @default(0)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-
-  items           ShopShiftItem[]
-  sales           ShopSale[]
-}
-
-model ShopShiftItem {
-  id              String         @id @default(uuid())
-  assignmentId    String
-  assignment      ShopAssignment @relation(fields: [assignmentId], references: [id])
-  productId       String
-  product         ShopProduct    @relation(fields: [productId], references: [id])
-  openingStock    Float
-  addedStock      Float          @default(0) // Replenishments during shift
-  closingStock    Float?
-  soldQuantity    Float          @default(0)
-  revenue         Float          @default(0)
-
-  @@index([assignmentId])
-  @@index([productId])
-}
-
-model ShopSale {
-  id              String         @id @default(uuid())
-  assignmentId    String
-  assignment      ShopAssignment @relation(fields: [assignmentId], references: [id])
-  productId       String
-  product         ShopProduct    @relation(fields: [productId], references: [id])
-  batchId         String?
-  batch           ShopPurchaseBatch? @relation(fields: [batchId], references: [id])
-  quantity        Float
-  unitPrice       Float
-  totalAmount     Float
-  costPrice       Float          // At time of sale (for FIFO profit)
-  timestamp       DateTime       @default(now())
-
-  @@index([assignmentId])
-  @@index([productId])
-}
-
-model ShopWastage {
-  id              String         @id @default(uuid())
-  productId       String
-  product         ShopProduct    @relation(fields: [productId], references: [id])
-  quantity        Float
-  reason          String
-  costPrice       Float          // Loss value at cost
-  recordedBy      String
-  timestamp       DateTime       @default(now())
-
-  @@index([productId])
 }

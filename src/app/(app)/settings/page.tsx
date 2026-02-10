@@ -40,6 +40,20 @@ export default function SettingsPage() {
 
   const settings: SettingCard[] = [
     {
+      title: 'Organization',
+      description: 'Manage your organization profile and subscription',
+      icon: <Building2 className="h-8 w-8" />,
+      href: '/settings/organization',
+      features: [
+        'Organization details',
+        'Subscription plan management',
+        'Billing information',
+        'Usage statistics'
+      ],
+      color: 'text-purple-600 dark:text-purple-400',
+      minRole: 'OWNER'
+    },
+    {
       title: 'Stations',
       description: 'Manage petrol stations, locations, and basic information',
       icon: <Building2 className="h-8 w-8" />,

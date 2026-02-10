@@ -122,7 +122,7 @@ export async function GET(
         id: shift.id,
         stationId: shift.stationId,
         stationName: shift.station.name,
-        templateName: shift.template.name,
+        templateName: shift.template?.name || 'Manual Shift',
         status: shift.status,
         startTime: shift.startTime,
         endTime: shift.endTime,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,15 +10,21 @@ export async function GET(request: NextRequest) {
     const loanId = searchParams.get('loanId')
     const loanType = searchParams.get('loanType') // 'PUMPER' or 'EXTERNAL'
 
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const where: Prisma.SafeTransactionWhereInput = {
+      organizationId: user.organizationId,
       type: 'LOAN_REPAID',
       loanId: { not: null }
     }
 
     if (stationId) {
       // Get safe for this station
-      const safe = await prisma.safe.findUnique({
-        where: { stationId },
+      const safe = await prisma.safe.findFirst({
+        where: { stationId, organizationId: user.organizationId },
         select: { id: true }
       })
       if (safe) {
@@ -53,15 +60,15 @@ export async function GET(request: NextRequest) {
     let filteredTransactions = transactions
     if (loanType && loanId) {
       if (loanType === 'PUMPER') {
-        const pumperLoan = await prisma.loanPumper.findUnique({
-          where: { id: loanId }
+        const pumperLoan = await prisma.loanPumper.findFirst({
+          where: { id: loanId, organizationId: user.organizationId }
         })
         if (!pumperLoan) {
           filteredTransactions = []
         }
       } else if (loanType === 'EXTERNAL') {
-        const externalLoan = await prisma.loanExternal.findUnique({
-          where: { id: loanId }
+        const externalLoan = await prisma.loanExternal.findFirst({
+          where: { id: loanId, organizationId: user.organizationId }
         })
         if (!externalLoan) {
           filteredTransactions = []

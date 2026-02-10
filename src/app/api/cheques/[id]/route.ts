@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
+import { getServerUser } from '@/lib/auth-server'
 
 const UpdateChequeSchema = z.object({
     chequeNumber: z.string().optional(),
@@ -15,6 +16,11 @@ export async function PATCH(
 ) {
     try {
         const { id } = await params
+        const user = await getServerUser()
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
         const body = await request.json()
         const result = UpdateChequeSchema.safeParse(body)
 
@@ -22,7 +28,10 @@ export async function PATCH(
             return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
         }
 
-        const cheque = await prisma.cheque.findUnique({ where: { id } })
+        const cheque = await prisma.cheque.findUnique({
+            where: { id_organizationId: { id, organizationId: user.organizationId } }
+        })
+
         if (!cheque) return NextResponse.json({ error: 'Cheque not found' }, { status: 404 })
 
         if (cheque.status !== 'PENDING') {
@@ -32,7 +41,7 @@ export async function PATCH(
         const { chequeDate, ...rest } = result.data
 
         await prisma.cheque.update({
-            where: { id },
+            where: { id_organizationId: { id, organizationId: user.organizationId } },
             data: {
                 ...rest,
                 chequeDate: chequeDate ? new Date(chequeDate) : undefined
@@ -40,7 +49,8 @@ export async function PATCH(
         })
 
         return NextResponse.json({ success: true })
-    } catch {
+    } catch (error) {
+        console.error('Error updating cheque:', error)
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 }
@@ -51,8 +61,13 @@ export async function DELETE(
 ) {
     try {
         const { id } = await params
+        const user = await getServerUser()
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
         const cheque = await prisma.cheque.findUnique({
-            where: { id },
+            where: { id_organizationId: { id, organizationId: user.organizationId } },
             include: { creditPayment: true }
         })
 
@@ -66,18 +81,19 @@ export async function DELETE(
             // Delete Credit Payment if linked
             if (cheque.creditPaymentId) {
                 await tx.creditPayment.delete({
-                    where: { id: cheque.creditPaymentId }
+                    where: { id_organizationId: { id: cheque.creditPaymentId, organizationId: user.organizationId } }
                 })
             }
 
             // Delete Cheque
             await tx.cheque.delete({
-                where: { id }
+                where: { id_organizationId: { id, organizationId: user.organizationId } }
             })
         })
 
         return NextResponse.json({ success: true })
-    } catch {
+    } catch (error) {
+        console.error('Error deleting cheque:', error)
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 }

@@ -1,16 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
     try {
+        const user = await getServerUser()
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
         const { searchParams } = new URL(request.url)
         const shiftId = searchParams.get('shiftId')
         const stationId = searchParams.get('stationId')
 
         if (shiftId) {
             const assignment = await prisma.shopAssignment.findUnique({
-                where: { shiftId },
+                where: { shiftId_organizationId: { shiftId, organizationId: user.organizationId } },
                 include: {
                     items: {
                         include: { product: true }
@@ -20,9 +26,11 @@ export async function GET(request: NextRequest) {
             return NextResponse.json(assignment)
         }
 
-        const where: Prisma.ShopAssignmentWhereInput = {}
+        const where: Prisma.ShopAssignmentWhereInput = {
+            organizationId: user.organizationId
+        }
         if (stationId) {
-            where.shift = { stationId }
+            where.shift = { stationId, organizationId: user.organizationId }
         }
 
         const assignments = await prisma.shopAssignment.findMany({
@@ -45,6 +53,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
+        const user = await getServerUser()
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
         const body = await request.json()
         const { shiftId, pumperId, pumperName, productIds } = body
 
@@ -62,16 +75,17 @@ export async function POST(request: NextRequest) {
                     shiftId,
                     pumperId,
                     pumperName,
-                    status: 'OPEN'
+                    status: 'OPEN',
+                    organizationId: user.organizationId
                 }
             })
 
             // Get current stock for all selected products
-            // We sum up Batch currentQuantity for each product
             const products = await tx.shopProduct.findMany({
                 where: {
                     id: { in: productIds || [] },
-                    isActive: true
+                    isActive: true,
+                    organizationId: user.organizationId
                 }
             })
 
@@ -79,7 +93,8 @@ export async function POST(request: NextRequest) {
                 const batchStock = await tx.shopPurchaseBatch.aggregate({
                     where: {
                         productId: product.id,
-                        currentQuantity: { gt: 0 }
+                        currentQuantity: { gt: 0 },
+                        organizationId: user.organizationId
                     },
                     _sum: {
                         currentQuantity: true
@@ -95,7 +110,8 @@ export async function POST(request: NextRequest) {
                         openingStock,
                         addedStock: 0,
                         soldQuantity: 0,
-                        revenue: 0
+                        revenue: 0,
+                        organizationId: user.organizationId
                     }
                 })
             }

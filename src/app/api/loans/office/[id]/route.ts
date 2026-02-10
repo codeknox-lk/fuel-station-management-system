@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(
   request: NextRequest,
@@ -7,8 +8,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const loan = await prisma.loanOfficeStaff.findUnique({
-      where: { id },
+      where: { id_organizationId: { id, organizationId: user.organizationId } },
       include: {
         station: {
           select: {
@@ -36,10 +42,14 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     // Check if loan exists
     const loan = await prisma.loanOfficeStaff.findUnique({
-      where: { id }
+      where: { id_organizationId: { id, organizationId: user.organizationId } }
     })
 
     if (!loan) {
@@ -48,7 +58,7 @@ export async function DELETE(
 
     // Delete the loan
     await prisma.loanOfficeStaff.delete({
-      where: { id }
+      where: { id_organizationId: { id, organizationId: user.organizationId } }
     })
 
     return NextResponse.json({ message: 'Loan deleted successfully' })

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
+import { Prisma } from '@prisma/client'
 
 export async function GET(
     request: NextRequest,
@@ -7,10 +9,16 @@ export async function GET(
 ) {
     try {
         const { id } = await params
+        const user = await getServerUser()
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
         const product = await prisma.shopProduct.findUnique({
-            where: { id },
+            where: { id_organizationId: { id, organizationId: user.organizationId } },
             include: {
                 batches: {
+                    where: { organizationId: user.organizationId },
                     orderBy: { purchaseDate: 'desc' }
                 }
             }
@@ -33,11 +41,25 @@ export async function PUT(
 ) {
     try {
         const { id } = await params
+        const user = await getServerUser()
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
         const body = await request.json()
         const { name, category, unit, sellingPrice, reorderLevel, isActive } = body
 
+        // Verify product existence and ownership
+        const existing = await prisma.shopProduct.findUnique({
+            where: { id_organizationId: { id, organizationId: user.organizationId } }
+        })
+
+        if (!existing) {
+            return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+        }
+
         const product = await prisma.shopProduct.update({
-            where: { id },
+            where: { id_organizationId: { id, organizationId: user.organizationId } },
             data: {
                 name,
                 category,
@@ -61,22 +83,27 @@ export async function DELETE(
 ) {
     try {
         const { id } = await params
+        const user = await getServerUser()
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
         // Check if there are any associations (sales, etc)
         const usageCount = await prisma.shopSale.count({
-            where: { productId: id }
+            where: { productId: id, organizationId: user.organizationId }
         })
 
         if (usageCount > 0) {
             // Soft delete if used
             await prisma.shopProduct.update({
-                where: { id },
+                where: { id_organizationId: { id, organizationId: user.organizationId } },
                 data: { isActive: false }
             })
             return NextResponse.json({ message: 'Product de-activated (cannot delete due to history)' })
         }
 
         await prisma.shopProduct.delete({
-            where: { id }
+            where: { id_organizationId: { id, organizationId: user.organizationId } }
         })
 
         return NextResponse.json({ message: 'Product deleted successfully' })

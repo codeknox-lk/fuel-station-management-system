@@ -3,9 +3,15 @@ import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { auditOperations } from '@/lib/auditMiddleware'
 import { CreateShiftSchema } from '@/lib/schemas'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const stationId = searchParams.get('stationId')
     const active = searchParams.get('active')
@@ -20,8 +26,11 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50')
 
     if (id) {
-      const shift = await prisma.shift.findUnique({
-        where: { id },
+      const shift = await prisma.shift.findFirst({
+        where: {
+          id,
+          organizationId: user.organizationId
+        },
         include: {
           station: {
             select: {
@@ -73,7 +82,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Build where clause
-    const where: Prisma.ShiftWhereInput = {}
+    const where: Prisma.ShiftWhereInput = {
+      organizationId: user.organizationId
+    }
+
     if (stationId) {
       where.stationId = stationId
     }
@@ -84,41 +96,48 @@ export async function GET(request: NextRequest) {
       where.status = status as import('@prisma/client').ShiftStatus
     }
 
-    // Find shifts that were active at a specific time
-    // A shift is active at time T if:
-    // - It started before or at T
-    // - AND it's either still OPEN or was closed after T
+    // Handle Date Filtering
     if (activeAt) {
+      // Find shifts that were active at a specific time
       const targetTime = new Date(activeAt)
-      where.startTime = {
-        lte: targetTime
+      if (!isNaN(targetTime.getTime())) {
+        where.startTime = { lte: targetTime }
+        where.OR = [
+          { status: 'OPEN' },
+          {
+            AND: [
+              { status: 'CLOSED' },
+              { endTime: { gte: targetTime } }
+            ]
+          }
+        ]
       }
-      where.OR = [
-        { status: 'OPEN' },
-        {
-          AND: [
-            { status: 'CLOSED' },
-            { endTime: { gte: targetTime } }
-          ]
+    } else if (startDate || endDate) {
+      const dateFilter: Prisma.DateTimeFilter = {}
+
+      if (startDate) {
+        const start = new Date(startDate)
+        if (!isNaN(start.getTime())) {
+          dateFilter.gte = start
         }
-      ]
+      }
+
+      if (endDate) {
+        const end = new Date(endDate)
+        if (!isNaN(end.getTime())) {
+          dateFilter.lte = end
+        }
+      }
+
+      if (Object.keys(dateFilter).length > 0) {
+        where.startTime = dateFilter
+      }
     }
 
     if (openedBy) {
       where.openedBy = {
         contains: openedBy,
         mode: 'insensitive'
-      }
-    }
-    if (startDate && !activeAt) {
-      where.startTime = {
-        gte: new Date(startDate)
-      }
-    }
-    if (endDate && !activeAt) {
-      where.startTime = {
-        ...(where.startTime as Prisma.DateTimeFilter),
-        lte: new Date(endDate)
       }
     }
 
@@ -241,76 +260,100 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
 
     // Zod Validation
     const result = CreateShiftSchema.safeParse(body)
 
     if (!result.success) {
-      console.error('❌ Validation failed:', result.error.flatten())
       return NextResponse.json(
         { error: 'Invalid input data', details: result.error.flatten().fieldErrors },
         { status: 400 }
       )
     }
 
-    const { stationId, templateId, startTime, openedBy } = result.data
+    const { stationId, templateId, startTime } = result.data
 
-    // Validate station exists and is active
-    const station = await prisma.station.findUnique({
-      where: { id: stationId }
-    })
-    if (!station || !station.isActive) {
-      return NextResponse.json({
-        error: 'Station not found or inactive'
-      }, { status: 400 })
-    }
-
-    // Validate template exists
-    if (!templateId) {
-      return NextResponse.json({
-        error: 'templateId is required'
-      }, { status: 400 })
-    }
-
-    const template = await prisma.shiftTemplate.findUnique({
-      where: { id: templateId }
-    })
-    if (!template) {
-      return NextResponse.json({
-        error: 'Shift template not found'
-      }, { status: 400 })
-    }
-
-    // Create the shift
-    const newShift = await prisma.shift.create({
-      data: {
-        stationId: stationId,
-        templateId: templateId,
-        startTime: startTime || new Date(),
-        openedBy: openedBy || 'System',
-        status: 'OPEN'
-      },
-      include: {
-        station: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        template: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
+    // Verify Station belongs to Organization
+    const station = await prisma.station.findFirst({
+      where: {
+        id: stationId,
+        organizationId: user.organizationId
       }
     })
 
-    // Audit logging
-    await auditOperations.shiftOpened(request, newShift.id, station.id, station.name)
+    if (!station) {
+      return NextResponse.json({ error: 'Station not found or access denied' }, { status: 404 })
+    }
+
+    // Start Transaction
+    const newShift = await prisma.$transaction(async (tx) => {
+      // 1. Get Template Details
+      // Use startTime from body, or default to now
+      const shiftStart = startTime || new Date()
+      // Default 8 hour shift if no template
+      let endTime = new Date(shiftStart.getTime() + 8 * 60 * 60 * 1000)
+
+      if (templateId) {
+        const template = await tx.shiftTemplate.findUnique({
+          where: { id: templateId }
+        })
+        if (template) {
+          // Combine date with template time
+          const tStart = new Date(template.startTime)
+          const tEnd = new Date(template.endTime)
+
+          // Adjust shiftStart hours to match template if needed? 
+          // The requirements say "startTime" comes from body. 
+          // Usually for shifts, we use the date from body and time from template.
+          // But schema says `startTime: Date`.
+          // Let's assume startTime is fully provided.
+
+          // Calculate duration from template
+          let durationMs = tEnd.getTime() - tStart.getTime()
+          if (durationMs < 0) durationMs += 24 * 60 * 60 * 1000 // Handle overnight
+
+          endTime = new Date(shiftStart.getTime() + durationMs)
+        }
+      }
+
+      // 2. Create Shift
+      const shift = await tx.shift.create({
+        data: {
+          organizationId: user.organizationId,
+          stationId,
+          templateId: templateId || undefined,
+          shiftNumber: `SHIFT-${Date.now()}`,
+          status: 'OPEN',
+          startTime: shiftStart,
+          endTime, // Estimated end time
+          openedBy: user.userId, // Use logged in user ID
+          // cashInHand: 0, // TODO: Field does not exist in Prisma schema
+          // Assign pumpers if any
+          // assignments: {
+          //   create: assignments?.map(a => ({
+          //     pumperId: a.pumperId,
+          //     pumperName: a.pumperName,
+          //     nozzleId: 'TEMP_NOZZLE', 
+          //   }))
+          // }
+        }
+      })
+
+      return shift
+    })
+
+
+    // Log operation
+    await auditOperations.shiftOpened(request, newShift.id, stationId, station.name)
 
     return NextResponse.json(newShift, { status: 201 })
+
   } catch (error) {
     console.error('Error creating shift:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

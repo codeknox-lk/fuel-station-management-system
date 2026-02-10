@@ -1,17 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 import { CreateCreditPaymentSchema } from '@/lib/schemas'
 import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const customerId = searchParams.get('customerId')
     const id = searchParams.get('id')
 
     if (id) {
-      const payment = await prisma.creditPayment.findUnique({
-        where: { id },
+      const payment = await prisma.creditPayment.findFirst({
+        where: {
+          id,
+          customer: {
+            organizationId: user.organizationId
+          }
+        },
         include: {
           customer: {
             select: {
@@ -35,7 +46,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(payment)
     }
 
-    const where = customerId ? { customerId } : {}
+    const where: Prisma.CreditPaymentWhereInput = {
+      customer: {
+        organizationId: user.organizationId
+      }
+    }
+    if (customerId) where.customerId = customerId
+
     const payments = await prisma.creditPayment.findMany({
       where,
       include: {
@@ -66,6 +83,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     console.log('Credit payment request body:', body)
 
@@ -87,23 +109,51 @@ export async function POST(request: NextRequest) {
       chequeNumber,
       bankId,
       paymentDate,
-      receivedBy,
       stationId
     } = result.data
 
     const validatedAmount = amount
 
     // Get current user for receivedBy (overriding client input for security)
-    const currentUser = await getServerUser()
-    const secureReceivedBy = currentUser ? currentUser.username : (receivedBy || 'System User')
+    const secureReceivedBy = user.username
 
-    // Get customer
+    // Get customer and verify ownership
     const customer = await prisma.creditCustomer.findUnique({
       where: { id: customerId }
     })
 
     if (!customer) {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
+    }
+
+    if (customer.organizationId !== user.organizationId) {
+      return NextResponse.json({ error: 'Access denied to this customer' }, { status: 403 })
+    }
+
+    // Verify Bank if provided
+    if (bankId) {
+      const bank = await prisma.bank.findFirst({
+        where: {
+          id: bankId,
+          organizationId: user.organizationId
+        }
+      })
+      if (!bank) {
+        return NextResponse.json({ error: 'Bank not found or access denied' }, { status: 404 })
+      }
+    }
+
+    // Verify Station if provided
+    if (stationId) {
+      const station = await prisma.station.findFirst({
+        where: {
+          id: stationId,
+          organizationId: user.organizationId
+        }
+      })
+      if (!station) {
+        return NextResponse.json({ error: 'Station not found or access denied' }, { status: 404 })
+      }
     }
 
     // Create payment, update customer balance, and create safe transaction in a single transaction
@@ -147,13 +197,9 @@ export async function POST(request: NextRequest) {
             stationId: stationId,
             chequeNumber: chequeNumber,
             amount: validatedAmount,
-            // If bankId is provided, use it. If not, we need a way to store bank info? 
-            // The schema requires `bankId`. If user selects "Other" or no bank, we might fail.
-            // Assuming UI provides bankId. If not, we might need a fallback bank or handle it.
-            // For now, assume bankId is passed (as it is optional in Zod but Cheque model requires it?)
-            // Cheque model: bankId String. So it IS required.
-            // CreateCreditPaymentSchema has bankId optional. 
-            // UI must ensure bankId is selected for Cheques.
+            // If bankId is provided, use it. If not, we need a fallback.
+            // Assuming UI provides bankId or we use a fallback if absolutely necessary, 
+            // but strict schema compliance is better.
             bankId: bankId!,
             receivedFrom: customer.name,
             receivedDate: paymentDate ? new Date(paymentDate) : new Date(),
@@ -182,7 +228,9 @@ export async function POST(request: NextRequest) {
         if (stationId && paymentType === 'CASH') {
           console.log('Creating safe transaction for CASH payment, stationId:', stationId)
 
-          // Get or create safe
+          // Get or create safe matching the station
+          // Note: Safe should ideally be linked to org, but via station implies it.
+          // We already verified station belongs to org.
           let safe = await tx.safe.findUnique({
             where: { stationId }
           })
@@ -217,8 +265,7 @@ export async function POST(request: NextRequest) {
                 'CASH_FUEL_SALES',
                 'POS_CARD_PAYMENT',
                 'CREDIT_PAYMENT',
-                'CHEQUE_RECEIVED', // We might want to remove this from safe balance calc in future? 
-                // For now, keep existing logic but since we DON'T add CHEQUE_RECEIVED tx here, it won't affect cash.
+                'CHEQUE_RECEIVED',
                 'LOAN_REPAID'
               ].includes(transaction.type)
               balanceBefore += txIsIncome ? transaction.amount : -transaction.amount

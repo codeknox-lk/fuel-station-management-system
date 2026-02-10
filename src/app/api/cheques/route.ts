@@ -10,9 +10,17 @@ export async function GET(request: NextRequest) {
     const id = searchParams.get('id')
     const status = searchParams.get('status')
 
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     if (id) {
-      const cheque = await prisma.cheque.findUnique({
-        where: { id },
+      const cheque = await prisma.cheque.findFirst({
+        where: {
+          id,
+          organizationId: user.organizationId
+        },
         include: {
           station: {
             select: {
@@ -36,10 +44,13 @@ export async function GET(request: NextRequest) {
     }
 
     interface ChequeWhereInput {
+      organizationId: string
       stationId?: string
       status?: ChequeStatus
     }
-    const where: ChequeWhereInput = {}
+    const where: ChequeWhereInput = {
+      organizationId: user.organizationId
+    }
     if (stationId) {
       where.stationId = stationId
     }
@@ -106,8 +117,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Get current user for recordedBy
-    const currentUser = await getServerUser()
-    const recordedBy = currentUser ? currentUser.username : 'System User'
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const recordedBy = user.username
 
     const newCheque = await prisma.cheque.create({
       data: {
@@ -119,7 +133,8 @@ export async function POST(request: NextRequest) {
         receivedDate: new Date(receivedDate),
         notes: notes || null,
         status: 'PENDING',
-        recordedBy
+        recordedBy,
+        organizationId: user.organizationId
       },
       include: {
         station: {
@@ -141,14 +156,15 @@ export async function POST(request: NextRequest) {
     try {
       await prisma.auditLog.create({
         data: {
-          userId: currentUser?.userId || 'system',
-          userName: currentUser?.username || 'System User',
-          userRole: currentUser?.role || 'MANAGER',
+          userId: user.userId,
+          userName: user.username,
+          userRole: user.role,
           action: 'CREATE',
           entity: 'Cheque',
           entityId: newCheque.id,
           details: `Recorded cheque: ${newCheque.chequeNumber} for Rs. ${(newCheque.amount || 0).toLocaleString()}`,
-          stationId: newCheque.stationId
+          stationId: newCheque.stationId,
+          organizationId: user.organizationId
         }
       })
     } catch (auditError) {

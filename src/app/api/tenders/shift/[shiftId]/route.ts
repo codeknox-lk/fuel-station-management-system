@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { calculateShiftSummary, classifyVariance } from '@/lib/calc'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(
   request: NextRequest,
@@ -10,6 +11,11 @@ export async function GET(
     const { shiftId } = await params
     console.log('🔍 Tender summary API called for shiftId:', shiftId)
     const { searchParams } = new URL(request.url)
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const cashAmount = parseFloat(searchParams.get('cashAmount') || '0')
     const cardAmount = parseFloat(searchParams.get('cardAmount') || '0')
     const creditAmount = parseFloat(searchParams.get('creditAmount') || '0')
@@ -29,8 +35,8 @@ export async function GET(
     let shift
     try {
       // First fetch shift with basic info including statistics and declaredAmounts
-      shift = await prisma.shift.findUnique({
-        where: { id: shiftId },
+      shift = await prisma.shift.findFirst({
+        where: { id: shiftId, organizationId: user.organizationId },
         select: {
           id: true,
           stationId: true,
@@ -96,6 +102,7 @@ export async function GET(
           const oilSales = await prisma.oilSale.findMany({
             where: {
               stationId: shift.stationId,
+              organizationId: user.organizationId,
               saleDate: {
                 gte: shift.startTime,
                 lte: shift.endTime || new Date()
@@ -138,7 +145,7 @@ export async function GET(
 
       // Fetch assignments separately to avoid complex nested includes
       const shiftAssignmentsFromDb = await prisma.shiftAssignment.findMany({
-        where: { shiftId: shift.id },
+        where: { shiftId: shift.id, organizationId: user.organizationId },
         include: {
           nozzle: {
             include: {
@@ -184,13 +191,13 @@ export async function GET(
 
     // Get credit sales for this shift
     const creditSales = await prisma.creditSale.findMany({
-      where: { shiftId }
+      where: { shiftId, organizationId: user.organizationId }
     })
     const creditTotal = creditSales.reduce((sum, sale) => sum + sale.amount, 0)
 
     // Get POS batches for this shift
     const posBatches = await prisma.posBatch.findMany({
-      where: { shiftId }
+      where: { shiftId, organizationId: user.organizationId }
     })
     const posTotal = posBatches.reduce((sum, batch) => sum + batch.totalAmount, 0)
 
@@ -199,6 +206,7 @@ export async function GET(
     const oilSales = await prisma.oilSale.findMany({
       where: {
         stationId: shift.stationId,
+        organizationId: user.organizationId,
         saleDate: {
           gte: shift.startTime,
           lte: shift.endTime || new Date()
@@ -209,7 +217,7 @@ export async function GET(
 
     // Get shop sales for this shift
     const shopAssignment = await prisma.shopAssignment.findFirst({
-      where: { shiftId },
+      where: { shiftId, organizationId: user.organizationId },
       include: {
         items: {
           include: {
@@ -305,6 +313,7 @@ export async function GET(
             where: {
               fuelId: fuelId,
               stationId: shift.stationId,
+              organizationId: user.organizationId,
               effectiveDate: { lte: shift.endTime || new Date() },
               isActive: true
             },

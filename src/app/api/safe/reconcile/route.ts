@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
 
 /**
  * GET: Reconcile safe balance
@@ -8,6 +9,11 @@ import { prisma } from '@/lib/db'
  */
 export async function GET(request: NextRequest) {
     try {
+        const user = await getServerUser()
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
         const { searchParams } = new URL(request.url)
         const stationId = searchParams.get('stationId')
 
@@ -19,8 +25,8 @@ export async function GET(request: NextRequest) {
         }
 
         // Get safe
-        const safe = await prisma.safe.findUnique({
-            where: { stationId }
+        const safe = await prisma.safe.findFirst({
+            where: { stationId, organizationId: user.organizationId }
         })
 
         if (!safe) {
@@ -32,7 +38,7 @@ export async function GET(request: NextRequest) {
 
         // Get all transactions for this safe, ordered chronologically
         const allTransactions = await prisma.safeTransaction.findMany({
-            where: { safeId: safe.id },
+            where: { safeId: safe.id, organizationId: user.organizationId },
             orderBy: [{ timestamp: 'asc' }, { createdAt: 'asc' }]
         })
 

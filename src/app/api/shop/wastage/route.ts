@@ -5,12 +5,19 @@ import { Prisma } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
     try {
+        const user = await getServerUser()
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
         const { searchParams } = new URL(request.url)
         const stationId = searchParams.get('stationId')
 
-        const where: Prisma.ShopWastageWhereInput = {}
+        const where: Prisma.ShopWastageWhereInput = {
+            organizationId: user.organizationId
+        }
         if (stationId) {
-            where.product = { stationId }
+            where.product = { stationId, organizationId: user.organizationId }
         }
 
         const wastage = await prisma.shopWastage.findMany({
@@ -32,6 +39,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
+        const user = await getServerUser()
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
         const body = await request.json()
         const { productId, quantity, reason } = body
 
@@ -42,13 +54,12 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        const currentUser = await getServerUser()
-        const username = currentUser ? currentUser.username : 'System'
+        const username = user.username
 
         const result = await prisma.$transaction(async (tx) => {
-            // Get the product to find cost price
+            // Get the product
             const product = await tx.shopProduct.findUnique({
-                where: { id: productId }
+                where: { id_organizationId: { id: productId, organizationId: user.organizationId } }
             })
 
             if (!product) throw new Error('Product not found')
@@ -59,24 +70,20 @@ export async function POST(request: NextRequest) {
                     productId,
                     quantity: parseFloat(quantity),
                     reason,
-                    costPrice: product.sellingPrice, // Simplified: use current selling price as value lost or cost? Plan says "cost value"
-                    // Let's use 0 for now or fetch the last batch price?
-                    // For wastage, we usually want to know the "Loss" value.
-                    recordedBy: username
+                    costPrice: product.sellingPrice,
+                    recordedBy: username,
+                    organizationId: user.organizationId
                 }
             })
-
-            // We should also reduce batch quantities for wastage?
-            // Yes, if we want accurate stock levels.
-            // WASTE consumes stock like a sale but at 0 revenue.
 
             let remainingToWaste = parseFloat(quantity)
             const activeBatches = await tx.shopPurchaseBatch.findMany({
                 where: {
                     productId,
+                    organizationId: user.organizationId,
                     currentQuantity: { gt: 0 }
                 },
-                orderBy: { purchaseDate: 'asc' } // FIFO for wastage too
+                orderBy: { purchaseDate: 'asc' }
             })
 
             for (const batch of activeBatches) {
@@ -84,7 +91,7 @@ export async function POST(request: NextRequest) {
 
                 const wasteFromBatch = Math.min(batch.currentQuantity, remainingToWaste)
                 await tx.shopPurchaseBatch.update({
-                    where: { id: batch.id },
+                    where: { id_organizationId: { id: batch.id, organizationId: user.organizationId } },
                     data: {
                         currentQuantity: { decrement: wasteFromBatch }
                     }

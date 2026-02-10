@@ -2,9 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { CreateSafeTransactionSchema } from '@/lib/schemas'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
     const shiftId = searchParams.get('shiftId')
@@ -16,8 +22,8 @@ export async function GET(request: NextRequest) {
 
     // If ID is provided, fetch single transaction
     if (id) {
-      const transaction = await prisma.safeTransaction.findUnique({
-        where: { id }
+      const transaction = await prisma.safeTransaction.findFirst({
+        where: { id, organizationId: user.organizationId }
       })
 
       if (!transaction) {
@@ -25,8 +31,8 @@ export async function GET(request: NextRequest) {
       }
 
       // Get safe to get stationId
-      const safe = await prisma.safe.findUnique({
-        where: { id: transaction.safeId }
+      const safe = await prisma.safe.findFirst({
+        where: { id: transaction.safeId, organizationId: user.organizationId }
       })
 
       if (!safe) {
@@ -128,7 +134,7 @@ export async function GET(request: NextRequest) {
     // OPTIMIZED: If shiftId is provided, fetch all transactions for that shift
     if (shiftId) {
       const shiftTransactions = await prisma.safeTransaction.findMany({
-        where: { shiftId },
+        where: { shiftId, organizationId: user.organizationId },
         select: {
           id: true,
           safeId: true,
@@ -156,8 +162,8 @@ export async function GET(request: NextRequest) {
       })
 
       // Fetch shift data once for all transactions (not N+1!)
-      const shift = await prisma.shift.findUnique({
-        where: { id: shiftId },
+      const shift = await prisma.shift.findFirst({
+        where: { id: shiftId, organizationId: user.organizationId },
         select: {
           id: true,
           template: {
@@ -199,6 +205,7 @@ export async function GET(request: NextRequest) {
 
     if (!stationId) {
       const allSafes = await prisma.safe.findMany({
+        where: { organizationId: user.organizationId },
         select: { id: true }
       })
       safeIds = allSafes.map(s => s.id)
@@ -209,6 +216,7 @@ export async function GET(request: NextRequest) {
         update: {},
         create: {
           stationId,
+          organizationId: user.organizationId,
           openingBalance: 0,
           currentBalance: 0
         }
@@ -217,7 +225,8 @@ export async function GET(request: NextRequest) {
     }
 
     const where: Prisma.SafeTransactionWhereInput = {
-      safeId: safeIds.length === 1 ? safeIds[0] : { in: safeIds }
+      safeId: safeIds.length === 1 ? safeIds[0] : { in: safeIds },
+      organizationId: user.organizationId
     }
 
     if (type) {
@@ -247,7 +256,7 @@ export async function GET(request: NextRequest) {
     const shiftsMap = new Map()
     if (uniqueShiftIds.length > 0) {
       const shifts = await prisma.shift.findMany({
-        where: { id: { in: uniqueShiftIds } },
+        where: { id: { in: uniqueShiftIds }, organizationId: user.organizationId },
         select: {
           id: true,
           template: {
@@ -296,6 +305,11 @@ export async function GET(request: NextRequest) {
 // POST: Create a safe transaction
 export async function POST(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
 
     // Zod Validation
@@ -326,14 +340,15 @@ export async function POST(request: NextRequest) {
     } = result.data
 
     // Get or create safe
-    let safe = await prisma.safe.findUnique({
-      where: { stationId }
+    let safe = await prisma.safe.findFirst({
+      where: { stationId, organizationId: user.organizationId }
     })
 
     if (!safe) {
       safe = await prisma.safe.create({
         data: {
           stationId,
+          organizationId: user.organizationId,
           openingBalance: 0,
           currentBalance: 0
         }
@@ -348,6 +363,7 @@ export async function POST(request: NextRequest) {
     const recentDuplicate = await prisma.safeTransaction.findFirst({
       where: {
         safeId: safe.id,
+        organizationId: user.organizationId,
         type: type as import('@prisma/client').SafeTransactionType,
         amount,
         timestamp: {
@@ -387,6 +403,7 @@ export async function POST(request: NextRequest) {
     const allTransactions = await prisma.safeTransaction.findMany({
       where: {
         safeId: safe.id,
+        organizationId: user.organizationId,
         timestamp: { lte: transactionTimestamp }
       },
       orderBy: [{ timestamp: 'asc' }, { createdAt: 'asc' }]
@@ -447,6 +464,7 @@ export async function POST(request: NextRequest) {
     const transaction = await prisma.safeTransaction.create({
       data: {
         safeId: safe.id,
+        organizationId: user.organizationId,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         type: type as any,
         amount: amount,
