@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(
   request: NextRequest,
@@ -7,8 +8,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const shift = await prisma.shift.findUnique({
-      where: { id },
+      where: { id_organizationId: { id, organizationId: user.organizationId } },
       include: {
         station: {
           select: {
@@ -23,8 +29,10 @@ export async function GET(
           }
         },
         shopAssignment: {
+          where: { organizationId: user.organizationId },
           include: {
             items: {
+              where: { organizationId: user.organizationId },
               include: {
                 product: true
               }
@@ -39,7 +47,7 @@ export async function GET(
     }
 
     const assignments = await prisma.shiftAssignment.findMany({
-      where: { shiftId: id },
+      where: { shiftId: id, organizationId: user.organizationId },
       include: {
         nozzle: {
           include: {
@@ -84,19 +92,20 @@ export async function GET(
 
       totalLiters += litersSold
 
-      // Get current price for the fuel type
+      // Get price for the fuel type at shift start
       const fuelId = assignment.nozzle.tank.fuelId
       const price = await prisma.price.findFirst({
         where: {
           fuelId,
           stationId: shift.stationId,
+          organizationId: user.organizationId,
           effectiveDate: { lte: shift.startTime },
           isActive: true
         },
         orderBy: { effectiveDate: 'desc' }
       })
 
-      const pricePerLiter = price ? price.price : 470 // Fallback price
+      const pricePerLiter = price ? price.price : 0
       const sales = litersSold * pricePerLiter
       totalSales += sales
 
@@ -146,7 +155,16 @@ export async function GET(
         pumperName: shift.shopAssignment.pumperName,
         status: shift.shopAssignment.status,
         totalRevenue: shift.shopAssignment.totalRevenue,
-        items: shift.shopAssignment.items.map((item: { id: string; productId: string; product: { name: string }; openingStock: number; addedStock: number; closingStock: number | null; soldQuantity: number; revenue: number }) => ({
+        items: (shift.shopAssignment.items as unknown as Array<{
+          id: string
+          productId: string
+          product: { name: string }
+          openingStock: number
+          addedStock: number
+          closingStock: number
+          soldQuantity: number
+          revenue: number
+        }>).map((item) => ({
           id: item.id,
           productId: item.productId,
           productName: item.product.name,
@@ -184,6 +202,18 @@ export async function POST(
 ) {
   try {
     const { id } = await params
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const shift = await prisma.shift.findUnique({
+      where: { id_organizationId: { id, organizationId: user.organizationId } }
+    })
+
+    if (!shift) {
+      return NextResponse.json({ error: 'Shift not found' }, { status: 404 })
+    }
 
     return NextResponse.json({
       success: true,

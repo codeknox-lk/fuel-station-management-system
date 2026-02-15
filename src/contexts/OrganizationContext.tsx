@@ -2,11 +2,18 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
+interface Subscription {
+    status: 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'UNPAID' | 'TRIALING'
+    trialEndDate: string | null
+    planId: 'BASIC' | 'PREMIUM'
+}
+
 interface Organization {
     id: string
     name: string
     slug: string
-    plan: 'BASIC' | 'PREMIUM' | 'ENTERPRISE'
+    plan: 'BASIC' | 'PREMIUM'
+    subscription?: Subscription | null
 }
 
 interface OrganizationContextType {

@@ -6,6 +6,8 @@ import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { useOrganization } from '@/contexts/OrganizationContext'
+import { hasFeature } from '@/lib/features'
+import { PlanType } from '@prisma/client'
 import {
   LayoutDashboard,
   Clock,
@@ -19,7 +21,8 @@ import {
   DollarSign,
   Handshake,
   Landmark,
-  Store // Added Store icon
+  Store,
+  Crown
 } from 'lucide-react'
 
 type UserRole = 'DEVELOPER' | 'OWNER' | 'MANAGER' | 'ACCOUNTS'
@@ -33,6 +36,7 @@ interface NavItem {
   href: string
   icon: React.ComponentType<{ className?: string }>
   roles: UserRole[]
+  feature?: string // Optional feature flag required to see this item
 }
 
 const navigation: NavItem[] = [
@@ -46,67 +50,64 @@ const navigation: NavItem[] = [
     title: 'Shifts',
     href: '/shifts',
     icon: Clock,
-    roles: ['DEVELOPER', 'OWNER', 'MANAGER']
+    roles: ['DEVELOPER', 'OWNER', 'MANAGER'],
+    feature: 'shifts'
   },
   {
     title: 'Shop',
     href: '/shop',
     icon: Store,
-    roles: ['DEVELOPER', 'OWNER', 'MANAGER']
+    roles: ['DEVELOPER', 'OWNER', 'MANAGER'],
+    feature: 'shop'
   },
-  // {
-  //   title: 'Audits',
-  //   href: '/audits',
-  //   icon: Search,
-  //   roles: ['DEVELOPER', 'OWNER', 'MANAGER']
-  // },
-  // {
-  //   title: 'Tests',
-  //   href: '/tests',
-  //   icon: TestTube,
-  //   roles: ['DEVELOPER', 'OWNER', 'MANAGER']
-  // },
   {
     title: 'Tanks',
     href: '/tanks',
     icon: Fuel,
-    roles: ['DEVELOPER', 'OWNER', 'MANAGER']
+    roles: ['DEVELOPER', 'OWNER', 'MANAGER'],
+    feature: 'tanks'
   },
   {
     title: 'Safe',
     href: '/safe',
     icon: Wallet,
-    roles: ['DEVELOPER', 'OWNER', 'MANAGER', 'ACCOUNTS']
+    roles: ['DEVELOPER', 'OWNER', 'MANAGER', 'ACCOUNTS'],
+    feature: 'safe'
   },
   {
     title: 'Salary',
     href: '/salary',
     icon: DollarSign,
-    roles: ['DEVELOPER', 'OWNER', 'MANAGER', 'ACCOUNTS']
+    roles: ['DEVELOPER', 'OWNER', 'MANAGER', 'ACCOUNTS'],
+    feature: 'payroll'
   },
   {
     title: 'Loans',
     href: '/loans',
     icon: Handshake,
-    roles: ['DEVELOPER', 'OWNER', 'MANAGER', 'ACCOUNTS']
+    roles: ['DEVELOPER', 'OWNER', 'MANAGER', 'ACCOUNTS'],
+    feature: 'loans'
   },
   {
     title: 'Bank Accounts',
     href: '/banks',
     icon: Landmark,
-    roles: ['DEVELOPER', 'OWNER', 'MANAGER', 'ACCOUNTS']
+    roles: ['DEVELOPER', 'OWNER', 'MANAGER', 'ACCOUNTS'],
+    feature: 'deposits' // Banks usually related to deposits
   },
   {
     title: 'Credit Customers',
     href: '/credit/customers',
     icon: CreditCard,
-    roles: ['DEVELOPER', 'OWNER', 'MANAGER', 'ACCOUNTS']
+    roles: ['DEVELOPER', 'OWNER', 'MANAGER', 'ACCOUNTS'],
+    feature: 'credit'
   },
   {
     title: 'Reports',
     href: '/reports',
     icon: BarChart3,
-    roles: ['DEVELOPER', 'OWNER', 'ACCOUNTS']
+    roles: ['DEVELOPER', 'OWNER', 'ACCOUNTS'],
+    feature: 'daily-reports'
   },
   {
     title: 'Notifications',
@@ -114,12 +115,6 @@ const navigation: NavItem[] = [
     icon: Bell,
     roles: ['DEVELOPER', 'OWNER', 'MANAGER', 'ACCOUNTS']
   },
-  // {
-  //   title: 'Audit Log',
-  //   href: '/audit-log',
-  //   icon: FileText,
-  //   roles: ['DEVELOPER', 'OWNER']
-  // },
   {
     title: 'Settings',
     href: '/settings',
@@ -134,17 +129,27 @@ const navigation: NavItem[] = [
   }
 ]
 
-
-
-// ... (imports)
-
 export function Sidebar({ userRole }: SidebarProps) {
   const pathname = usePathname()
   const { organization } = useOrganization()
 
-  const filteredNavigation = navigation.filter(item =>
-    item.roles.includes(userRole)
-  )
+  const filteredNavigation = navigation.filter(item => {
+    // 1. Check Role
+    if (!item.roles.includes(userRole)) return false
+
+    // 2. Check Feature (if organization is loaded)
+    if (organization && item.feature) {
+      const plan = organization.subscription?.planId || (organization.plan as PlanType)
+      const status = organization.subscription?.status || 'ACTIVE'
+      const trialEndDate = organization.subscription?.trialEndDate
+        ? new Date(organization.subscription.trialEndDate)
+        : null
+
+      return hasFeature(plan, item.feature, status, trialEndDate)
+    }
+
+    return true
+  })
 
   return (
     <div className="w-64 bg-sidebar border-r border-border h-screen flex flex-col">
@@ -163,17 +168,32 @@ export function Sidebar({ userRole }: SidebarProps) {
         {/* Organization Info */}
         {organization && (
           <div className="mt-2 px-1">
-            <Link href="/settings/organization" className="block group">
-              <div className="text-sm font-bold text-sidebar-foreground truncate group-hover:text-primary transition-colors">
+            <Link
+              href="/settings/organization"
+              className="block group p-2 rounded-xl hover:bg-sidebar-accent/50 transition-all duration-300"
+            >
+              <div className="text-sm font-bold text-sidebar-foreground truncate group-hover:text-primary transition-colors flex items-center justify-between">
                 {organization.name}
               </div>
-              <div className="flex items-center gap-2 mt-1">
-                <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-sidebar-foreground/20 text-sidebar-foreground/70">
-                  {organization.plan}
+              <div className="flex items-center gap-2 mt-1.5">
+                <Badge
+                  className={cn(
+                    "text-[10px] h-5 px-2 border-none shadow-sm transition-all duration-300",
+                    (organization.subscription?.planId === 'PREMIUM' || (organization.plan as string) === 'PREMIUM' || (organization.plan as string) === 'ENTERPRISE')
+                      ? "bg-gradient-to-r from-orange-500 to-orange-400 text-white hover:from-orange-600 hover:to-orange-500 shadow-orange-500/20 shadow-md backdrop-blur-sm"
+                      : "bg-slate-200/50 text-slate-600 dark:bg-slate-800/50 dark:text-slate-400 backdrop-blur-sm"
+                  )}
+                >
+                  {(organization.subscription?.planId === 'PREMIUM' || (organization.plan as string) === 'PREMIUM' || (organization.plan as string) === 'ENTERPRISE') && (
+                    <Crown className="w-2.5 h-2.5 mr-1 fill-white animate-pulse" />
+                  )}
+                  {organization.subscription?.status === 'TRIALING' ? 'TRIAL' : organization.subscription?.planId || organization.plan}
                 </Badge>
-                <div className="text-[10px] text-muted-foreground truncate">
-                  {organization.slug}
-                </div>
+                {organization.subscription?.status === 'PAST_DUE' && (
+                  <Badge className="bg-red-500 text-white text-[9px] h-4 px-1 animate-pulse">
+                    PAST DUE
+                  </Badge>
+                )}
               </div>
             </Link>
           </div>

@@ -1,63 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
+import { getServerUser } from '@/lib/auth-server'
 
 /**
  * DELETE /api/shifts/cleanup
  * Delete shifts from the database based on status
- * Query parameters:
- *   - status: 'CLOSED' | 'OPEN' | 'ALL' (default: 'CLOSED')
- *   - all: 'true' to delete all shifts regardless of status
- * 
- * Examples:
- *   DELETE /api/shifts/cleanup?status=CLOSED  - Delete only closed shifts
- *   DELETE /api/shifts/cleanup?status=OPEN    - Delete only open (running) shifts
- *   DELETE /api/shifts/cleanup?all=true       - Delete all shifts
+ * Multi-tenant safe: only affects the user's organization
  */
 export async function DELETE(request: NextRequest) {
   try {
-    // Security: You might want to add authentication/authorization here
-    // For now, we'll allow it, but in production, restrict to admin/owner
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Restriction: Only Owners or Managers can cleanup
+    if (user.role !== 'OWNER' && user.role !== 'MANAGER' && user.role !== 'DEVELOPER') {
+      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+    }
 
     const { searchParams } = new URL(request.url)
     const statusParam = searchParams.get('status')
     const allParam = searchParams.get('all')
 
     // Determine which shifts to delete
-    let whereClause: Prisma.ShiftWhereInput = {}
+    const whereClause: Prisma.ShiftWhereInput = {
+      organizationId: user.organizationId
+    }
     let statusType = 'CLOSED'
 
     if (allParam === 'true') {
-      // Delete all shifts
-      whereClause = {}
       statusType = 'ALL'
     } else if (statusParam === 'OPEN') {
-      // Delete only open (running) shifts
-      whereClause = { status: 'OPEN' }
+      whereClause.status = 'OPEN'
       statusType = 'OPEN'
     } else if (statusParam === 'CLOSED') {
-      // Delete only closed shifts
-      whereClause = { status: 'CLOSED' }
+      whereClause.status = 'CLOSED'
       statusType = 'CLOSED'
     } else {
-      // Default: delete only closed shifts
-      whereClause = { status: 'CLOSED' }
+      whereClause.status = 'CLOSED'
       statusType = 'CLOSED'
-    }
-
-    console.log(`🔍 Checking for ${statusType} shifts...`)
-
-    // First, count how many shifts exist
-    const shiftsCount = await prisma.shift.count({
-      where: whereClause
-    })
-
-    if (shiftsCount === 0) {
-      return NextResponse.json({
-        message: `No ${statusType.toLowerCase()} shifts found`,
-        deleted: 0,
-        status: statusType
-      })
     }
 
     // Get shifts info before deletion
@@ -71,113 +54,97 @@ export async function DELETE(request: NextRequest) {
         openedBy: true,
         closedBy: true,
         station: {
-          select: {
-            name: true
-          }
+          select: { name: true }
         },
         template: {
-          select: {
-            name: true
-          }
+          select: { name: true }
         },
         _count: {
-          select: {
-            assignments: true
-          }
+          select: { assignments: true }
         }
       },
-      orderBy: {
-        startTime: 'desc'
-      }
+      orderBy: { startTime: 'desc' }
     })
 
-    console.log(`Found ${shiftsCount} ${statusType.toLowerCase()} shift(s) to delete`)
-
-    // Delete related data first to avoid foreign key constraint violations
-    // Delete in order: related records -> assignments -> shifts
-
-    // Get shift IDs to delete
-    const shiftIds = shifts.map(s => s.id)
-
-    console.log('🗑️  Deleting related data first...')
-
-    // Delete credit sales
-    const creditSalesDeleted = await prisma.creditSale.deleteMany({
-      where: { shiftId: { in: shiftIds } }
-    })
-    console.log(`  - Deleted ${creditSalesDeleted.count} credit sale(s)`)
-
-    // Delete POS missing slips
-    const posMissingSlipsDeleted = await prisma.posMissingSlip.deleteMany({
-      where: { shiftId: { in: shiftIds } }
-    })
-    console.log(`  - Deleted ${posMissingSlipsDeleted.count} POS missing slip(s)`)
-
-    // Delete meter audits
-    const meterAuditsDeleted = await prisma.meterAudit.deleteMany({
-      where: { shiftId: { in: shiftIds } }
-    })
-    console.log(`  - Deleted ${meterAuditsDeleted.count} meter audit(s)`)
-
-    // Delete test pours
-    const testPoursDeleted = await prisma.testPour.deleteMany({
-      where: { shiftId: { in: shiftIds } }
-    })
-    console.log(`  - Deleted ${testPoursDeleted.count} test pour(s)`)
-
-    // Delete tenders (if they exist)
-    try {
-      const tendersDeleted = await prisma.tender.deleteMany({
-        where: { shiftId: { in: shiftIds } }
+    if (shifts.length === 0) {
+      return NextResponse.json({
+        message: `No ${statusType.toLowerCase()} shifts found`,
+        deleted: 0,
+        status: statusType
       })
-      console.log(`  - Deleted ${tendersDeleted.count} tender(s)`)
-    } catch (e) {
-      console.log('  - No tenders to delete or error:', e)
     }
 
-    // Delete assignments (cascade should handle this, but being explicit)
-    const assignmentsDeleted = await prisma.shiftAssignment.deleteMany({
-      where: { shiftId: { in: shiftIds } }
-    })
-    console.log(`  - Deleted ${assignmentsDeleted.count} assignment(s)`)
+    const shiftIds = shifts.map(s => s.id)
 
-    // Finally, delete shifts
-    console.log('🗑️  Deleting shifts...')
-    const deleteResult = await prisma.shift.deleteMany({
-      where: whereClause
-    })
+    // Delete in sequence across organization
+    await prisma.$transaction(async (tx) => {
+      // 1. Credit Sales
+      await tx.creditSale.deleteMany({
+        where: { shiftId: { in: shiftIds }, organizationId: user.organizationId }
+      })
 
-    console.log(`✅ Successfully deleted ${deleteResult.count} ${statusType.toLowerCase()} shift(s)`)
+      // 2. POS Missing Slips
+      await tx.posMissingSlip.deleteMany({
+        where: { shiftId: { in: shiftIds }, organizationId: user.organizationId }
+      })
+
+      // 3. Meter Audits
+      await tx.meterAudit.deleteMany({
+        where: { shiftId: { in: shiftIds }, organizationId: user.organizationId }
+      })
+
+      // 4. Test Pours
+      await tx.testPour.deleteMany({
+        where: { shiftId: { in: shiftIds }, organizationId: user.organizationId }
+      })
+
+      // 5. Tenders
+      await tx.tender.deleteMany({
+        where: { shiftId: { in: shiftIds }, organizationId: user.organizationId }
+      })
+
+      // 6. Shop Assignments
+      await tx.shopAssignment.deleteMany({
+        where: { shiftId: { in: shiftIds }, organizationId: user.organizationId }
+      })
+
+      // 7. Assignments
+      await tx.shiftAssignment.deleteMany({
+        where: { shiftId: { in: shiftIds }, organizationId: user.organizationId }
+      })
+
+      // 8. POS Batches
+      await tx.posBatch.deleteMany({
+        where: { shiftId: { in: shiftIds }, organizationId: user.organizationId }
+      })
+
+      // 9. Shifts
+      await tx.shift.deleteMany({
+        where: whereClause
+      })
+    })
 
     return NextResponse.json({
-      message: `Successfully deleted ${deleteResult.count} ${statusType.toLowerCase()} shift(s)`,
-      deleted: deleteResult.count,
+      message: `Successfully deleted ${shifts.length} ${statusType.toLowerCase()} shift(s)`,
+      deleted: shifts.length,
       status: statusType,
-      shifts: shifts.map(shift => ({
-        id: shift.id,
-        station: shift.station.name,
-        template: shift.template?.name || 'N/A',
-        status: shift.status,
-        startTime: shift.startTime,
-        endTime: shift.endTime,
-        openedBy: shift.openedBy,
-        closedBy: shift.closedBy,
-        assignments: shift._count.assignments
+      shifts: shifts.map(s => ({
+        id: s.id,
+        station: s.station.name,
+        template: s.template?.name || 'Manual',
+        status: s.status,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        openedBy: s.openedBy,
+        closedBy: s.closedBy,
+        assignments: s._count.assignments
       }))
     })
   } catch (error) {
     console.error('❌ Error deleting shifts:', error)
-
-    if (error instanceof Error) {
-      return NextResponse.json({
-        error: 'Failed to delete shifts',
-        details: error.message
-      }, { status: 500 })
-    }
-
     return NextResponse.json({
-      error: 'Internal server error'
+      error: 'Failed to delete shifts',
+      details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
 }
-

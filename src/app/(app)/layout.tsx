@@ -8,6 +8,7 @@ import { StationProvider } from '@/contexts/StationContext'
 import { useIdleTimer } from '@/hooks/useIdleTimer'
 import { IdleWarningModal } from '@/components/auth/IdleWarningModal'
 import { logout } from '@/lib/auth'
+import { OnboardingCheck } from '@/components/auth/OnboardingCheck'
 
 type UserRole = 'DEVELOPER' | 'OWNER' | 'MANAGER' | 'ACCOUNTS'
 
@@ -57,22 +58,24 @@ export default function AppLayout({
 
   return (
     <StationProvider>
-      <div className="min-h-screen bg-background">
-        <div className="flex">
-          {/* Sidebar - sticky */}
-          <div className="sticky top-0 h-screen flex-shrink-0">
-            <Sidebar userRole={userRole} />
-          </div>
+      <OnboardingCheck>
+        <div className="min-h-screen bg-background">
+          <div className="flex">
+            {/* Sidebar - sticky */}
+            <div className="sticky top-0 h-screen flex-shrink-0">
+              <Sidebar userRole={userRole} />
+            </div>
 
-          {/* Main content area */}
-          <div className="flex-1 flex flex-col min-w-0">
-            <TopBar userRole={userRole} />
-            <main className="flex-1 p-6">
-              {children}
-            </main>
+            {/* Main content area */}
+            <div className="flex-1 flex flex-col min-w-0">
+              <TopBar userRole={userRole} />
+              <main className="flex-1 p-6">
+                {children}
+              </main>
+            </div>
           </div>
         </div>
-      </div>
+      </OnboardingCheck>
 
       {/* Idle Warning Modal */}
       <IdleWarningModal

@@ -278,7 +278,16 @@ export async function POST(request: NextRequest) {
         }
 
         const balanceAfter = balanceBefore + newBatch.totalAmount
-        const terminalList = newBatch.terminalEntries.map(e => (e as any).terminal?.terminalNumber || 'Unknown').join(', ')
+
+        interface TerminalEntryWithTerminal {
+          terminal?: {
+            terminalNumber: string | null
+          } | null
+        }
+
+        const terminalList = (newBatch.terminalEntries as unknown as TerminalEntryWithTerminal[])
+          .map(e => e.terminal?.terminalNumber || 'Unknown')
+          .join(', ')
 
         await prisma.safeTransaction.create({
           data: {

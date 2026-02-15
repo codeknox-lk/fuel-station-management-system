@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     }
     const body = await request.json() as LoanBody
 
-    const { stationId, pumperName, amount, monthlyRental, reason, dueDate, fromSafe, givenBy } = body
+    const { stationId, pumperName, amount, monthlyRental, reason, dueDate, fromSafe } = body
 
     if (!stationId || !pumperName || !amount || !reason || !dueDate) {
       return NextResponse.json(

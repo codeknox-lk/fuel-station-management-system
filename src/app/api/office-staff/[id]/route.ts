@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function PUT(
   request: NextRequest,
@@ -7,11 +8,16 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
 
-    // Find existing office staff
-    const existing = await prisma.officeStaff.findUnique({
-      where: { id }
+    // Find existing office staff and verify ownership
+    const existing = await prisma.officeStaff.findFirst({
+      where: { id, organizationId: user.organizationId }
     })
 
     if (!existing) {
@@ -44,6 +50,7 @@ export async function PUT(
     if (finalName !== existing.name || finalEmployeeId !== existing.employeeId || finalStationId !== existing.stationId) {
       const duplicateCheck = await prisma.officeStaff.findFirst({
         where: {
+          organizationId: user.organizationId,
           name: finalName,
           employeeId: finalEmployeeId,
           stationId: finalStationId,
@@ -121,10 +128,14 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    // Check if office staff exists
-    const existing = await prisma.officeStaff.findUnique({
-      where: { id }
+    // Check if office staff exists and belongs to organization
+    const existing = await prisma.officeStaff.findFirst({
+      where: { id, organizationId: user.organizationId }
     })
 
     if (!existing) {

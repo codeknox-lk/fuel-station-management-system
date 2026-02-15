@@ -37,12 +37,12 @@ function Toaster() {
             relative flex w-full items-start gap-4 overflow-hidden rounded-md border bg-background p-4 shadow-md transition-all animate-in slide-in-from-top-full fade-in duration-300
             ${t.variant === 'destructive' ? 'border-t-4 border-t-red-500' : ''}
             ${t.variant === 'success' ? 'border-t-4 border-t-green-500' : ''}
-            ${t.variant === 'default' ? 'border-t-4 border-t-blue-500' : ''}
+            ${t.variant === 'default' ? 'border-t-4 border-t-orange-500' : ''}
           `}
                 >
                     {t.variant === 'success' && <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />}
                     {t.variant === 'destructive' && <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />}
-                    {t.variant === 'default' && <Info className="h-5 w-5 text-blue-500 mt-0.5" />}
+                    {t.variant === 'default' && <Info className="h-5 w-5 text-orange-500 mt-0.5" />}
 
                     <div className="flex-1">
                         <h3 className="font-medium text-sm text-foreground">{t.title}</h3>
@@ -51,6 +51,7 @@ function Toaster() {
 
                     <button
                         onClick={() => dismiss(t.id)}
+                        title="Dismiss notification"
                         className="shrink-0 rounded-md p-1 opacity-50 hover:opacity-100 transition-opacity hover:bg-muted"
                     >
                         <X className="h-4 w-4" />

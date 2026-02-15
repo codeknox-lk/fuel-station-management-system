@@ -18,21 +18,24 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Station ID is required' }, { status: 400 })
         }
 
-        // Verify Station belongs to Organization
-        const station = await prisma.station.findFirst({
-            where: {
-                id: stationId,
-                organizationId: user.organizationId
-            }
-        })
+        // Handle "all" stations
+        if (stationId !== 'all') {
+            // Verify Station belongs to Organization
+            const station = await prisma.station.findFirst({
+                where: {
+                    id: stationId,
+                    organizationId: user.organizationId
+                }
+            })
 
-        if (!station) {
-            return NextResponse.json({ error: 'Station not found or access denied' }, { status: 404 })
+            if (!station) {
+                return NextResponse.json({ error: 'Station not found or access denied' }, { status: 404 })
+            }
         }
 
         const where: Prisma.ShopProductWhereInput = {
-            stationId,
-            organizationId: user.organizationId
+            organizationId: user.organizationId,
+            ...(stationId !== 'all' ? { stationId } : {})
         }
 
         if (isActive !== null) {

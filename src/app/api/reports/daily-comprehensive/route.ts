@@ -109,8 +109,7 @@ export async function GET(request: NextRequest) {
     const endOfDay = new Date(date)
     endOfDay.setHours(23, 59, 59, 999)
 
-    console.log(`[Daily Report API] Fetching report for stationId: ${stationId}, date: ${dateStr}`)
-    console.log(`[Daily Report API] Date range: ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`)
+
 
     // Get station info
     let station
@@ -199,9 +198,8 @@ export async function GET(request: NextRequest) {
         )
       }))
 
-      const totalAssignments = allShifts.reduce((sum, s) => sum + (s.assignments?.length || 0), 0)
-      const filteredAssignments = shifts.reduce((sum, s) => sum + (s.assignments?.length || 0), 0)
-      console.log(`[Daily Report API] Found ${shifts.length} shifts for the day (${filteredAssignments} filtered assignments out of ${totalAssignments} total)`)
+
+
     } catch (shiftsError) {
       console.error('[Daily Report API] Error fetching shifts:', shiftsError)
       const message = shiftsError instanceof Error ? shiftsError.message : String(shiftsError)
@@ -269,11 +267,11 @@ export async function GET(request: NextRequest) {
     const salesByFuelType = new Map<string, number>()
     let totalSales = 0
 
-    console.log(`[Daily Report API] Processing ${shifts.length} shifts for sales calculation`)
+
 
     for (const shift of shifts) {
       if (!shift.assignments || !Array.isArray(shift.assignments)) {
-        console.log(`[Daily Report API] Shift ${shift.id} has no assignments or assignments is not an array`)
+
         continue
       }
 

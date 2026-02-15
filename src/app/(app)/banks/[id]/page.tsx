@@ -169,7 +169,7 @@ export default function BankTransactionDetailsPage() {
             case 'PENDING':
                 return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20"><Clock className="h-3 w-3 mr-1" />Pending</Badge>
             case 'DEPOSITED':
-                return <Badge variant="outline" className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"><Clock className="h-3 w-3 mr-1" />Deposited</Badge>
+                return <Badge variant="outline" className="bg-primary/10 text-primary dark:text-orange-400 border-primary/20"><Clock className="h-3 w-3 mr-1" />Deposited</Badge>
             case 'BOUNCED':
                 return <Badge variant="outline" className="bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"><XCircle className="h-3 w-3 mr-1" />Bounced</Badge>
             default:
@@ -332,14 +332,14 @@ export default function BankTransactionDetailsPage() {
                     </div>
 
                     {/* Credit */}
-                    <div className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20 p-4 border-blue-200 dark:border-blue-800">
+                    <div className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-950/30 dark:to-orange-900/20 p-4 border-orange-200 dark:border-orange-800">
                         <div className="flex flex-col gap-1">
-                            <div className="text-xs font-medium text-blue-700 dark:text-blue-400 uppercase tracking-wide">Credit</div>
-                            <div className="text-lg font-bold text-blue-900 dark:text-blue-100 font-mono">
+                            <div className="text-xs font-medium text-orange-700 dark:text-orange-400 uppercase tracking-wide">Credit</div>
+                            <div className="text-lg font-bold text-orange-900 dark:text-orange-100 font-mono">
                                 Rs. {(transactionSummary.totalCreditPayments || 0).toLocaleString()}
                             </div>
                         </div>
-                        <CreditCard className="absolute right-2 bottom-2 h-8 w-8 text-blue-300 dark:text-blue-800 opacity-50" />
+                        <CreditCard className="absolute right-2 bottom-2 h-8 w-8 text-orange-300 dark:text-orange-800 opacity-50" />
                     </div>
 
                     {/* Total */}

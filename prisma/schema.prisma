@@ -62,6 +62,7 @@ model Organization {
   shopShiftItems            ShopShiftItem[]
   shopSales                 ShopSale[]
   shopWastages              ShopWastage[]
+  subscriptionPayments      SubscriptionPayment[]
 
   @@index([slug])
 }
@@ -69,13 +70,37 @@ model Organization {
 model Subscription {
   id               String             @id @default(uuid())
   organizationId   String             @unique
-  planId           PlanType
+  planId           PlanType           @default(BASIC)
   status           SubscriptionStatus @default(ACTIVE)
+  amount           Float              @default(0)
+  currency         String             @default("LKR")
+  billingInterval  BillingInterval    @default(MONTH)
+  maxStations      Int                @default(1)
+  trialEndDate     DateTime?
+  nextBillingDate  DateTime?
+  cancelledAt      DateTime?
   stripeCustomerId String?
-  currentPeriodEnd DateTime?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
   organization     Organization       @relation(fields: [organizationId], references: [id])
+}
+
+model SubscriptionPayment {
+  id                    String          @id @default(uuid())
+  organizationId        String
+  amount                Float
+  currency              String          @default("LKR")
+  status                PaymentStatus   @default(PENDING)
+  provider              PaymentProvider
+  providerTransactionId String?
+  billingDate           DateTime        @default(now())
+  receiptUrl            String?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  organization          Organization    @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@index([providerTransactionId])
 }
 
 model User {
@@ -1234,14 +1259,32 @@ model ShopWastage {
 enum PlanType {
   BASIC
   PREMIUM
-  ENTERPRISE
 }
 
 enum SubscriptionStatus {
   ACTIVE
   PAST_DUE
-  CANCELED
+  CANCELLED
+  UNPAID
   TRIALING
+}
+
+enum BillingInterval {
+  MONTH
+  YEAR
+}
+
+enum PaymentStatus {
+  SUCCESS
+  FAILED
+  PENDING
+  REFUNDED
+}
+
+enum PaymentProvider {
+  STRIPE
+  PAYHERE
+  MANUAL
 }
 
 enum UserRole {

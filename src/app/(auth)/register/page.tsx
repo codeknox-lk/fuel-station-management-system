@@ -73,7 +73,7 @@ export default function RegisterPage() {
 
                         {/* Welcome Text */}
                         <div className="mb-10">
-                            <h1 className="text-4xl font-bold text-gray-900 mb-3 tracking-tight">
+                            <h1 className="text-3xl font-bold text-gray-900 mb-3 tracking-tight">
                                 Get Started,<br />Create Account.
                             </h1>
                             <p className="text-gray-500 text-base">

@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
 
-    console.log('Station Comparison API called with:', { startDate, endDate })
+
 
     if (!startDate || !endDate) {
       return NextResponse.json(
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const end = new Date(endDate)
     end.setHours(23, 59, 59, 999)
 
-    console.log('Date range:', { start, end })
+
 
     // Get all active stations
     const stations = await prisma.station.findMany({
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    console.log(`Found ${stations.length} active stations`)
+
 
     // If no stations, return empty array
     if (stations.length === 0) {
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     // Get data for each station
     const stationStats = await Promise.all(
       stations.map(async (station) => {
-        console.log(`Processing station: ${station.name} (${station.id})`)
+
         try {
           // Get shifts in date range
           const shifts = await prisma.shift.findMany({
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
             }
           })
 
-          console.log(`  Found ${shifts.length} closed shifts for ${station.name}`)
+
 
           // Calculate total sales (cash + POS + credit)
           let totalSales = 0
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
             }
           }
 
-          console.log(`  Sales: ${totalSales}, Volume: ${totalVolume}`)
+
 
           // Get expenses for the station
           const expenses = await prisma.expense.findMany({
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
           })
 
           const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0)
-          console.log(`  Expenses: ${totalExpenses}`)
+
 
           // Calculate profit (simplified - sales minus expenses)
           const totalProfit = totalSales - totalExpenses
@@ -141,7 +141,7 @@ export async function GET(request: NextRequest) {
       })
     )
 
-    console.log('Successfully processed all stations')
+
     return NextResponse.json(stationStats)
   } catch (error) {
     console.error('Error fetching station comparison data:', error)

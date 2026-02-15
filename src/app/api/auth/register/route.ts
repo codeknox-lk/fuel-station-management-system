@@ -71,7 +71,8 @@ export async function POST(request: NextRequest) {
                     password: hashedPassword,
                     role: 'OWNER',
                     organizationId: org.id,
-                    isActive: true
+                    isActive: true,
+                    isFirstLogin: false
                 }
             })
 

@@ -421,7 +421,7 @@ export default function OfficeStaffSalaryDetailsPage() {
               <span className="text-xl font-bold">Net Salary:</span>
               <div className="flex items-center gap-2">
                 <DollarSign className={`h-8 w-8 ${salaryData.netSalary >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-                <span className={`text-4xl font-bold ${salaryData.netSalary >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <span className={`text-3xl font-bold ${salaryData.netSalary >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   Rs. {(salaryData.netSalary || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>

@@ -1,20 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getAuthenticatedStationContext } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('[Pumper Report] Starting report generation...')
-    const { searchParams } = new URL(request.url)
-    const stationId = searchParams.get('stationId')
-    const startDate = searchParams.get('startDate')
-    const endDate = searchParams.get('endDate')
-    const pumperId = searchParams.get('pumperId')
+    const { stationId, searchParams, errorResponse } = await getAuthenticatedStationContext(request)
+    if (errorResponse) return errorResponse
 
-    console.log('[Pumper Report] Params:', { stationId, startDate, endDate, pumperId })
+    if (!stationId) throw new Error("Station ID missing after auth check")
 
-    if (!stationId) {
-      return NextResponse.json({ error: 'Station ID is required' }, { status: 400 })
-    }
+    const startDate = searchParams!.get('startDate')
+    const endDate = searchParams!.get('endDate')
+    const pumperId = searchParams!.get('pumperId')
 
     // Parse dates or use defaults (current business month)
     let dateStart: Date
@@ -40,7 +37,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all pumpers or specific pumper
-    console.log('[Pumper Report] Fetching pumpers...')
     const pumpers = await prisma.pumper.findMany({
       where: {
         stationId,
@@ -59,10 +55,8 @@ export async function GET(request: NextRequest) {
         name: 'asc'
       }
     })
-    console.log('[Pumper Report] Found pumpers:', pumpers.length)
 
     // Get shift assignments for the period
-    console.log('[Pumper Report] Fetching shift assignments...')
     const shiftAssignments = await prisma.shiftAssignment.findMany({
       where: {
         shift: {
@@ -99,10 +93,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    console.log('[Pumper Report] Found shift assignments:', shiftAssignments.length)
-
     // Get active loans for pumpers
-    console.log('[Pumper Report] Fetching loans...')
     const loans = await prisma.loanPumper.findMany({
       where: {
         stationId,
@@ -116,12 +107,8 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    console.log('[Pumper Report] Found loans:', loans.length)
-
     // Build comprehensive pumper details
-    console.log('[Pumper Report] Building pumper details...')
     const pumperDetails = await Promise.all(pumpers.map(async (pumper) => {
-      console.log(`[Pumper Report] Processing pumper: ${pumper.name}`)
       // Get assignments for this pumper
       const pumperAssignments = shiftAssignments.filter(a => a.pumperName === pumper.name)
 

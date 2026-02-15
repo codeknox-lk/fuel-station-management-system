@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { PumperStatus, PumperShift } from '@prisma/client'
 import { CreatePumperSchema } from '@/lib/schemas'
 import { getServerUser } from '@/lib/auth-server'
 
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    console.log('🔄 POST /api/pumpers - Creating new pumper')
+
 
     // Zod Validation
     const result = CreatePumperSchema.safeParse(body)
@@ -165,7 +166,7 @@ export async function POST(request: NextRequest) {
     // ALWAYS generate employee ID with 3-digit padding (EMP001, EMP002, etc.)
     const finalEmployeeId = `EMP${String(nextNumber).padStart(3, '0')}`
 
-    console.log(`🆔 Auto-generated employee ID: ${finalEmployeeId}`)
+
 
     // CRITICAL: Check for duplicates before creating
     // Check by name + employeeId
@@ -212,10 +213,8 @@ export async function POST(request: NextRequest) {
         phone: phoneToUse,
         employeeId: finalEmployeeId,
         stationId: stationId || undefined,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        status: (status as any) || 'ACTIVE',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        shift: (shift as any) || 'ANY',
+        status: (status as PumperStatus) || 'ACTIVE',
+        shift: (shift as PumperShift) || 'ANY',
         hireDate: hireDate || null,
         experience: experience || null,
         rating: rating || null,
@@ -227,7 +226,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    console.log('✅ Pumper created successfully:', newPumper.id)
+
 
     // Create audit log for pumper creation
     try {

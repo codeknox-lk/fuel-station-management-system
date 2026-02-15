@@ -10,7 +10,7 @@ import { FormCard } from '@/components/ui/FormCard'
 import {
   Fuel, CreditCard, DollarSign,
   AlertTriangle, Clock, Activity, FileText, Wallet,
-  Building2, CheckCircle2, Package, ShoppingBag
+  Building2, CheckCircle2, Package, ShoppingBag, Plus
 } from 'lucide-react'
 
 interface FuelStock {
@@ -62,6 +62,7 @@ export default function DashboardPage() {
   const [fuelStock, setFuelStock] = useState<FuelStock[]>([])
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
   const [alerts, setAlerts] = useState<AlertItem[]>([])
+  // const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadDashboardData()
@@ -70,6 +71,7 @@ export default function DashboardPage() {
 
   const loadDashboardData = async () => {
     try {
+      // setLoading(true)
       const params = selectedStation && selectedStation !== 'all' ? `?stationId=${selectedStation}` : ''
       const response = await fetch(`/api/dashboard/summary${params}`)
 
@@ -96,38 +98,50 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
+    } finally {
+      // setLoading(false)
     }
   }
 
-  // Removed old separate loading functions - now using unified /api/dashboard/summary endpoint
+  // Stations check removed - handled by AppLayout redirect
+
 
   return (
     <div className="space-y-6 p-6">
       {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-orange-600 to-orange-700 rounded-lg p-6 text-white">
+      <div className="bg-gradient-to-r from-orange-600 to-orange-700 rounded-lg p-6 text-white shadow-lg mx-1">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold mb-2">
               Welcome, {organization?.name || 'Dashboard'}
             </h1>
-            <p className="text-orange-100">
+            <p className="text-orange-100 flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
               {isAllStations ? 'All Stations Overview' : 'Station Operations Overview'}
             </p>
           </div>
-          <Building2 className="h-12 w-12 opacity-50" />
+          {/* Quick Add Action for Owners */}
+          <Button
+            variant="secondary"
+            size="sm"
+            className="bg-white/10 text-white hover:bg-white/20 border-white/20 backdrop-blur-sm"
+            onClick={() => router.push('/settings/stations')}
+          >
+            <Plus className="h-4 w-4 mr-2" /> Manage Stations
+          </Button>
         </div>
       </div>
 
       {/* Key Metrics */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Active Shifts */}
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/shifts')}>
+        <Card className="cursor-pointer hover:shadow-md transition-all border-none shadow-sm ring-1 ring-gray-200" onClick={() => router.push('/shifts')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Shifts</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-gray-600">Active Shifts</CardTitle>
+            <Clock className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">{stats.activeShifts}</div>
+            <div className="text-3xl font-bold text-gray-900">{stats.activeShifts}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {stats.activeShifts > 0 ? 'Currently running' : 'No active shifts'}
             </p>
@@ -135,20 +149,18 @@ export default function DashboardPage() {
               <div key={shift.id} className="mt-2 pt-2 border-t flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   {shift.type === 'SHOP' ? (
-                    <div className="flex items-center gap-1 text-blue-600">
+                    <div className="flex items-center gap-1 text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">
                       <ShoppingBag className="h-3 w-3" />
-                      <span className="text-[10px] uppercase font-bold">Shop</span>
+                      Shop
                     </div>
                   ) : shift.type === 'MIXED' ? (
-                    <div className="flex items-center gap-1 text-purple-600">
-                      <Fuel className="h-3 w-3" />
-                      <span className="text-[10px]">+</span>
-                      <ShoppingBag className="h-3 w-3" />
+                    <div className="flex items-center gap-1 text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">
+                      <Fuel className="h-3 w-3" /> + <ShoppingBag className="h-3 w-3" />
                     </div>
                   ) : (
-                    <div className="flex items-center gap-1 text-orange-600">
+                    <div className="flex items-center gap-1 text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">
                       <Fuel className="h-3 w-3" />
-                      <span className="text-[10px] uppercase font-bold">Pump</span>
+                      Pump
                     </div>
                   )}
                   <span className="text-xs font-medium truncate max-w-[120px]">
@@ -164,20 +176,20 @@ export default function DashboardPage() {
         </Card>
 
         {/* Today's Revenue */}
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/reports/daily-sales')}>
+        <Card className="cursor-pointer hover:shadow-md transition-all border-none shadow-sm ring-1 ring-gray-200" onClick={() => router.push('/reports/daily-sales')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today&apos;s Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-gray-600">Today&apos;s Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-orange-600">Rs. {(stats.todaySales || (0) || 0).toLocaleString()}</div>
+            <div className="text-3xl font-bold text-green-600">Rs. {(stats.todaySales || 0).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {stats.todayTransactions} transactions
             </p>
             <div className="mt-2 pt-2 border-t">
               <p className="text-xs font-medium">
                 {stats.todaySales > 0 ? (
-                  <>Avg: Rs. {Math.round((stats.todaySales || 0) / (stats.todayTransactions || (1)) || 0).toLocaleString()}/sale</>
+                  <>Avg: Rs. {Math.round((stats.todaySales || 0) / (stats.todayTransactions || 1)).toLocaleString()}/sale</>
                 ) : (
                   'No sales yet today'
                 )}
@@ -187,13 +199,13 @@ export default function DashboardPage() {
         </Card>
 
         {/* Inventory Alerts */}
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/tanks')}>
+        <Card className="cursor-pointer hover:shadow-md transition-all border-none shadow-sm ring-1 ring-gray-200" onClick={() => router.push('/tanks')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Inventory Status</CardTitle>
-            <Fuel className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-gray-600">Inventory Status</CardTitle>
+            <Fuel className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className={`text-3xl font-bold ${stats.lowStockTanks > 0 ? 'text-red-600' : 'text-green-600'}`}>
+            <div className={`text-3xl font-bold ${stats.lowStockTanks > 0 ? 'text-red-600' : 'text-gray-900'}`}>
               {stats.lowStockTanks > 0 ? stats.lowStockTanks : stats.totalTanks}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
@@ -208,17 +220,17 @@ export default function DashboardPage() {
         </Card>
 
         {/* Safe & Credit */}
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/safe')}>
+        <Card className="cursor-pointer hover:shadow-md transition-all border-none shadow-sm ring-1 ring-gray-200" onClick={() => router.push('/safe')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cash & Credit</CardTitle>
-            <Wallet className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-gray-600">Cash & Credit</CardTitle>
+            <Wallet className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">Rs. {(stats.safeBalance || (0) || 0).toLocaleString()}</div>
+            <div className="text-2xl font-bold text-gray-900">Rs. {(stats.safeBalance || 0).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground mt-1">Safe balance</p>
             <div className="mt-2 pt-2 border-t">
-              <p className="text-xs font-medium text-orange-600">
-                Credit: Rs. {(stats.creditOutstanding || (0) || 0).toLocaleString()}
+              <p className="text-xs font-medium text-purple-600">
+                Credit: Rs. {(stats.creditOutstanding || 0).toLocaleString()}
               </p>
             </div>
           </CardContent>
@@ -234,10 +246,10 @@ export default function DashboardPage() {
                 <div className="flex justify-between text-sm">
                   <span className="font-medium">{fuel.name}</span>
                   <span className="text-muted-foreground">
-                    {(fuel.stock || (0) || 0).toLocaleString()} / {(fuel.capacity || (0) || 0).toLocaleString()} L
+                    {(fuel.stock || 0).toLocaleString()} / {(fuel.capacity || 0).toLocaleString()} L
                   </span>
                 </div>
-                <div className="w-full bg-muted rounded-full h-2">
+                <div className="w-full bg-gray-100 rounded-full h-2">
                   <div
                     className={`h-2 rounded-full transition-all ${fuel.percentage < 20 ? 'bg-red-500' :
                       fuel.percentage < 50 ? 'bg-yellow-500' : 'bg-green-500'
@@ -248,7 +260,11 @@ export default function DashboardPage() {
               </div>
             ))}
             {fuelStock.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">No tank data available</p>
+              <div className="py-8 text-center flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed rounded-lg">
+                <Fuel className="h-10 w-10 mb-2 opacity-20" />
+                <p>No tank data available</p>
+                <Button variant="link" onClick={() => router.push('/tanks')} className="text-orange-600">Configure Tanks</Button>
+              </div>
             )}
           </div>
         </FormCard>
@@ -257,25 +273,28 @@ export default function DashboardPage() {
         <FormCard title="Alerts & Notifications" description="System alerts">
           <div className="space-y-2">
             {stats.lowStockTanks > 0 && (
-              <div className="flex items-start gap-2 p-2 bg-red-50 dark:bg-red-950 rounded">
+              <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-100 rounded-lg">
                 <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-red-900 dark:text-red-100">Low Stock Alert</p>
-                  <p className="text-xs text-red-700 dark:text-red-300">{stats.lowStockTanks} tanks below 20%</p>
+                  <p className="text-sm font-medium text-red-900">Low Stock Alert</p>
+                  <p className="text-xs text-red-700">{stats.lowStockTanks} tanks below 20%</p>
                 </div>
               </div>
             )}
             {alerts.slice(0, 5).map((alert, idx) => (
-              <div key={idx} className="flex items-start gap-2 p-2 border rounded">
-                <CheckCircle2 className="h-4 w-4 text-orange-600 mt-0.5" />
+              <div key={idx} className="flex items-start gap-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                <div className="mt-0.5 h-2 w-2 rounded-full bg-orange-500" />
                 <div className="flex-1">
-                  <p className="text-sm">{alert.message}</p>
-                  <p className="text-xs text-muted-foreground">{new Date(alert.createdAt).toLocaleString()}</p>
+                  <p className="text-sm text-gray-700">{alert.message}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{new Date(alert.createdAt).toLocaleString()}</p>
                 </div>
               </div>
             ))}
             {alerts.length === 0 && stats.lowStockTanks === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">No alerts</p>
+              <div className="py-8 text-center flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed rounded-lg">
+                <CheckCircle2 className="h-10 w-10 mb-2 opacity-20" />
+                <p>System Healthy - No active alerts</p>
+              </div>
             )}
           </div>
         </FormCard>
@@ -286,7 +305,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           <Button
             variant="outline"
-            className="h-24 flex flex-col gap-2 hover:bg-green-50 hover:border-green-300 dark:hover:bg-green-950"
+            className="h-24 flex flex-col gap-2 hover:bg-green-50 hover:border-green-300 transition-all border-dashed border-gray-300"
             onClick={(e) => {
               e.preventDefault()
               router.push('/shifts/open')
@@ -297,7 +316,7 @@ export default function DashboardPage() {
           </Button>
           <Button
             variant="outline"
-            className="h-24 flex flex-col gap-2 hover:bg-orange-50 hover:border-orange-300 dark:hover:bg-orange-950"
+            className="h-24 flex flex-col gap-2 hover:bg-orange-50 hover:border-orange-300 transition-all border-dashed border-gray-300"
             onClick={(e) => {
               e.preventDefault()
               router.push('/shifts/close')
@@ -308,7 +327,7 @@ export default function DashboardPage() {
           </Button>
           <Button
             variant="outline"
-            className="h-24 flex flex-col gap-2 hover:bg-orange-50 hover:border-orange-300 dark:hover:bg-orange-950"
+            className="h-24 flex flex-col gap-2 hover:bg-orange-50 hover:border-orange-300 transition-all border-dashed border-gray-300"
             onClick={(e) => {
               e.preventDefault()
               router.push('/banks')
@@ -319,18 +338,18 @@ export default function DashboardPage() {
           </Button>
           <Button
             variant="outline"
-            className="h-24 flex flex-col gap-2 hover:bg-orange-50 hover:border-orange-300 dark:hover:bg-orange-950"
+            className="h-24 flex flex-col gap-2 hover:bg-purple-50 hover:border-purple-300 transition-all border-dashed border-gray-300"
             onClick={(e) => {
               e.preventDefault()
               router.push('/tanks/deliveries')
             }}
           >
-            <Package className="h-6 w-6 text-orange-600" />
+            <Package className="h-6 w-6 text-purple-600" />
             <span className="text-sm font-medium">Add Delivery</span>
           </Button>
           <Button
             variant="outline"
-            className="h-24 flex flex-col gap-2 hover:bg-yellow-50 hover:border-yellow-300 dark:hover:bg-yellow-950"
+            className="h-24 flex flex-col gap-2 hover:bg-yellow-50 hover:border-yellow-300 transition-all border-dashed border-gray-300"
             onClick={(e) => {
               e.preventDefault()
               router.push('/safe')
@@ -341,13 +360,13 @@ export default function DashboardPage() {
           </Button>
           <Button
             variant="outline"
-            className="h-24 flex flex-col gap-2 hover:bg-orange-50 hover:border-orange-300 dark:hover:bg-orange-950"
+            className="h-24 flex flex-col gap-2 hover:bg-gray-50 hover:border-gray-300 transition-all border-dashed border-gray-300"
             onClick={(e) => {
               e.preventDefault()
               router.push('/reports')
             }}
           >
-            <FileText className="h-6 w-6 text-orange-600" />
+            <FileText className="h-6 w-6 text-gray-600" />
             <span className="text-sm font-medium">Reports</span>
           </Button>
         </div>
@@ -355,7 +374,7 @@ export default function DashboardPage() {
 
       {/* Recent Activity */}
       <FormCard title="Recent Activity" description="Latest system activities">
-        <div className="space-y-2">
+        <div className="space-y-0 text-sm">
           {recentActivity
             .filter(activity => {
               // Get current user role from localStorage
@@ -368,16 +387,18 @@ export default function DashboardPage() {
             })
             .slice(0, 8)
             .map((activity, idx) => (
-              <div key={idx} className="flex items-center justify-between p-2 border rounded">
+              <div key={idx} className="flex items-center justify-between p-3 border-b last:border-0 hover:bg-gray-50 transition-colors">
                 <div className="flex items-center gap-3">
-                  <Activity className="h-4 w-4 text-muted-foreground" />
+                  <div className="bg-gray-100 p-1.5 rounded-full">
+                    <Activity className="h-4 w-4 text-gray-500" />
+                  </div>
                   <div>
-                    <p className="text-sm font-medium">{activity.action} - {activity.entity}</p>
-                    <p className="text-xs text-muted-foreground">{activity.userName}</p>
+                    <p className="text-sm font-medium text-gray-900">{activity.action} <span className="text-gray-500">on</span> {activity.entity}</p>
+                    <p className="text-xs text-muted-foreground">{activity.userName} &bull; <span className="capitalize">{activity.userRole.toLowerCase()}</span></p>
                   </div>
                 </div>
-                <span className="text-xs text-muted-foreground">
-                  {new Date(activity.timestamp).toLocaleTimeString()}
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  {new Date(activity.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
             ))}
@@ -388,7 +409,10 @@ export default function DashboardPage() {
             }
             return true
           }).length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">No recent activity</p>
+              <div className="py-8 text-center flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed rounded-lg">
+                <Activity className="h-10 w-10 mb-2 opacity-20" />
+                <p>No activity recorded yet</p>
+              </div>
             )}
         </div>
       </FormCard>

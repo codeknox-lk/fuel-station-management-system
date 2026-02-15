@@ -9,10 +9,9 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CreditCard, Plus, Edit, Trash2, Building, Phone } from 'lucide-react'
+import { CreditCard, Plus, Edit, Trash2, Building, Phone, ArrowLeft } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
 
 interface Bank {
   id: string
@@ -32,6 +31,8 @@ interface Bank {
 
 export default function BanksPage() {
   const router = useRouter()
+
+
   const [banks, setBanks] = useState<Bank[]>([])
   // const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -55,8 +56,20 @@ export default function BanksPage() {
       const response = await fetch('/api/banks')
       const data = await response.json()
       console.log('Fetched banks data:', data)
-      interface ApiBank extends Omit<Bank, 'status'> {
+      interface ApiBank {
+        id: string
+        code: string
+        name: string
+        accountNumber: string
+        accountName: string
+        branch: string
+        swiftCode: string
+        contactPerson: string
+        phone: string
+        email: string
         isActive: boolean
+        createdAt: string
+        updatedAt: string
       }
 
       // Map isActive to status for the UI
@@ -79,6 +92,7 @@ export default function BanksPage() {
   useEffect(() => {
     fetchBanks()
   }, [fetchBanks])
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

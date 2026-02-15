@@ -117,7 +117,7 @@ export async function POST(
             // Assumes meter max is 99999 (adjust if different)
             const METER_MAX = 99999
             litersSold = (METER_MAX - assignment.startMeterReading) + assignment.endMeterReading
-            console.log(`Meter rollover detected for assignment ${assignment.id}: ${assignment.startMeterReading} -> ${assignment.endMeterReading}, calculated liters: ${litersSold}`)
+
           } else {
             console.error(`Invalid meter reading for assignment ${assignment.id}: end (${assignment.endMeterReading}) < start (${assignment.startMeterReading}) - not a rollover`)
             continue // Skip invalid assignments (non-rollover case)
@@ -323,7 +323,7 @@ export async function POST(
           data: { currentBalance: balanceAfter }
         })
 
-        console.log(`✅ Cash amount Rs. ${cashAmount} automatically added to safe`)
+
       } catch (safeError) {
         console.error('Error adding cash to safe during shift close:', safeError)
         // Don't fail the shift close if safe transaction fails
@@ -334,7 +334,7 @@ export async function POST(
     // Process Cheques from Pumper Breakdown and create Cheque records
     if (pumperBreakdown && Array.isArray(pumperBreakdown)) {
       try {
-        console.log('Processing cheques from pumper breakdown...')
+
 
         for (const pumperData of pumperBreakdown) {
           if (pumperData.cheques && Array.isArray(pumperData.cheques)) {
@@ -372,7 +372,7 @@ export async function POST(
                       recordedBy: closedBy || 'System'
                     }
                   })
-                  console.log(`✅ Created cheque record: ${cheque.chequeNumber}`)
+
                 } catch (err) {
                   console.error(`Failed to create cheque ${cheque.chequeNumber}:`, err)
                 }

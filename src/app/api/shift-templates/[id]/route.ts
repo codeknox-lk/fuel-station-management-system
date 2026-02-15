@@ -44,16 +44,16 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
 
-    console.log('=== UPDATE SHIFT TEMPLATE ===')
-    console.log('ID:', id)
-    console.log('Body:', JSON.stringify(body, null, 2))
+    // Log removed('=== UPDATE SHIFT TEMPLATE ===')
+    // Log removed('ID:', id)
+    // Log removed('Body:', JSON.stringify(body, null, 2))
 
     const template = await prisma.shiftTemplate.findUnique({
       where: { id }
     })
 
     if (!template) {
-      console.log('Template not found')
+      // Log removed('Template not found')
       return NextResponse.json({ error: 'Shift template not found' }, { status: 404 })
     }
 
@@ -70,7 +70,7 @@ export async function PUT(
       ...(status !== undefined && { isActive: status === 'active' })
     }
 
-    console.log('Update data:', JSON.stringify(updateData, null, 2))
+    // Log removed('Update data:', JSON.stringify(updateData, null, 2))
 
     const updatedTemplate = await prisma.shiftTemplate.update({
       where: { id },
@@ -85,8 +85,8 @@ export async function PUT(
       }
     })
 
-    console.log('Updated successfully:', updatedTemplate)
-    console.log('============================')
+    // Log removed('Updated successfully:', updatedTemplate)
+    // Log removed('============================')
     return NextResponse.json(updatedTemplate)
   } catch (error) {
     console.error('Error updating shift template:', error)
@@ -101,15 +101,15 @@ export async function DELETE(
   try {
     const { id } = await params
 
-    console.log('=== DELETE SHIFT TEMPLATE ===')
-    console.log('ID:', id)
+    // Log removed('=== DELETE SHIFT TEMPLATE ===')
+    // Log removed('ID:', id)
 
     const template = await prisma.shiftTemplate.findUnique({
       where: { id }
     })
 
     if (!template) {
-      console.log('Template not found')
+      // Log removed('Template not found')
       return NextResponse.json({ error: 'Shift template not found' }, { status: 404 })
     }
 
@@ -118,10 +118,10 @@ export async function DELETE(
       where: { templateId: id }
     })
 
-    console.log('Shifts using this template:', shiftsCount)
+    // Log removed('Shifts using this template:', shiftsCount)
 
     if (shiftsCount > 0) {
-      console.log('Cannot delete - has shifts')
+      // Log removed('Cannot delete - has shifts')
       return NextResponse.json({
         error: `Cannot delete shift template with ${shiftsCount} existing shift(s). Please remove all shifts first.`
       }, { status: 400 })
@@ -131,8 +131,8 @@ export async function DELETE(
       where: { id }
     })
 
-    console.log('Deleted successfully')
-    console.log('============================')
+    // Log removed('Deleted successfully')
+    // Log removed('============================')
     return NextResponse.json({ success: true, message: 'Shift template deleted successfully' })
   } catch (error) {
     console.error('Error deleting shift template:', error)

@@ -1,21 +1,23 @@
+
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { calculateDailyProfit } from '@/lib/calc'
 
+import { getAuthenticatedStationContext } from '@/lib/api-utils'
+
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const stationId = searchParams.get('stationId')
-    const dateStr = searchParams.get('date') || new Date().toISOString().split('T')[0]
+    const { stationId, searchParams, errorResponse } = await getAuthenticatedStationContext(request)
+    if (errorResponse) return errorResponse
+
+    if (!stationId) throw new Error("Station ID missing after auth check")
+
+    const dateStr = searchParams!.get('date') || new Date().toISOString().split('T')[0]
     const date = new Date(dateStr)
     const startOfDay = new Date(date)
     startOfDay.setHours(0, 0, 0, 0)
     const endOfDay = new Date(date)
     endOfDay.setHours(23, 59, 59, 999)
-
-    if (!stationId) {
-      return NextResponse.json({ error: 'Station ID is required' }, { status: 400 })
-    }
 
     // Get shifts for the day - get shifts that ENDED on this day for accurate reporting
     const shifts = await prisma.shift.findMany({
@@ -241,7 +243,7 @@ export async function GET(request: NextRequest) {
         daily: dailyProfit,
         sales: totalCashIn,
         expenses: totalExpenses,
-        netMargin: totalCashIn > 0 ? (dailyProfit / totalCashIn) * 100 : 0
+        netMargin: totalCashIn > 0 ? (dailyProfit.toNumber() / totalCashIn) * 100 : 0
       }
     }
 

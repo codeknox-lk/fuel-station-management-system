@@ -41,6 +41,7 @@ interface OfficeStaff {
 
 export default function OfficeStaffPage() {
   const router = useRouter()
+
   const { selectedStation, stations } = useStation()
   const [officeStaff, setOfficeStaff] = useState<OfficeStaff[]>([])
   const [loading, setLoading] = useState(true)
@@ -63,6 +64,7 @@ export default function OfficeStaffPage() {
     hireDate: new Date().toISOString().split('T')[0],
     isActive: true
   })
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const { toast } = useToast()
 
   const fetchOfficeStaff = useCallback(async () => {
@@ -96,7 +98,6 @@ export default function OfficeStaffPage() {
     }
   }, [selectedStation, fetchOfficeStaff])
 
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

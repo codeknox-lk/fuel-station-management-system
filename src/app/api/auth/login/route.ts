@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user in database
-    console.log(`🔍 Looking up user: ${username}`)
+
     const user = await prisma.user.findUnique({
       where: { username },
       include: {
@@ -48,23 +48,14 @@ export async function POST(request: NextRequest) {
     })
 
     if (!user) {
-      console.log(`❌ User not found: ${username}`)
-      // Check if any users exist in database
-      const userCount = await prisma.user.count()
-      console.log(`   Total users in database: ${userCount}`)
-      if (userCount === 0) {
-        console.log(`   ⚠️  WARNING: No users found in database!`)
-        console.log(`   💡 Run seed script: npx prisma db seed`)
-      }
+
       return NextResponse.json(
         { detail: 'Incorrect username or password' },
         { status: 401 }
       )
     }
 
-    console.log(`✅ User found: ${user.username} (${user.role})`)
-    console.log(`   Password hash: ${user.password.substring(0, 20)}...`)
-    console.log(`   Is active: ${user.isActive}`)
+
 
     // Check if user is active
     if (!user.isActive) {
@@ -83,11 +74,9 @@ export async function POST(request: NextRequest) {
       try {
         passwordValid = await bcrypt.compare(password, user.password)
         if (!passwordValid) {
-          console.log(`❌ Password mismatch for user: ${username}`)
-          console.log(`   Provided password length: ${password.length}`)
-          console.log(`   Hash starts with: ${user.password.substring(0, 10)}...`)
+
         } else {
-          console.log(`✅ Password verified for user: ${username}`)
+
         }
       } catch (error) {
         console.error('❌ Bcrypt compare error:', error)
@@ -96,25 +85,25 @@ export async function POST(request: NextRequest) {
     } else {
       // Password is plain text (temporary - for migration from old system)
       // In production, all passwords should be hashed
-      console.log(`⚠️  Plain text password detected for user: ${username}`)
+
       passwordValid = password === user.password
 
       // If login successful with plain text, hash and update password
       if (passwordValid) {
-        console.log(`✅ Plain text login successful, hashing password...`)
+
         const hashedPassword = await bcrypt.hash(password, 10)
         await prisma.user.update({
           where: { id: user.id },
           data: { password: hashedPassword }
         })
-        console.log(`✅ Password hashed and updated for user: ${username}`)
+
       } else {
-        console.log(`❌ Plain text password mismatch for user: ${username}`)
+
       }
     }
 
     if (!passwordValid) {
-      console.log(`Authentication failed for user: ${username}`)
+
       return NextResponse.json(
         { detail: 'Incorrect username or password' },
         { status: 401 }

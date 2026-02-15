@@ -4,26 +4,16 @@ import { useState, useEffect, useCallback } from 'react'
 import { FormCard } from '@/components/ui/FormCard'
 import { DataTable } from '@/components/ui/DataTable'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Building2, Plus, Edit, Trash2, MapPin, Phone, Clock } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Card, CardContent } from '@/components/ui/card'
+import { Building2, Plus, Edit, Trash2, MapPin, Phone, Clock, ArrowLeft } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { StationForm, StationData } from '@/components/forms/StationForm'
 
-interface Station {
+interface Station extends StationData {
   id: string
-  name: string
-  address: string
-  city: string
-  phone?: string
-  email?: string
-  openingHours?: string
-  isActive: boolean
   createdAt: string
   updatedAt: string
 }
@@ -33,20 +23,14 @@ export default function StationsPage() {
   const [stations, setStations] = useState<Station[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingStation, setEditingStation] = useState<Station | null>(null)
-  const [formData, setFormData] = useState({
-    name: '',
-    address: '',
-    city: '',
-    phone: '',
-    email: '',
-    openingHours: '',
-    isActive: true
-  })
   const { toast } = useToast()
 
-  // Check if user is DEVELOPER (only role that can add/delete stations)
+  // Check if user is DEVELOPER or OWNER (roles that can add/delete stations)
   const userRole = typeof window !== 'undefined' ? localStorage.getItem('userRole') : null
-  const isDeveloper = userRole === 'DEVELOPER'
+  const canManageStations = userRole === 'DEVELOPER' || userRole === 'OWNER'
+
+  // State for plan limits
+  const [limits, setLimits] = useState<{ currentStations: number; maxStations: number; canAdd: boolean } | null>(null)
 
   const fetchStations = useCallback(async () => {
     try {
@@ -62,53 +46,25 @@ export default function StationsPage() {
     }
   }, [toast])
 
+  const fetchLimits = useCallback(async () => {
+    try {
+      const res = await fetch('/api/organization/plan')
+      if (res.ok) {
+        const data = await res.json()
+        setLimits(data.limits)
+      }
+    } catch (err) {
+      console.error('Failed to fetch limits', err)
+    }
+  }, [])
+
   useEffect(() => {
     fetchStations()
-  }, [fetchStations])
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    try {
-      const url = editingStation ? `/api/stations/${editingStation.id}` : '/api/stations'
-      const method = editingStation ? 'PUT' : 'POST'
-
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      })
-
-      if (!response.ok) throw new Error('Failed to save station')
-
-      toast({
-        title: "Success",
-        description: `Station ${editingStation ? 'updated' : 'created'} successfully`
-      })
-
-      setDialogOpen(false)
-      resetForm()
-      fetchStations()
-    } catch {
-      toast({
-        title: "Error",
-        description: `Failed to ${editingStation ? 'update' : 'create'} station`,
-        variant: "destructive"
-      })
-    }
-  }
+    fetchLimits()
+  }, [fetchStations, fetchLimits])
 
   const handleEdit = (station: Station) => {
     setEditingStation(station)
-    setFormData({
-      name: station.name,
-      address: station.address,
-      city: station.city,
-      phone: station.phone || '',
-      email: station.email || '',
-      openingHours: station.openingHours || '',
-      isActive: station.isActive
-    })
     setDialogOpen(true)
   }
 
@@ -128,6 +84,7 @@ export default function StationsPage() {
       })
 
       fetchStations()
+      fetchLimits()
     } catch {
       toast({
         title: "Error",
@@ -137,17 +94,10 @@ export default function StationsPage() {
     }
   }
 
-  const resetForm = () => {
-    setEditingStation(null)
-    setFormData({
-      name: '',
-      address: '',
-      city: '',
-      phone: '',
-      email: '',
-      openingHours: '',
-      isActive: true
-    })
+  const handleSuccess = () => {
+    setDialogOpen(false)
+    fetchStations()
+    fetchLimits()
   }
 
   const getStatusColor = (isActive: boolean) => {
@@ -220,8 +170,8 @@ export default function StationsPage() {
           >
             <Edit className="h-4 w-4" />
           </Button>
-          {/* Only DEVELOPER can delete stations */}
-          {isDeveloper && (
+          {/* Only DEVELOPER/OWNER can delete stations */}
+          {canManageStations && (
             <Button
               variant="ghost"
               size="sm"
@@ -272,15 +222,33 @@ export default function StationsPage() {
             <p className="text-muted-foreground mt-2">
               Manage petrol stations, locations, and operational details
             </p>
+            {limits && (
+              <div className="flex items-center gap-2 mt-2">
+                <Badge variant={limits.canAdd ? "outline" : "destructive"}>
+                  {limits.currentStations} / {limits.maxStations} Stations Used
+                </Badge>
+                {!limits.canAdd && (
+                  <span className="text-xs text-red-500 font-medium">Plan limit reached</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Only DEVELOPER can see Add Station button */}
-        {isDeveloper && (
-          <Button onClick={() => { resetForm(); setDialogOpen(true); }}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Station
-          </Button>
+        {/* Only DEVELOPER/OWNER can see Add Station button */}
+        {canManageStations && (
+          <div className="flex flex-col items-end gap-1">
+            <Button
+              onClick={() => { setEditingStation(null); setDialogOpen(true); }}
+              disabled={!limits?.canAdd && userRole !== 'DEVELOPER'}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Station
+            </Button>
+            {(!limits?.canAdd && userRole !== 'DEVELOPER') && (
+              <span className="text-xs text-muted-foreground">Upgrade to add more</span>
+            )}
+          </div>
         )}
       </div>
 
@@ -292,97 +260,11 @@ export default function StationsPage() {
               {editingStation ? 'Edit Station' : 'Add New Station'}
             </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="name">Station Name</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Main Street Station"
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="address">Address</Label>
-              <Input
-                id="address"
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                placeholder="Full address"
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="city">City</Label>
-              <Input
-                id="city"
-                value={formData.city}
-                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                placeholder="City name"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="e.g., +1 234 567 8900"
-                />
-              </div>
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="station@example.com"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="openingHours">Opening Hours</Label>
-              <Input
-                id="openingHours"
-                value={formData.openingHours}
-                onChange={(e) => setFormData({ ...formData, openingHours: e.target.value })}
-                placeholder="e.g., Mon-Fri: 6AM-10PM, Sat-Sun: 7AM-9PM"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="isActive">Status</Label>
-              <Select
-                value={formData.isActive ? 'active' : 'inactive'}
-                onValueChange={(value) => setFormData({ ...formData, isActive: value === 'active' })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit">
-                {editingStation ? 'Update Station' : 'Create Station'}
-              </Button>
-            </div>
-          </form>
+          <StationForm
+            initialData={editingStation}
+            onSuccess={handleSuccess}
+            onCancel={() => setDialogOpen(false)}
+          />
         </DialogContent>
       </Dialog>
 

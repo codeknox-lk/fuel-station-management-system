@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { UpdateShiftSchema } from '@/lib/schemas'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(
   request: NextRequest,
@@ -9,9 +10,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    // Fetch shift - split into two queries to avoid complex nested includes
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const shift = await prisma.shift.findUnique({
-      where: { id },
+      where: { id_organizationId: { id, organizationId: user.organizationId } },
       include: {
         station: {
           select: {
@@ -40,11 +45,11 @@ export async function GET(
       return NextResponse.json({ error: 'Shift not found' }, { status: 404 })
     }
 
-    // Fetch assignments separately with their relations
+    // Fetch assignments separately
     let assignments: unknown[] = []
     try {
       assignments = await prisma.shiftAssignment.findMany({
-        where: { shiftId: id },
+        where: { shiftId: id, organizationId: user.organizationId },
         include: {
           nozzle: {
             include: {
@@ -66,11 +71,9 @@ export async function GET(
       })
     } catch (assignError) {
       console.error(`Error fetching assignments for shift ${id}:`, assignError)
-      // Continue with empty assignments array
       assignments = []
     }
 
-    // Combine shift data with assignments
     const shiftWithAssignments = {
       ...shift,
       assignments
@@ -79,11 +82,6 @@ export async function GET(
     return NextResponse.json(shiftWithAssignments)
   } catch (error) {
     console.error('Error fetching shift:', error)
-    // Log more details for debugging
-    if (error instanceof Error) {
-      console.error('Error message:', error.message)
-      console.error('Error stack:', error.stack)
-    }
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -97,9 +95,12 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params
-    const body = await request.json()
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    // Zod Validation
+    const body = await request.json()
     const result = UpdateShiftSchema.safeParse(body)
 
     if (!result.success) {
@@ -112,7 +113,7 @@ export async function PATCH(
     const { startTime, templateId, openedBy } = result.data
 
     const shift = await prisma.shift.findUnique({
-      where: { id }
+      where: { id_organizationId: { id, organizationId: user.organizationId } }
     })
 
     if (!shift) {
@@ -123,14 +124,11 @@ export async function PATCH(
       return NextResponse.json({ error: 'Cannot update a closed shift' }, { status: 400 })
     }
 
-    // Validate start time if provided
     if (startTime) {
       const now = new Date()
-
       if (startTime > now) {
         return NextResponse.json({ error: 'Start time cannot be in the future' }, { status: 400 })
       }
-
       const sevenDaysAgo = new Date()
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
       if (startTime < sevenDaysAgo) {
@@ -138,17 +136,15 @@ export async function PATCH(
       }
     }
 
-    // Validate template if provided
     if (templateId) {
       const template = await prisma.shiftTemplate.findUnique({
-        where: { id: templateId }
+        where: { id_organizationId: { id: templateId, organizationId: user.organizationId } }
       })
       if (!template) {
         return NextResponse.json({ error: 'Shift template not found' }, { status: 400 })
       }
     }
 
-    // Build update data
     const updateData: Prisma.ShiftUpdateInput = {}
     if (startTime) {
       updateData.startTime = startTime
@@ -160,9 +156,8 @@ export async function PATCH(
       updateData.openedBy = openedBy
     }
 
-    // Update shift
     const updatedShift = await prisma.shift.update({
-      where: { id },
+      where: { id_organizationId: { id, organizationId: user.organizationId } },
       data: updateData,
       include: {
         station: {
@@ -183,15 +178,6 @@ export async function PATCH(
     return NextResponse.json(updatedShift)
   } catch (error) {
     console.error('Error updating shift:', error)
-
-    // Handle foreign key constraint violations
-    if (error instanceof Error && error.message.includes('Foreign key constraint')) {
-      return NextResponse.json(
-        { error: 'Invalid template ID' },
-        { status: 400 }
-      )
-    }
-
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -202,8 +188,13 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const shift = await prisma.shift.findUnique({
-      where: { id }
+      where: { id_organizationId: { id, organizationId: user.organizationId } }
     })
 
     if (!shift) {
@@ -214,9 +205,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Cannot delete a closed shift' }, { status: 400 })
     }
 
-    // Check for assignments
     const assignmentCount = await prisma.shiftAssignment.count({
-      where: { shiftId: id }
+      where: { shiftId: id, organizationId: user.organizationId }
     })
 
     if (assignmentCount > 0) {
@@ -225,9 +215,8 @@ export async function DELETE(
       }, { status: 400 })
     }
 
-    // Delete shift
     await prisma.shift.delete({
-      where: { id }
+      where: { id_organizationId: { id, organizationId: user.organizationId } }
     })
 
     return NextResponse.json({ message: 'Shift deleted successfully' })

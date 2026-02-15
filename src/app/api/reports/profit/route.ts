@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getAuthenticatedStationContext } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const stationId = searchParams.get('stationId')
-    const month = searchParams.get('month') // Format: YYYY-MM
-    const year = searchParams.get('year')
+    const { stationId, searchParams, errorResponse } = await getAuthenticatedStationContext(request)
+    if (errorResponse) return errorResponse
 
-    if (!stationId) {
-      return NextResponse.json({ error: 'Station ID is required' }, { status: 400 })
-    }
+    if (!stationId) throw new Error("Station ID missing after auth check")
+
+    const month = searchParams!.get('month') // Format: YYYY-MM
+    const year = searchParams!.get('year')
 
     if (!month || !year) {
       return NextResponse.json({ error: 'Month and year are required' }, { status: 400 })
@@ -301,21 +301,20 @@ export async function GET(request: NextRequest) {
     const today = new Date()
     const todayDateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
-    console.log('[Profit Report] Today date string:', todayDateString)
-    console.log('[Profit Report] Daily data dates:', dailyData.map(d => d.date))
+
 
     const completedDays = dailyData.filter(day => {
       const isToday = day.date === todayDateString
       const hasActivity = day.revenue > 0 || day.expenses > 0 || day.profit !== 0
       const isFutureOrToday = day.date >= todayDateString
 
-      console.log(`[Profit Report] Date ${day.date}: isToday=${isToday}, hasActivity=${hasActivity}, isFutureOrToday=${isFutureOrToday}`)
+
 
       // Exclude: (1) today/future dates OR (2) days with no activity
       return !isFutureOrToday && hasActivity
     })
 
-    console.log('[Profit Report] Completed days with activity:', completedDays.length)
+
 
     // If there are no completed days yet, use empty data
     const bestDay = completedDays.length > 0
@@ -326,8 +325,7 @@ export async function GET(request: NextRequest) {
       ? completedDays.reduce((worst, day) => day.profit < worst.profit ? day : worst, completedDays[0])
       : { day: 0, date: '', profit: 0, revenue: 0, expenses: 0, margin: 0 }
 
-    console.log('[Profit Report] Best day:', bestDay.date, 'Profit:', bestDay.profit)
-    console.log('[Profit Report] Worst day:', worstDay.date, 'Profit:', worstDay.profit)
+
 
     return NextResponse.json({
       month: `${yearNum}-${String(monthNum).padStart(2, '0')}`,

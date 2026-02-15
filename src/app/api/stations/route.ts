@@ -6,8 +6,12 @@ import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
+    // Log removed('[API] GET /api/stations - Starting')
     const user = await getServerUser()
+    // Log removed('[API] GET /api/stations - User:', user?.username)
+
     if (!user) {
+      // Log removed('[API] GET /api/stations - Unauthorized')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -16,6 +20,7 @@ export async function GET(request: NextRequest) {
     const id = searchParams.get('id')
 
     if (id) {
+      // Log removed('[API] GET /api/stations - Fetching single:', id)
       const station = await prisma.station.findFirst({
         where: {
           id,
@@ -43,6 +48,7 @@ export async function GET(request: NextRequest) {
       ...(active === 'true' ? { isActive: true } : {})
     }
 
+    // Log removed('[API] GET /api/stations - Fetching list for org:', user.organizationId)
     // Optimized: Only select needed fields, skip counts for list view
     const stations = await prisma.station.findMany({
       where,
@@ -60,6 +66,7 @@ export async function GET(request: NextRequest) {
       },
       orderBy: { name: 'asc' }
     })
+    // Log removed('[API] GET /api/stations - Success, count:', stations.length)
 
     return NextResponse.json(stations)
   } catch (error) {
@@ -99,6 +106,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Name, address, and city are required' },
         { status: 400 }
+      )
+    }
+
+    // Check Station Limit
+    // Developers can bypass limits if needed, but for now we enforce it for everyone, or maybe bypass for DEV
+    const { canAddStation } = await import('@/lib/plans')
+    const limitCheck = await canAddStation(user.organizationId)
+
+    // Allow DEVELOPER to bypass limit? Let's strictly enforce unless manually overridden, 
+    // or maybe allow DEVELOPER to add unlimited? 
+    // User requirement: "if they want another one they have to pay"
+    // Let's enforce for everyone including OWNER. DEVELOPER might need to test, so maybe bypass.
+    if (!limitCheck.allowed && user.role !== 'DEVELOPER') {
+      return NextResponse.json(
+        {
+          error: `Station limit reached for your plan (${limitCheck.maxStations} max). Please upgrade to add more.`,
+          code: 'LIMIT_REACHED'
+        },
+        { status: 403 }
       )
     }
 

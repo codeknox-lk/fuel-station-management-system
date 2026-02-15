@@ -1,23 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getAuthenticatedStationContext } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('[Credit Summary] Starting report generation...')
-    const { searchParams } = new URL(request.url)
-    const stationId = searchParams.get('stationId')
-    const startDate = searchParams.get('startDate')
-    const endDate = searchParams.get('endDate')
-    console.log('[Credit Summary] Params:', { stationId, startDate, endDate })
+    const { stationId, searchParams, errorResponse } = await getAuthenticatedStationContext(request)
+    if (errorResponse) return errorResponse
 
-    if (!stationId) {
-      return NextResponse.json({ error: 'Station ID is required' }, { status: 400 })
-    }
+    if (!stationId) throw new Error("Station ID missing after auth check")
+
+    const startDate = searchParams!.get('startDate')
+    const endDate = searchParams!.get('endDate')
 
     // Parse dates or use defaults (current business month)
     let dateStart: Date
     let dateEnd: Date
-    
+
     if (startDate && endDate) {
       dateStart = new Date(startDate)
       dateStart.setHours(0, 0, 0, 0)
@@ -27,7 +25,7 @@ export async function GET(request: NextRequest) {
       // Default to current business month (7th to 6th)
       const now = new Date()
       const currentDay = now.getDate()
-      
+
       if (currentDay < 7) {
         dateStart = new Date(now.getFullYear(), now.getMonth() - 1, 7, 0, 0, 0, 0)
         dateEnd = new Date(now.getFullYear(), now.getMonth(), 6, 23, 59, 59, 999)
@@ -63,25 +61,25 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    console.log('[Credit Summary] Total active customers:', allCustomers.length)
+
 
     // Filter customers by station (those who have sales from this station OR show all if "All Stations")
-    const customers = stationId === 'all' 
-      ? allCustomers 
-      : allCustomers.filter(customer => 
-          customer.creditSales.some(sale => sale.shift.stationId === stationId)
-        )
+    const customers = stationId === 'all'
+      ? allCustomers
+      : allCustomers.filter(customer =>
+        customer.creditSales.some(sale => sale.shift.stationId === stationId)
+      )
 
-    console.log('[Credit Summary] Customers for selected station:', customers.length)
+
 
     // Now filter sales and payments by date range
     const customersWithFilteredData = customers.map(customer => ({
       ...customer,
       creditSales: customer.creditSales.filter(sale => {
         const saleDate = new Date(sale.shift.startTime)
-        return sale.shift.stationId === stationId && 
-               saleDate >= dateStart && 
-               saleDate <= dateEnd
+        return sale.shift.stationId === stationId &&
+          saleDate >= dateStart &&
+          saleDate <= dateEnd
       }),
       creditPayments: customer.creditPayments.filter(payment => {
         const paymentDate = new Date(payment.paymentDate)
@@ -98,14 +96,14 @@ export async function GET(request: NextRequest) {
     const customerDetails = customersWithFilteredData.map(customer => {
       const salesInPeriod = customer.creditSales.reduce((sum, sale) => sum + sale.amount, 0)
       const paymentsInPeriod = customer.creditPayments.reduce((sum, payment) => sum + payment.amount, 0)
-      
+
       totalCreditSales += salesInPeriod
       totalPayments += paymentsInPeriod
       totalOutstanding += customer.currentBalance
 
       // Calculate days since last payment
       const lastPayment = customer.creditPayments[0]
-      const daysSinceLastPayment = lastPayment 
+      const daysSinceLastPayment = lastPayment
         ? Math.floor((Date.now() - new Date(lastPayment.paymentDate).getTime()) / (1000 * 60 * 60 * 24))
         : null
 
@@ -145,8 +143,8 @@ export async function GET(request: NextRequest) {
         daysSinceLastPayment,
         isOverdue,
         agingCategory,
-        utilizationPercent: customer.creditLimit > 0 
-          ? (customer.currentBalance / customer.creditLimit) * 100 
+        utilizationPercent: customer.creditLimit > 0
+          ? (customer.currentBalance / customer.creditLimit) * 100
           : 0
       }
     })
@@ -172,7 +170,7 @@ export async function GET(request: NextRequest) {
 
     // Daily sales and payments
     const dailyMap = new Map<string, { date: string, sales: number, payments: number }>()
-    
+
     // Initialize all days in range
     const currentDate = new Date(dateStart)
     while (currentDate <= dateEnd) {
@@ -190,7 +188,7 @@ export async function GET(request: NextRequest) {
           dailyMap.get(dateKey)!.sales += sale.amount
         }
       })
-      
+
       customer.creditPayments.forEach(payment => {
         const paymentDate = new Date(payment.paymentDate)
         const dateKey = `${paymentDate.getFullYear()}-${String(paymentDate.getMonth() + 1).padStart(2, '0')}-${String(paymentDate.getDate()).padStart(2, '0')}`
@@ -202,8 +200,7 @@ export async function GET(request: NextRequest) {
 
     const dailyBreakdown = Array.from(dailyMap.values())
 
-    console.log('[Credit Summary] Total customers in result:', customerDetails.length)
-    console.log('[Credit Summary] Total outstanding:', totalOutstanding)
+
 
     return NextResponse.json({
       summary: {
@@ -227,7 +224,7 @@ export async function GET(request: NextRequest) {
     console.error('[Credit Summary] ERROR:', error)
     console.error('[Credit Summary] Stack:', error instanceof Error ? error.stack : 'No stack trace')
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to fetch credit customer report',
         details: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined

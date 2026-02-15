@@ -1,14 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const stationId = searchParams.get('stationId')
 
-    // Build where clause for station filtering
-    const where = stationId && stationId !== 'all' ? { stationId } : {}
+    // Build where clause for station filtering AND organization isolation
+    const where: { organizationId: string; stationId?: string } = {
+      organizationId: user.organizationId
+    }
+    if (stationId && stationId !== 'all') {
+      where.stationId = stationId
+    }
 
     // Fetch all data in parallel for maximum speed
     const [
@@ -16,7 +27,8 @@ export async function GET(request: NextRequest) {
       safeData,
       tanks,
       notifications,
-      auditLogs
+      auditLogs,
+      pendingDeliveriesCount
     ] = await Promise.all([
       // Shifts data - optimized with select
       prisma.shift.findMany({
@@ -44,15 +56,16 @@ export async function GET(request: NextRequest) {
         take: 50
       }),
 
-      // Safe summary
-      prisma.safe.findFirst({
-        where: stationId && stationId !== 'all' ? { stationId } : undefined,
-        select: {
-          id: true,
-          currentBalance: true,
-          updatedAt: true
-        }
-      }),
+      // Safe summary - fetch all if 'all' or no stationId
+      stationId && stationId !== 'all'
+        ? prisma.safe.findMany({
+          where: { stationId, organizationId: user.organizationId },
+          select: { currentBalance: true }
+        })
+        : prisma.safe.findMany({
+          where: { organizationId: user.organizationId },
+          select: { currentBalance: true }
+        }),
 
       // Tanks with fuel info
       prisma.tank.findMany({
@@ -95,8 +108,11 @@ export async function GET(request: NextRequest) {
       }),
 
 
-      // Recent audit logs for activity feed (show all activity, not filtered by station)
+      // Recent audit logs for activity feed (show all activity for THIS organization)
       prisma.auditLog.findMany({
+        where: {
+          organizationId: user.organizationId
+        },
         select: {
           id: true,
           action: true,
@@ -108,8 +124,19 @@ export async function GET(request: NextRequest) {
         },
         orderBy: { timestamp: 'desc' },
         take: 20
+      }),
+
+      // Pending deliveries count
+      prisma.delivery.count({
+        where: {
+          ...where,
+          verificationStatus: 'PENDING_VERIFICATION'
+        }
       })
     ])
+
+    // Calculate Safe balance
+    const safeBalance = safeData.reduce((sum, s) => sum + (s.currentBalance || 0), 0)
 
     // Calculate statistics
     const today = new Date().toDateString()
@@ -179,8 +206,7 @@ export async function GET(request: NextRequest) {
     }, [])
 
     // Get credit outstanding from shifts statistics
-    // Get credit outstanding from shifts statistics
-    let creditOutstanding = 0
+    let creditOutstanding = 0;
     shifts.forEach((s: ShiftWithStats) => {
       const stats = s.statistics as ShiftStatistics | null
       if (stats?.creditSales) {
@@ -207,12 +233,12 @@ export async function GET(request: NextRequest) {
             type
           }
         }),
-        safeBalance: safeData?.currentBalance || 0,
+        safeBalance,
         creditOutstanding,
         totalTanks,
         lowStockTanks,
         criticalAlerts,
-        pendingDeliveries: 0 // Can add this query if needed
+        pendingDeliveries: pendingDeliveriesCount
       },
       fuelStock,
       alerts: notifications.map(n => ({

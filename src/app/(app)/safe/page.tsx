@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStation } from '@/contexts/StationContext'
+import { useOrganization } from '@/contexts/OrganizationContext'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -287,6 +288,9 @@ function groupTransactionsByShift(transactions: SafeTransaction[]): (SafeTransac
 export default function SafePage() {
   const router = useRouter()
   const { selectedStation, setSelectedStation, stations } = useStation()
+  const { organization } = useOrganization()
+  const isPremium = organization?.subscription?.planId === 'PREMIUM' || (organization?.plan as string) === 'PREMIUM' || (organization?.plan as string) === 'ENTERPRISE'
+
   const [safe, setSafe] = useState<Safe | null>(null)
   const [groupedTransactions, setGroupedTransactions] = useState<(SafeTransaction | GroupedTransaction)[]>([])
   const [cheques, setCheques] = useState<Cheque[]>([])
@@ -942,7 +946,7 @@ export default function SafePage() {
   const getChequeStatusColor = (status: string) => {
     switch (status) {
       case 'CLEARED': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
-      case 'DEPOSITED': return 'bg-blue-500/20 text-blue-400 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'DEPOSITED': return 'bg-amber-500/20 text-amber-600 dark:bg-amber-600/30 dark:text-amber-300'
       case 'PENDING': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
       case 'RETURNED':
       case 'BOUNCED':
@@ -1007,7 +1011,7 @@ export default function SafePage() {
             <div className="flex items-center gap-1.5">
               <div className="flex items-center -space-x-1">
                 {hasNozzles && (
-                  <Droplet className="h-4 w-4 text-blue-600 dark:text-blue-400 bg-background rounded-full" />
+                  <Droplet className="h-4 w-4 text-primary dark:text-orange-400 bg-background rounded-full" />
                 )}
                 {hasShop && (
                   <ShoppingCart className="h-4 w-4 text-orange-600 dark:text-orange-400 bg-background rounded-full" />
@@ -1318,7 +1322,10 @@ export default function SafePage() {
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="cheques">Cheques</TabsTrigger>
+          <TabsTrigger value="cheques" disabled={!isPremium} className={!isPremium ? "opacity-50 cursor-not-allowed group relative" : ""}>
+            Cheques
+            {!isPremium && <span className="ml-2 text-[10px] bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded text-muted-foreground">PREMIUM</span>}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -1636,226 +1643,239 @@ export default function SafePage() {
               </DialogContent>
             </Dialog>
 
-            {/* Loan Dialog */}
-            <Dialog open={loanDialogOpen} onOpenChange={setLoanDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <Users className="mr-2 h-4 w-4" />
-                  Give Loan
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                    Give Loan from Safe
-                  </DialogTitle>
-                  <p className="text-sm text-muted-foreground">Record a loan given from safe cash</p>
-                </DialogHeader>
-                <form onSubmit={handleGiveLoan} className="space-y-4">
-                  <div>
-                    <Label htmlFor="loanCategory" className="text-base font-semibold">Loan Category</Label>
-                    <Select value={loanCategory} onValueChange={(value) => {
-                      setLoanCategory(value as 'PUMPER' | 'EXTERNAL' | 'OFFICE')
-                      setLoanPumperId('')
-                      setLoanRecipientName('')
-                    }}>
-                      <SelectTrigger id="loanCategory" className="mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="PUMPER">Pumper Loan</SelectItem>
-                        <SelectItem value="EXTERNAL">External Loan (Customer/Supplier)</SelectItem>
-                        <SelectItem value="OFFICE">Office/Staff Loan</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {loanCategory === 'PUMPER' && 'Loan to a pumper employee'}
-                      {loanCategory === 'EXTERNAL' && 'Loan to external party (customer, supplier, etc.)'}
-                      {loanCategory === 'OFFICE' && 'Loan to office staff or management'}
-                    </p>
-                  </div>
-
-                  {loanCategory === 'PUMPER' ? (
+            {isPremium && (
+              <Dialog open={loanDialogOpen} onOpenChange={setLoanDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline">
+                    <Users className="mr-2 h-4 w-4" />
+                    Give Loan
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                      Give Loan from Safe
+                    </DialogTitle>
+                    <p className="text-sm text-muted-foreground">Record a loan given from safe cash</p>
+                  </DialogHeader>
+                  <form onSubmit={handleGiveLoan} className="space-y-4">
                     <div>
-                      <Label htmlFor="loanPumper" className="text-base font-semibold">Select Pumper</Label>
-                      <Select value={loanPumperId} onValueChange={setLoanPumperId}>
-                        <SelectTrigger id="loanPumper" className="mt-1">
-                          <SelectValue placeholder="Choose a pumper..." />
+                      <Label htmlFor="loanCategory" className="text-base font-semibold">Loan Category</Label>
+                      <Select value={loanCategory} onValueChange={(value) => {
+                        setLoanCategory(value as 'PUMPER' | 'EXTERNAL' | 'OFFICE')
+                        setLoanPumperId('')
+                        setLoanRecipientName('')
+                      }}>
+                        <SelectTrigger id="loanCategory" className="mt-1">
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {pumpers.length === 0 ? (
-                            <div className="px-2 py-1.5 text-sm text-muted-foreground">No pumpers available</div>
+                          <SelectItem value="PUMPER">Pumper Loan</SelectItem>
+                          <SelectItem value="EXTERNAL">External Loan (Customer/Supplier)</SelectItem>
+                          <SelectItem value="OFFICE">Office/Staff Loan</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {loanCategory === 'PUMPER' && 'Loan to a pumper employee'}
+                        {loanCategory === 'EXTERNAL' && 'Loan to external party (customer, supplier, etc.)'}
+                        {loanCategory === 'OFFICE' && 'Loan to office staff or management'}
+                      </p>
+                    </div>
+
+                    {loanCategory === 'PUMPER' ? (
+                      <div>
+                        <Label htmlFor="loanPumper" className="text-base font-semibold">Select Pumper</Label>
+                        <Select value={loanPumperId} onValueChange={setLoanPumperId}>
+                          <SelectTrigger id="loanPumper" className="mt-1">
+                            <SelectValue placeholder="Choose a pumper..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {pumpers.length === 0 ? (
+                              <div className="px-2 py-1.5 text-sm text-muted-foreground">No pumpers available</div>
+                            ) : (
+                              pumpers.map((pumper) => (
+                                <SelectItem key={pumper.id} value={pumper.id}>
+                                  {pumper.name}{pumper.employeeId ? ` (${pumper.employeeId})` : ''}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : (
+                      <div>
+                        <Label htmlFor="loanRecipient" className="text-base font-semibold">Recipient Name</Label>
+                        <Input
+                          id="loanRecipient"
+                          value={loanRecipientName}
+                          onChange={(e) => setLoanRecipientName(e.target.value)}
+                          placeholder={loanCategory === 'EXTERNAL' ? 'E.g., Customer Name, Supplier Name' : 'E.g., Office Manager, Accountant'}
+                          className="mt-1"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <Label htmlFor="loanAmount">Loan Amount (Rs.)</Label>
+                      <MoneyInput
+                        id="loanAmount"
+                        value={loanAmount}
+                        onChange={setLoanAmount}
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="loanMonthlyRental">Monthly Rental (Rs.)</Label>
+                      <MoneyInput
+                        id="loanMonthlyRental"
+                        value={loanMonthlyRental}
+                        onChange={setLoanMonthlyRental}
+                        placeholder="0.00"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Amount to deduct monthly (default: 0)
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="loanNotes">Notes (Optional)</Label>
+                      <Input
+                        id="loanNotes"
+                        value={loanNotes}
+                        onChange={(e) => setLoanNotes(e.target.value)}
+                        placeholder="Additional notes"
+                      />
+                    </div>
+
+                    <div className="flex justify-end gap-3">
+                      <Button type="button" variant="outline" onClick={() => setLoanDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit">Give Loan</Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            )}
+
+            {isPremium && (
+              <Dialog open={bankDepositDialogOpen} onOpenChange={setBankDepositDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline">
+                    <DollarSign className="mr-2 h-4 w-4" />
+                    Bank Deposit
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Bank Deposit</DialogTitle>
+                    <DialogDescription>
+                      Record money deposited to bank from safe
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleBankDeposit} className="space-y-4">
+                    <div>
+                      <Label htmlFor="depositBank" className="text-base font-semibold">Bank Account *</Label>
+                      <Select value={depositBankId} onValueChange={setDepositBankId}>
+                        <SelectTrigger id="depositBank" className="mt-1">
+                          <SelectValue placeholder="Select bank account" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {banks.length === 0 ? (
+                            <div className="px-2 py-1.5 text-sm text-muted-foreground">No bank accounts available</div>
                           ) : (
-                            pumpers.map((pumper) => (
-                              <SelectItem key={pumper.id} value={pumper.id}>
-                                {pumper.name}{pumper.employeeId ? ` (${pumper.employeeId})` : ''}
+                            banks.map((bank) => (
+                              <SelectItem key={bank.id} value={bank.id}>
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{bank.name}</span>
+                                  {bank.accountNumber && (
+                                    <span className="text-xs text-muted-foreground">A/C: {bank.accountNumber}</span>
+                                  )}
+                                </div>
                               </SelectItem>
                             ))
                           )}
                         </SelectContent>
                       </Select>
+                      {depositBankId && banks.find(b => b.id === depositBankId)?.accountNumber && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Account Number: <span className="font-mono font-medium">{banks.find(b => b.id === depositBankId)?.accountNumber}</span>
+                        </p>
+                      )}
                     </div>
-                  ) : (
+
                     <div>
-                      <Label htmlFor="loanRecipient" className="text-base font-semibold">Recipient Name</Label>
+                      <Label htmlFor="depositAmount" className="text-base font-semibold">Deposit Amount (Rs.) *</Label>
+                      <MoneyInput
+                        id="depositAmount"
+                        value={depositAmount}
+                        onChange={setDepositAmount}
+                        placeholder="Enter amount"
+                        className="mt-1"
+                      />
+                      {safe && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Available in safe: Rs. {(safe.currentBalance || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="depositPerformedBy" className="text-base font-semibold">Performed By *</Label>
                       <Input
-                        id="loanRecipient"
-                        value={loanRecipientName}
-                        onChange={(e) => setLoanRecipientName(e.target.value)}
-                        placeholder={loanCategory === 'EXTERNAL' ? 'E.g., Customer Name, Supplier Name' : 'E.g., Office Manager, Accountant'}
+                        id="depositPerformedBy"
+                        value={depositPerformedBy}
+                        onChange={(e) => setDepositPerformedBy(e.target.value)}
+                        placeholder="Name of person making deposit"
                         className="mt-1"
                       />
                     </div>
-                  )}
 
-                  <div>
-                    <Label htmlFor="loanAmount">Loan Amount (Rs.)</Label>
-                    <MoneyInput
-                      id="loanAmount"
-                      value={loanAmount}
-                      onChange={setLoanAmount}
-                      placeholder="0.00"
-                    />
-                  </div>
+                    <div>
+                      <Label htmlFor="depositNotes" className="text-base font-semibold">Notes (Optional)</Label>
+                      <Input
+                        id="depositNotes"
+                        value={depositNotes}
+                        onChange={(e) => setDepositNotes(e.target.value)}
+                        placeholder="Additional notes"
+                        className="mt-1"
+                      />
+                    </div>
 
-                  <div>
-                    <Label htmlFor="loanMonthlyRental">Monthly Rental (Rs.)</Label>
-                    <MoneyInput
-                      id="loanMonthlyRental"
-                      value={loanMonthlyRental}
-                      onChange={setLoanMonthlyRental}
-                      placeholder="0.00"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Amount to deduct monthly (default: 0)
-                    </p>
-                  </div>
+                    <div className="flex justify-end gap-2 pt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setBankDepositDialogOpen(false)
+                          setDepositBankId('')
+                          setDepositAmount(undefined)
+                          setDepositPerformedBy('')
+                          setDepositNotes('')
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button type="submit">
+                        Record Deposit
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            )}
 
-                  <div>
-                    <Label htmlFor="loanNotes">Notes (Optional)</Label>
-                    <Input
-                      id="loanNotes"
-                      value={loanNotes}
-                      onChange={(e) => setLoanNotes(e.target.value)}
-                      placeholder="Additional notes"
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-3">
-                    <Button type="button" variant="outline" onClick={() => setLoanDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit">Give Loan</Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={bankDepositDialogOpen} onOpenChange={setBankDepositDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <DollarSign className="mr-2 h-4 w-4" />
-                  Bank Deposit
+            {!isPremium && (
+              <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg text-amber-800 dark:text-amber-200 text-sm">
+                <AlertCircle className="h-4 w-4" />
+                <span>Upgrade to Premium to manage Loans, Cheques and Bank Deposits</span>
+                <Button variant="link" size="sm" className="h-auto p-0 text-amber-700 dark:text-amber-400 font-semibold underline" onClick={() => router.push('/settings/billing')}>
+                  Upgrade Now
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Bank Deposit</DialogTitle>
-                  <DialogDescription>
-                    Record money deposited to bank from safe
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleBankDeposit} className="space-y-4">
-                  <div>
-                    <Label htmlFor="depositBank" className="text-base font-semibold">Bank Account *</Label>
-                    <Select value={depositBankId} onValueChange={setDepositBankId}>
-                      <SelectTrigger id="depositBank" className="mt-1">
-                        <SelectValue placeholder="Select bank account" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {banks.length === 0 ? (
-                          <div className="px-2 py-1.5 text-sm text-muted-foreground">No bank accounts available</div>
-                        ) : (
-                          banks.map((bank) => (
-                            <SelectItem key={bank.id} value={bank.id}>
-                              <div className="flex flex-col">
-                                <span className="font-medium">{bank.name}</span>
-                                {bank.accountNumber && (
-                                  <span className="text-xs text-muted-foreground">A/C: {bank.accountNumber}</span>
-                                )}
-                              </div>
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    {depositBankId && banks.find(b => b.id === depositBankId)?.accountNumber && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Account Number: <span className="font-mono font-medium">{banks.find(b => b.id === depositBankId)?.accountNumber}</span>
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="depositAmount" className="text-base font-semibold">Deposit Amount (Rs.) *</Label>
-                    <MoneyInput
-                      id="depositAmount"
-                      value={depositAmount}
-                      onChange={setDepositAmount}
-                      placeholder="Enter amount"
-                      className="mt-1"
-                    />
-                    {safe && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Available in safe: Rs. {(safe.currentBalance || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="depositPerformedBy" className="text-base font-semibold">Performed By *</Label>
-                    <Input
-                      id="depositPerformedBy"
-                      value={depositPerformedBy}
-                      onChange={(e) => setDepositPerformedBy(e.target.value)}
-                      placeholder="Name of person making deposit"
-                      className="mt-1"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="depositNotes" className="text-base font-semibold">Notes (Optional)</Label>
-                    <Input
-                      id="depositNotes"
-                      value={depositNotes}
-                      onChange={(e) => setDepositNotes(e.target.value)}
-                      placeholder="Additional notes"
-                      className="mt-1"
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setBankDepositDialogOpen(false)
-                        setDepositBankId('')
-                        setDepositAmount(undefined)
-                        setDepositPerformedBy('')
-                        setDepositNotes('')
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button type="submit">
-                      Record Deposit
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
+              </div>
+            )}
           </div>
 
 

@@ -22,7 +22,14 @@ export async function GET(
                 id: true,
                 name: true,
                 slug: true,
-                plan: true
+                plan: true,
+                subscription: {
+                    select: {
+                        status: true,
+                        trialEndDate: true,
+                        planId: true
+                    }
+                }
             }
         })
 

@@ -47,6 +47,7 @@ interface Bank {
 
 export default function POSTerminalsPage() {
   const router = useRouter()
+
   const { selectedStation, isAllStations } = useStation()
   const [terminals, setTerminals] = useState<POSTerminal[]>([])
   const [stations, setStations] = useState<Station[]>([])
@@ -110,6 +111,7 @@ export default function POSTerminalsPage() {
     fetchStations()
     fetchBanks()
   }, [selectedStation, fetchTerminals, fetchStations, fetchBanks])
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

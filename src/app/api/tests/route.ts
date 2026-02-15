@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { calculateShiftSummary, classifyVariance } from '@/lib/calc'
 import { getServerUser } from '@/lib/auth-server'
 
 export async function POST(request: NextRequest) {

@@ -1,10 +1,10 @@
 import { Price } from '@/lib/types'
+import { Decimal } from 'decimal.js'
 
 // Tolerance configuration
 export const TOLERANCE_CONFIG = {
-  percentage: 0, // Not used anymore - using flat amount only
-  flatAmount: 20, // Rs. 20 flat tolerance for any sale
-  getTolerance: () => TOLERANCE_CONFIG.flatAmount // Always return flat Rs. 20
+  flatAmount: new Decimal(20), // Rs. 20 flat tolerance for any sale
+  getTolerance: () => TOLERANCE_CONFIG.flatAmount
 }
 
 export interface MeterReading {
@@ -36,14 +36,11 @@ export interface SalesDelta {
 
 /**
  * Get price for a fuel type at a specific datetime
- * @param fuelId - The fuel ID (or name for backward compatibility)
- * @param datetime - ISO datetime string
- * @param prices - Array of prices
  */
-export function priceAt(fuelId: string, datetime: string, prices: Price[]): number {
+export function priceAt(fuelId: string, datetime: string, prices: Price[]): Decimal {
   const targetDate = new Date(datetime)
 
-  const price = prices
+  const priceObj = prices
     .filter(p => p.fuelId === fuelId || p.fuel?.name === fuelId)
     .find(p => {
       const effectiveFrom = new Date(p.effectiveFrom)
@@ -51,162 +48,52 @@ export function priceAt(fuelId: string, datetime: string, prices: Price[]): numb
       return targetDate >= effectiveFrom && targetDate <= effectiveTo
     })
 
-  return price?.price || 0
-}
-
-/**
- * Split sales interval by price changes
- * @param fuelId - The fuel ID (or name for backward compatibility)
- */
-export function splitIntervalByPrice(
-  startTime: string,
-  endTime: string,
-  prices: Price[],
-  fuelId: string
-): Array<{ startTime: string; endTime: string; price: number }> {
-  const intervals: Array<{ startTime: string; endTime: string; price: number }> = []
-  const start = new Date(startTime)
-  const end = new Date(endTime)
-
-  // Get all price changes in the interval
-  const relevantPrices = prices
-    .filter(p => p.fuelId === fuelId || p.fuel?.name === fuelId)
-    .filter(p => {
-      const effectiveFrom = new Date(p.effectiveFrom)
-      const effectiveTo = p.effectiveTo ? new Date(p.effectiveTo) : new Date('2099-12-31T23:59:59Z')
-      return effectiveFrom <= end && effectiveTo >= start
-    })
-    .sort((a, b) => new Date(a.effectiveFrom).getTime() - new Date(b.effectiveFrom).getTime())
-
-  let currentTime = start
-  let currentPriceIndex = 0
-
-  while (currentTime < end) {
-    const nextPriceChange = relevantPrices[currentPriceIndex + 1]
-    const nextChangeTime = nextPriceChange ? new Date(nextPriceChange.effectiveFrom) : end
-
-    const intervalEnd = nextChangeTime > end ? end : nextChangeTime
-
-    intervals.push({
-      startTime: currentTime.toISOString(),
-      endTime: intervalEnd.toISOString(),
-      price: relevantPrices[currentPriceIndex]?.price || 0
-    })
-
-    currentTime = intervalEnd
-    currentPriceIndex++
-  }
-
-  return intervals
-}
-
-/**
- * Compute sales from meter deltas minus test pours
- */
-export function computeSalesFromDeltas(
-  startReadings: MeterReading[],
-  auditReadings: MeterReading[],
-  endReadings: MeterReading[],
-  testPours: TestPour[],
-  prices: Price[]
-): SalesDelta[] {
-  const sales: SalesDelta[] = []
-
-  // Group readings by nozzle
-  const readingsByNozzle = new Map<string, { start?: MeterReading; audits: MeterReading[]; end?: MeterReading }>()
-
-  startReadings.forEach(reading => {
-    if (!readingsByNozzle.has(reading.nozzleId)) {
-      readingsByNozzle.set(reading.nozzleId, { audits: [] })
-    }
-    readingsByNozzle.get(reading.nozzleId)!.start = reading
-  })
-
-  auditReadings.forEach(reading => {
-    if (!readingsByNozzle.has(reading.nozzleId)) {
-      readingsByNozzle.set(reading.nozzleId, { audits: [] })
-    }
-    readingsByNozzle.get(reading.nozzleId)!.audits.push(reading)
-  })
-
-  endReadings.forEach(reading => {
-    if (!readingsByNozzle.has(reading.nozzleId)) {
-      readingsByNozzle.set(reading.nozzleId, { audits: [] })
-    }
-    readingsByNozzle.get(reading.nozzleId)!.end = reading
-  })
-
-  // Calculate sales for each nozzle
-  readingsByNozzle.forEach((readings, nozzleId) => {
-    if (!readings.start || !readings.end) return
-
-    const startReading = readings.start.reading
-    const endReading = readings.end.reading
-    const delta = endReading - startReading
-
-    // Get fuel ID from nozzle (would need to look up from tank)
-    const fuelId = 'petrol-92-id' // This would be looked up from nozzle -> tank -> fuelId
-    const price = priceAt(fuelId, readings.start.timestamp, prices)
-
-    // Subtract test pours for this nozzle
-    const nozzleTestPours = testPours.filter(tp => tp.nozzleId === nozzleId && tp.returned)
-    const testPourAmount = nozzleTestPours.reduce((sum, tp) => sum + tp.amount, 0)
-
-    const netDelta = delta - testPourAmount
-    const amount = netDelta * price
-
-    sales.push({
-      nozzleId,
-      startReading,
-      endReading,
-      delta: netDelta,
-      price,
-      amount,
-      startTime: readings.start.timestamp,
-      endTime: readings.end.timestamp
-    })
-  })
-
-  return sales
+  return new Decimal(priceObj?.price || 0)
 }
 
 /**
  * Calculate tank book stock
  */
 export function tankBookStock(
-  openingStock: number,
-  deliveries: number,
-  nozzleOutflow: number,
-  testReturns: number
-): number {
-  return openingStock + deliveries - nozzleOutflow + testReturns
+  openingStock: number | Decimal,
+  deliveries: number | Decimal,
+  nozzleOutflow: number | Decimal,
+  testReturns: number | Decimal
+): Decimal {
+  return new Decimal(openingStock)
+    .plus(deliveries)
+    .minus(nozzleOutflow)
+    .plus(testReturns)
 }
 
 /**
  * Classify variance as normal or suspicious
- * Uses flat Rs. 20 tolerance for any sale amount
  */
 export function classifyVariance(
-  totalSales: number,
-  declaredAmount: number,
-  // tolerancePercentage removed as it was unused and flat amount is used instead
-  toleranceFlat: number = TOLERANCE_CONFIG.flatAmount
+  totalSales: number | Decimal,
+  declaredAmount: number | Decimal,
+  toleranceFlat: number | Decimal = TOLERANCE_CONFIG.flatAmount
 ): {
   variance: number
   variancePercentage: number
   isNormal: boolean
   tolerance: number
 } {
-  const variance = totalSales - declaredAmount
-  const variancePercentage = totalSales > 0 ? (Math.abs(variance) / totalSales) * 100 : 0
-  // Use flat Rs. 20 tolerance for any sale
-  const tolerance = toleranceFlat
+  const sales = new Decimal(totalSales)
+  const declared = new Decimal(declaredAmount)
+  const variance = sales.minus(declared)
+
+  const variancePercentage = sales.gt(0)
+    ? variance.abs().div(sales).times(100).toNumber()
+    : 0
+
+  const tolerance = new Decimal(toleranceFlat)
 
   return {
-    variance,
+    variance: variance.toNumber(),
     variancePercentage,
-    isNormal: Math.abs(variance) <= tolerance,
-    tolerance
+    isNormal: variance.abs().lte(tolerance),
+    tolerance: tolerance.toNumber()
   }
 }
 
@@ -214,38 +101,49 @@ export function classifyVariance(
  * Calculate daily profit
  */
 export function calculateDailyProfit(
-  sales: number,
-  expenses: number,
-  loansOut: number,
-  creditRepaymentsCash: number,
-  chequeEncashments: number,
-  deposits: number
-): number {
-  return sales - expenses - loansOut + creditRepaymentsCash + chequeEncashments - deposits
+  sales: number | Decimal,
+  expenses: number | Decimal,
+  loansOut: number | Decimal,
+  creditRepaymentsCash: number | Decimal,
+  chequeEncashments: number | Decimal,
+  deposits: number | Decimal
+): Decimal {
+  return new Decimal(sales)
+    .minus(expenses)
+    .minus(loansOut)
+    .plus(creditRepaymentsCash)
+    .plus(chequeEncashments)
+    .minus(deposits)
 }
 
 /**
  * Calculate tank variance (book stock vs dip stock)
  */
 export function calculateTankVariance(
-  bookStock: number,
-  dipStock: number,
-  tolerancePercentage: number = 0.5 // 0.5% tolerance for tank variance
+  bookStock: number | Decimal,
+  dipStock: number | Decimal,
+  tolerancePercentage: number | Decimal = 0.5
 ): {
   variance: number
   variancePercentage: number
   isWithinTolerance: boolean
   tolerance: number
 } {
-  const variance = bookStock - dipStock
-  const variancePercentage = bookStock > 0 ? (Math.abs(variance) / bookStock) * 100 : 0
-  const tolerance = (bookStock * tolerancePercentage) / 100
+  const book = new Decimal(bookStock)
+  const dip = new Decimal(dipStock)
+  const variance = book.minus(dip)
+
+  const variancePercentage = book.gt(0)
+    ? variance.abs().div(book).times(100).toNumber()
+    : 0
+
+  const tolerance = book.times(tolerancePercentage).div(100)
 
   return {
-    variance,
+    variance: variance.toNumber(),
     variancePercentage,
-    isWithinTolerance: Math.abs(variance) <= tolerance,
-    tolerance
+    isWithinTolerance: variance.abs().lte(tolerance),
+    tolerance: tolerance.toNumber()
   }
 }
 
@@ -254,42 +152,31 @@ export function calculateTankVariance(
  */
 export function calculateShiftSummary(
   sales: SalesDelta[],
-  cashAmount: number,
-  cardAmount: number,
-  creditAmount: number,
-  chequeAmount: number
+  cashAmount: number | Decimal,
+  cardAmount: number | Decimal,
+  creditAmount: number | Decimal,
+  chequeAmount: number | Decimal
 ): {
   totalSales: number
   totalDeclared: number
   variance: number
   varianceClassification: ReturnType<typeof classifyVariance>
 } {
-  // Validate and sanitize input values
-  const validSales = Array.isArray(sales) ? sales : []
-  const validCashAmount = isNaN(cashAmount) || !isFinite(cashAmount) ? 0 : cashAmount
-  const validCardAmount = isNaN(cardAmount) || !isFinite(cardAmount) ? 0 : cardAmount
-  const validCreditAmount = isNaN(creditAmount) || !isFinite(creditAmount) ? 0 : creditAmount
-  const validChequeAmount = isNaN(chequeAmount) || !isFinite(chequeAmount) ? 0 : chequeAmount
+  const totalSalesDec = sales.reduce((sum, sale) => {
+    return sum.plus(new Decimal(sale.amount || 0))
+  }, new Decimal(0))
 
-  // Calculate total sales, ensuring all amounts are valid numbers
-  const totalSales = validSales.reduce((sum, sale) => {
-    const amount = isNaN(sale.amount) || !isFinite(sale.amount) ? 0 : sale.amount
-    return sum + amount
-  }, 0)
+  const totalDeclaredDec = new Decimal(cashAmount || 0)
+    .plus(cardAmount || 0)
+    .plus(creditAmount || 0)
+    .plus(chequeAmount || 0)
 
-  const totalDeclared = validCashAmount + validCardAmount + validCreditAmount + validChequeAmount
-
-  // Validate totalSales and totalDeclared before calling classifyVariance
-  const safeTotalSales = isNaN(totalSales) || !isFinite(totalSales) ? 0 : totalSales
-  const safeTotalDeclared = isNaN(totalDeclared) || !isFinite(totalDeclared) ? 0 : totalDeclared
-
-  const varianceClassification = classifyVariance(safeTotalSales, safeTotalDeclared)
+  const varianceClassification = classifyVariance(totalSalesDec, totalDeclaredDec)
 
   return {
-    totalSales: safeTotalSales,
-    totalDeclared: safeTotalDeclared,
-    variance: safeTotalSales - safeTotalDeclared,
+    totalSales: totalSalesDec.toNumber(),
+    totalDeclared: totalDeclaredDec.toNumber(),
+    variance: totalSalesDec.minus(totalDeclaredDec).toNumber(),
     varianceClassification
   }
 }
-

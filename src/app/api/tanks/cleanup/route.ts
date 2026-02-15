@@ -3,44 +3,44 @@ import { prisma } from '@/lib/db'
 
 export async function DELETE() {
   try {
-    console.log('🧹 Starting tank cleanup...')
+    // Log removed('🧹 Starting tank cleanup...')
 
     // Delete in order (respecting foreign keys)
-    console.log('Deleting test pours...')
+    // Log removed('Deleting test pours...')
     const testPours = await prisma.testPour.deleteMany()
-    console.log(`Deleted ${testPours.count} test pours`)
+    // Log removed(`Deleted ${testPours.count} test pours`)
 
-    console.log('Deleting meter audits...')
+    // Log removed('Deleting meter audits...')
     const meterAudits = await prisma.meterAudit.deleteMany()
-    console.log(`Deleted ${meterAudits.count} meter audits`)
+    // Log removed(`Deleted ${meterAudits.count} meter audits`)
 
-    console.log('Deleting shift assignments...')
+    // Log removed('Deleting shift assignments...')
     const assignments = await prisma.shiftAssignment.deleteMany()
-    console.log(`Deleted ${assignments.count} shift assignments`)
+    // Log removed(`Deleted ${assignments.count} shift assignments`)
 
-    console.log('Deleting shifts...')
+    // Log removed('Deleting shifts...')
     const shifts = await prisma.shift.deleteMany()
-    console.log(`Deleted ${shifts.count} shifts`)
+    // Log removed(`Deleted ${shifts.count} shifts`)
 
-    console.log('Deleting tank dips...')
+    // Log removed('Deleting tank dips...')
     const tankDips = await prisma.tankDip.deleteMany()
-    console.log(`Deleted ${tankDips.count} tank dips`)
+    // Log removed(`Deleted ${tankDips.count} tank dips`)
 
-    console.log('Deleting deliveries...')
+    // Log removed('Deleting deliveries...')
     const deliveries = await prisma.delivery.deleteMany()
-    console.log(`Deleted ${deliveries.count} deliveries`)
+    // Log removed(`Deleted ${deliveries.count} deliveries`)
 
-    console.log('Deleting nozzles...')
+    // Log removed('Deleting nozzles...')
     const nozzles = await prisma.nozzle.deleteMany()
-    console.log(`Deleted ${nozzles.count} nozzles`)
+    // Log removed(`Deleted ${nozzles.count} nozzles`)
 
-    console.log('Deleting pumps...')
+    // Log removed('Deleting pumps...')
     const pumps = await prisma.pump.deleteMany()
-    console.log(`Deleted ${pumps.count} pumps`)
+    // Log removed(`Deleted ${pumps.count} pumps`)
 
-    console.log('Deleting tanks...')
+    // Log removed('Deleting tanks...')
     const tanks = await prisma.tank.deleteMany()
-    console.log(`Deleted ${tanks.count} tanks`)
+    // Log removed(`Deleted ${tanks.count} tanks`)
 
     return NextResponse.json({
       message: 'All tank data deleted successfully',

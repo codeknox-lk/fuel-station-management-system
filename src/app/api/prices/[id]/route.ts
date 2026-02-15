@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(
   request: NextRequest,
@@ -7,9 +8,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const price = await prisma.price.findUnique({
-      where: { id },
+      where: { id_organizationId: { id, organizationId: user.organizationId } },
       include: {
         station: {
           select: {
@@ -19,7 +24,7 @@ export async function GET(
         }
       }
     })
-    
+
     if (!price) {
       return NextResponse.json({ error: 'Price not found' }, { status: 404 })
     }
@@ -37,20 +42,25 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
-    
+
     const price = await prisma.price.findUnique({
-      where: { id }
+      where: { id_organizationId: { id, organizationId: user.organizationId } }
     })
-    
+
     if (!price) {
       return NextResponse.json({ error: 'Price not found' }, { status: 404 })
     }
 
     const { price: priceValue, effectiveDate, isActive } = body
-    
+
     const updatedPrice = await prisma.price.update({
-      where: { id },
+      where: { id_organizationId: { id, organizationId: user.organizationId } },
       data: {
         ...(priceValue !== undefined && { price: parseFloat(priceValue) }),
         ...(effectiveDate && { effectiveDate: new Date(effectiveDate) }),
@@ -79,17 +89,21 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const price = await prisma.price.findUnique({
-      where: { id }
+      where: { id_organizationId: { id, organizationId: user.organizationId } }
     })
-    
+
     if (!price) {
       return NextResponse.json({ error: 'Price not found' }, { status: 404 })
     }
 
     await prisma.price.delete({
-      where: { id }
+      where: { id_organizationId: { id, organizationId: user.organizationId } }
     })
 
     return NextResponse.json({ success: true, message: 'Price deleted successfully' })

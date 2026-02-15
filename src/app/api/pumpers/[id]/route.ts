@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
+import { getServerUser } from '@/lib/auth-server'
 
 
 export async function GET(
@@ -8,9 +10,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     const pumper = await prisma.pumper.findUnique({
-      where: { id }
+      where: { id, organizationId: user.organizationId }
     })
 
     if (!pumper) {
@@ -30,11 +36,16 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
 
-    // Find existing pumper
-    const existingPumper = await prisma.pumper.findUnique({
-      where: { id }
+    // Find existing pumper and verify ownership
+    const existingPumper = await prisma.pumper.findFirst({
+      where: { id, organizationId: user.organizationId }
     })
 
     if (!existingPumper) {
@@ -68,6 +79,7 @@ export async function PUT(
     if (finalName !== existingPumper.name || finalEmployeeId !== existingPumper.employeeId) {
       const duplicateCheck = await prisma.pumper.findFirst({
         where: {
+          organizationId: user.organizationId,
           name: finalName,
           employeeId: finalEmployeeId,
           id: { not: id }
@@ -87,6 +99,7 @@ export async function PUT(
     if ((phone !== undefined || phoneNumber !== undefined) && finalPhone) {
       const duplicateByPhone = await prisma.pumper.findFirst({
         where: {
+          organizationId: user.organizationId,
           name: finalName,
           phone: finalPhone,
           id: { not: id }
@@ -103,8 +116,7 @@ export async function PUT(
     }
 
     // Build update data
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const updateData: any = {}
+    const updateData: Prisma.PumperUncheckedUpdateInput = {}
 
     if (name !== undefined) updateData.name = name.trim()
     if (phone !== undefined) updateData.phone = phone || null
@@ -162,9 +174,13 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    const pumper = await prisma.pumper.findUnique({
-      where: { id }
+    const pumper = await prisma.pumper.findFirst({
+      where: { id, organizationId: user.organizationId }
     })
 
     if (!pumper) {
@@ -175,7 +191,8 @@ export async function DELETE(
     const activeAssignmentsCount = await prisma.shiftAssignment.count({
       where: {
         pumperName: pumper.name,
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        organizationId: user.organizationId
       }
     })
 
@@ -192,7 +209,8 @@ export async function DELETE(
       const activeLoansCount = await prisma.loanPumper.count({
         where: {
           pumperName: pumper.name,
-          status: 'ACTIVE'
+          status: 'ACTIVE',
+          organizationId: user.organizationId
         }
       })
 

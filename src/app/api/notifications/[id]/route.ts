@@ -18,7 +18,7 @@ export async function PATCH(
     const body = await request.json()
     const { isRead, ...otherFields } = body
 
-    const updateData: any = { ...otherFields }
+    const updateData: Partial<Prisma.NotificationUpdateInput> = { ...otherFields }
     if (isRead !== undefined) {
       updateData.isRead = isRead
       if (isRead) {

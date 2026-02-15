@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { Prisma } from '@prisma/client'
+import { Prisma, UserRole } from '@prisma/client'
 import bcrypt from 'bcrypt'
 import { CreateUserSchema } from '@/lib/schemas'
 import { getServerUser } from '@/lib/auth-server'
@@ -72,6 +72,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // RBAC: Only OWNER and MANAGER can create users
+    if (currentUser.role !== 'OWNER' && currentUser.role !== 'MANAGER') {
+      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+    }
+
     const body = await request.json()
 
     // Zod Validation
@@ -114,8 +119,7 @@ export async function POST(request: NextRequest) {
         username: username.trim(),
         email: email.trim(),
         password: hashedPassword,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        role: (role as any),
+        role: role as UserRole,
         stationId: stationId || null,
         isActive: status === 'active',
         isFirstLogin: true // New users created by admin should probably change password

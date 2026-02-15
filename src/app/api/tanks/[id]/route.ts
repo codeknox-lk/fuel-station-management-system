@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { UpdateTankSchema } from '@/lib/schemas'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function PUT(
   request: NextRequest,
@@ -8,6 +9,11 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
 
     // Zod Validation
@@ -22,9 +28,10 @@ export async function PUT(
 
     const { capacity, currentLevel, isActive, tankNumber } = result.data
 
-    // Check if tank exists
-    const existingTank = await prisma.tank.findUnique({
-      where: { id }
+    // Check if tank exists and belongs to organization
+    const existingTank = await prisma.tank.findFirst({
+      where: { id, station: { organizationId: user.organizationId } },
+      include: { station: true }
     })
 
     if (!existingTank) {
@@ -105,10 +112,14 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    // Check if tank exists
-    const tank = await prisma.tank.findUnique({
-      where: { id },
+    // Check if tank exists and belongs to organization
+    const tank = await prisma.tank.findFirst({
+      where: { id, station: { organizationId: user.organizationId } },
       include: {
         nozzles: {
           select: {

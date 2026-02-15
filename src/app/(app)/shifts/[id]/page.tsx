@@ -512,7 +512,7 @@ export default function ShiftDetailsPage() {
               }}
             >
               {isShopOnly ? (
-                <ShoppingBag className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                <ShoppingBag className="h-8 w-8 text-primary dark:text-orange-400" />
               ) : (
                 <Clock className="h-8 w-8 text-orange-600 dark:text-orange-400" />
               )}
@@ -522,7 +522,7 @@ export default function ShiftDetailsPage() {
               <span className="text-muted-foreground mr-2">
                 {shift.station?.name || shift.stationName || 'Unknown Station'} • {shift.template?.name || shift.templateName || 'Unknown Template'}
               </span>
-              {hasShop && <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Shop Active</Badge>}
+              {hasShop && <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">Shop Active</Badge>}
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { Prisma } from '@prisma/client'
+import { Prisma, OfficeStaffRole } from '@prisma/client'
 import { CreateOfficeStaffSchema } from '@/lib/schemas'
 import { getServerUser } from '@/lib/auth-server'
 
@@ -29,8 +29,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (role) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      where.role = role as any
+      where.role = role as OfficeStaffRole
     }
 
     const officeStaff = await prisma.officeStaff.findMany({
@@ -171,8 +170,7 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         employeeId: finalEmployeeId,
         stationId,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        role: (role as any) || 'OFFICE_STAFF',
+        role: (role as OfficeStaffRole) || 'OFFICE_STAFF',
         phone: phone?.trim() || null,
         email: email?.trim() || null,
         baseSalary: baseSalary,

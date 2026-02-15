@@ -265,6 +265,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // RBAC: Only OWNER and MANAGER can open shifts
+    if (user.role !== 'OWNER' && user.role !== 'MANAGER') {
+      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+    }
+
     const body = await request.json()
 
     // Zod Validation
@@ -300,8 +305,8 @@ export async function POST(request: NextRequest) {
       let endTime = new Date(shiftStart.getTime() + 8 * 60 * 60 * 1000)
 
       if (templateId) {
-        const template = await tx.shiftTemplate.findUnique({
-          where: { id: templateId }
+        const template = await tx.shiftTemplate.findFirst({
+          where: { id: templateId, organizationId: user.organizationId }
         })
         if (template) {
           // Combine date with template time
@@ -333,15 +338,16 @@ export async function POST(request: NextRequest) {
           startTime: shiftStart,
           endTime, // Estimated end time
           openedBy: user.userId, // Use logged in user ID
-          // cashInHand: 0, // TODO: Field does not exist in Prisma schema
-          // Assign pumpers if any
-          // assignments: {
-          //   create: assignments?.map(a => ({
-          //     pumperId: a.pumperId,
-          //     pumperName: a.pumperName,
-          //     nozzleId: 'TEMP_NOZZLE', 
-          //   }))
-          // }
+          // Assign pumpers if provided
+          assignments: {
+            create: result.data.assignments?.map(a => ({
+              organizationId: user.organizationId,
+              pumperName: a.pumperName,
+              nozzleId: a.nozzleId,
+              startMeterReading: a.startMeterReading,
+              status: 'ACTIVE'
+            }))
+          }
         }
       })
 

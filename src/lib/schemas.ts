@@ -119,7 +119,9 @@ export const CreateShiftSchema = z.object({
     openedBy: z.string().optional(),
     assignments: z.array(z.object({
         pumperId: z.string().min(1),
-        pumperName: z.string().min(1)
+        pumperName: z.string().min(1),
+        nozzleId: z.string().min(1),
+        startMeterReading: z.number().min(0)
     })).optional().default([])
 });
 

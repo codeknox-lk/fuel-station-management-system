@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { Prisma } from '@prisma/client'
+import { Prisma, NotificationType, NotificationPriority, NotificationCategory } from '@prisma/client'
 import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
@@ -26,9 +26,9 @@ export async function GET(request: NextRequest) {
     }
     if (stationId) where.stationId = stationId
     if (isRead !== null && isRead !== undefined) where.isRead = isRead === 'true'
-    if (type) where.type = type as any
-    if (priority) where.priority = priority as any
-    if (category) where.category = category as any
+    if (type) where.type = type as NotificationType
+    if (priority) where.priority = priority as NotificationPriority
+    if (category) where.category = category as NotificationCategory
 
     const notificationsList = await prisma.notification.findMany({
       where,

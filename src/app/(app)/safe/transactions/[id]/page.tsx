@@ -343,7 +343,7 @@ export default function TransactionDetailsPage() {
             <CardTitle className="flex items-center gap-2">
               <div className="flex items-center -space-x-1">
                 {hasNozzles && (
-                  <Droplet className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <Droplet className="h-4 w-4 text-primary dark:text-orange-400" />
                 )}
                 {hasShop && (
                   <ShoppingCart className="h-4 w-4 text-orange-600 dark:text-orange-400" />

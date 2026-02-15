@@ -120,7 +120,13 @@ export async function GET(
     })
 
     // Combine and format all transactions
-    const mappedDeposits = deposits.map((d: any) => ({
+    const mappedDeposits = (deposits as unknown as Array<{
+      id: string;
+      depositDate: Date;
+      amount: number;
+      depositSlip: string | null;
+      station: { name: string } | null;
+    }>).map((d) => ({
       id: d.id,
       date: d.depositDate,
       type: 'DEPOSIT',
@@ -129,7 +135,16 @@ export async function GET(
       details: `Deposit from ${d.station?.name || 'Station'}`,
       status: 'COMPLETED'
     }))
-    const mappedCheques = cheques.map((c: any) => ({
+
+    const mappedCheques = (cheques as unknown as Array<{
+      id: string;
+      depositDate: Date | null;
+      createdAt: Date | string;
+      amount: number;
+      chequeNumber: string;
+      status: string;
+      station: { name: string } | null;
+    }>).map((c) => ({
       id: c.id,
       date: c.depositDate || c.createdAt,
       type: 'CHEQUE',
@@ -138,7 +153,16 @@ export async function GET(
       details: `Cheque Deposit - ${c.station?.name || 'Station'}`,
       status: c.status
     }))
-    const mappedCreditPayments = creditPayments.map((cp: any) => ({
+
+    const mappedCreditPayments = (creditPayments as unknown as Array<{
+      id: string;
+      paymentDate: Date;
+      amount: number;
+      referenceNumber: string | null;
+      chequeNumber: string | null;
+      customer: { name: string } | null;
+      status: string;
+    }>).map((cp) => ({
       id: cp.id,
       date: cp.paymentDate,
       type: 'CREDIT_PAYMENT',
@@ -147,7 +171,15 @@ export async function GET(
       details: `Credit Payment - ${cp.customer?.name || 'Customer'}`,
       status: cp.status
     }))
-    const mappedBankTransactions = bankTransactions.map((bt: any) => ({
+
+    const mappedBankTransactions = (bankTransactions as unknown as Array<{
+      id: string;
+      createdAt: Date;
+      type: string;
+      amount: number;
+      description: string | null;
+      station: { name: string } | null;
+    }>).map((bt) => ({
       id: bt.id,
       date: bt.createdAt,
       type: bt.type,

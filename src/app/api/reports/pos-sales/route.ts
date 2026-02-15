@@ -3,12 +3,10 @@ import { prisma } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('[POS Sales] Starting report generation...')
     const { searchParams } = new URL(request.url)
     const stationId = searchParams.get('stationId')
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
-    console.log('[POS Sales] Params:', { stationId, startDate, endDate })
 
     if (!stationId) {
       return NextResponse.json({ error: 'Station ID is required' }, { status: 400 })
@@ -76,8 +74,6 @@ export async function GET(request: NextRequest) {
       where: { stationId },
       include: { bank: true }
     })
-
-    console.log('[POS Sales] Found', batches.length, 'batches and', posTerminals.length, 'terminals')
 
     // Get missing slips count
     const missingSlips = await prisma.posMissingSlip.findMany({
@@ -266,11 +262,6 @@ export async function GET(request: NextRequest) {
         terminalData.dialogTouch += entry.dialogTouchAmount
       }
     }
-
-    console.log('[POS Sales] Found', batches.length, 'batches')
-    console.log('[POS Sales] Total sales:', totalSales)
-    console.log('[POS Sales] Total terminals:', terminalSales.size)
-    console.log('[POS Sales] Total banks:', bankSales.size)
 
     // Convert maps to arrays
     const bankBreakdown = Array.from(bankSales.values())

@@ -50,7 +50,7 @@ interface Notification {
 const roleColors = {
   DEVELOPER: 'bg-red-500/20 text-red-600 dark:bg-red-600/30 dark:text-red-300',
   OWNER: 'bg-purple-500/20 text-purple-600 dark:bg-purple-600/30 dark:text-purple-300',
-  MANAGER: 'bg-blue-500/20 text-blue-600 dark:bg-blue-600/30 dark:text-blue-300',
+  MANAGER: 'bg-orange-500/20 text-orange-600 dark:bg-orange-600/30 dark:text-orange-300',
   ACCOUNTS: 'bg-green-500/20 text-green-600 dark:bg-green-600/30 dark:text-green-300'
 }
 
@@ -255,7 +255,7 @@ export function TopBar({ userRole }: TopBarProps) {
     switch (normalizedType) {
       case 'WARNING': return <AlertTriangle className="h-4 w-4 text-yellow-600" />
       case 'ERROR': return <AlertTriangle className="h-4 w-4 text-red-600" />
-      case 'INFO': return <Clock className="h-4 w-4 text-blue-600" />
+      case 'INFO': return <Clock className="h-4 w-4 text-orange-600" />
       case 'SUCCESS': return <Clock className="h-4 w-4 text-green-600" />
       default: return <Bell className="h-4 w-4 text-muted-foreground" />
     }
@@ -266,7 +266,7 @@ export function TopBar({ userRole }: TopBarProps) {
     switch (normalizedType) {
       case 'WARNING': return 'bg-yellow-500/20 text-yellow-600 dark:bg-yellow-600/30 dark:text-yellow-300'
       case 'ERROR': return 'bg-red-500/20 text-red-600 dark:bg-red-600/30 dark:text-red-300'
-      case 'INFO': return 'bg-blue-500/20 text-blue-600 dark:bg-blue-600/30 dark:text-blue-300'
+      case 'INFO': return 'bg-orange-500/20 text-orange-600 dark:bg-orange-600/30 dark:text-orange-300'
       case 'SUCCESS': return 'bg-green-500/20 text-green-600 dark:bg-green-600/30 dark:text-green-300'
       default: return 'bg-muted text-foreground'
     }
@@ -334,7 +334,7 @@ export function TopBar({ userRole }: TopBarProps) {
                   {notifications.map((notification) => (
                     <DropdownMenuItem
                       key={notification.id}
-                      className={`px-4 py-4 cursor-pointer hover:bg-muted ${!notification.read && !notification.isRead ? 'bg-blue-500/10 dark:bg-blue-500/20' : ''
+                      className={`px-4 py-4 cursor-pointer hover:bg-muted ${!notification.read && !notification.isRead ? 'bg-primary/10 dark:bg-primary/20' : ''
                         }`}
                       onClick={() => handleNotificationClick(notification)}
                     >
@@ -359,7 +359,7 @@ export function TopBar({ userRole }: TopBarProps) {
                           </p>
                         </div>
                         {!notification.read && !notification.isRead && (
-                          <div className="w-2.5 h-2.5 bg-blue-500 rounded-full flex-shrink-0 mt-2"></div>
+                          <div className="w-2.5 h-2.5 bg-primary rounded-full flex-shrink-0 mt-2"></div>
                         )}
                       </div>
                     </DropdownMenuItem>
@@ -371,7 +371,7 @@ export function TopBar({ userRole }: TopBarProps) {
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    className="text-center text-base font-semibold text-blue-600 hover:text-blue-800 cursor-pointer py-3"
+                    className="text-center text-base font-semibold text-primary hover:text-orange-700 cursor-pointer py-3"
                     onClick={() => router.push('/notifications')}
                   >
                     View all notifications
@@ -393,7 +393,7 @@ export function TopBar({ userRole }: TopBarProps) {
             <DropdownMenuContent align="end">
               <DropdownMenuItem
                 onClick={() => setSelectedStation('all')}
-                className={selectedStation === 'all' ? 'bg-blue-500/10 dark:bg-blue-500/20' : ''}
+                className={selectedStation === 'all' ? 'bg-primary/10 dark:bg-primary/20' : ''}
               >
                 All Stations
               </DropdownMenuItem>
@@ -402,7 +402,7 @@ export function TopBar({ userRole }: TopBarProps) {
                 <DropdownMenuItem
                   key={station.id}
                   onClick={() => setSelectedStation(station.id)}
-                  className={selectedStation === station.id ? 'bg-blue-500/10 dark:bg-blue-500/20' : ''}
+                  className={selectedStation === station.id ? 'bg-primary/10 dark:bg-primary/20' : ''}
                 >
                   {station.name} / {station.city}
                 </DropdownMenuItem>
@@ -420,15 +420,15 @@ export function TopBar({ userRole }: TopBarProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setTheme('light')} className={theme === 'light' ? 'bg-blue-500/10 dark:bg-blue-500/20' : ''}>
+              <DropdownMenuItem onClick={() => setTheme('light')} className={theme === 'light' ? 'bg-primary/10 dark:bg-primary/20' : ''}>
                 <Sun className="mr-2 h-4 w-4" />
                 Light
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme('dark')} className={theme === 'dark' ? 'bg-blue-500/10 dark:bg-blue-500/20' : ''}>
+              <DropdownMenuItem onClick={() => setTheme('dark')} className={theme === 'dark' ? 'bg-primary/10 dark:bg-primary/20' : ''}>
                 <Moon className="mr-2 h-4 w-4" />
                 Dark
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme('system')} className={theme === 'system' ? 'bg-blue-500/10 dark:bg-blue-500/20' : ''}>
+              <DropdownMenuItem onClick={() => setTheme('system')} className={theme === 'system' ? 'bg-primary/10 dark:bg-primary/20' : ''}>
                 <Monitor className="mr-2 h-4 w-4" />
                 System
               </DropdownMenuItem>

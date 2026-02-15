@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAuditLogManual } from '@/lib/audit'
 import { AuditAction } from '@/lib/audit'
 
-import { prisma } from '@/lib/db'
 import { getServerUser } from '@/lib/auth-server'
 
 export async function POST(request: NextRequest) {

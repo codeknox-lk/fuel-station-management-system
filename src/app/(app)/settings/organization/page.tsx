@@ -3,8 +3,9 @@
 import { useOrganization } from '@/contexts/OrganizationContext'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Building2, CreditCard, ShieldCheck } from 'lucide-react'
+import { Building2, CreditCard, ShieldCheck, Crown } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/utils'
 
 export default function OrganizationSettingsPage() {
     const { organization, isLoading } = useOrganization()
@@ -41,8 +42,22 @@ export default function OrganizationSettingsPage() {
                                 <h3 className="text-lg font-semibold">{organization.name}</h3>
                                 <p className="text-sm text-muted-foreground">ID: {organization.slug}</p>
                             </div>
-                            <Badge variant={organization.plan === 'ENTERPRISE' ? 'default' : 'secondary'} className="text-sm">
-                                {organization.plan} PLAN
+                            <Badge
+                                className={cn(
+                                    "text-sm px-3 py-1 border-none shadow-none",
+                                    organization.plan === 'PREMIUM' || (organization.plan as string) === 'ENTERPRISE'
+                                        ? "bg-orange-500 text-white hover:bg-orange-600"
+                                        : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                                )}
+                            >
+                                {(organization.plan === 'PREMIUM' || (organization.plan as string) === 'ENTERPRISE') && (
+                                    <Crown className="w-3 h-3 mr-1.5 fill-white" />
+                                )}
+                                {organization.plan === 'PREMIUM' || (organization.plan as string) === 'ENTERPRISE'
+                                    ? (organization.plan as string) === 'ENTERPRISE'
+                                        ? 'Enterprise Plan'
+                                        : 'Premium Plan'
+                                    : 'Basic Plan'}
                             </Badge>
                         </div>
 
@@ -70,10 +85,25 @@ export default function OrganizationSettingsPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="bg-green-50 dark:bg-green-950/20 p-4 rounded-lg border border-green-100 dark:border-green-900">
+                        <div className={cn(
+                            "p-4 rounded-lg border",
+                            organization.plan === 'PREMIUM' || (organization.plan as string) === 'ENTERPRISE'
+                                ? "bg-orange-50 border-orange-100 dark:bg-orange-950/20 dark:border-orange-900"
+                                : "bg-slate-50 border-slate-100 dark:bg-slate-900 dark:border-slate-800"
+                        )}>
                             <div className="flex items-center gap-2 mb-2">
-                                <ShieldCheck className="h-4 w-4 text-green-600" />
-                                <span className="font-semibold text-green-700 dark:text-green-400">Active</span>
+                                <ShieldCheck className={cn(
+                                    "h-4 w-4",
+                                    organization.plan === 'PREMIUM' || (organization.plan as string) === 'ENTERPRISE'
+                                        ? "text-orange-600"
+                                        : "text-slate-500"
+                                )} />
+                                <span className={cn(
+                                    "font-semibold",
+                                    organization.plan === 'PREMIUM' || (organization.plan as string) === 'ENTERPRISE'
+                                        ? "text-orange-700 dark:text-orange-400"
+                                        : "text-slate-700 dark:text-slate-400"
+                                )}>Active</span>
                             </div>
                             <p className="text-sm text-muted-foreground">
                                 Your <strong>{organization.plan}</strong> plan is active.

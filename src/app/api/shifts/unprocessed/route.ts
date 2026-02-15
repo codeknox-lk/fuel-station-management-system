@@ -42,6 +42,7 @@ export async function GET(request: NextRequest) {
           }
         },
         assignments: {
+          where: { organizationId: user.organizationId },
           select: {
             id: true,
             pumperName: true
@@ -54,9 +55,8 @@ export async function GET(request: NextRequest) {
     const shiftIds = shifts.map(s => s.id)
     const safeTransactions = await prisma.safeTransaction.findMany({
       where: {
-        shiftId: {
-          in: shiftIds
-        },
+        shiftId: { in: shiftIds },
+        organizationId: user.organizationId,
         type: {
           in: ['CASH_FUEL_SALES', 'POS_CARD_PAYMENT', 'CREDIT_PAYMENT', 'CHEQUE_RECEIVED']
         }
@@ -77,9 +77,9 @@ export async function GET(request: NextRequest) {
       processedTypes.get(tx.shiftId)!.add(tx.type)
     })
 
-    // Get batch totals for each shift to check if card tenders are fully processed
+    // Get batch totals for each shift
     const allBatches = await prisma.posBatch.findMany({
-      where: { shiftId: { in: shiftIds } },
+      where: { shiftId: { in: shiftIds }, organizationId: user.organizationId },
       select: {
         shiftId: true,
         totalAmount: true
@@ -117,7 +117,6 @@ export async function GET(request: NextRequest) {
       // Check if card tender is fully processed (all batches added to safe)
       const cardProcessed = processedForShift.has('POS_CARD_PAYMENT')
       const batchTotal = batchTotalsByShift.get(shift.id) || 0
-      // Card is only considered processed if there's a safe transaction AND batch total matches card amount
       const isCardFullyProcessed = cardProcessed && (batchTotal >= cardAmount || cardAmount === 0)
 
       return {
@@ -136,7 +135,6 @@ export async function GET(request: NextRequest) {
         assignmentCount: shift.assignments.length
       }
     }).filter(shift => {
-      // Only show shifts with at least one unprocessed tender type
       const hasUnprocessed = Object.values(shift.tenderTypes).some(tt => tt.amount > 0 && !tt.processed)
       return hasUnprocessed
     })
@@ -147,4 +145,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-

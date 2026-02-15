@@ -104,7 +104,7 @@ export default function LoginPage() {
 
             {/* Welcome Text */}
             <div className="mb-10">
-              <h1 className="text-4xl font-bold text-gray-900 mb-3 tracking-tight">
+              <h1 className="text-3xl font-bold text-gray-900 mb-3 tracking-tight">
                 Hello,<br />Welcome back.
               </h1>
               <p className="text-gray-500 text-base">

@@ -20,7 +20,15 @@ async function main() {
             data: {
                 name: 'Default Organization',
                 slug: 'default',
-                plan: 'PREMIUM', // Use string literal to avoid enum import issues
+                plan: 'PREMIUM',
+                subscription: {
+                    create: {
+                        planId: 'PREMIUM',
+                        status: 'ACTIVE',
+                        maxStations: 10,
+                        trialEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 day trial for comfort
+                    }
+                }
             }
         })
     }

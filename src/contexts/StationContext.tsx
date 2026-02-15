@@ -19,6 +19,7 @@ interface StationContextType {
   getSelectedStation: () => Station | null
   isAllStations: boolean
   isLoading: boolean
+  error: string | null
 }
 
 const StationContext = createContext<StationContextType | undefined>(undefined)
@@ -27,21 +28,25 @@ export function StationProvider({ children }: { children: ReactNode }) {
   const [selectedStation, setSelectedStationState] = useState<string>('all')
   const [stations, setStations] = useState<Station[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   // Load stations and hydration
   useEffect(() => {
     const initialize = async () => {
       try {
         setIsLoading(true)
+        setError(null)
 
         // 1. Fetch Stations
         const response = await fetch('/api/stations?active=true')
-        let fetchedStations: Station[] = []
-        if (response.ok) {
-          const data = await response.json()
-          fetchedStations = Array.isArray(data) ? data : []
-          setStations(fetchedStations)
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch stations')
         }
+
+        const data = await response.json()
+        const fetchedStations = Array.isArray(data) ? data : []
+        setStations(fetchedStations)
 
         // 2. Check User Role & Station Restriction
         const userRole = localStorage.getItem('userRole')
@@ -73,6 +78,7 @@ export function StationProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error('Failed to initialize stations:', error)
+        setError(error instanceof Error ? error.message : 'Unknown error')
       } finally {
         setIsLoading(false)
       }
@@ -104,7 +110,8 @@ export function StationProvider({ children }: { children: ReactNode }) {
         setSelectedStation,
         getSelectedStation,
         isAllStations,
-        isLoading // Export loading state
+        isLoading,
+        error
       }}
     >
       {children}

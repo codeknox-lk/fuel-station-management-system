@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(
   request: NextRequest,
@@ -7,8 +8,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const nozzle = await prisma.nozzle.findUnique({
-      where: { id },
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const nozzle = await prisma.nozzle.findFirst({
+      where: { id, pump: { station: { organizationId: user.organizationId } } },
       include: {
         pump: {
           select: {
@@ -54,13 +60,18 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
 
     const { pumpId, tankId, nozzleNumber, isActive } = body
 
-    // Check if nozzle exists
-    const existingNozzle = await prisma.nozzle.findUnique({
-      where: { id },
+    // Check if nozzle exists and belongs to organization
+    const existingNozzle = await prisma.nozzle.findFirst({
+      where: { id, pump: { station: { organizationId: user.organizationId } } },
       include: {
         pump: {
           select: {
@@ -155,10 +166,14 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    // Check if nozzle exists
-    const nozzle = await prisma.nozzle.findUnique({
-      where: { id },
+    // Check if nozzle exists and belongs to organization
+    const nozzle = await prisma.nozzle.findFirst({
+      where: { id, pump: { station: { organizationId: user.organizationId } } },
       include: {
         assignments: {
           where: {

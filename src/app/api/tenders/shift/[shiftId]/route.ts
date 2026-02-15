@@ -9,7 +9,7 @@ export async function GET(
 ) {
   try {
     const { shiftId } = await params
-    console.log('🔍 Tender summary API called for shiftId:', shiftId)
+    // Log removed('🔍 Tender summary API called for shiftId:', shiftId)
     const { searchParams } = new URL(request.url)
     const user = await getServerUser()
     if (!user) {
@@ -53,7 +53,7 @@ export async function GET(
         return NextResponse.json({ error: 'Shift not found' }, { status: 404 })
       }
 
-      console.log('✅ Shift found:', shift.id, 'Station:', shift.stationId, 'Status:', shift.status)
+      // Log removed('✅ Shift found:', shift.id, 'Station:', shift.stationId, 'Status:', shift.status)
 
       interface ShiftStatistics {
         totalSales?: number
@@ -73,11 +73,8 @@ export async function GET(
       const shiftDeclaredAmounts = shift.declaredAmounts as unknown as DeclaredAmounts
 
       if (shift.status === 'CLOSED' && shiftStatistics?.totalSales !== undefined && shiftDeclaredAmounts) {
-        console.log('📊 Using saved statistics for closed shift')
-        console.log('💰 Saved data:', {
-          totalSales: shiftStatistics.totalSales,
-          declaredAmounts: shiftDeclaredAmounts
-        })
+        // Log removed('📊 Using saved statistics for closed shift')
+        // Log removed
 
         // Calculate variance from saved data
         const savedTotalSales = shiftStatistics.totalSales || 0
@@ -132,16 +129,12 @@ export async function GET(
           salesBreakdown
         }
 
-        console.log('✅ Using saved summary:', {
-          totalSales: tenderSummary.totalSales,
-          totalDeclared: tenderSummary.totalDeclared,
-          variance: tenderSummary.variance
-        })
+        // Log removed
 
         return NextResponse.json(tenderSummary)
       }
 
-      console.log('📊 Calculating summary from assignments (open shift or no saved statistics)')
+      // Log removed('📊 Calculating summary from assignments (open shift or no saved statistics)')
 
       // Fetch assignments separately to avoid complex nested includes
       const shiftAssignmentsFromDb = await prisma.shiftAssignment.findMany({
@@ -334,7 +327,11 @@ export async function GET(
 
         const delta = Math.max(0, endReading - assignment.startMeterReading) // Ensure non-negative
         const pumpSales = assignment.pumpSales || delta
-        const price = assignment.fuelId ? (priceMap[assignment.fuelId] || 470) : 470
+        const price = assignment.fuelId ? (priceMap[assignment.fuelId] || 0) : 0
+
+        if (price === 0) {
+          console.warn(`⚠️ No active price found for nozzle ${assignment.nozzleId} (Fuel: ${assignment.fuelId})`)
+        }
 
         // Calculate sales amount
         const salesAmount = pumpSales * price
@@ -358,13 +355,13 @@ export async function GET(
     // Calculate shift summary
     // Convert salesData to the format expected by calculateShiftSummary (dates as strings)
     // Also validate and sanitize data to prevent NaN or Infinity values
-    console.log('📈 Calculating summary from', salesData.length, 'sales items')
+    // Log removed('📈 Calculating summary from', salesData.length, 'sales items')
 
     let summary
     try {
       const salesDataForSummary = salesData.map((sale) => {
         const amount = isNaN(sale.amount) || !isFinite(sale.amount) ? 0 : sale.amount
-        const price = isNaN(sale.price) || !isFinite(sale.price) ? 470 : sale.price
+        const price = isNaN(sale.price) || !isFinite(sale.price) ? 0 : sale.price
         const delta = isNaN(sale.delta) || !isFinite(sale.delta) ? 0 : sale.delta
 
         return {
@@ -385,7 +382,7 @@ export async function GET(
       const validCreditAmount = isNaN(creditAmount + creditTotal) || !isFinite(creditAmount + creditTotal) ? 0 : (creditAmount + creditTotal)
       const validChequeAmount = isNaN(chequeAmount) || !isFinite(chequeAmount) ? 0 : chequeAmount
 
-      console.log('💰 Amounts:', { validCashAmount, validCardAmount, validCreditAmount, validChequeAmount })
+      // Log removed('💰 Amounts:', { validCashAmount, validCardAmount, validCreditAmount, validChequeAmount })
 
       summary = calculateShiftSummary(
         salesDataForSummary,
@@ -395,7 +392,7 @@ export async function GET(
         validChequeAmount
       )
 
-      console.log('✅ Summary calculated:', summary.totalSales, 'total sales')
+      // Log removed('✅ Summary calculated:', summary.totalSales, 'total sales')
     } catch (summaryError) {
       console.error('❌ Error calculating summary:', summaryError)
       // Return a safe default summary
@@ -415,13 +412,7 @@ export async function GET(
     // Return the summary structure expected by the frontend
     // Ensure variance is calculated correctly: Total Sales - Total Declared
     const calculatedVariance = summary.totalSales - summary.totalDeclared
-    console.log('📊 Variance calculation:', {
-      totalSales: summary.totalSales,
-      totalDeclared: summary.totalDeclared,
-      variance: calculatedVariance,
-      varianceFromSummary: summary.variance,
-      varianceFromClassification: summary.varianceClassification.variance
-    })
+    // Log removed
 
     const tenderSummary = {
       totalSales: summary.totalSales + shopSalesTotal,
@@ -441,11 +432,7 @@ export async function GET(
       }
     }
 
-    console.log('✅ Final tender summary:', {
-      totalSales: tenderSummary.totalSales,
-      totalDeclared: tenderSummary.totalDeclared,
-      variance: tenderSummary.variance
-    })
+    // Log removed
 
     return NextResponse.json(tenderSummary)
   } catch (error) {

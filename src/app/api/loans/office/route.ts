@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    const { stationId, staffName, amount, monthlyRental, reason, dueDate, fromSafe, givenBy } = body
+    const { stationId, staffName, amount, monthlyRental, reason, dueDate, fromSafe } = body
 
     if (!stationId || !staffName || !amount || !reason || !dueDate) {
       return NextResponse.json(
