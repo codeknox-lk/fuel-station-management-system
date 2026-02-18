@@ -288,8 +288,14 @@ function groupTransactionsByShift(transactions: SafeTransaction[]): (SafeTransac
 export default function SafePage() {
   const router = useRouter()
   const { selectedStation, setSelectedStation, stations } = useStation()
-  const { organization } = useOrganization()
-  const isPremium = organization?.subscription?.planId === 'PREMIUM' || (organization?.plan as string) === 'PREMIUM' || (organization?.plan as string) === 'ENTERPRISE'
+  const { organization, isLoading } = useOrganization()
+
+  // Robust check for Premium status (handle case sensitivity and different plan names)
+  const isPremium = organization?.subscription?.planId === 'PREMIUM' ||
+    (organization?.plan as string)?.toUpperCase() === 'PREMIUM' ||
+    (organization?.plan as string)?.toUpperCase() === 'ENTERPRISE'
+
+
 
   const [safe, setSafe] = useState<Safe | null>(null)
   const [groupedTransactions, setGroupedTransactions] = useState<(SafeTransaction | GroupedTransaction)[]>([])
@@ -968,7 +974,8 @@ export default function SafePage() {
       LOAN_GIVEN: 'Loan Given',
       BANK_DEPOSIT: 'Bank Deposit',
       CASH_TRANSFER: 'Cash Transfer',
-      COUNT_ADJUSTMENT: 'Count Adjustment'
+      COUNT_ADJUSTMENT: 'Count Adjustment',
+      FUEL_DELIVERY_PAYMENT: 'Fuel Delivery Payment'
     }
     return labels[type] || type
   }
@@ -1164,6 +1171,15 @@ export default function SafePage() {
       render: (value: unknown) => <span className="text-sm text-muted-foreground">{value as string}</span>
     }
   ]
+
+  // Show loading state to prevent premature "Upgrade" banner
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8 min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
 
   if (!selectedStation || selectedStation === 'all') {
     return (

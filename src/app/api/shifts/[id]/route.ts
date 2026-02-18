@@ -37,6 +37,15 @@ export async function GET(
           select: {
             assignments: true
           }
+        },
+        shopAssignment: {
+          include: {
+            items: {
+              include: {
+                product: true
+              }
+            }
+          }
         }
       }
     })

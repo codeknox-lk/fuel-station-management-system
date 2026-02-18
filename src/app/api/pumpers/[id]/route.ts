@@ -67,6 +67,7 @@ export async function PUT(
       specializations,
       baseSalary,
       holidayAllowance,
+      advanceLimit,
       isActive
     } = body
 
@@ -131,6 +132,7 @@ export async function PUT(
     if (specializations !== undefined) updateData.specializations = Array.isArray(specializations) ? specializations : []
     if (baseSalary !== undefined) updateData.baseSalary = baseSalary !== null && baseSalary !== '' ? parseFloat(String(baseSalary)) : 0
     if (holidayAllowance !== undefined) updateData.holidayAllowance = holidayAllowance !== null && holidayAllowance !== '' ? parseFloat(String(holidayAllowance)) : 4500
+    if (advanceLimit !== undefined) updateData.advanceLimit = advanceLimit !== null && advanceLimit !== '' ? parseFloat(String(advanceLimit)) : 50000
     if (isActive !== undefined) updateData.isActive = isActive
 
     if (Object.keys(updateData).length === 0) {

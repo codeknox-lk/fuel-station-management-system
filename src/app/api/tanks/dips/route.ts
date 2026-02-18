@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 import { auditOperations } from '@/lib/auditMiddleware'
 import { CreateTankDipSchema } from '@/lib/schemas'
 import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const tankId = searchParams.get('tankId')
     const startDate = searchParams.get('startDate')
@@ -14,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     if (id) {
       const dip = await prisma.tankDip.findUnique({
-        where: { id },
+        where: { id_organizationId: { id, organizationId: user.organizationId } },
         include: {
           tank: {
             select: {
@@ -40,14 +46,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(dip)
     }
 
-    interface TankDipWhereInput {
-      tankId?: string
-      dipDate?: {
-        gte: Date
-        lte: Date
-      }
+    const where: Prisma.TankDipWhereInput = {
+      organizationId: user.organizationId
     }
-    const where: TankDipWhereInput = {}
     if (tankId) {
       where.tankId = tankId
     }
@@ -93,13 +94,13 @@ export async function GET(request: NextRequest) {
           ? (changeFromPrevious / dips[index + 1].reading) * 100
           : null
 
-      // Estimated variance using current tank level as proxy for book stock
-      const estimatedBookStock = dip.tank?.currentLevel || null
+      // Use stored bookStock if available, otherwise fallback to currentLevel (for legacy records)
+      const estimatedBookStock = dip.bookStock ?? dip.tank?.currentLevel ?? null
       const variance = estimatedBookStock !== null
-        ? estimatedBookStock - dip.reading
+        ? dip.reading - estimatedBookStock
         : null
       const variancePercentage = variance !== null && estimatedBookStock !== null && estimatedBookStock > 0
-        ? (Math.abs(variance) / estimatedBookStock) * 100
+        ? (variance / estimatedBookStock) * 100
         : null
 
       return {
@@ -124,6 +125,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
 
     // Zod Validation
@@ -137,19 +143,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { stationId, tankId, reading, recordedBy, dipDate, notes } = result.data
+    const { stationId, tankId, reading, dipDate, notes } = result.data
 
-    // Get tank and station info for audit logging
+    // Get tank and station info for audit logging and book stock
     const tank = await prisma.tank.findUnique({
-      where: { id: tankId },
+      where: { id_organizationId: { id: tankId, organizationId: user.organizationId } },
       include: {
         station: true
       }
     })
 
-    // Get current user for recordedBy
-    const currentUser = await getServerUser()
-    const secureRecordedBy = currentUser ? currentUser.username : (recordedBy || 'System User')
+    if (!tank) {
+      return NextResponse.json({ error: 'Tank not found' }, { status: 404 })
+    }
+
+    const secureRecordedBy = user.username
 
     const newDip = await prisma.tankDip.create({
       data: {
@@ -158,7 +166,9 @@ export async function POST(request: NextRequest) {
         reading,
         recordedBy: secureRecordedBy,
         dipDate,
-        notes: notes || null
+        notes: notes || null,
+        bookStock: tank.currentLevel,
+        organizationId: user.organizationId
       },
       include: {
         tank: {

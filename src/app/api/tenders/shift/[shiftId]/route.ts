@@ -57,6 +57,8 @@ export async function GET(
 
       interface ShiftStatistics {
         totalSales?: number
+        nozzleSales?: number
+        shopSales?: number
         totalLiters?: number
       }
       interface DeclaredAmounts {
@@ -83,7 +85,9 @@ export async function GET(
             (shiftDeclaredAmounts.card || 0) +
             (shiftDeclaredAmounts.credit || 0) +
             (shiftDeclaredAmounts.cheque || 0))
-        const savedVariance = savedTotalSales - savedTotalDeclared
+
+        // Variance = Declared - Sales (Shortage is negative)
+        const savedVariance = savedTotalDeclared - savedTotalSales
 
         // Get sales breakdown from saved statistics if available
         const salesBreakdown = {
@@ -91,7 +95,8 @@ export async function GET(
           oilSales: {
             totalAmount: 0,
             salesCount: 0
-          }
+          },
+          shopSales: shiftStatistics.shopSales || 0
         }
 
         // Still get oil sales for breakdown
@@ -122,6 +127,8 @@ export async function GET(
           totalSales: savedTotalSales,
           totalDeclared: savedTotalDeclared,
           variance: savedVariance,
+          nozzleSales: shiftStatistics.nozzleSales || (savedTotalSales - (shiftStatistics.shopSales || 0)),
+          shopSales: shiftStatistics.shopSales || 0,
           varianceClassification: {
             ...varianceClassification,
             variance: savedVariance // Ensure it uses the correct variance
@@ -410,17 +417,23 @@ export async function GET(
     }
 
     // Return the summary structure expected by the frontend
-    // Ensure variance is calculated correctly: Total Sales - Total Declared
-    const calculatedVariance = summary.totalSales - summary.totalDeclared
-    // Log removed
+    // Ensure variance is calculated correctly: Total Declared - Total Sales (Positive = Surplus, Negative = Shortage)
+    const totalSalesWithShop = summary.totalSales + shopSalesTotal
+    const totalDeclared = summary.totalDeclared
+    const calculatedVariance = totalDeclared - totalSalesWithShop // Shortage is negative (Declared - Expected)
+
+    const varianceClassification = classifyVariance(totalSalesWithShop, totalDeclared)
 
     const tenderSummary = {
-      totalSales: summary.totalSales + shopSalesTotal,
+      totalSales: totalSalesWithShop,
       shopSales: shopSalesTotal,
       nozzleSales: summary.totalSales,
-      totalDeclared: summary.totalDeclared,
-      variance: calculatedVariance + shopSalesTotal, // Ensure we use the correct calculation
-      varianceClassification: classifyVariance(summary.totalSales + shopSalesTotal, summary.totalDeclared),
+      totalDeclared: totalDeclared,
+      variance: calculatedVariance,
+      varianceClassification: {
+        ...varianceClassification,
+        variance: calculatedVariance
+      },
       salesBreakdown: {
         totalPumpSales,
         totalLitres: totalPumpSales,

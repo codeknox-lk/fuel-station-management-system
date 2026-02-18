@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
           isActive: true,
           baseSalary: true,
           holidayAllowance: true,
+          advanceLimit: true,
           hireDate: true,
           createdAt: true,
           updatedAt: true
@@ -84,6 +85,7 @@ export async function GET(request: NextRequest) {
           isActive: true,
           baseSalary: true,
           holidayAllowance: true,
+          advanceLimit: true,
           hireDate: true,
           createdAt: true,
           updatedAt: true
@@ -133,6 +135,7 @@ export async function POST(request: NextRequest) {
       specializations,
       baseSalary,
       holidayAllowance,
+      advanceLimit,
       isActive
     } = result.data
 
@@ -221,6 +224,7 @@ export async function POST(request: NextRequest) {
         specializations: specializations,
         baseSalary: baseSalary,
         holidayAllowance: holidayAllowance,
+        advanceLimit: advanceLimit,
         isActive: isActive !== undefined ? isActive : true,
         organizationId: user.organizationId
       }

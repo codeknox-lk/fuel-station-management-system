@@ -40,6 +40,7 @@ export const CreatePumperSchema = z.object({
     specializations: z.array(z.string()).optional().default([]),
     baseSalary: z.union([z.string(), z.number()]).optional().transform(val => val ? Number(val) : 0),
     holidayAllowance: z.union([z.string(), z.number()]).optional().transform(val => val ? Number(val) : 4500),
+    advanceLimit: z.union([z.string(), z.number()]).optional().transform(val => val ? Number(val) : 50000),
     isActive: z.boolean().optional().default(true),
 });
 
@@ -162,9 +163,31 @@ export const CreateDeliverySchema = z.object({
 });
 
 export const VerifyDeliverySchema = z.object({
+    // Stage 3: Verification
     afterDipReading: z.union([z.string(), z.number()]).transform(val => Number(val)),
+    waterLevelAfter: z.union([z.string(), z.number()]).optional().transform(val => val ? Number(val) : 0),
     afterDipTime: z.union([z.string(), z.date()]).optional().transform(val => val ? new Date(val) : new Date()),
+    afterMeterReadings: z.record(z.string(), z.number()).optional(), // Map<NozzleId, Reading>
+
+    // Legacy support (optional)
     additionalFuelSold: z.union([z.string(), z.number()]).optional().transform(val => val ? Number(val) : 0),
+
+    // Stage 4: Financials
+    costPrice: z.union([z.string(), z.number()]).optional().transform(val => val ? Number(val) : 0),
+    totalCost: z.union([z.string(), z.number()]).optional().transform(val => val ? Number(val) : 0),
+    paymentStatus: z.enum(['PAID', 'UNPAID', 'PARTIAL']).optional().default('UNPAID'),
+
+    // Payment Method Details
+    paymentType: z.enum(['CASH', 'CHEQUE', 'CREDIT']).optional(),
+
+    // Cash Specific
+    expenseCategory: z.string().optional(), // For the Expense record
+
+    // Cheque Specific
+    chequeNumber: z.string().optional(),
+    bankId: z.string().optional(),
+    chequeDate: z.union([z.string(), z.date()]).optional().transform(val => val ? new Date(val) : new Date()),
+
     verifiedBy: z.string().min(1, 'Verified by is required'),
     notes: z.string().optional()
 });

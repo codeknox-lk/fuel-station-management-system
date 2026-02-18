@@ -23,7 +23,7 @@ import Link from 'next/link'
 import { getNozzleDisplayWithBadge } from '@/lib/nozzleUtils'
 import { PrintHeader } from '@/components/PrintHeader'
 import { ShopSalesTable } from '@/components/shifts/ShopSalesTable'
-import { ShiftWithDetails, AssignmentWithDetails, ShiftStatistics, DeclaredAmounts, Expense } from '@/types/db'
+import { ShiftWithDetails, AssignmentWithDetails, ShiftStatistics, DeclaredAmounts, Expense, PumperBreakdown as DBPumperBreakdown } from '@/types/db'
 
 // Helper type for the UI which might have parsed JSON fields
 interface ShopItem {
@@ -46,12 +46,21 @@ interface UIShift extends Omit<ShiftWithDetails, 'statistics' | 'declaredAmounts
   statistics?: ShiftStatistics & {
     nozzleSales?: number
     shopSales?: number
+    totalSales?: number
+    totalLiters?: number
+    averagePricePerLiter?: number
+    durationHours?: number
   }
   declaredAmounts?: DeclaredAmounts
   shopAssignment?: {
     pumperName: string
     items: ShopItem[]
   }
+}
+
+interface ExtendedStatistics extends Partial<ShiftStatistics> {
+  nozzleSales?: number
+  shopSales?: number
 }
 
 interface TenderSummary {
@@ -69,10 +78,6 @@ interface TenderSummary {
   salesBreakdown?: {
     totalPumpSales: number
     totalLitres: number
-    oilSales?: {
-      totalAmount: number
-      salesCount: number
-    }
     shopSales?: number
   }
 }
@@ -83,23 +88,18 @@ interface TenderSummary {
 
 // Function to format duration
 const formatDuration = (hours: number): string => {
-  // Handle negative durations
-  if (hours < 0) {
-    return 'Invalid duration'
-  }
+  if (hours <= 0) return '0m'
 
-  if (hours === 0) return '0h'
+  // Standardized with ShiftsPage: any started shift is at least 1m
+  const totalMinutes = Math.max(1, Math.round(hours * 60))
+  const h = Math.floor(totalMinutes / 60)
+  const m = totalMinutes % 60
 
-  const wholeHours = Math.floor(hours)
-  const minutes = Math.round((hours - wholeHours) * 60)
+  const parts = []
+  if (h > 0) parts.push(`${h}h`)
+  if (m > 0 || h === 0) parts.push(`${m}m`)
 
-  if (minutes === 0) {
-    return `${wholeHours}h`
-  } else if (wholeHours === 0) {
-    return `${minutes}m`
-  } else {
-    return `${wholeHours}h ${minutes}m`
-  }
+  return parts.join(' ')
 }
 
 // Function to format currency
@@ -167,20 +167,7 @@ export default function ShiftDetailsPage() {
               // For closed shifts, use the actual statistics from the shift
               // This ensures consistency with the close API calculations
               // Parse statistics if it's a JSON string
-              let stats: ShiftStatistics | null = null
-              if (shiftData.statistics) {
-                if (typeof shiftData.statistics === 'string') {
-                  try {
-                    stats = JSON.parse(shiftData.statistics)
-                  } catch (e) {
-                    console.error('Failed to parse statistics JSON:', e)
-                    stats = null
-                  }
-                } else {
-                  stats = shiftData.statistics as unknown as ShiftStatistics
-                }
-              }
-              const calculatedSales = stats?.totalSales || 0
+
 
               // Use stored declared amounts if available, otherwise simulate
               // Parse declaredAmounts if it's a JSON string
@@ -205,13 +192,11 @@ export default function ShiftDetailsPage() {
                 creditAmount = declaredAmounts.credit || 0
                 chequeAmount = declaredAmounts.cheque || 0
               } else {
-                // Fallback: simulate realistic declared amounts (90-95% of calculated sales)
-                const declaredPercentage = 0.92 // 92% of calculated sales
-                const totalDeclared = Math.round(calculatedSales * declaredPercentage)
-                cashAmount = Math.round(totalDeclared * 0.6)
-                cardAmount = Math.round(totalDeclared * 0.3)
-                creditAmount = Math.round(totalDeclared * 0.08)
-                chequeAmount = Math.round(totalDeclared * 0.02)
+                // Fallback: Set to 0 if no declared amounts found
+                cashAmount = 0
+                cardAmount = 0
+                creditAmount = 0
+                chequeAmount = 0
               }
 
               const tenderResponse = await fetch(
@@ -239,6 +224,18 @@ export default function ShiftDetailsPage() {
       fetchShiftDetails()
     }
   }, [shiftId])
+
+  // Calculate unique pumper count across all assignments
+  const uniquePumperCount = useMemo(() => {
+    const pumperNames = new Set<string>()
+    assignments.forEach(a => {
+      if (a.pumperName) pumperNames.add(a.pumperName)
+    })
+    if (shift?.shopAssignment?.pumperName) {
+      pumperNames.add(shift.shopAssignment.pumperName)
+    }
+    return pumperNames.size
+  }, [assignments, shift?.shopAssignment?.pumperName])
 
   if (loading) {
     return (
@@ -332,7 +329,7 @@ export default function ShiftDetailsPage() {
     try {
       if (shift && shift.status === 'CLOSED') {
         // Parse statistics if it's a JSON string, otherwise use as-is
-        let stats: Partial<ShiftStatistics> = {}
+        let stats: ExtendedStatistics = {}
         if (shift.statistics) {
           if (typeof shift.statistics === 'string') {
             try {
@@ -346,12 +343,16 @@ export default function ShiftDetailsPage() {
           }
         }
 
-        if (stats?.totalSales && stats?.totalLiters) {
-          // Calculate sales proportionally based on liters if we have total sales
-          // This is more accurate than using a hardcoded price
+        const totalNozzleSales = stats?.nozzleSales ??
+          (stats?.totalSales !== undefined && stats?.shopSales !== undefined
+            ? stats.totalSales - stats.shopSales
+            : stats?.totalSales);
+
+        if (totalNozzleSales && stats?.totalLiters) {
+          // Calculate nozzle sales proportionally based on liters to account for price changes mid-shift
           const totalLiters = stats.totalLiters || 1 // Avoid division by zero
           const proportion = totalLiters > 0 ? actualLiters / totalLiters : 0
-          sales = Math.round(stats.totalSales * proportion)
+          sales = Math.round(totalNozzleSales * proportion)
         } else {
           // Fallback: use average price per liter from statistics if available
           const avgPricePerLiter = stats?.averagePricePerLiter || 470
@@ -359,7 +360,7 @@ export default function ShiftDetailsPage() {
         }
       } else if (shift) {
         // For open shifts or shifts without statistics
-        let stats: Partial<ShiftStatistics> = {}
+        let stats: ExtendedStatistics = {}
         if (shift.statistics) {
           if (typeof shift.statistics === 'string') {
             try {
@@ -582,7 +583,7 @@ export default function ShiftDetailsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {assignments.length + (shift.shopAssignment ? 1 : 0)}
+              {uniquePumperCount}
             </div>
             <p className="text-xs text-muted-foreground">Total Staff</p>
           </CardContent>
@@ -629,18 +630,12 @@ export default function ShiftDetailsPage() {
             {hasPumps && tenderSummary?.salesBreakdown && (
               <div className="bg-orange-500/10 dark:bg-orange-500/20 p-4 rounded-lg mb-6">
                 <h4 className="font-semibold text-orange-700 dark:text-orange-300 mb-3">Sales Breakdown</h4>
-                <div className="grid grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="text-center">
                     <div className="text-orange-600 dark:text-orange-400 text-lg">
                       {(tenderSummary.salesBreakdown.totalPumpSales || 0).toLocaleString()}L
                     </div>
                     <div className="text-muted-foreground">Pump Sales</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-orange-600 dark:text-orange-400 text-lg">
-                      Rs. {(tenderSummary.salesBreakdown.oilSales?.totalAmount || (0) || 0).toLocaleString()}
-                    </div>
-                    <div className="text-muted-foreground">Oil Sales ({tenderSummary.salesBreakdown.oilSales?.salesCount || 0})</div>
                   </div>
                   <div className="text-center">
                     <div className="text-orange-600 dark:text-orange-400 text-lg font-bold">
@@ -694,9 +689,10 @@ export default function ShiftDetailsPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Variance:</span>
-                  <span className={`font-semibold ${(tenderSummary?.variance ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                  <span className={`font-semibold ${(tenderSummary?.variance ?? 0) < -20 ? 'text-red-600 dark:text-red-400' :
+                    (tenderSummary?.variance ?? 0) > 20 ? 'text-green-600 dark:text-green-400' : 'text-foreground'
                     }`}>
-                    Rs. {((tenderSummary?.variance ?? 0) || 0).toLocaleString()}
+                    {(tenderSummary?.variance ?? 0) > 0 ? '+' : ''}Rs. {((tenderSummary?.variance ?? 0) || 0).toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -728,128 +724,119 @@ export default function ShiftDetailsPage() {
         </Card>
       )}
 
-      {/* Shop Sales Section */}
-      {hasShop && shift.shopAssignment && (
-        <ShopSalesTable
-          shopAssignment={{
-            id: shift.shopAssignment.pumperName,
-            pumperName: shift.shopAssignment.pumperName,
-            totalRevenue: shift.shopAssignment.items.reduce((acc, item) => acc + (item.revenue || 0), 0),
-            items: shift.shopAssignment.items.map(item => ({
-              ...item,
-              id: item.id || Math.random().toString(),
-              productId: item.id || 'unknown',
-              revenue: item.revenue || 0,
-              soldQuantity: item.soldQuantity || 0
-            }))
-          }}
-          className="mb-8"
-        />
-      )}
-
-      {/* Shift Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Shift Information</CardTitle>
-          <CardDescription>Basic shift details and timing</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Start Time</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {new Date(shift.startTime).toLocaleString()}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">End Time</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {shift.endTime ? new Date(shift.endTime).toLocaleString() : '-'}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Duration</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {shift.endTime
-                  ? formatDuration((new Date(shift.endTime).getTime() - new Date(shift.startTime).getTime()) / (1000 * 60 * 60))
-                  : shift.statistics?.durationHours
-                    ? formatDuration(shift.statistics.durationHours)
-                    : '-'}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Pumpers</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {(() => {
-                  const names = new Set(assignments.map(a => a.pumperName).filter(Boolean))
-                  if (shift.shopAssignment?.pumperName) {
-                    names.add(shift.shopAssignment.pumperName)
-                  }
-                  return Array.from(names).join(', ') || 'No pumpers assigned'
-                })()}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Opened By</span>
-              </div>
-              <p className="text-sm text-muted-foreground">{shift.openedBy}</p>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Closed By</span>
-              </div>
-              <p className="text-sm text-muted-foreground">{shift.closedBy || '-'}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Assignments */}
-      {hasPumps && (
+      {/* Financial Summary - Consolidated Results */}
+      {shift.status === 'CLOSED' && shift.declaredAmounts && (
         <Card>
           <CardHeader>
-            <CardTitle>Assignments</CardTitle>
-            <CardDescription>Pumper assignments and meter readings</CardDescription>
+            <CardTitle>Financial Summary</CardTitle>
+            <CardDescription>Consolidated results for the entire shift</CardDescription>
           </CardHeader>
           <CardContent>
-            {assignmentsWithCalculations.length > 0 ? (
-              <DataTable
-                data={assignmentsWithCalculations}
-                columns={assignmentColumns}
-                searchable={false}
-                pagination={false}
-              />
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                No nozzle assignments found
-              </div>
-            )}
+            {(() => {
+              const pumperBreakdowns = (shift.declaredAmounts as DeclaredAmounts)?.pumperBreakdown || []
+              let totalMeterSales = 0
+              let totalShopSales = 0
+              let totalCalculatedSales = 0
+              let totalDeclaredCash = 0
+              let totalDeclaredCard = 0
+              let totalDeclaredCredit = 0
+              let totalDeclaredCheque = 0
+              let totalAdvances = 0
+              let totalOtherExpenses = 0
+              let totalDeclared = 0
+              let totalVariance = 0
+
+              pumperBreakdowns.forEach((bd: DBPumperBreakdown) => {
+                totalMeterSales += bd.meterSales || 0
+                totalShopSales += bd.shopSales || 0
+                totalCalculatedSales += bd.calculatedSales || 0
+                totalDeclaredCash += bd.declaredCash || 0
+
+                // Card calculation
+                if (bd.declaredCardAmounts) {
+                  totalDeclaredCard += Object.values(bd.declaredCardAmounts).reduce((sum: number, amt) => sum + (Number(amt) || 0), 0)
+                }
+
+                // Credit calculation
+                if (bd.declaredCreditAmounts) {
+                  totalDeclaredCredit += Object.values(bd.declaredCreditAmounts).reduce((sum: number, amt) => sum + (Number(amt) || 0), 0)
+                }
+
+                // Cheques calculation
+                if (bd.cheques) {
+                  totalDeclaredCheque += bd.cheques.reduce((sum: number, chq) => sum + (Number(chq.amount) || 0), 0)
+                }
+
+                totalAdvances += bd.advanceTaken || 0
+
+                const expenses = bd.expenses || []
+                const otherExp = expenses
+                  .filter((exp) => exp.type !== 'BANK_DEPOSIT')
+                  .reduce((sum: number, exp) => sum + (Number(exp.amount) || 0), 0)
+
+                totalOtherExpenses += otherExp
+                totalDeclared += bd.declaredAmount || 0
+                totalVariance += bd.variance || 0
+              })
+
+              return (
+                <div className="bg-primary/5 dark:bg-primary/10 border p-4 rounded-lg space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Total Meter Sales:</span>
+                        <span className="font-mono">Rs. {(totalMeterSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Total Shop Sales:</span>
+                        <span className="font-mono">Rs. {(totalShopSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between font-bold border-t pt-2">
+                        <span>Total Calculated:</span>
+                        <span className="font-mono">Rs. {(totalCalculatedSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Total Cash:</span>
+                        <span className="font-mono">Rs. {(totalDeclaredCash || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Total Cards/Credit:</span>
+                        <span className="font-mono">Rs. {(totalDeclaredCard + totalDeclaredCredit + totalDeclaredCheque || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Total Expenses/Adv:</span>
+                        <span className="font-mono text-orange-600">- Rs. {(totalAdvances + totalOtherExpenses || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between font-bold border-t pt-2">
+                        <span>Total Declared:</span>
+                        <span className="font-mono">Rs. {(totalDeclared || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t flex justify-between items-center bg-primary/5 p-3 rounded">
+                    <span className="text-lg font-bold">Overall Variance:</span>
+                    <span className={`text-xl font-bold ${totalVariance < -20 ? 'text-red-600 dark:text-red-400' :
+                      totalVariance > 20 ? 'text-green-600 dark:text-green-400' :
+                        'text-foreground'
+                      }`}>
+                      {totalVariance > 0 ? '+' : ''}Rs. {(totalVariance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+              )
+            })()}
           </CardContent>
         </Card>
       )}
 
+
       {/* Pumper-wise Breakdown (for closed shifts) */}
-      {shift.status === 'CLOSED' && shift.declaredAmounts &&
+      {
+        shift.status === 'CLOSED' && shift.declaredAmounts &&
         (shift.declaredAmounts as DeclaredAmounts)?.pumperBreakdown &&
         (shift.declaredAmounts as DeclaredAmounts).pumperBreakdown!.length > 0 && (
           <Card>
@@ -1039,8 +1026,8 @@ export default function ShiftDetailsPage() {
                         <div className="font-semibold">Total Declared:</div>
                         <div className="font-mono text-right font-semibold">Rs. {(breakdown.declaredAmount || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         <div className="font-semibold">Variance:</div>
-                        <div className={`font-mono text-right font-semibold ${(breakdown.variance || 0) > 20 ? 'text-red-600 dark:text-red-400' :
-                          (breakdown.variance || 0) < -20 ? 'text-green-600 dark:text-green-400' :
+                        <div className={`font-mono text-right font-semibold ${(breakdown.variance || 0) < -20 ? 'text-red-600 dark:text-red-400' :
+                          (breakdown.variance || 0) > 20 ? 'text-green-600 dark:text-green-400' :
                             'text-foreground'
                           }`}>
                           {(breakdown.variance || 0) >= 0 ? '+' : ''}Rs. {(breakdown.variance || (0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -1051,109 +1038,133 @@ export default function ShiftDetailsPage() {
                 )
               })}
 
-              {/* Overall Totals */}
-              {(() => {
-                const pumperBreakdowns = (shift.declaredAmounts as DeclaredAmounts).pumperBreakdown || []
-                let totalCalculatedSales = 0
-                let totalDeclaredCash = 0
-                let totalDeclaredCard = 0
-                let totalDeclaredCredit = 0
-                let totalDeclaredCheque = 0
-                let totalAdvances = 0
-                let totalBankDeposits = 0
-                let totalOtherExpenses = 0
-                let totalDeclared = 0
-                let totalVariance = 0
+            </CardContent>
+          </Card>
+        )
+      }
 
-                pumperBreakdowns.forEach(bd => {
-                  totalCalculatedSales += bd.calculatedSales || 0
-                  totalDeclaredCash += bd.declaredCash || 0
-                  totalDeclaredCard += Object.values(bd.declaredCardAmounts || {}).reduce((sum, amt) => sum + (amt || 0), 0)
-                  totalDeclaredCredit += Object.values(bd.declaredCreditAmounts || {}).reduce((sum, amt) => sum + (amt || 0), 0)
-                  totalDeclaredCheque += (bd.cheques || []).reduce((sum, chq) => sum + (chq.amount || 0), 0)
-                  totalAdvances += bd.advanceTaken || 0
-                  const bankDeposits = (bd.expenses || []).filter(exp => exp.type === 'BANK_DEPOSIT').reduce((sum, exp) => sum + (exp.amount || 0), 0)
-                  const otherExpenses = (bd.expenses || []).filter(exp => exp.type !== 'BANK_DEPOSIT').reduce((sum, exp) => sum + (exp.amount || 0), 0)
-                  totalBankDeposits += bankDeposits
-                  totalOtherExpenses += otherExpenses
-                  totalDeclared += bd.declaredAmount || 0
-                  totalVariance += bd.variance || 0
-                })
+      {/* Detailed Operations Tables */}
+      <div className="space-y-6">
+        {/* Shop Sales Breakdown */}
+        {hasShop && shift.shopAssignment && (
+          <ShopSalesTable
+            shopAssignment={{
+              id: shift.shopAssignment.pumperName,
+              pumperName: shift.shopAssignment.pumperName,
+              totalRevenue: shift.shopAssignment.items.reduce((acc, item) => acc + (item.revenue || 0), 0),
+              items: shift.shopAssignment.items.map(item => ({
+                ...item,
+                id: item.id || Math.random().toString(),
+                productId: item.id || 'unknown',
+                revenue: item.revenue || 0,
+                soldQuantity: item.soldQuantity || 0
+              }))
+            }}
+          />
+        )}
 
-                return (
-                  <div className="bg-primary/10 dark:bg-primary/20 border-2 border-primary/30 rounded-lg p-4 space-y-3">
-                    <div className="text-sm font-bold uppercase text-primary mb-2">Overall Totals</div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="font-semibold">Total Calculated Sales:</div>
-                      <div className="font-mono text-right font-semibold">Rs. {(totalCalculatedSales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-
-                      {totalDeclaredCash > 0 && (
-                        <>
-                          <div className="text-muted-foreground">Total Cash:</div>
-                          <div className="font-mono text-right">Rs. {(totalDeclaredCash || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                        </>
-                      )}
-
-                      {totalDeclaredCard > 0 && (
-                        <>
-                          <div className="text-muted-foreground">Total Card:</div>
-                          <div className="font-mono text-right">Rs. {(totalDeclaredCard || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                        </>
-                      )}
-
-                      {totalDeclaredCredit > 0 && (
-                        <>
-                          <div className="text-muted-foreground">Total Credit:</div>
-                          <div className="font-mono text-right">Rs. {(totalDeclaredCredit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                        </>
-                      )}
-
-                      {totalDeclaredCheque > 0 && (
-                        <>
-                          <div className="text-muted-foreground">Total Cheques:</div>
-                          <div className="font-mono text-right">Rs. {(totalDeclaredCheque || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                        </>
-                      )}
-
-                      {totalBankDeposits > 0 && (
-                        <>
-                          <div className="text-muted-foreground">Total Bank Deposits:</div>
-                          <div className="font-mono text-right text-orange-600 dark:text-orange-400">+ Rs. {(totalBankDeposits || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                        </>
-                      )}
-
-                      {totalAdvances > 0 && (
-                        <>
-                          <div className="text-muted-foreground">Total Advances:</div>
-                          <div className="font-mono text-right text-orange-600 dark:text-orange-400">- Rs. {(totalAdvances || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                        </>
-                      )}
-
-                      {totalOtherExpenses > 0 && (
-                        <>
-                          <div className="text-muted-foreground">Total Other Expenses:</div>
-                          <div className="font-mono text-right text-orange-600 dark:text-orange-400">- Rs. {(totalOtherExpenses || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                        </>
-                      )}
-
-                      <div className="font-bold text-base pt-2 border-t">Total Declared:</div>
-                      <div className="font-mono text-right font-bold text-base pt-2 border-t">Rs. {(totalDeclared || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-
-                      <div className="font-bold text-base">Total Variance:</div>
-                      <div className={`font-mono text-right font-bold text-base ${totalVariance > 20 ? 'text-red-600 dark:text-red-400' :
-                        totalVariance < -20 ? 'text-green-600 dark:text-green-400' :
-                          'text-foreground'
-                        }`}>
-                        {totalVariance >= 0 ? '+' : ''}Rs. {(totalVariance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })()}
+        {/* Nozzle Assignments Breakdown */}
+        {hasPumps && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Assignments Breakdown</CardTitle>
+              <CardDescription>Individual nozzle meter readings and results</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {assignmentsWithCalculations.length > 0 ? (
+                <DataTable
+                  data={assignmentsWithCalculations}
+                  columns={assignmentColumns}
+                  searchable={false}
+                  pagination={false}
+                />
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No nozzle assignments found
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
+      </div>
 
+
+      {/* Shift Information */}
+      <Card className="no-print">
+        <CardHeader>
+          <CardTitle>Shift Information</CardTitle>
+          <CardDescription>Basic shift details and timing</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Start Time</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {new Date(shift.startTime).toLocaleString()}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">End Time</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {shift.endTime ? new Date(shift.endTime).toLocaleString() : '-'}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Duration</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {shift.endTime
+                  ? formatDuration((new Date(shift.endTime).getTime() - new Date(shift.startTime).getTime()) / (1000 * 60 * 60))
+                  : shift.statistics?.durationHours
+                    ? formatDuration(shift.statistics.durationHours)
+                    : '-'}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Pumpers</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {(() => {
+                  const names = new Set(assignments.map(a => a.pumperName).filter(Boolean))
+                  if (shift.shopAssignment?.pumperName) {
+                    names.add(shift.shopAssignment.pumperName)
+                  }
+                  return Array.from(names).join(', ') || 'No pumpers assigned'
+                })()}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Opened By</span>
+              </div>
+              <p className="text-sm text-muted-foreground">{shift.openedBy}</p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Closed By</span>
+              </div>
+              <p className="text-sm text-muted-foreground">{shift.closedBy || '-'}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

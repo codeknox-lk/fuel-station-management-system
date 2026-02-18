@@ -398,7 +398,6 @@ export default function TankDipsPage() {
       const tanksRes = await fetch(`/api/tanks?stationId=${selectedStation}&type=tanks`)
       const tanksData = await tanksRes.json()
       setTanks(tanksData)
-      setTanks(tanksData)
     } catch (err) {
       toast({
         title: "Error",
@@ -597,7 +596,7 @@ export default function TankDipsPage() {
                   <CardContent className="pt-6">
                     <div className="text-center py-4 text-muted-foreground">
                       <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
-                      <p className="text-sm">Checking for shifts active at {(dipTime || 0).toLocaleString()}...</p>
+                      <p className="text-sm">Checking for shifts active at {dipTime.toLocaleString()}...</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -609,7 +608,7 @@ export default function TankDipsPage() {
                       Active Shifts Detected
                     </CardTitle>
                     <CardDescription>
-                      {activeShifts.length} shift(s) were running at {(dipTime || 0).toLocaleString()}. Enter current meter readings to calculate actual tank levels.
+                      {activeShifts.length} shift(s) were running at {dipTime.toLocaleString()}. Enter current meter readings to calculate actual tank levels.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -744,7 +743,7 @@ export default function TankDipsPage() {
                   <CheckCircle className="h-4 w-4 text-green-600" />
                   <AlertTitle className="text-green-600">No Active Shifts</AlertTitle>
                   <AlertDescription className="text-green-600">
-                    No shifts were running at {(dipTime || 0).toLocaleString()}. System stock levels are accurate.
+                    No shifts were running at {dipTime.toLocaleString()}. System stock levels are accurate.
                   </AlertDescription>
                 </Alert>
               )
@@ -898,7 +897,9 @@ export default function TankDipsPage() {
           <DataTable
             data={recentDips}
             columns={columns}
+            loading={loading}
             onRowClick={handleViewDetails}
+            emptyMessage="No tank dip records found"
           />
         </CardContent>
       </Card>

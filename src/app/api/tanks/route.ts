@@ -289,8 +289,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify station exists and is active
-    const station = await prisma.station.findUnique({
+    // Verify station exists and belongs to the same organization
+    const station = await prisma.station.findFirst({
       where: { id: stationId, organizationId: user.organizationId }
     })
 

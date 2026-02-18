@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
+    const body = await request.json()
     const { tankUpdates } = body
 
     if (!tankUpdates || !Array.isArray(tankUpdates) || tankUpdates.length === 0) {
@@ -14,11 +19,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Update all tanks in a transaction
+    // Update all tanks in a transaction, scoped by organizationId
     const results = await prisma.$transaction(
       tankUpdates.map((update: { tankId: string; newLevel: number }) =>
         prisma.tank.update({
-          where: { id: update.tankId },
+          where: { id_organizationId: { id: update.tankId, organizationId: user.organizationId } },
           data: {
             currentLevel: update.newLevel
           }

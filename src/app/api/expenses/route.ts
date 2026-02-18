@@ -134,6 +134,21 @@ export async function POST(request: NextRequest) {
     }
     const recordedBy = user.username
 
+    // Verify station exists and belongs to the same organization
+    const station = await prisma.station.findFirst({
+      where: {
+        id: stationId,
+        organizationId: user.organizationId
+      }
+    })
+
+    if (!station) {
+      return NextResponse.json(
+        { error: 'Station not found or access denied' },
+        { status: 404 }
+      )
+    }
+
     const newExpense = await prisma.expense.create({
       data: {
         stationId,

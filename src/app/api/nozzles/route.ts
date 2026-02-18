@@ -1,18 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const stationId = searchParams.get('stationId')
     const pumpId = searchParams.get('pumpId')
     const tankId = searchParams.get('tankId')
 
-    interface NozzleWhereInput {
-      pumpId?: string
-      tankId?: string
+    const where: Prisma.NozzleWhereInput = {
+      organizationId: user.organizationId
     }
-    const where: NozzleWhereInput = {}
     if (pumpId) {
       where.pumpId = pumpId
     }
@@ -63,6 +68,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     interface NozzleBody {
       pumpId?: string
       tankId?: string
@@ -81,9 +91,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify pump exists
-    const pump = await prisma.pump.findUnique({
-      where: { id: pumpId },
+    // Verify pump exists and belongs to organization
+    const pump = await prisma.pump.findFirst({
+      where: {
+        id: pumpId,
+        organizationId: user.organizationId
+      },
       include: {
         station: {
           select: {
@@ -96,19 +109,22 @@ export async function POST(request: NextRequest) {
 
     if (!pump) {
       return NextResponse.json(
-        { error: 'Pump not found' },
+        { error: 'Pump not found or access denied' },
         { status: 404 }
       )
     }
 
-    // Verify tank exists and get its station
-    const tank = await prisma.tank.findUnique({
-      where: { id: tankId }
+    // Verify tank exists and belongs to organization
+    const tank = await prisma.tank.findFirst({
+      where: {
+        id: tankId,
+        organizationId: user.organizationId
+      }
     })
 
     if (!tank) {
       return NextResponse.json(
-        { error: 'Tank not found' },
+        { error: 'Tank not found or access denied' },
         { status: 404 }
       )
     }
@@ -127,7 +143,8 @@ export async function POST(request: NextRequest) {
         pumpId,
         tankId,
         nozzleNumber,
-        isActive: isActive !== undefined ? isActive : true
+        isActive: isActive !== undefined ? isActive : true,
+        organizationId: user.organizationId
       },
       include: {
         pump: {

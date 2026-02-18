@@ -54,6 +54,28 @@ interface Wastage {
     recordedBy: string
 }
 
+interface ShopSale {
+    id: string
+    productId: string
+    quantity: number
+    unitPrice: number
+    totalAmount: number
+    timestamp: string
+    product: {
+        name: string
+        unit: string
+    }
+    assignment: {
+        pumperName: string | null
+        shift: {
+            startTime: string
+            station: {
+                name: string
+            }
+        }
+    }
+}
+
 export default function ShopPage() {
     const { selectedStation } = useStation()
     const { toast } = useToast()
@@ -63,6 +85,7 @@ export default function ShopPage() {
     const [products, setProducts] = useState<Product[]>([])
     const [purchases, setPurchases] = useState<Purchase[]>([])
     const [wastage, setWastage] = useState<Wastage[]>([])
+    const [salesHistory, setSalesHistory] = useState<ShopSale[]>([])
     const [loading, setLoading] = useState(true)
 
     // Dialog states
@@ -89,6 +112,10 @@ export default function ShopPage() {
             const wasteRes = await fetch(`/api/shop/wastage?stationId=${selectedStation}`)
             const wastageData = await wasteRes.json()
             setWastage(wastageData || [])
+
+            const salesRes = await fetch(`/api/shop/sales?stationId=${selectedStation}`)
+            const salesData = await salesRes.json()
+            setSalesHistory(salesData || [])
         } catch (error) {
             console.error('Error fetching shop data:', error)
             toast({
@@ -212,6 +239,35 @@ export default function ShopPage() {
         { key: 'recordedBy', title: 'By' }
     ]
 
+    const salesColumns: Column<ShopSale>[] = [
+        {
+            key: 'timestamp',
+            title: 'Date/Time',
+            render: (val) => new Date(val as string).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
+        },
+        { key: 'product', title: 'Product', render: (val) => (val as { name: string }).name },
+        {
+            key: 'quantity',
+            title: 'Qty',
+            render: (val, row) => `${val} ${row.product.unit}`
+        },
+        {
+            key: 'unitPrice',
+            title: 'Price',
+            render: (val) => `Rs. ${(val as number).toLocaleString()}`
+        },
+        {
+            key: 'totalAmount',
+            title: 'Total',
+            render: (val) => <span className="font-bold">Rs. {(val as number).toLocaleString()}</span>
+        },
+        {
+            key: 'assignment',
+            title: 'Pumper',
+            render: (val) => (val as { pumperName: string }).pumperName || 'Unknown'
+        }
+    ]
+
     const handleRecordWastage = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         const formData = new FormData(e.currentTarget)
@@ -258,10 +314,11 @@ export default function ShopPage() {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-3 mb-4">
+                <TabsList className="grid w-full grid-cols-4 mb-4">
                     <TabsTrigger value="products">Inventory Status</TabsTrigger>
                     <TabsTrigger value="purchases">Purchase History (GRN)</TabsTrigger>
                     <TabsTrigger value="wastage">Wastage & Loss</TabsTrigger>
+                    <TabsTrigger value="sales">Sales History</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="products">
@@ -279,6 +336,12 @@ export default function ShopPage() {
                 <TabsContent value="wastage">
                     <FormCard title="Recorded Wastage">
                         <DataTable data={wastage} columns={wastageColumns} loading={loading} />
+                    </FormCard>
+                </TabsContent>
+
+                <TabsContent value="sales">
+                    <FormCard title="Historical Sales Records">
+                        <DataTable data={salesHistory} columns={salesColumns} loading={loading} />
                     </FormCard>
                 </TabsContent>
             </Tabs>

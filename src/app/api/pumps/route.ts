@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const stationId = searchParams.get('stationId')
 
-    interface PumpWhereInput {
-      stationId?: string
+    const where: Prisma.PumpWhereInput = {
+      organizationId: user.organizationId
     }
-    const where: PumpWhereInput = {}
     if (stationId) {
       where.stationId = stationId
     }
@@ -50,6 +56,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     interface PumpBody {
       stationId?: string
       pumpNumber?: string
@@ -67,14 +78,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify station exists and is active
-    const station = await prisma.station.findUnique({
-      where: { id: stationId }
+    // Verify station exists and belongs to the same organization
+    const station = await prisma.station.findFirst({
+      where: {
+        id: stationId,
+        organizationId: user.organizationId
+      }
     })
 
     if (!station) {
       return NextResponse.json(
-        { error: 'Station not found' },
+        { error: 'Station not found or access denied' },
         { status: 404 }
       )
     }
@@ -91,7 +105,8 @@ export async function POST(request: NextRequest) {
       data: {
         stationId,
         pumpNumber,
-        isActive: isActive !== undefined ? isActive : true
+        isActive: isActive !== undefined ? isActive : true,
+        organizationId: user.organizationId
       },
       include: {
         station: {

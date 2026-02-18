@@ -73,10 +73,18 @@ export function calculateBreakdowns({
         const cheques = pumperDeclaredCheques[pumperName] || []
         const totalCheque = cheques.reduce((sum, c) => sum + c.amount, 0)
 
+        // TODO: Pass expenses and advances to this function if needed for accurate total declared
+        // For now, consistent with current usage in page.tsx where these are calculated
+        // checks in page.tsx might be more complex
+
+        // Total Declared = Cash (handed over) + Card + Credit + Cheques
+        // Note: In page.tsx, Advance is also added to Total Declared. 
+        // We should ideally pass advance here too. Only basic types are passed for now.
         const totalDeclared = cash + totalPos + totalCredit + totalCheque
-        const variance = calculatedSales - totalDeclared
+        const variance = calculatedSales - totalDeclared // This variance might be incomplete without advances
+
         const varianceStatus = Math.abs(variance) > 50
-            ? (variance > 50 ? 'DEDUCT_FROM_SALARY' : 'ADD_TO_SALARY')
+            ? (variance > 50 ? 'DEDUCT_FROM_SALARY' : 'ADD_TO_SALARY') // Simpler logic for now, page.tsx has detailed one
             : 'NORMAL'
 
         breakdowns.push({
@@ -93,7 +101,7 @@ export function calculateBreakdowns({
             varianceStatus,
             assignments: pumperAssignments,
             declaredAmount: totalDeclared,
-            advanceTaken: 0, // Simplified for now
+            advanceTaken: 0,
             expenses: [],
             totalExpenses: 0
         })

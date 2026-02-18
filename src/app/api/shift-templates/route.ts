@@ -1,16 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const active = searchParams.get('active')
     const id = searchParams.get('id')
     const stationId = searchParams.get('stationId')
 
     if (id) {
-      const template = await prisma.shiftTemplate.findUnique({
-        where: { id },
+      const template = await prisma.shiftTemplate.findFirst({
+        where: {
+          id,
+          organizationId: user.organizationId
+        },
         include: {
           station: {
             select: {
@@ -22,16 +32,14 @@ export async function GET(request: NextRequest) {
       })
 
       if (!template) {
-        return NextResponse.json({ error: 'Shift template not found' }, { status: 404 })
+        return NextResponse.json({ error: 'Shift template not found or access denied' }, { status: 404 })
       }
       return NextResponse.json(template)
     }
 
-    interface ShiftTemplateWhereInput {
-      isActive?: boolean
-      stationId?: string
+    const where: Prisma.ShiftTemplateWhereInput = {
+      organizationId: user.organizationId
     }
-    const where: ShiftTemplateWhereInput = {}
     if (active === 'true') {
       where.isActive = true
     }
@@ -63,6 +71,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     interface ShiftTemplateBody {
       stationId?: string
       name?: string
@@ -85,6 +98,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Verify station exists and belongs to the same organization
+    const station = await prisma.station.findFirst({
+      where: {
+        id: stationId,
+        organizationId: user.organizationId
+      }
+    })
+
+    if (!station) {
+      return NextResponse.json(
+        { error: 'Station not found or access denied' },
+        { status: 404 }
+      )
+    }
+
     const newTemplate = await prisma.shiftTemplate.create({
       data: {
         stationId,
@@ -95,7 +123,8 @@ export async function POST(request: NextRequest) {
         breakStartTime: breakStartTime || null,
         description: description || null,
         icon: icon || 'sun',
-        isActive: status === 'active'
+        isActive: status === 'active',
+        organizationId: user.organizationId
       },
       include: {
         station: {

@@ -110,6 +110,19 @@ async function run() {
         }
     }
 
+    // 5. Verify Tank Deliveries API
+    console.log(`\n5. Verifying Tank Deliveries API...`)
+    const deliveriesRes = await fetch(`${BASE_URL}/api/deliveries?limit=5`, { headers })
+
+    if (deliveriesRes.status === 405) {
+        console.error('❌ FAILED: API/Deliveries returned 405 Method Not Allowed (Old behavior)')
+    } else if (deliveriesRes.ok) {
+        const data = await deliveriesRes.json()
+        console.log('✅ SUCCESS: API/Deliveries endpoint is working. Count:', Array.isArray(data) ? data.length : 'Unknown type')
+    } else {
+        console.error(`❌ FAILED: API/Deliveries returned ${deliveriesRes.status}`)
+    }
+
     console.log('\nVerification Complete.')
 }
 

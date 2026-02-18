@@ -694,19 +694,25 @@ export default function TanksSettingsPage() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="capacity">Capacity (Liters) *</Label>
-              <Input
-                id="capacity"
-                type="number"
-                step="0.01"
-                min="0"
-                value={capacity}
-                onChange={(e) => setCapacity(e.target.value)}
-                placeholder="10000"
-                className="mt-2"
-                disabled={tankLoading}
+              <Label htmlFor="capacity">Capacity (Liters/KL) *</Label>
+              <Select
+                value={capacity.toString()}
+                onValueChange={(val) => setCapacity(val)}
                 required
-              />
+                disabled={tankLoading}
+              >
+                <SelectTrigger id="capacity" className="mt-2">
+                  <SelectValue placeholder="Select calibrated capacity" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="9000">9,000 Liters (9 KL)</SelectItem>
+                  <SelectItem value="15000">15,000 Liters (15 KL)</SelectItem>
+                  <SelectItem value="22500">22,500 Liters (22.5 KL)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Only calibrated tank sizes are supported for accurate volume calculation.
+              </p>
             </div>
             <DialogFooter>
               <Button

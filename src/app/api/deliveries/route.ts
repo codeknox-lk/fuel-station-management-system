@@ -6,8 +6,14 @@ import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const tankId = searchParams.get('tankId')
+    const stationId = searchParams.get('stationId')
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
     const id = searchParams.get('id')
@@ -15,8 +21,11 @@ export async function GET(request: NextRequest) {
 
     if (id) {
       // OPTIMIZED: Use select
-      const delivery = await prisma.delivery.findUnique({
-        where: { id },
+      const delivery = await prisma.delivery.findFirst({
+        where: {
+          id,
+          organizationId: user.organizationId
+        },
         select: {
           id: true,
           stationId: true,
@@ -24,6 +33,11 @@ export async function GET(request: NextRequest) {
           supplier: true,
           invoiceNumber: true,
           quantity: true,
+          actualReceived: true,
+          invoiceQuantity: true, // Crucial for verification stage
+          beforeDipReading: true,
+          afterDipReading: true,
+          fuelSoldDuring: true,
           deliveryDate: true,
           verificationStatus: true,
           verifiedBy: true,
@@ -31,6 +45,8 @@ export async function GET(request: NextRequest) {
           notes: true,
           createdAt: true,
           updatedAt: true,
+          waterLevelBefore: true,
+          beforeMeterReadings: true,
           tank: {
             select: {
               id: true,
@@ -58,12 +74,17 @@ export async function GET(request: NextRequest) {
       })
 
       if (!delivery) {
-        return NextResponse.json({ error: 'Delivery not found' }, { status: 404 })
+        return NextResponse.json({ error: 'Delivery not found or access denied' }, { status: 404 })
       }
       return NextResponse.json(delivery)
     }
 
-    const where: Prisma.DeliveryWhereInput = {}
+    const where: Prisma.DeliveryWhereInput = {
+      organizationId: user.organizationId
+    }
+    if (stationId) {
+      where.stationId = stationId
+    }
     if (tankId) {
       where.tankId = tankId
     }
@@ -89,6 +110,9 @@ export async function GET(request: NextRequest) {
         invoiceQuantity: true, // Needed for variance calculation
         actualReceived: true,  // Needed for variance calculation
         quantity: true,
+        beforeDipReading: true,
+        afterDipReading: true,
+        fuelSoldDuring: true,
         deliveryDate: true,
         verificationStatus: true,
         verifiedBy: true,
@@ -141,6 +165,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const currentUser = await getServerUser()
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     console.log('[API] 📦 Delivery request body:', JSON.stringify(body, null, 2))
 
@@ -166,47 +195,60 @@ export async function POST(request: NextRequest) {
     } = result.data
 
     const deliveryDate = deliveryTime || new Date()
-    const currentUser = await getServerUser()
 
     // Extract extra fields not yet in Zod schema
     const {
       beforeDipReading,
       beforeDipTime,
       fuelSoldDuring,
-      beforeMeterReadings
+      beforeMeterReadings,
+      waterLevelBefore
     } = body
 
     const deliveryDateObj = deliveryDate // Already Date from Zod
 
-    // Check tank exists
-    const tank = await prisma.tank.findUnique({
-      where: { id: tankId },
-      select: { capacity: true, currentLevel: true, tankNumber: true }
+    // Check station belongs to organization
+    const station = await prisma.station.findFirst({
+      where: { id: stationId, organizationId: currentUser.organizationId }
+    })
+
+    if (!station) {
+      return NextResponse.json({ error: 'Station not found or access denied' }, { status: 404 })
+    }
+
+    // Check tank exists and belongs to organization
+    const tank = await prisma.tank.findFirst({
+      where: {
+        id: tankId,
+        organizationId: currentUser.organizationId
+      },
+      select: { capacity: true, currentLevel: true, tankNumber: true, fuelId: true }
     })
 
     if (!tank) {
       return NextResponse.json(
-        { error: 'Tank not found' },
+        { error: 'Tank not found or access denied' },
         { status: 404 }
       )
     }
 
-    // Validate: Ensure quantity is positive
-    if (invoiceQuantity <= 0) {
+    // Validate: Ensure quantity is not negative
+    if (invoiceQuantity < 0) {
       return NextResponse.json(
-        { error: 'Invoice quantity must be greater than zero' },
+        { error: 'Invoice quantity cannot be negative' },
         { status: 400 }
       )
     }
 
-    // Validate: Check if tank level would exceed capacity (based on invoice)
-    const estimatedNewLevel = tank.currentLevel + invoiceQuantity
-    if (estimatedNewLevel > tank.capacity * 1.05) { // Allow 5% tolerance
-      const availableSpace = tank.capacity - tank.currentLevel
+    // Ullage check (Available Space)
+    const ullage = tank.capacity - tank.currentLevel
+
+    // Safety Risk Block
+    if (invoiceQuantity > ullage * 1.02) { // Allow tiny 2% margin for sensor error, but block major overfills
       return NextResponse.json(
         {
-          error: 'Delivery may exceed tank capacity',
-          details: `Tank capacity: ${(tank.capacity || 0).toLocaleString()}L, Current: ${(tank.currentLevel || 0).toLocaleString()}L, Invoice: ${(invoiceQuantity || 0).toLocaleString()}L. Available space: ${availableSpace.toFixed(1)}L`
+          error: 'High Overfill Risk',
+          details: `Invoice Quantity (${invoiceQuantity}L) exceeds available Ullage (${ullage.toFixed(1)}L).`
         },
         { status: 400 }
       )
@@ -218,6 +260,7 @@ export async function POST(request: NextRequest) {
       data: {
         stationId,
         tankId,
+        organizationId: currentUser.organizationId,
         quantity: invoiceQuantity, // Temporary, will be updated after verification
         invoiceQuantity: invoiceQuantity,
         supplier: supplier || 'Unknown',
@@ -225,11 +268,13 @@ export async function POST(request: NextRequest) {
         receivedBy: currentUser?.username || 'System',
         invoiceNumber: invoiceNumber || null,
         notes: notes || null,
-        beforeDipReading: beforeDipReading ? parseFloat(String(beforeDipReading)) : null,
+        beforeDipReading: beforeDipReading !== null && beforeDipReading !== undefined ? parseFloat(String(beforeDipReading)) : null,
+        waterLevelBefore: waterLevelBefore !== null && waterLevelBefore !== undefined ? parseFloat(String(waterLevelBefore)) : null,
         beforeDipTime: beforeDipTime ? new Date(String(beforeDipTime)) : null,
-        fuelSoldDuring: fuelSoldDuring ? parseFloat(String(fuelSoldDuring)) : null,
+        fuelSoldDuring: fuelSoldDuring !== null && fuelSoldDuring !== undefined ? parseFloat(String(fuelSoldDuring)) : null,
         beforeMeterReadings: beforeMeterReadings ? (beforeMeterReadings as Prisma.InputJsonValue) : undefined,
-        verificationStatus: 'PENDING_VERIFICATION'
+        verificationStatus: 'PENDING_VERIFICATION',
+        status: 'PROCESSING' // Set internal status to PROCESSING
       },
       include: {
         tank: {

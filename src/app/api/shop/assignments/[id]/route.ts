@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function PATCH(
     request: NextRequest,
@@ -7,11 +8,16 @@ export async function PATCH(
 ) {
     try {
         const { id } = await params
+        const user = await getServerUser()
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
         const body = await request.json()
         const { items } = body // { id: itemId, closingStock: number }[]
 
         const assignment = await prisma.shopAssignment.findUnique({
-            where: { id },
+            where: { id_organizationId: { id, organizationId: user.organizationId } },
             include: { items: { include: { product: true } } }
         })
 
@@ -68,7 +74,8 @@ export async function PATCH(
                             quantity: sellFromBatch,
                             unitPrice: item.product.sellingPrice,
                             totalAmount: sellFromBatch * item.product.sellingPrice,
-                            costPrice: batch.costPrice
+                            costPrice: batch.costPrice,
+                            organizationId: user.organizationId
                         }
                     })
 
@@ -91,7 +98,8 @@ export async function PATCH(
                             quantity: remainingToSell,
                             unitPrice: item.product.sellingPrice,
                             totalAmount: remainingToSell * item.product.sellingPrice,
-                            costPrice: 0 // Unknown cost
+                            costPrice: 0, // Unknown cost
+                            organizationId: user.organizationId
                         }
                     })
                 }

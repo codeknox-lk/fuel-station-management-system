@@ -1,15 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const stationId = searchParams.get('stationId')
     const id = searchParams.get('id')
 
     if (id) {
-      const terminal = await prisma.posTerminal.findUnique({
-        where: { id },
+      const terminal = await prisma.posTerminal.findFirst({
+        where: {
+          id,
+          organizationId: user.organizationId
+        },
         include: {
           station: {
             select: {
@@ -30,14 +40,20 @@ export async function GET(request: NextRequest) {
           }
         }
       })
-      
+
       if (!terminal) {
-        return NextResponse.json({ error: 'POS terminal not found' }, { status: 404 })
+        return NextResponse.json({ error: 'POS terminal not found or access denied' }, { status: 404 })
       }
       return NextResponse.json(terminal)
     }
 
-    const where = stationId ? { stationId } : {}
+    const where: Prisma.PosTerminalWhereInput = {
+      organizationId: user.organizationId
+    }
+    if (stationId) {
+      where.stationId = stationId
+    }
+
     const terminals = await prisma.posTerminal.findMany({
       where,
       include: {
@@ -71,10 +87,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
-    
+
     const { stationId, terminalNumber, name, bankId } = body
-    
+
     if (!stationId || !terminalNumber || !name) {
       return NextResponse.json(
         { error: 'Station ID, terminal number, and name are required' },
@@ -82,9 +103,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Verify station exists and belongs to the same organization
+    const station = await prisma.station.findFirst({
+      where: {
+        id: stationId,
+        organizationId: user.organizationId
+      }
+    })
+
+    if (!station) {
+      return NextResponse.json(
+        { error: 'Station not found or access denied' },
+        { status: 404 }
+      )
+    }
+
     const newTerminal = await prisma.posTerminal.create({
       data: {
         stationId,
+        organizationId: user.organizationId,
         bankId: bankId || null,
         terminalNumber,
         name,
@@ -109,7 +146,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newTerminal, { status: 201 })
   } catch (error) {
     console.error('Error creating POS terminal:', error)
-    
+
     // Handle unique constraint violations
     if (error instanceof Error && error.message.includes('Unique constraint')) {
       return NextResponse.json(
@@ -117,7 +154,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     // Handle foreign key constraint violations
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
       return NextResponse.json(
@@ -125,7 +162,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

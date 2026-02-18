@@ -40,6 +40,12 @@ export function StationProvider({ children }: { children: ReactNode }) {
         // 1. Fetch Stations
         const response = await fetch('/api/stations?active=true')
 
+        if (response.status === 401) {
+          // Session expired or invalid
+          window.location.href = '/login'
+          return
+        }
+
         if (!response.ok) {
           throw new Error('Failed to fetch stations')
         }

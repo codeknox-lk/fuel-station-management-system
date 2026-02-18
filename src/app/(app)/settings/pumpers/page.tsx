@@ -31,6 +31,7 @@ interface Pumper {
   updatedAt: string
   baseSalary?: number
   holidayAllowance?: number
+  advanceLimit?: number
 }
 
 interface Station {
@@ -59,7 +60,8 @@ export default function PumpersPage() {
     rating: 5,
     specializations: [] as string[],
     baseSalary: 0,
-    holidayAllowance: 4500
+    holidayAllowance: 4500,
+    advanceLimit: 50000
   })
   const { toast } = useToast()
 
@@ -99,8 +101,9 @@ export default function PumpersPage() {
         experience?: number
         rating?: number
         specializations?: string[] | string
-        baseSalary?: number
-        holidayAllowance?: number
+        baseSalary: number
+        holidayAllowance: number
+        advanceLimit: number
         createdAt: string
         updatedAt: string
       }
@@ -116,6 +119,9 @@ export default function PumpersPage() {
           : (pumper.specializations ? [pumper.specializations] : []),
         shift: (pumper.shift as Pumper['shift']) || 'MORNING',
         status: (pumper.status as Pumper['status']) || 'ACTIVE',
+        baseSalary: pumper.baseSalary || 0,
+        holidayAllowance: pumper.holidayAllowance || 4500,
+        advanceLimit: pumper.advanceLimit || 50000,
         hireDate: pumper.hireDate || new Date().toISOString().split('T')[0],
         experience: pumper.experience || 0,
         rating: pumper.rating || 0
@@ -222,7 +228,8 @@ export default function PumpersPage() {
       rating: typeof pumper.rating === 'number' ? pumper.rating : (pumper.rating ? parseFloat(String(pumper.rating)) : 5),
       specializations: Array.isArray(pumper.specializations) ? pumper.specializations : [],
       baseSalary: pumper.baseSalary || 0,
-      holidayAllowance: pumper.holidayAllowance || 4500
+      holidayAllowance: pumper.holidayAllowance || 4500,
+      advanceLimit: pumper.advanceLimit || 50000
     })
     setDialogOpen(true)
   }
@@ -349,7 +356,8 @@ export default function PumpersPage() {
       rating: 5,
       specializations: [],
       baseSalary: 0,
-      holidayAllowance: 4500
+      holidayAllowance: 4500,
+      advanceLimit: 50000
     })
   }
 
@@ -740,7 +748,25 @@ export default function PumpersPage() {
                     placeholder="4500"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Monthly holiday allowance (default: 4500). Deduct 900rs per rest day taken (up to 5 rest days)
+                    Monthly holiday allowance (default: 4500).
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="advanceLimit">Monthly Advance Limit (LKR)</Label>
+                  <Input
+                    id="advanceLimit"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.advanceLimit || 50000}
+                    onChange={(e) => setFormData({ ...formData, advanceLimit: parseFloat(e.target.value) || 50000 })}
+                    placeholder="50000"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Max total advance this pumper can take per month.
                   </p>
                 </div>
               </div>

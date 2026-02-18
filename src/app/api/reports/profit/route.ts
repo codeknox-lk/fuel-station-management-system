@@ -304,7 +304,7 @@ export async function GET(request: NextRequest) {
 
 
     const completedDays = dailyData.filter(day => {
-      const isToday = day.date === todayDateString
+      // const isToday = day.date === todayDateString
       const hasActivity = day.revenue > 0 || day.expenses > 0 || day.profit !== 0
       const isFutureOrToday = day.date >= todayDateString
 

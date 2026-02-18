@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
             data: {
               status: 'CLOSED',
               endTime: now,
-              closedBy: closedBy || 'System',
+              closedBy: closedBy || user.username || 'System',
               statistics: {
                 durationHours: Math.round(Math.max(0, (now.getTime() - shift.startTime.getTime()) / (3600000)) * 100) / 100,
                 totalSales: Math.round(totalSales),

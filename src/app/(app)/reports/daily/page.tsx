@@ -822,6 +822,7 @@ export default function DailyReportsPage() {
                     {((dailyReport.superDieselSales / dailyReport.totalSales) * 100).toFixed(1)}%
                   </div>
                 </div>
+                {/* Oil Sales - Hidden for now, to be implemented later 
                 <div className="p-4 bg-orange-500/10 rounded-lg border border-orange-500/20">
                   <div className="text-sm text-muted-foreground mb-1">Oil Sales</div>
                   <div className="text-xl font-bold text-orange-600">
@@ -831,6 +832,7 @@ export default function DailyReportsPage() {
                     {((dailyReport.oilSales / dailyReport.totalSales) * 100).toFixed(1)}%
                   </div>
                 </div>
+                */}
                 <div className="p-4 bg-orange-500/10 rounded-lg border border-orange-500/20">
                   <div className="flex items-center gap-2 mb-1">
                     <ShoppingBag className="h-4 w-4 text-orange-600" />

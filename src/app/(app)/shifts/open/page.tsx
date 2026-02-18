@@ -569,8 +569,8 @@ export default function OpenShiftPage() {
         return
       }
 
-      // Validate that all assignments have valid start meter readings
-      const invalidMeterReadings = assignments.filter(a => !a.startMeterReading || a.startMeterReading < 0)
+      // Validate that all assignments have valid start meter readings (allow 0)
+      const invalidMeterReadings = assignments.filter(a => typeof a.startMeterReading !== 'number' || a.startMeterReading < 0)
       if (invalidMeterReadings.length > 0) {
         setError('Please enter valid start meter readings for all assignments (must be >= 0)')
         return

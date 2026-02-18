@@ -178,6 +178,11 @@ export async function GET(request: NextRequest) {
             pumperName: true
           }
         },
+        assignments: {
+          select: {
+            pumperName: true
+          }
+        },
         _count: {
           select: {
             assignments: true,
@@ -185,6 +190,7 @@ export async function GET(request: NextRequest) {
           }
         },
         ...(includeAssignments ? {
+          // Additional full assignment details if requested
           assignments: {
             select: {
               id: true,
@@ -223,10 +229,31 @@ export async function GET(request: NextRequest) {
       take: limit
     })
 
+    // Get all users for the organization to map UUIDs if necessary
+    const users = await prisma.user.findMany({
+      where: { organizationId: user.organizationId },
+      select: { id: true, username: true }
+    })
+
+    const userMap = new Map(users.map(u => [u.id, u.username]))
+
     // OPTIMIZED: Return shifts directly with their existing statistics
     // No N+1 queries! Statistics are calculated when shift is closed
-    const shiftsWithStats = shifts.map((shift) => {
-      const assignmentCount = shift._count?.assignments || 0
+    const shiftsWithStats = shifts.map((shift: any) => {
+      // Calculate unique pumper count across nozzle assignments and shop assignment
+      const pumperNames = new Set<string>()
+
+      if (shift.assignments && Array.isArray(shift.assignments)) {
+        shift.assignments.forEach((a: any) => {
+          if (a.pumperName) pumperNames.add(a.pumperName)
+        })
+      }
+
+      if (shift.shopAssignment?.pumperName) {
+        pumperNames.add(shift.shopAssignment.pumperName)
+      }
+
+      const uniquePumperCount = pumperNames.size || shift._count?.assignments || 0
 
       interface ShiftStatistics {
         totalSales?: number
@@ -235,10 +262,16 @@ export async function GET(request: NextRequest) {
       }
       const statistics = (shift.statistics as unknown as ShiftStatistics) || {}
 
+      // Map UUIDs to usernames for a friendly display
+      const displayOpenedBy = userMap.get(shift.openedBy) || shift.openedBy
+      const displayClosedBy = shift.closedBy ? (userMap.get(shift.closedBy) || shift.closedBy) : shift.closedBy
+
       return {
         ...shift,
-        assignmentCount,
-        closedAssignments: shift.status === 'CLOSED' ? assignmentCount : 0,
+        openedBy: displayOpenedBy,
+        closedBy: displayClosedBy,
+        assignmentCount: uniquePumperCount,
+        closedAssignments: shift.status === 'CLOSED' ? uniquePumperCount : 0, // Approximate
         statistics
       }
     })
@@ -309,17 +342,18 @@ export async function POST(request: NextRequest) {
           where: { id: templateId, organizationId: user.organizationId }
         })
         if (template) {
-          // Combine date with template time
-          const tStart = new Date(template.startTime)
-          const tEnd = new Date(template.endTime)
+          // Parse HH:mm format
+          const [sHours, sMinutes] = template.startTime.split(':').map(Number)
+          const [eHours, eMinutes] = template.endTime.split(':').map(Number)
 
-          // Adjust shiftStart hours to match template if needed? 
-          // The requirements say "startTime" comes from body. 
-          // Usually for shifts, we use the date from body and time from template.
-          // But schema says `startTime: Date`.
-          // Let's assume startTime is fully provided.
+          // Create date objects using the date from shiftStart but times from template
+          const tStart = new Date(shiftStart)
+          tStart.setHours(sHours || 0, sMinutes || 0, 0, 0)
 
-          // Calculate duration from template
+          const tEnd = new Date(shiftStart)
+          tEnd.setHours(eHours || 0, eMinutes || 0, 0, 0)
+
+          // Calculate duration handling overnight cross-over
           let durationMs = tEnd.getTime() - tStart.getTime()
           if (durationMs < 0) durationMs += 24 * 60 * 60 * 1000 // Handle overnight
 
@@ -337,7 +371,7 @@ export async function POST(request: NextRequest) {
           status: 'OPEN',
           startTime: shiftStart,
           endTime, // Estimated end time
-          openedBy: user.userId, // Use logged in user ID
+          openedBy: user.username, // Store username instead of UUID
           // Assign pumpers if provided
           assignments: {
             create: result.data.assignments?.map(a => ({

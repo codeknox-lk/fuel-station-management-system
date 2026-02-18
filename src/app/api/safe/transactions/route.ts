@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { Prisma } from '@prisma/client'
+import { Prisma, SafeTransaction } from '@prisma/client'
 import { CreateSafeTransactionSchema } from '@/lib/schemas'
 import { getServerUser } from '@/lib/auth-server'
 
@@ -41,8 +41,11 @@ export async function GET(request: NextRequest) {
 
       // Enrich transaction with related data (same logic as below)
       // Enrich transaction with related data (same logic as below)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const enriched = { ...transaction } as any
+      const enriched: SafeTransaction & {
+        shift?: unknown // Using unknown to avoid strict type definition overhead for dynamic includes
+        batch?: unknown
+        cheque?: unknown
+      } = { ...transaction }
 
       // OPTIMIZED: Fetch minimal shift data with select
       if (transaction.shiftId) {
@@ -230,8 +233,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (type) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      where.type = type as any
+      where.type = type as import('@prisma/client').SafeTransactionType
     }
 
     if (startDate && endDate) {
@@ -465,8 +467,7 @@ export async function POST(request: NextRequest) {
       data: {
         safeId: safe.id,
         organizationId: user.organizationId,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        type: type as any,
+        type: type as import('@prisma/client').SafeTransactionType,
         amount: amount,
         balanceBefore,
         balanceAfter,

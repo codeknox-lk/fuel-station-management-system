@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Pumper" ADD COLUMN     "advanceLimit" DOUBLE PRECISION DEFAULT 50000;

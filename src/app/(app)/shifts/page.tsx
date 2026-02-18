@@ -30,18 +30,18 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 
 // Function to format duration in a more readable way
 const formatDuration = (hours: number): string => {
-  if (hours === 0) return '0h'
+  if (hours <= 0) return '0m'
 
-  const wholeHours = Math.floor(hours)
-  const minutes = Math.round((hours - wholeHours) * 60)
+  // Standardized: any started shift is at least 1m
+  const totalMinutes = Math.max(1, Math.round(hours * 60))
+  const h = Math.floor(totalMinutes / 60)
+  const m = totalMinutes % 60
 
-  if (minutes === 0) {
-    return `${wholeHours}h`
-  } else if (wholeHours === 0) {
-    return `${minutes}m`
-  } else {
-    return `${wholeHours}h ${minutes}m`
-  }
+  const parts = []
+  if (h > 0) parts.push(`${h}h`)
+  if (m > 0 || h === 0) parts.push(`${m}m`)
+
+  return parts.join(' ')
 }
 
 import { ShiftWithDetails, ShiftStatistics } from '@/types/db'
@@ -238,8 +238,8 @@ export default function ShiftsPage() {
           }
         }
 
-        // Count assignments (nozzle + shop)
-        const assignmentCount = (shift._count?.assignments ?? 0) + (shift.shopAssignment ? 1 : 0)
+        // Use assignmentCount directly from API (which now handles unique counting)
+        const assignmentCount = shift.assignmentCount || (shift._count?.assignments ?? 0)
 
         return {
           ...shift,

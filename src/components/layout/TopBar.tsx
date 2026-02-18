@@ -103,6 +103,11 @@ export function TopBar({ userRole }: TopBarProps) {
       }
 
       if (!response.ok) {
+        if (response.status === 401) {
+          // Session expired
+          window.location.href = '/login'
+          return
+        }
         // If API fails, just show empty notifications
         console.warn(`Notifications API returned ${response.status}: ${response.statusText}`)
         setNotifications([])

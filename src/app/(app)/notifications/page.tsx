@@ -86,6 +86,12 @@ export default function NotificationsPage() {
       params.append('limit', '100')
 
       const response = await fetch(`/api/notifications?${params.toString()}`)
+
+      if (response.status === 401) {
+        window.location.href = '/login'
+        return
+      }
+
       const data = await response.json()
 
       // Handle migration required case

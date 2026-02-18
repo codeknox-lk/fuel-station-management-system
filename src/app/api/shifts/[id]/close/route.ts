@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { EndShiftSchema } from '@/lib/schemas'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await getServerUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
   try {
     const { id } = await params
     const body = await request.json()
@@ -166,10 +171,12 @@ export async function POST(
         data: {
           status: 'CLOSED',
           endTime: shiftEnd,
-          closedBy: closedBy || 'System',
+          closedBy: closedBy || user.username || 'System',
           statistics: {
             durationHours: Math.round(durationHours * 100) / 100,
             totalSales: Math.round(totalSales + (shopRevenue || 0)),
+            nozzleSales: Math.round(totalSales),
+            shopSales: Math.round(shopRevenue || 0),
             totalLiters: Math.round(totalLiters * 100) / 100,
             averagePricePerLiter: totalLiters > 0 ? Math.round((totalSales / totalLiters) * 100) / 100 : 0,
             assignmentCount: shift.assignments.length + (shift.templateId ? 1 : 0), // Include shop in count if it's a template? Actually template doesn't tell.
@@ -302,10 +309,11 @@ export async function POST(
 
         const balanceAfter = balanceBefore + cashAmount
 
-        // Create safe transaction
+        // Create safe transaction (even if amount is 0 for record keeping)
         await prisma.safeTransaction.create({
           data: {
             safeId: safe.id,
+            organizationId: shift.organizationId,
             type: 'CASH_FUEL_SALES',
             amount: cashAmount,
             balanceBefore,
@@ -361,6 +369,7 @@ export async function POST(
                   await prisma.cheque.create({
                     data: {
                       stationId: shift.stationId,
+                      organizationId: shift.organizationId,
                       chequeNumber: cheque.chequeNumber,
                       amount: Number(cheque.amount),
                       bankId: bankId,

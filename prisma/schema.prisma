@@ -361,6 +361,7 @@ model TankDip {
   recordedBy     String
   dipDate        DateTime
   notes          String?
+  bookStock      Float?   // System stock level at the time of dip measurement
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   station        Station       @relation(fields: [stationId], references: [id])
@@ -394,14 +395,25 @@ model Delivery {
   beforeDipReading    Float?
   beforeDipTime       DateTime?
   fuelSoldDuring      Float?
-  verificationStatus  DeliveryStatus @default(PENDING_VERIFICATION)
+  verificationStatus  DeliveryStatus        @default(PENDING_VERIFICATION)
+  status              DeliveryStatus        @default(PENDING_VERIFICATION)
+  paymentStatus       DeliveryPaymentStatus @default(UNPAID)
+  costPrice           Float?
+  totalCost           Float?
+  waterLevelBefore    Float?
+  waterLevelAfter     Float?
+  afterMeterReadings  Json?
+  
+  chequeId            String?
+  cheque              Cheque?               @relation(fields: [chequeId], references: [id])
+
   verifiedAt          DateTime?
   verifiedBy          String?
   beforeMeterReadings Json?
-  station             Station        @relation(fields: [stationId], references: [id])
-  tank                Tank           @relation(fields: [tankId], references: [id])
+  station             Station               @relation(fields: [stationId], references: [id])
+  tank                Tank                  @relation(fields: [tankId], references: [id])
   organizationId      String?
-  organization        Organization?  @relation(fields: [organizationId], references: [id])
+  organization        Organization?         @relation(fields: [organizationId], references: [id])
 
   @@unique([id, organizationId])
   @@index([stationId])
@@ -409,6 +421,8 @@ model Delivery {
   @@index([deliveryDate])
   @@index([verificationStatus])
   @@index([organizationId])
+  @@index([paymentStatus])
+  @@index([chequeId])
 }
 
 model Expense {
@@ -554,6 +568,7 @@ model Cheque {
   bank            Bank             @relation(fields: [bankId], references: [id])
   creditPayment   CreditPayment?   @relation(fields: [creditPaymentId], references: [id])
   station         Station          @relation(fields: [stationId], references: [id])
+  deliveries      Delivery[]
 
   @@unique([id, organizationId])
   @@index([stationId])
@@ -876,6 +891,7 @@ model Pumper {
   status           PumperStatus    @default(ACTIVE)
   baseSalary       Float?          @default(0)
   holidayAllowance Float?          @default(4500)
+  advanceLimit     Float?          @default(50000)
   station          Station?        @relation(fields: [stationId], references: [id])
   salaryPayments   SalaryPayment[]
   organizationId   String?
@@ -1305,9 +1321,16 @@ enum AssignmentStatus {
 }
 
 enum DeliveryStatus {
+  PROCESSING
   PENDING_VERIFICATION
   VERIFIED
   DISCREPANCY
+}
+
+enum DeliveryPaymentStatus {
+  PAID
+  UNPAID
+  PARTIAL
 }
 
 enum LoanStatus {
@@ -1349,6 +1372,7 @@ enum SafeTransactionType {
   CASH_TRANSFER
   COUNT_ADJUSTMENT
   OPENING_BALANCE
+  FUEL_DELIVERY_PAYMENT
 }
 
 enum BankTransactionType {
@@ -1437,4 +1461,5 @@ enum NotificationCategory {
   SHIFT
   CREDIT
   POS
+  DELIVERY
 }

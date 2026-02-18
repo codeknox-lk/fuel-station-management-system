@@ -1,4 +1,6 @@
-export interface Station {
+import { Station } from '@/types'
+// For now, let's keep the local definition if it matches or re-export.
+export interface LocalStation {
     id: string
     name: string
     city: string
@@ -7,7 +9,7 @@ export interface Station {
 export interface Shift {
     id: string
     shiftNumber: number
-    pumperName?: string
+    pumperName?: string // This seems to be used in some contexts, keeping it optional
     stationId: string
     templateId: string
     startTime: string
@@ -138,6 +140,7 @@ export interface Pumper {
     name: string
     employeeId?: string
     isActive?: boolean
+    advanceLimit?: number
 }
 
 export interface ShopShiftItem {

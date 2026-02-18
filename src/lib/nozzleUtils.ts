@@ -50,15 +50,33 @@ export function formatNozzleNumber(nozzleNumber: string): string {
 }
 
 /**
+ * Format pump number to remove common prefixes like PUMP- or P-
+ */
+export function formatPumpNumber(pumpNumber: string): string {
+  if (!pumpNumber) return '?'
+
+  // Remove 'PUMP-' or 'P-' prefix if present
+  const num = pumpNumber.replace(/^PUMP-/i, '').replace(/^P-?/i, '').trim()
+
+  // Try to parse as number to ensure 2-digit padding if desired, 
+  // but usually pump numbers might be simple strings.
+  // For consistency with nozzle numbers:
+  const parsed = parseInt(num, 10)
+  if (isNaN(parsed)) return num
+  return parsed.toString().padStart(2, '0')
+}
+
+/**
  * Get a full descriptive name for a nozzle
  * Format: "Pump {pumpNumber} - Nozzle {formattedNozzleNumber} - {formattedFuelType}"
  * Example: "Pump 1 - Nozzle 01 - Petrol 95"
  */
 export function getNozzleFullName(nozzle: NozzleDisplay): string {
+  const formattedPumpNumber = formatPumpNumber(nozzle.pumpNumber)
   const formattedNozzleNumber = formatNozzleNumber(nozzle.nozzleNumber)
   const formattedFuelType = formatFuelType(nozzle.fuelType)
 
-  return `Pump ${nozzle.pumpNumber} - Nozzle ${formattedNozzleNumber} - ${formattedFuelType}`
+  return `Pump ${formattedPumpNumber} - Nozzle ${formattedNozzleNumber} - ${formattedFuelType}`
 }
 
 /**
@@ -67,13 +85,11 @@ export function getNozzleFullName(nozzle: NozzleDisplay): string {
  * Example: "P1-N01 (Petrol 95)"
  */
 export function getNozzleShortName(nozzle: NozzleDisplay): string {
+  const formattedPumpNumber = formatPumpNumber(nozzle.pumpNumber)
   const formattedNozzleNumber = formatNozzleNumber(nozzle.nozzleNumber)
   const formattedFuelType = formatFuelType(nozzle.fuelType)
 
-  // Extract just the number part from pumpNumber (e.g., "PUMP-09" -> "09")
-  const pumpNum = nozzle.pumpNumber.replace(/^PUMP-/i, '').replace(/^P-?/i, '').trim()
-
-  return `PUMP-${pumpNum}-NOZZLE-${formattedNozzleNumber} (${formattedFuelType})`
+  return `PUMP-${formattedPumpNumber}-NOZZLE-${formattedNozzleNumber} (${formattedFuelType})`
 }
 
 /**
@@ -82,12 +98,10 @@ export function getNozzleShortName(nozzle: NozzleDisplay): string {
  * Example: "P1-N01"
  */
 export function getNozzleCompactName(nozzle: NozzleDisplay): string {
+  const formattedPumpNumber = formatPumpNumber(nozzle.pumpNumber)
   const formattedNozzleNumber = formatNozzleNumber(nozzle.nozzleNumber)
 
-  // Extract just the number part from pumpNumber (e.g., "PUMP-09" -> "09")
-  const pumpNum = nozzle.pumpNumber.replace(/^PUMP-/i, '').replace(/^P-?/i, '').trim()
-
-  return `PUMP-${pumpNum}-NOZZLE-${formattedNozzleNumber}`
+  return `PUMP-${formattedPumpNumber}-NOZZLE-${formattedNozzleNumber}`
 }
 
 /**
@@ -98,11 +112,12 @@ export function getNozzleDisplayWithBadge(nozzle: NozzleDisplay): {
   label: string
   badge: string
 } {
+  const formattedPumpNumber = formatPumpNumber(nozzle.pumpNumber)
   const formattedNozzleNumber = formatNozzleNumber(nozzle.nozzleNumber)
   const formattedFuelType = formatFuelType(nozzle.fuelType)
 
   return {
-    label: `Pump ${nozzle.pumpNumber} - Nozzle ${formattedNozzleNumber}`,
+    label: `Pump ${formattedPumpNumber} - Nozzle ${formattedNozzleNumber}`,
     badge: formattedFuelType
   }
 }
