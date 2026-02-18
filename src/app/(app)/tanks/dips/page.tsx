@@ -135,6 +135,7 @@ export default function TankDipsPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
+        setLoading(true)
         const dipsRes = await fetch('/api/tanks/dips?limit=10')
         if (dipsRes.ok) {
           const dipsData = await dipsRes.json()
@@ -147,6 +148,8 @@ export default function TankDipsPage() {
           description: "Failed to load recent dips",
           variant: "destructive"
         })
+      } finally {
+        setLoading(false)
       }
     }
 
@@ -158,6 +161,7 @@ export default function TankDipsPage() {
     if (selectedStation) {
       const loadTanks = async () => {
         try {
+          setLoading(true)
           const response = await fetch(`/api/tanks?stationId=${selectedStation}&type=tanks`)
           const tanksData = await response.json()
           setTanks(tanksData)
@@ -167,6 +171,8 @@ export default function TankDipsPage() {
             description: "Failed to load tanks",
             variant: "destructive"
           })
+        } finally {
+          setLoading(false)
         }
       }
 
@@ -176,6 +182,8 @@ export default function TankDipsPage() {
       setActiveShifts([])
       setPumpReadings([])
       setShowUpdatedLevels(false)
+      // If no station is selected, we shouldn't be in a loading state for tanks
+      setLoading(false)
     }
   }, [selectedStation, toast])
 
