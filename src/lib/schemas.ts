@@ -211,9 +211,9 @@ export const UpdateTankSchema = z.object({
 
 export const CreateTankDipSchema = z.object({
     stationId: z.string().min(1, 'Station ID is required'),
-    tankId: z.string().min(1, 'Tank number is required'),
+    tankId: z.string().min(1, 'Tank ID is required'),
     reading: z.union([z.string(), z.number()]).transform(val => Number(val)),
-    recordedBy: z.string().min(1, 'Recorded by is required'),
+    recordedBy: z.string().optional(),
     dipDate: z.union([z.string(), z.date()]).transform(val => new Date(val)),
     notes: z.string().optional().nullable()
 });
