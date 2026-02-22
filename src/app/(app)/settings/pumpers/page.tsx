@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Users, Plus, Edit, Trash2, Phone, Star, Building2, Clock, ArrowLeft, LayoutGrid, List, Award, Medal, Table } from 'lucide-react'
+import { Users, Plus, Edit, Trash2, Phone, Star, Building2, Clock, ArrowLeft, LayoutGrid, List, Award } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useRouter } from 'next/navigation'
 import { useStation } from '@/contexts/StationContext'
@@ -537,19 +537,19 @@ export default function PumpersPage() {
       title: 'Total Pumpers',
       value: pumpers.length.toString(),
       description: 'Registered pumpers',
-      icon: <Users className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+      icon: <Users className="h-5 w-5 text-primary" />
     },
     {
       title: 'Active',
       value: pumpers.filter(p => p.status === 'ACTIVE').length.toString(),
       description: 'Currently active',
-      icon: <div className="h-5 w-5 bg-green-500/10 dark:bg-green-500/200 rounded-full" />
+      icon: <div className="h-5 w-5 bg-green-500/10 rounded-full" />
     },
     {
       title: 'On Leave',
       value: pumpers.filter(p => p.status === 'ON_LEAVE').length.toString(),
       description: 'Currently on leave',
-      icon: <div className="h-5 w-5 bg-yellow-500/10 dark:bg-yellow-500/200 rounded-full" />
+      icon: <div className="h-5 w-5 bg-yellow-500/10 rounded-full" />
     },
     {
       title: 'Avg Rating',
@@ -557,30 +557,46 @@ export default function PumpersPage() {
         ? (pumpers.reduce((acc, p) => acc + p.rating, 0) / pumpers.length).toFixed(1)
         : '0.0',
       description: 'Average performance',
-      icon: <Star className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+      icon: <Star className="h-5 w-5 text-primary" />
     }
   ]
 
   const specializationOptions = ['PETROL', 'DIESEL', 'MAINTENANCE', 'CUSTOMER_SERVICE', 'CASHIER']
 
   return (
-    <div className="space-y-6 p-6 max-w-[1600px] mx-auto">
-      {/* Premium Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-6">
+      {/* Standard Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" onClick={() => router.push('/settings')}>
+          <Button
+            variant="outline"
+            onClick={() => router.push('/settings')}
+            className="hidden md:flex"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => router.push('/settings')}
+            className="md:hidden"
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Staff Management</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
+              <Users className="h-8 w-8 text-primary" />
+              Staff Management
+            </h1>
+            <p className="text-muted-foreground mt-2">
               Manage your team, track performance, and handle shift assignments.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 border rounded-lg p-1 bg-background">
+          <div className="flex items-center gap-1 border rounded-lg p-1 bg-background mr-2">
             <Button
               variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
               size="sm"
@@ -835,15 +851,17 @@ export default function PumpersPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, index) => (
-          <Card key={index}>
-            <CardContent className="p-4">
+          <Card key={index} className="border shadow-sm">
+            <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-2xl font-bold text-foreground">{stat.value}</div>
-                  <div className="text-sm font-medium text-foreground">{stat.title}</div>
-                  <div className="text-xs text-muted-foreground">{stat.description}</div>
+                  <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-bold">{stat.value}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
                 </div>
-                <div className="flex-shrink-0">
+                <div className="p-2 bg-muted rounded-full">
                   {stat.icon}
                 </div>
               </div>
@@ -854,68 +872,96 @@ export default function PumpersPage() {
 
       {/* Pumpers Table / Grid */}
       <FormCard
-        title="Pumpers"
-        description="Manage pumper employees and their assignments"
+        title="Staff List"
+        description={isAllStations ? 'All registered staff members' : `Staff members for ${stations.find(s => s.id === selectedStation)?.name || 'selected station'}`}
+        className="bg-card border"
       >
         {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {pumpers.map(pumper => (
-              <Card key={pumper.id} className="transition-all hover:shadow-md group relative overflow-hidden">
-                {/* Top Performer Badge */}
-                {pumper.rating >= 4.5 && (
-                  <div className="absolute top-0 right-0 p-2">
-                    <div className="bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-[10px] font-bold px-2 py-1 rounded-bl-lg rounded-tr-lg flex items-center gap-1 shadow-sm border border-amber-200 dark:border-amber-800">
-                      <Award className="h-3 w-3" />
-                      TOP STAFF
-                    </div>
-                  </div>
-                )}
-
-                <CardContent className="pt-6">
-                  <div className="flex flex-col items-center text-center">
-                    <div className="h-20 w-20 rounded-full overflow-hidden border-4 border-background shadow-lg mb-4 relative mx-auto bg-violet-100 flex items-center justify-center">
-                      <img
-                        src={`https://api.dicebear.com/7.x/initials/svg?seed=${pumper.name}&backgroundColor=6d28d9`}
-                        alt={pumper.name}
-                        className="object-cover w-full h-full absolute inset-0 opacity-100 hover:opacity-0 transition-opacity z-10"
-                        onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0' }}
-                      />
-                      <span className="text-violet-700 text-xl font-bold z-0">
-                        {pumper.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                      </span>
-                    </div>
-
-                    <h3 className="font-bold text-lg truncate w-full px-2" title={pumper.name}>{pumper.name}</h3>
-                    <p className="text-xs text-muted-foreground font-mono mb-2">{pumper.employeeId}</p>
-
-                    <div className="flex gap-2 mb-4">
-                      <Badge className={getShiftColor(pumper.shift)} variant="outline">
-                        {pumper.shift}
-                      </Badge>
-                      <Badge className={getStatusColor(pumper.status)} variant="outline">
+            {pumpers.map((pumper) => (
+              <Card key={pumper.id} className="group hover:shadow-lg transition-all duration-200">
+                <CardContent className="p-0">
+                  {/* Pumper Header */}
+                  <div className="p-6 pb-4">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl">
+                        {pumper.name.charAt(0)}
+                      </div>
+                      <Badge className={getStatusColor(pumper.status)}>
                         {pumper.status}
                       </Badge>
                     </div>
 
-                    <div className="w-full grid grid-cols-2 gap-2 text-xs text-muted-foreground bg-muted/30 p-3 rounded-lg border border-muted/20 mb-4">
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="flex items-center gap-1"><Star className="h-3 w-3 text-yellow-500" /> Rating</span>
-                        <span className="font-bold text-foreground">{pumper.rating} / 5</span>
-                      </div>
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Exp</span>
-                        <span className="font-bold text-foreground">{pumper.experience} yrs</span>
-                      </div>
+                    <div className="space-y-1">
+                      <h3 className="font-bold text-lg leading-tight group-hover:text-primary transition-colors">
+                        {pumper.name}
+                      </h3>
+                      <p className="text-sm text-muted-foreground flex items-center gap-1">
+                        <Award className="h-3 w-3" />
+                        ID: {pumper.employeeId}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Details */}
+                  <div className="px-6 py-4 space-y-3 bg-muted/30 border-y border-border/50">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1.5">
+                        <Building2 className="h-4 w-4" />
+                        Station
+                      </span>
+                      <span className="font-medium">{pumper.stationName}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1.5">
+                        <Clock className="h-4 w-4" />
+                        Shift
+                      </span>
+                      <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5 font-semibold", getShiftColor(pumper.shift))}>
+                        {pumper.shift}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1.5">
+                        <Phone className="h-4 w-4" />
+                        Phone
+                      </span>
+                      <span className="font-medium">{pumper.phoneNumber || 'N/A'}</span>
+                    </div>
+                  </div>
+
+                  {/* Specializations & Footer */}
+                  <div className="p-6 pt-4 space-y-4">
+                    <div className="flex flex-wrap gap-1.5 min-h-[50px] content-start">
+                      {pumper.specializations.map((spec, index) => (
+                        <Badge key={index} variant="secondary" className="text-[10px] px-1.5 py-0 bg-secondary/50">
+                          {spec}
+                        </Badge>
+                      ))}
                     </div>
 
-                    <div className="w-full flex justify-between gap-2">
-                      <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(pumper)}>
-                        <Edit className="h-3 w-3 mr-2" />
-                        Edit
-                      </Button>
-                      <Button variant="outline" size="sm" className="flex-1 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/20" onClick={() => handleDelete(pumper)}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                    <div className="flex items-center justify-between pt-4 border-t border-border/50">
+                      <div className="flex items-center gap-1">
+                        {renderStars(pumper.rating)}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-primary"
+                          onClick={() => handleEdit(pumper)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDelete(pumper)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>

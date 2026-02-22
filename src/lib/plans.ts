@@ -10,6 +10,7 @@ export async function getOrganizationPlan(organizationId: string) {
             subscription: {
                 select: {
                     maxStations: true,
+                    paidStations: true,
                     planId: true,
                     status: true,
                     trialEndDate: true,
@@ -25,16 +26,23 @@ export async function getOrganizationPlan(organizationId: string) {
     // Default to BASIC if no plan found, but respect DB plan
     // If subscription exists, use its planId, otherwise use organization level plan field
     const planType = org?.subscription?.planId || org?.plan || 'BASIC'
-    const maxStations = org?.subscription?.maxStations || 1
     const sub = org?.subscription
+
+    // New Per-Station Logic:
+    // Base is 1 station. Total stations = 1 + paidStations.
+    // Price = Base Price * Total Stations
+    const baseAmount = planType === 'PREMIUM' ? 5000 : 2500
+    const totalStations = 1 + (sub?.paidStations || 0)
+    const computedAmount = baseAmount * totalStations
 
     return {
         plan: planType,
-        maxStations,
+        maxStations: totalStations,
+        paidStations: sub?.paidStations || 0,
         status: sub?.status || 'ACTIVE',
         trialEndDate: sub?.trialEndDate || null,
         nextBillingDate: sub?.nextBillingDate || null,
-        amount: sub?.amount || 0,
+        amount: computedAmount,
         currency: sub?.currency || 'LKR',
         billingInterval: sub?.billingInterval || 'MONTH'
     }

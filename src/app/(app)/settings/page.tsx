@@ -17,8 +17,7 @@ import {
   Shield,
   Fuel,
   Briefcase,
-  AlertCircle,
-  Zap
+  AlertCircle
 } from 'lucide-react'
 
 interface SettingCard {
@@ -28,6 +27,8 @@ interface SettingCard {
   href: string
   features: string[]
   color: string
+  bg: string
+  bullet: string
   minRole?: 'OWNER' | 'DEVELOPER'
   minPlan?: 'BASIC' | 'PREMIUM'
   status?: string
@@ -58,6 +59,8 @@ export default function SettingsPage() {
       href: '/settings/organization',
       features: ['Profile & Branding', 'Contact Details', 'Slug Management'],
       color: 'text-purple-600 dark:text-purple-400',
+      bg: 'bg-purple-100 dark:bg-purple-900/20',
+      bullet: 'bg-purple-500',
       minRole: 'OWNER'
     },
     {
@@ -67,6 +70,8 @@ export default function SettingsPage() {
       href: '/settings/subscription',
       features: ['Plan & Billing', 'Usage Metrics', 'Payment History'],
       color: 'text-blue-600 dark:text-blue-400',
+      bg: 'bg-blue-100 dark:bg-blue-900/20',
+      bullet: 'bg-blue-500',
       minRole: 'OWNER',
       status: currentPlan === 'PREMIUM' ? 'Premium Active' : 'Basic Plan'
     },
@@ -77,6 +82,8 @@ export default function SettingsPage() {
       href: '/settings/stations',
       features: ['Station Management', 'Locations', 'Operating Hours'],
       color: 'text-orange-600 dark:text-orange-400',
+      bg: 'bg-orange-100 dark:bg-orange-900/20',
+      bullet: 'bg-orange-500',
       minRole: 'OWNER'
     },
     {
@@ -85,7 +92,9 @@ export default function SettingsPage() {
       icon: <Fuel className="h-6 w-6" />,
       href: '/settings/tanks',
       features: ['Tank Capacity', 'Pump Configuration', 'Nozzle Setup'],
-      color: 'text-red-600 dark:text-red-400'
+      color: 'text-red-600 dark:text-red-400',
+      bg: 'bg-red-100 dark:bg-red-900/20',
+      bullet: 'bg-red-500'
     },
     {
       title: 'Product Pricing',
@@ -93,7 +102,9 @@ export default function SettingsPage() {
       icon: <Fuel className="h-6 w-6" />, // Using Fuel icon again but could use DollarSign
       href: '/settings/prices',
       features: ['Price Updates', 'Fuel Types', 'Inventory Targets'],
-      color: 'text-emerald-600 dark:text-emerald-400'
+      color: 'text-emerald-600 dark:text-emerald-400',
+      bg: 'bg-emerald-100 dark:bg-emerald-900/20',
+      bullet: 'bg-emerald-500'
     },
     {
       title: 'Pumpers',
@@ -101,7 +112,9 @@ export default function SettingsPage() {
       icon: <Users className="h-6 w-6" />,
       href: '/settings/pumpers',
       features: ['Employee Profiles', 'Shift Assignments', 'Performance'],
-      color: 'text-indigo-600 dark:text-indigo-400'
+      color: 'text-indigo-600 dark:text-indigo-400',
+      bg: 'bg-indigo-100 dark:bg-indigo-900/20',
+      bullet: 'bg-indigo-500'
     },
     {
       title: 'Office Staff',
@@ -109,7 +122,9 @@ export default function SettingsPage() {
       icon: <Briefcase className="h-6 w-6" />,
       href: '/settings/office-staff',
       features: ['Staff Profiles', 'Role Assignment', 'Access Levels'],
-      color: 'text-teal-600 dark:text-teal-400'
+      color: 'text-teal-600 dark:text-teal-400',
+      bg: 'bg-teal-100 dark:bg-teal-900/20',
+      bullet: 'bg-teal-500'
     },
     {
       title: 'Banks',
@@ -117,7 +132,9 @@ export default function SettingsPage() {
       icon: <Building2 className="h-6 w-6" />,
       href: '/settings/banks',
       features: ['Account Setup', 'Terminals', 'Reconciliation'],
-      color: 'text-cyan-600 dark:text-cyan-400'
+      color: 'text-cyan-600 dark:text-cyan-400',
+      bg: 'bg-cyan-100 dark:bg-cyan-900/20',
+      bullet: 'bg-cyan-500'
     },
     {
       title: 'Shift Templates',
@@ -125,7 +142,9 @@ export default function SettingsPage() {
       icon: <Clock className="h-6 w-6" />,
       href: '/settings/shift-templates',
       features: ['Shift Patterns', 'Timing Rules', 'Break Schedules'],
-      color: 'text-pink-600 dark:text-pink-400'
+      color: 'text-pink-600 dark:text-pink-400',
+      bg: 'bg-pink-100 dark:bg-pink-900/20',
+      bullet: 'bg-pink-500'
     },
     {
       title: 'Tolerance Control',
@@ -133,7 +152,9 @@ export default function SettingsPage() {
       icon: <Gauge className="h-6 w-6" />,
       href: '/settings/tolerance',
       features: ['Variance Limits', 'Alert Thresholds', 'Auto-actions'],
-      color: 'text-orange-600',
+      color: 'text-amber-600 dark:text-amber-400',
+      bg: 'bg-amber-100 dark:bg-amber-900/20',
+      bullet: 'bg-amber-500',
       minRole: 'OWNER'
     },
     {
@@ -142,16 +163,20 @@ export default function SettingsPage() {
       icon: <Shield className="h-6 w-6" />,
       href: '/settings/users',
       features: ['User Accounts', 'Role Matrix', 'Activity Logs'],
-      color: 'text-red-600 dark:text-red-400',
+      color: 'text-rose-600 dark:text-rose-400',
+      bg: 'bg-rose-100 dark:bg-rose-900/20',
+      bullet: 'bg-rose-500',
       minRole: 'OWNER'
     },
     {
       title: 'System Data',
       description: 'Master data and system configurations',
       icon: <Database className="h-6 w-6" />,
-      href: '/settings/profile', // Redirecting to profile for now as a catch-all
-      features: ['Backup/Restore', 'Audit Logs', 'System Health'],
-      color: 'text-gray-600 dark:text-gray-400',
+      href: '/settings/master-data', // Redirecting to profile for now as a catch-all
+      features: ['Global Settings', 'Audit Logs', 'Backup Control'],
+      color: 'text-slate-600 dark:text-slate-400',
+      bg: 'bg-slate-100 dark:bg-slate-900/20',
+      bullet: 'bg-slate-500',
       minRole: 'DEVELOPER'
     }
   ]
@@ -222,7 +247,7 @@ export default function SettingsPage() {
               key={index}
               className={`
                 group relative overflow-hidden transition-all duration-200
-                hover:shadow-lg cursor-pointer border-muted
+                hover:shadow-lg cursor-pointer border
                 ${isRestricted ? 'opacity-70 grayscale' : ''}
               `}
               onClick={() => {
@@ -236,7 +261,7 @@ export default function SettingsPage() {
 
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start mb-2">
-                  <div className={`p-2 rounded-lg bg-muted text-foreground group-hover:scale-110 transition-transform duration-200`}>
+                  <div className={`p-2.5 rounded-xl ${setting.bg} ${setting.color} group-hover:scale-110 transition-transform duration-200`}>
                     {setting.icon}
                   </div>
                   {getRoleBadge(setting)}
@@ -254,7 +279,7 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   {setting.features.map((feature, idx) => (
                     <div key={idx} className="flex items-center text-xs text-muted-foreground/80">
-                      <div className={`w-1 h-1 rounded-full mr-2 ${setting.color.split(' ')[0].replace('text-', 'bg-')}`} />
+                      <div className={`w-1 h-1 rounded-full mr-2 ${setting.bullet}`} />
                       {feature}
                     </div>
                   ))}
@@ -277,66 +302,7 @@ export default function SettingsPage() {
         })}
       </div>
 
-      {/* Quick Stats / System Health */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-none shadow-lg">
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-indigo-100 text-sm font-medium mb-1">System Status</p>
-              <h3 className="text-2xl font-bold flex items-center gap-2">
-                Operational <Zap className="h-5 w-5 text-yellow-300 fill-yellow-300" />
-              </h3>
-            </div>
-            <div className="h-12 w-12 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
-              <ActivityIcon />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-orange-500 to-red-500 text-white border-none shadow-lg">
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-orange-100 text-sm font-medium mb-1">Active Alerts</p>
-              <h3 className="text-2xl font-bold">0 Active</h3>
-            </div>
-            <div className="h-12 w-12 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
-              <AlertCircle className="h-6 w-6" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/settings/organization')}>
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-muted-foreground text-sm font-medium mb-1">Organization</p>
-              <h3 className="text-xl font-bold text-foreground truncate max-w-[200px]">{organization?.name || 'Loading...'}</h3>
-            </div>
-            <div className="h-12 w-12 bg-muted rounded-full flex items-center justify-center">
-              <Building2 className="h-6 w-6 text-foreground" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
-  )
-}
-
-function ActivityIcon() {
-  return (
-    <svg
-      className="h-6 w-6"
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-    </svg>
   )
 }
 

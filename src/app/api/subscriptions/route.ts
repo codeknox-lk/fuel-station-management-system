@@ -55,7 +55,37 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json()
-        const { planId, interval } = body
+        const { planId, interval, action } = body
+
+        // 1. Handle "ADD_STATION" (One-time 1 Lakh charge)
+        if (action === 'ADD_STATION') {
+            const updatedSub = await prisma.subscription.upsert({
+                where: { organizationId: user.organizationId },
+                update: {
+                    paidStations: { increment: 1 }
+                },
+                create: {
+                    organizationId: user.organizationId,
+                    planId: 'BASIC',
+                    paidStations: 1,
+                    status: 'ACTIVE'
+                }
+            })
+
+            // Record the ONE-TIME setup fee payment
+            await prisma.subscriptionPayment.create({
+                data: {
+                    organizationId: user.organizationId,
+                    amount: 100000,
+                    currency: 'LKR',
+                    status: 'SUCCESS',
+                    provider: 'STRIPE', // Simplified for demo
+                    billingDate: new Date(),
+                }
+            })
+
+            return NextResponse.json({ success: true, subscription: updatedSub })
+        }
 
         if (!planId || !interval) {
             return NextResponse.json({ error: 'Plan and interval are required' }, { status: 400 })
@@ -63,22 +93,31 @@ export async function POST(request: Request) {
 
         // Mocking a successful upgrade logic
         // In reality, this would return a checkout URL
+        const currentSub = await prisma.subscription.findUnique({
+            where: { organizationId: user.organizationId }
+        })
+
+        const paidStations = currentSub?.paidStations || 0
+        const baseAmount = planId === 'PREMIUM' ? 5000 : 2500
+        const totalAmount = baseAmount * (1 + paidStations)
+
         const updatedSub = await prisma.subscription.upsert({
             where: { organizationId: user.organizationId },
             update: {
                 planId,
                 billingInterval: interval,
                 status: 'ACTIVE',
-                amount: planId === 'PREMIUM' ? 5000 : 2500,
-                maxStations: planId === 'PREMIUM' ? 10 : 2
+                amount: totalAmount,
+                maxStations: 1 + paidStations
             },
             create: {
                 organizationId: user.organizationId,
                 planId,
                 billingInterval: interval,
                 status: 'ACTIVE',
-                amount: planId === 'PREMIUM' ? 5000 : 2500,
-                maxStations: planId === 'PREMIUM' ? 10 : 2
+                amount: totalAmount,
+                maxStations: 1 + paidStations,
+                paidStations: 0
             }
         })
 

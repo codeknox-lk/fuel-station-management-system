@@ -27,6 +27,7 @@ interface ReportCard {
   features: string[]
   color: string
   bg: string
+  bullet: string
   minRole?: 'OWNER' | 'DEVELOPER'
 }
 
@@ -57,7 +58,8 @@ export default function ReportsPage() {
       href: '/reports/daily-sales',
       features: ['Revenue breakdown', 'Daily totals', 'Trend analysis'],
       color: 'text-blue-600 dark:text-blue-400',
-      bg: 'bg-blue-100 dark:bg-blue-900/20'
+      bg: 'bg-blue-100 dark:bg-blue-900/20',
+      bullet: 'bg-blue-500'
     },
     {
       title: 'Daily Sales (Liters)',
@@ -66,7 +68,8 @@ export default function ReportsPage() {
       href: '/reports/daily-sales-liters',
       features: ['Volume breakdown', 'fuel comparisons', 'Trend analysis'],
       color: 'text-indigo-600 dark:text-indigo-400',
-      bg: 'bg-indigo-100 dark:bg-indigo-900/20'
+      bg: 'bg-indigo-100 dark:bg-indigo-900/20',
+      bullet: 'bg-indigo-500'
     },
     {
       title: 'POS Sales Report',
@@ -75,7 +78,8 @@ export default function ReportsPage() {
       href: '/reports/pos-sales',
       features: ['Terminal breakdown', 'Bank summary', 'Reconciliation'],
       color: 'text-violet-600 dark:text-violet-400',
-      bg: 'bg-violet-100 dark:bg-violet-900/20'
+      bg: 'bg-violet-100 dark:bg-violet-900/20',
+      bullet: 'bg-violet-500'
     },
     {
       title: 'Credit Customers',
@@ -84,7 +88,8 @@ export default function ReportsPage() {
       href: '/reports/credit',
       features: ['Aging analysis', 'Collection tracking', 'Customer breakdown'],
       color: 'text-purple-600 dark:text-purple-400',
-      bg: 'bg-purple-100 dark:bg-purple-900/20'
+      bg: 'bg-purple-100 dark:bg-purple-900/20',
+      bullet: 'bg-purple-500'
     }
   ]
 
@@ -96,7 +101,8 @@ export default function ReportsPage() {
       href: '/reports/shift',
       features: ['Sales analysis', 'Tender reconciliation', 'Active variances'],
       color: 'text-orange-600 dark:text-orange-400',
-      bg: 'bg-orange-100 dark:bg-orange-900/20'
+      bg: 'bg-orange-100 dark:bg-orange-900/20',
+      bullet: 'bg-orange-500'
     },
     {
       title: 'Pumper Variance',
@@ -105,7 +111,8 @@ export default function ReportsPage() {
       href: '/reports/pumper-variance',
       features: ['Variance trends', 'Performance rating', 'Loss recovery'],
       color: 'text-red-600 dark:text-red-400',
-      bg: 'bg-red-100 dark:bg-red-900/20'
+      bg: 'bg-red-100 dark:bg-red-900/20',
+      bullet: 'bg-red-500'
     },
     {
       title: 'Pumper Details',
@@ -114,7 +121,8 @@ export default function ReportsPage() {
       href: '/reports/pumper-details',
       features: ['Salary history', 'Loan tracking', 'Shift history'],
       color: 'text-amber-600 dark:text-amber-400',
-      bg: 'bg-amber-100 dark:bg-amber-900/20'
+      bg: 'bg-amber-100 dark:bg-amber-900/20',
+      bullet: 'bg-amber-500'
     }
   ]
 
@@ -126,7 +134,8 @@ export default function ReportsPage() {
       href: '/reports/profit',
       features: ['Profit margin', 'Revenue vs Expense', 'Monthly trends'],
       color: 'text-emerald-600 dark:text-emerald-400',
-      bg: 'bg-emerald-100 dark:bg-emerald-900/20'
+      bg: 'bg-emerald-100 dark:bg-emerald-900/20',
+      bullet: 'bg-emerald-500'
     },
     {
       title: 'Shop Profitability',
@@ -136,6 +145,7 @@ export default function ReportsPage() {
       features: ['Gross profit', 'Category breakdown', 'Inventory value'],
       color: 'text-teal-600 dark:text-teal-400',
       bg: 'bg-teal-100 dark:bg-teal-900/20',
+      bullet: 'bg-teal-500',
       minRole: 'OWNER'
     },
     {
@@ -146,6 +156,7 @@ export default function ReportsPage() {
       features: ['Sales comparison', 'Volume analysis', 'Top performers'],
       color: 'text-cyan-600 dark:text-cyan-400',
       bg: 'bg-cyan-100 dark:bg-cyan-900/20',
+      bullet: 'bg-cyan-500',
       minRole: 'OWNER'
     }
   ]
@@ -251,7 +262,7 @@ export default function ReportsPage() {
                       <ul className="space-y-1.5 mb-4">
                         {report.features.slice(0, 3).map((feature, fIdx) => (
                           <li key={fIdx} className="text-xs text-muted-foreground flex items-center gap-2">
-                            <div className={`w-1 h-1 rounded-full ${report.color.split(' ')[0].replace('text-', 'bg-')}`} />
+                            <div className={`w-1 h-1 rounded-full ${report.bullet}`} />
                             {feature}
                           </li>
                         ))}

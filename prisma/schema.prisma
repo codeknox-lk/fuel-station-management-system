@@ -76,6 +76,7 @@ model Subscription {
   currency         String             @default("LKR")
   billingInterval  BillingInterval    @default(MONTH)
   maxStations      Int                @default(1)
+  paidStations     Int                @default(0)
   trialEndDate     DateTime?
   nextBillingDate  DateTime?
   cancelledAt      DateTime?

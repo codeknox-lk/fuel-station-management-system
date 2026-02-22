@@ -808,7 +808,7 @@ export default function TanksSettingsPage() {
           </TabsContent>
 
           <TabsContent value="pumps" className="space-y-4">
-            <FormCard title="Create New Pump" className="bg-card/50 backdrop-blur-sm border-muted/40">
+            <FormCard title="Create New Pump" className="bg-card border">
               <form onSubmit={handleCreatePump} className="space-y-4">
                 <div>
                   <Label htmlFor="pumpNumber">Pump Number *</Label>

@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client'
 import { auditOperations } from '@/lib/auditMiddleware'
 import { CreateShiftSchema } from '@/lib/schemas'
 import { getServerUser } from '@/lib/auth-server'
+import { ShiftWithDetails, ShiftStatistics } from '@/types/db'
 
 export async function GET(request: NextRequest) {
   try {
@@ -234,17 +235,17 @@ export async function GET(request: NextRequest) {
       where: { organizationId: user.organizationId },
       select: { id: true, username: true }
     })
-
     const userMap = new Map(users.map(u => [u.id, u.username]))
 
     // OPTIMIZED: Return shifts directly with their existing statistics
     // No N+1 queries! Statistics are calculated when shift is closed
-    const shiftsWithStats = shifts.map((shift: any) => {
+    // @ts-expect-error - Prisma dynamic select result is complex to type accurately
+    const shiftsWithStats = (shifts as ShiftWithDetails[]).map((shift) => {
       // Calculate unique pumper count across nozzle assignments and shop assignment
       const pumperNames = new Set<string>()
 
       if (shift.assignments && Array.isArray(shift.assignments)) {
-        shift.assignments.forEach((a: any) => {
+        shift.assignments.forEach((a) => {
           if (a.pumperName) pumperNames.add(a.pumperName)
         })
       }
@@ -255,12 +256,7 @@ export async function GET(request: NextRequest) {
 
       const uniquePumperCount = pumperNames.size || shift._count?.assignments || 0
 
-      interface ShiftStatistics {
-        totalSales?: number
-        totalVolume?: number
-        [key: string]: unknown
-      }
-      const statistics = (shift.statistics as unknown as ShiftStatistics) || {}
+      const stats = (shift.statistics as unknown as ShiftStatistics) || {}
 
       // Map UUIDs to usernames for a friendly display
       const displayOpenedBy = userMap.get(shift.openedBy) || shift.openedBy
@@ -268,11 +264,11 @@ export async function GET(request: NextRequest) {
 
       return {
         ...shift,
-        openedBy: displayOpenedBy,
-        closedBy: displayClosedBy,
+        displayOpenedBy,
+        displayClosedBy,
         assignmentCount: uniquePumperCount,
-        closedAssignments: shift.status === 'CLOSED' ? uniquePumperCount : 0, // Approximate
-        statistics
+        totalSales: stats.totalSales || 0,
+        totalVolume: stats.totalLiters || 0, // Using totalLiters from stats as volume
       }
     })
 

@@ -438,7 +438,7 @@ export default function POSTerminalsPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {stats.map((stat, index) => (
-          <Card key={index} className="bg-card/50 backdrop-blur-sm border-muted/40">
+          <Card key={index} className="bg-card shadow-sm border">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -446,7 +446,7 @@ export default function POSTerminalsPage() {
                   <div className="text-sm font-medium text-foreground">{stat.title}</div>
                   <div className="text-xs text-muted-foreground">{stat.description}</div>
                 </div>
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 p-2 bg-muted rounded-full">
                   {stat.icon}
                 </div>
               </div>
@@ -456,7 +456,7 @@ export default function POSTerminalsPage() {
       </div>
 
       {/* Terminals Table */}
-      <FormCard title="POS Terminals" description="Manage point-of-sale terminals and payment processing devices" className="bg-card/50 backdrop-blur-sm border-muted/40">
+      <FormCard title="POS Terminals" description="Manage point-of-sale terminals and payment processing devices" className="bg-card border">
         <DataTable
           data={safeTerminals}
           columns={columns}

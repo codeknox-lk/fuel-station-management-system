@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
 import { getJwtSecret } from '@/lib/jwt'
 
-const ACCESS_TOKEN_EXPIRE_MINUTES = 30
+const ACCESS_TOKEN_EXPIRE_MINUTES = 240
 
 export async function POST(request: NextRequest) {
   try {

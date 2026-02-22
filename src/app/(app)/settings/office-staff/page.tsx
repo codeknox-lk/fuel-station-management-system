@@ -8,10 +8,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
-import { Briefcase, Plus, Edit, Trash2, Phone, Mail, Building2, DollarSign, ArrowLeft, Users } from 'lucide-react'
+import { Briefcase, Plus, Edit, Trash2, Phone, Mail, Building2, DollarSign, ArrowLeft, Users, LayoutGrid, List } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useRouter } from 'next/navigation'
 
@@ -65,6 +66,7 @@ export default function OfficeStaffPage() {
     isActive: true
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const { toast } = useToast()
 
   const fetchOfficeStaff = useCallback(async () => {
@@ -343,26 +345,59 @@ export default function OfficeStaffPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-indigo-900 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
-        <div className="relative z-10 flex justify-between items-start">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.push('/settings')} className="text-indigo-100 hover:text-white hover:bg-white/10">
-              <ArrowLeft className="h-6 w-6" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                <Briefcase className="h-8 w-8 text-indigo-400" />
-                Office Staff Management
-              </h1>
-              <p className="text-indigo-100 mt-2 text-lg max-w-2xl">
-                Manage office employees (Managers, Supervisors, Office Staff, Accountants, Cashiers).
-              </p>
-            </div>
+      {/* Standard Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            onClick={() => router.push('/settings')}
+            className="hidden md:flex"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => router.push('/settings')}
+            className="md:hidden"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
+              <Briefcase className="h-8 w-8 text-primary" />
+              Office Staff Management
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Manage office employees (Managers, Supervisors, Office Staff, Accountants, Cashiers).
+            </p>
           </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 border rounded-lg p-1 bg-background mr-2">
+            <Button
+              variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => setViewMode('grid')}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => setViewMode('list')}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
+
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={handleCloseDialog} className="bg-white text-indigo-900 hover:bg-indigo-50">
+              <Button onClick={handleCloseDialog}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Office Staff
               </Button>
@@ -553,7 +588,6 @@ export default function OfficeStaffPage() {
               </form>
             </DialogContent>
           </Dialog>
-
         </div>
       </div>
 
@@ -564,7 +598,7 @@ export default function OfficeStaffPage() {
             title: 'Total Staff',
             value: officeStaff.length.toString(),
             description: 'Registered employees',
-            icon: <Users className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+            icon: <Users className="h-5 w-5 text-primary" />
           },
           {
             title: 'Active',
@@ -576,46 +610,132 @@ export default function OfficeStaffPage() {
             title: 'Managers',
             value: officeStaff.filter(s => s.role === 'MANAGER').length.toString(),
             description: 'Management roles',
-            icon: <Briefcase className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+            icon: <Briefcase className="h-5 w-5 text-primary" />
           },
           {
             title: 'Total Salary',
             value: `Rs. ${officeStaff.reduce((acc, curr) => acc + (curr.baseSalary || 0), 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
             description: 'Monthly base payroll',
-            icon: <DollarSign className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+            icon: <DollarSign className="h-5 w-5 text-primary" />
           }
         ].map((stat, index) => (
-          <div key={index} className="rounded-xl border bg-card/50 backdrop-blur-sm text-card-foreground shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold">{stat.value}</span>
+          <Card key={index} className="border shadow-sm">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-bold">{stat.value}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
+                <div className="p-2 bg-muted rounded-full">
+                  {stat.icon}
+                </div>
               </div>
-              <div className="p-2 bg-background/50 rounded-full">
-                {stat.icon}
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
       <FormCard
         title="Office Staff List"
         description={`Office staff members for ${stations.find(s => s.id === selectedStation)?.name || 'selected station'}`}
-        className="bg-card/50 backdrop-blur-sm border-muted/40"
+        className="bg-card border"
       >
         {loading ? (
           <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 dark:border-orange-400"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         ) : officeStaff.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Briefcase className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <p>No office staff found</p>
             <p className="text-sm">Click &quot;Add Office Staff&quot; to create a new office staff member</p>
+          </div>
+        ) : viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {officeStaff.map((staff) => (
+              <Card key={staff.id} className="group hover:shadow-lg transition-all duration-200">
+                <CardContent className="p-0">
+                  {/* Staff Header */}
+                  <div className="p-6 pb-4">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl">
+                        {staff.name.charAt(0)}
+                      </div>
+                      <Badge variant={staff.isActive ? 'default' : 'secondary'}>
+                        {staff.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-1">
+                      <h3 className="font-bold text-lg leading-tight group-hover:text-primary transition-colors">
+                        {staff.name}
+                      </h3>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                          {staff.role.replace('_', ' ')}
+                        </Badge>
+                        {staff.employeeId && (
+                          <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            ID: {staff.employeeId}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Details */}
+                  <div className="px-6 py-4 space-y-3 bg-muted/30 border-y border-border/50">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1.5">
+                        <Phone className="h-4 w-4" />
+                        Phone
+                      </span>
+                      <span className="font-medium text-xs">{staff.phone || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1.5">
+                        <Mail className="h-4 w-4" />
+                        Email
+                      </span>
+                      <span className="font-medium text-xs truncate max-w-[120px]" title={staff.email || ''}>
+                        {staff.email || 'N/A'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1.5">
+                        <DollarSign className="h-4 w-4" />
+                        Base Salary
+                      </span>
+                      <span className="font-medium text-xs">Rs. {staff.baseSalary.toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  {/* Footer Actions */}
+                  <div className="p-6 pt-4 flex items-center justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-primary"
+                      onClick={() => handleEdit(staff)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => handleDelete(staff.id)}
+                      disabled={deletingStaffId === staff.id}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         ) : (
           <DataTable
@@ -625,6 +745,6 @@ export default function OfficeStaffPage() {
           />
         )}
       </FormCard>
-    </div >
+    </div>
   )
 }
