@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   LineChart,
   Line,
@@ -29,7 +29,9 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer
+  ResponsiveContainer,
+  BarChart,
+  Bar
 } from 'recharts'
 import {
   TrendingUp,
@@ -41,9 +43,12 @@ import {
   ArrowLeft,
   ArrowRight,
   FileText,
-  FileSpreadsheet
+  FileSpreadsheet,
+  ArrowUpRight,
+  ArrowDownRight
 } from 'lucide-react'
 import { exportDailySalesReportPDF, exportDailySalesReportExcel, captureChartAsImage } from '@/lib/exportUtils'
+import { cn } from '@/lib/utils'
 
 interface DailySalesData {
   date: string
@@ -91,10 +96,11 @@ const getFuelColor = (fuelName: string): string => {
 
 export default function DailySalesReportPage() {
   const router = useRouter()
-  const { selectedStation, stations, setSelectedStation } = useStation()
+  const { selectedStation, stations } = useStation()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [salesData, setSalesData] = useState<DailySalesResponse | null>(null)
+  const [chartType, setChartType] = useState<'line' | 'bar'>('bar')
 
   // Month selection - using business month (7th to 6th)
   const currentBusinessMonth = getCurrentBusinessMonth()
@@ -107,8 +113,6 @@ export default function DailySalesReportPage() {
     return { value: year.toString(), label: year.toString() }
   })
 
-
-
   const fetchSalesData = useCallback(async () => {
     if (!selectedStation) {
       setError('Please select a station')
@@ -120,7 +124,6 @@ export default function DailySalesReportPage() {
       setError('')
 
       // Get business month date range (7th to 6th)
-      // const dateRange = getBusinessMonthDateRange(parseInt(selectedMonth), parseInt(selectedYear))
       const month = `${selectedYear}-${selectedMonth}`
       const res = await fetch(`/api/reports/daily-sales?stationId=${selectedStation}&month=${month}`)
 
@@ -169,6 +172,23 @@ export default function DailySalesReportPage() {
     return dataPoint
   }) || []
 
+  // Calculate Day-over-Day growth for the table
+  const getGrowthIndicator = (current: number, previous: number) => {
+    if (!previous) return null;
+    const growth = ((current - previous) / previous) * 100;
+    const isPositive = growth > 0;
+
+    return (
+      <div className={cn(
+        "flex items-center text-[10px] font-medium ml-1",
+        isPositive ? "text-green-600" : "text-red-600"
+      )}>
+        {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+        {Math.abs(growth).toFixed(0)}%
+      </div>
+    )
+  }
+
   const exportToPDF = async () => {
     if (!salesData) return
     const station = stations.find(s => s.id === selectedStation)
@@ -215,17 +235,16 @@ export default function DailySalesReportPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.push('/reports')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
+          <Button variant="outline" size="icon" onClick={() => router.push('/reports')}>
+            <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
             <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
               <BarChart3 className="h-8 w-8 text-orange-600 dark:text-orange-400" />
-              Daily Sales Report by Fuel Type (Rs)
+              Daily Sales Report (Rs)
             </h1>
             <p className="text-muted-foreground mt-1">
-              Monthly sales revenue analysis with daily breakdown by fuel type
+              Revenue analysis with daily breakdown by fuel type
             </p>
           </div>
         </div>
@@ -242,7 +261,7 @@ export default function DailySalesReportPage() {
             <DropdownMenuTrigger asChild>
               <Button variant="outline" disabled={!salesData}>
                 <Download className="h-4 w-4 mr-2" />
-                Export Report
+                Export
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
@@ -260,36 +279,13 @@ export default function DailySalesReportPage() {
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filters</CardTitle>
-          <CardDescription>Select station, year, and month to view sales data</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="station">Station</Label>
-              <Select
-                value={selectedStation || 'all'}
-                onValueChange={(value) => setSelectedStation(value)}
-              >
-                <SelectTrigger id="station">
-                  <SelectValue placeholder="Select station" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Stations</SelectItem>
-                  {stations.map(station => (
-                    <SelectItem key={station.id} value={station.id}>
-                      {station.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="year">Year</Label>
+      <Card className="bg-muted/30 border-none shadow-none">
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="w-32">
+              <Label htmlFor="year" className="text-xs mb-1 block text-muted-foreground">Year</Label>
               <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger id="year">
+                <SelectTrigger id="year" className="bg-background">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -301,10 +297,10 @@ export default function DailySalesReportPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label htmlFor="month">Month</Label>
+            <div className="w-40">
+              <Label htmlFor="month" className="text-xs mb-1 block text-muted-foreground">Month</Label>
               <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger id="month">
+                <SelectTrigger id="month" className="bg-background">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -315,6 +311,27 @@ export default function DailySalesReportPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="ml-auto flex items-center bg-background rounded-lg border p-1">
+              <Button
+                variant={chartType === 'bar' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setChartType('bar')}
+                className="h-8 px-3"
+              >
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Bar Chart
+              </Button>
+              <Button
+                variant={chartType === 'line' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setChartType('line')}
+                className="h-8 px-3"
+              >
+                <TrendingUp className="h-4 w-4 mr-2" />
+                Line Chart
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -330,15 +347,36 @@ export default function DailySalesReportPage() {
         </Card>
       )}
 
-      {/* Summary Cards */}
+      {/* Summary Cards with Glassmorphic feel */}
       {salesData && salesData.totalsByFuelType && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {salesData.fuelTypes.map(fuelName => (
-            <Card key={fuelName}>
+          <Card className="border-none shadow-md bg-gradient-to-br from-orange-500 to-orange-600 text-white relative overflow-hidden">
+            <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+            <CardHeader className="pb-2 relative z-10">
+              <CardTitle className="text-sm font-medium flex items-center justify-between text-white/90">
+                <span>Total Revenue</span>
+                <TrendingUp className="h-4 w-4 text-white/80" />
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="relative z-10">
+              <div className="text-3xl font-bold">
+                Rs. {salesData.dailySales.reduce((sum, day) => sum + day.totalSales, (0) || 0).toLocaleString()}
+              </div>
+              <div className="text-xs text-white/70 mt-1">
+                Total sales for {months.find(m => m.value === selectedMonth)?.label}
+              </div>
+            </CardContent>
+          </Card>
+
+          {salesData.fuelTypes.slice(0, 3).map(fuelName => (
+            <Card key={fuelName} className="border bg-card/50 backdrop-blur-sm">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Fuel className="h-4 w-4" style={{ color: getFuelColor(fuelName) }} />
-                  {fuelName}
+                <CardTitle className="text-sm font-medium flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: getFuelColor(fuelName) }}></div>
+                    {fuelName}
+                  </span>
+                  <Fuel className="h-4 w-4 text-muted-foreground" />
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -346,84 +384,116 @@ export default function DailySalesReportPage() {
                   Rs. {(salesData.totalsByFuelType?.[fuelName] || (0) || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  Total for {months.find(m => m.value === selectedMonth)?.label} {selectedYear}
+                  {((salesData.totalsByFuelType?.[fuelName] || 0) / salesData.dailySales.reduce((sum, day) => sum + day.totalSales, 0) * 100).toFixed(1)}% of total
                 </div>
               </CardContent>
             </Card>
           ))}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-orange-600" />
-                Total Sales
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">
-                Rs. {salesData.dailySales.reduce((sum, day) => sum + day.totalSales, (0) || 0).toLocaleString()}
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                All fuel types combined
-              </div>
-            </CardContent>
-          </Card>
         </div>
       )}
 
       {/* Chart */}
       {salesData && salesData.dailySales.length > 0 ? (
         <FormCard
-          title="Daily Sales Trend"
+          title="Daily Revenue Trend by Fuel Type"
           description={`Business Month: ${formatBusinessMonthRange(getBusinessMonth(parseInt(selectedMonth), parseInt(selectedYear)))}`}
         >
           <div id="daily-sales-chart" className="w-full h-96 mt-4">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 10 }}
-                  tickFormatter={(value) => {
-                    const d = new Date(value)
-                    return `${d.getDate()}/${d.getMonth() + 1}`
-                  }}
-                />
-                <YAxis
-                  label={{ value: 'Sales (Rs.)', angle: -90, position: 'insideLeft' }}
-                  tickFormatter={(value) => `Rs. ${(value / 1000).toFixed(0)}k`}
-                />
-                <Tooltip
-                  formatter={(value: number) => `Rs. ${(value || 0).toLocaleString()}`}
-                  labelFormatter={(date) => {
-                    const d = new Date(date)
-                    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                  }}
-                />
-                <Legend
-                  formatter={(value) => value}
-                />
-                {salesData.fuelTypes.map(fuelName => (
-                  <Line
-                    key={fuelName}
-                    type="monotone"
-                    dataKey={fuelName}
-                    stroke={getFuelColor(fuelName)}
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                    name={fuelName}
+              {chartType === 'line' ? (
+                <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.5} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(value) => {
+                      const d = new Date(value)
+                      return `${d.getDate()}/${d.getMonth() + 1}`
+                    }}
+                    axisLine={false}
+                    tickLine={false}
                   />
-                ))}
-              </LineChart>
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(value) => `Rs.${(value / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                    formatter={(value: number) => `Rs. ${(value || 0).toLocaleString()}`}
+                    labelFormatter={(date) => {
+                      const d = new Date(date)
+                      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    }}
+                  />
+                  <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                  {salesData.fuelTypes.map(fuelName => (
+                    <Line
+                      key={fuelName}
+                      type="monotone"
+                      dataKey={fuelName}
+                      stroke={getFuelColor(fuelName)}
+                      strokeWidth={2}
+                      dot={{ r: 0 }}
+                      activeDot={{ r: 6 }}
+                      name={fuelName}
+                    />
+                  ))}
+                </LineChart>
+              ) : (
+                <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.5} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(value) => {
+                      const d = new Date(value)
+                      return `${d.getDate()}`
+                    }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(value) => `Rs.${(value / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                    formatter={(value: number) => `Rs. ${(value || 0).toLocaleString()}`}
+                    labelFormatter={(date) => {
+                      const d = new Date(date)
+                      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    }}
+                  />
+                  <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                  {salesData.fuelTypes.map(fuelName => (
+                    <Bar
+                      key={fuelName}
+                      dataKey={fuelName}
+                      stackId="a"
+                      fill={getFuelColor(fuelName)}
+                      name={fuelName}
+                      radius={[0, 0, 0, 0]}
+                    />
+                  ))}
+                </BarChart>
+              )}
             </ResponsiveContainer>
           </div>
         </FormCard>
       ) : salesData && salesData.dailySales.length === 0 ? (
         <Card>
           <CardContent className="pt-6">
-            <div className="text-center py-8 text-muted-foreground">
-              <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p>No sales data found for this month</p>
-              <p className="text-sm">No shifts were closed during this period</p>
+            <div className="text-center py-12 text-muted-foreground">
+              <div className="bg-muted w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Calendar className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-1">No Data Available</h3>
+              <p className="text-sm max-w-sm mx-auto">
+                There are no closed shifts for the selected period. Shifts must be closed to appear in the daily sales report.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -433,43 +503,52 @@ export default function DailySalesReportPage() {
       {salesData && salesData.dailySales.length > 0 && (
         <FormCard
           title="Daily Sales Breakdown"
-          description="Detailed daily sales by fuel type with totals"
+          description="Detailed daily revenue by fuel type"
         >
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
+            <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b-2 bg-muted/30">
-                  <th className="text-left p-3 font-semibold">Day</th>
+                <tr className="border-b bg-muted/30">
+                  <th className="text-left p-3 font-semibold text-muted-foreground">Day</th>
                   {salesData.fuelTypes.map(fuelName => (
                     <th key={fuelName} className="text-right p-3 font-semibold" style={{ color: getFuelColor(fuelName) }}>
                       {fuelName}
                     </th>
                   ))}
-                  <th className="text-right p-3 font-semibold text-orange-600 dark:text-orange-400">Daily Total</th>
+                  <th className="text-right p-3 font-semibold text-foreground">Total</th>
                 </tr>
               </thead>
               <tbody>
-                {salesData.dailySales.map((day, index) => (
-                  <tr key={day.date} className={index % 2 === 0 ? 'bg-muted/50' : ''}>
-                    <td className="p-3 font-medium">Day {day.day}</td>
-                    {salesData.fuelTypes.map(fuelName => (
-                      <td key={fuelName} className="text-right p-3 text-sm">
-                        Rs. {(day.sales?.[fuelName] || (0) || 0).toLocaleString()}
+                {salesData.dailySales.map((day, index) => {
+                  const previousDay = index > 0 ? salesData.dailySales[index - 1] : null;
+
+                  return (
+                    <tr key={day.date} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                      <td className="p-3 font-medium">
+                        <div className="flex flex-col">
+                          <span>{new Date(day.date).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })}</span>
+                        </div>
                       </td>
-                    ))}
-                    <td className="text-right p-3 font-semibold text-orange-600 dark:text-orange-400">
-                      Rs. {(day.totalSales || 0).toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-                <tr className="border-t-4 font-bold bg-orange-50 dark:bg-orange-950/20">
-                  <td className="p-3 text-lg">TOTAL</td>
+                      {salesData.fuelTypes.map(fuelName => (
+                        <td key={fuelName} className="text-right p-3">
+                          Rs. {(day.sales?.[fuelName] || (0) || 0).toLocaleString()}
+                        </td>
+                      ))}
+                      <td className="text-right p-3 font-semibold flex flex-col items-end">
+                        <span>Rs. {(day.totalSales || 0).toLocaleString()}</span>
+                        {previousDay && getGrowthIndicator(day.totalSales, previousDay.totalSales)}
+                      </td>
+                    </tr>
+                  )
+                })}
+                <tr className="bg-muted/50 font-bold border-t-2 border-primary/20">
+                  <td className="p-4">TOTAL</td>
                   {salesData.fuelTypes.map(fuelName => (
-                    <td key={fuelName} className="text-right p-3 text-base" style={{ color: getFuelColor(fuelName) }}>
+                    <td key={fuelName} className="text-right p-4" style={{ color: getFuelColor(fuelName) }}>
                       Rs. {(salesData.totalsByFuelType?.[fuelName] || (0) || 0).toLocaleString()}
                     </td>
                   ))}
-                  <td className="text-right p-3 text-lg text-orange-600 dark:text-orange-400">
+                  <td className="text-right p-4 text-orange-600 text-lg">
                     Rs. {salesData.dailySales.reduce((sum, day) => sum + day.totalSales, (0) || 0).toLocaleString()}
                   </td>
                 </tr>

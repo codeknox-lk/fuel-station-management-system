@@ -34,11 +34,6 @@ import {
   Tag
 } from 'lucide-react'
 
-interface Station {
-  id: string
-  name: string
-  city: string
-}
 
 interface Expense {
   id: string
@@ -75,14 +70,13 @@ const expenseCategories = [
 
 export default function ExpensesPage() {
   const router = useRouter()
-  const [stations, setStations] = useState<Station[]>([])
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
   // Form state
-  const { selectedStation } = useStation()
+  const { selectedStation, stations } = useStation()
   const [category, setCategory] = useState('')
   const [amount, setAmount] = useState<number | undefined>(undefined)
   const [fromSafe, setFromSafe] = useState(false)
@@ -91,27 +85,23 @@ export default function ExpensesPage() {
   const [description, setDescription] = useState('')
   const [proofFile, setProofFile] = useState<File | null>(null)
 
-  // Load initial data
+  // Load recent expenses
   useEffect(() => {
-    const loadData = async () => {
+    const loadExpenses = async () => {
       try {
-        const [stationsRes, expensesRes] = await Promise.all([
-          fetch('/api/stations?active=true'),
-          fetch('/api/expenses?limit=10')
-        ])
-
-        const stationsData = await stationsRes.json()
-        const expensesData = await expensesRes.json()
-
-        setStations(stationsData)
-        setRecentExpenses(expensesData)
+        const url = !selectedStation || selectedStation === 'all'
+          ? '/api/expenses?limit=10'
+          : `/api/expenses?stationId=${selectedStation}&limit=10`
+        const response = await fetch(url)
+        const data = await response.json()
+        setRecentExpenses(data)
       } catch {
         setError('Failed to load initial data')
       }
     }
 
-    loadData()
-  }, [])
+    loadExpenses()
+  }, [selectedStation])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -329,22 +319,11 @@ export default function ExpensesPage() {
           {/* Station and Category */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="station">Station *</Label>
-              <Select value={selectedStation} onValueChange={() => { }} disabled={true}>
-                <SelectTrigger id="station">
-                  <SelectValue placeholder="Select a station" />
-                </SelectTrigger>
-                <SelectContent>
-                  {stations.map((station) => (
-                    <SelectItem key={station.id} value={station.id}>
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        {station.name} ({station.city})
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Selected Station</Label>
+              <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-muted/50 text-sm">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <span>{stations.find(s => s.id === selectedStation)?.name || 'All Stations'}</span>
+              </div>
             </div>
 
             <div>

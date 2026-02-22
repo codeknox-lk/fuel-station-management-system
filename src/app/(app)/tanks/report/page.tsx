@@ -1,19 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStation } from '@/contexts/StationContext'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
+  Badge
+} from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -31,11 +26,6 @@ import {
   ArrowLeft
 } from 'lucide-react'
 
-interface Station {
-  id: string
-  name: string
-  city: string
-}
 
 interface TankReport {
   tankId: string
@@ -66,29 +56,14 @@ interface StationReport {
 
 export default function TankReportPage() {
   const router = useRouter()
-  const [stations, setStations] = useState<Station[]>([])
   const [report, setReport] = useState<StationReport | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   // Form state
-  const { selectedStation, setSelectedStation } = useStation()
+  const { selectedStation, stations } = useStation()
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
 
-  // Load initial data
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const response = await fetch('/api/stations?active=true')
-        const stationsData = await response.json()
-        setStations(stationsData)
-      } catch {
-        setError('Failed to load stations') // Removed unused err
-      }
-    }
-
-    loadData()
-  }, [])
 
 
 
@@ -215,22 +190,11 @@ export default function TankReportPage() {
       <FormCard title="Generate Report">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <Label htmlFor="station">Station</Label>
-            <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
-              <SelectTrigger id="station">
-                <SelectValue placeholder="Select a station" />
-              </SelectTrigger>
-              <SelectContent>
-                {stations.map((station) => (
-                  <SelectItem key={station.id} value={station.id}>
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4" />
-                      {station.name} ({station.city})
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Selected Station</Label>
+            <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-muted/50 text-sm">
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+              <span>{stations.find(s => s.id === selectedStation)?.name || 'All Stations'}</span>
+            </div>
           </div>
 
           <div>

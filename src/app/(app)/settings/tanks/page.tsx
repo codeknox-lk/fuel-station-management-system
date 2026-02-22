@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Progress } from '@/components/ui/progress'
 import { useToast } from '@/hooks/use-toast'
 import {
   Dialog,
@@ -34,10 +35,13 @@ import {
   Droplets,
   Wrench,
   ArrowLeft,
-  Settings,
   Trash2,
-  Edit
+  Edit,
+  Map,
+  Activity,
+  Gauge
 } from 'lucide-react'
+import { InfrastructureView } from '@/components/tanks/InfrastructureView'
 
 interface Pump {
   id: string
@@ -76,15 +80,7 @@ export default function TanksSettingsPage() {
   const { stations, selectedStation: globalSelectedStation } = useStation()
   const { toast } = useToast()
 
-  // Common state
-  const [selectedStation, setSelectedStation] = useState('')
-
-  // Sync with global station selection
-  useEffect(() => {
-    if (globalSelectedStation) {
-      setSelectedStation(globalSelectedStation)
-    }
-  }, [globalSelectedStation])
+  // Common state - removed local selectedStation as we use globalSelectedStation directly
 
   // Tank creation/editing dialog state
   const [showTankDialog, setShowTankDialog] = useState(false)
@@ -126,38 +122,37 @@ export default function TanksSettingsPage() {
 
   const loadPumps = useCallback(async () => {
     try {
-      const response = await fetch(`/api/pumps?stationId=${selectedStation}`)
+      const response = await fetch(`/api/pumps?stationId=${globalSelectedStation}`)
       const data = await response.json()
       setPumps(data)
     } catch (err) {
       console.error('Failed to load pumps:', err)
     }
-  }, [selectedStation])
+  }, [globalSelectedStation])
 
   const loadNozzles = useCallback(async () => {
     try {
-      const response = await fetch(`/api/nozzles?stationId=${selectedStation}`)
+      const response = await fetch(`/api/nozzles?stationId=${globalSelectedStation}`)
       const data = await response.json()
       setNozzles(data)
     } catch (err) {
       console.error('Failed to load nozzles:', err)
     }
-  }, [selectedStation])
+  }, [globalSelectedStation])
 
   const loadTanks = useCallback(async () => {
     try {
-      const response = await fetch(`/api/tanks?stationId=${selectedStation}&type=tanks`)
+      const response = await fetch(`/api/tanks?stationId=${globalSelectedStation}&type=tanks`)
       const data = await response.json()
       setTanks(data)
     } catch (err) {
       console.error('Failed to load tanks:', err)
     }
-  }, [selectedStation])
+  }, [globalSelectedStation])
 
-  // Load pumps, nozzles, and fuels when station changes
   useEffect(() => {
     loadFuels()
-    if (selectedStation) {
+    if (globalSelectedStation) {
       loadPumps()
       loadNozzles()
       loadTanks()
@@ -166,11 +161,11 @@ export default function TanksSettingsPage() {
       setNozzles([])
       setTanks([])
     }
-  }, [selectedStation, loadFuels, loadPumps, loadNozzles, loadTanks])
+  }, [globalSelectedStation, loadFuels, loadPumps, loadNozzles, loadTanks])
 
   const resetTankForm = () => {
     setEditingTankId(null)
-    setSelectedStationForTank(selectedStation || '')
+    setSelectedStationForTank(globalSelectedStation || '')
     setFuelId('')
     setCapacity('')
     setTankNumber('')
@@ -178,7 +173,7 @@ export default function TanksSettingsPage() {
 
   const handleEditTank = (tank: Tank) => {
     setEditingTankId(tank.id)
-    setSelectedStationForTank(selectedStation) // Assuming tanks belong to current selected station
+    setSelectedStationForTank(globalSelectedStation || '') // Assuming tanks belong to current selected station
     setFuelId(tank.fuelId)
     setCapacity(tank.capacity.toString())
     setTankNumber(tank.tankNumber.replace('TANK-', '')) // effective editing
@@ -239,7 +234,7 @@ export default function TanksSettingsPage() {
       resetTankForm()
 
       // Refresh tanks if viewing a station
-      if (selectedStation) {
+      if (globalSelectedStation) {
         loadTanks()
       }
     } catch (err) {
@@ -283,7 +278,7 @@ export default function TanksSettingsPage() {
   const handleCreatePump = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!selectedStation || !pumpNumber) {
+    if (!globalSelectedStation || !pumpNumber) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -307,7 +302,7 @@ export default function TanksSettingsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          stationId: selectedStation,
+          stationId: globalSelectedStation,
           pumpNumber: formattedPumpNumber,
           isActive: true
         })
@@ -338,7 +333,7 @@ export default function TanksSettingsPage() {
   const handleCreateNozzle = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!selectedStation || !selectedPump || !selectedTank || !nozzleNumber) {
+    if (!globalSelectedStation || !selectedPump || !selectedTank || !nozzleNumber) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -473,20 +468,26 @@ export default function TanksSettingsPage() {
     {
       key: 'currentLevel' as keyof Tank,
       title: 'Current Level',
-      render: (value: unknown, row: Tank) => (
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs">
-            <span>{(value as (number) || 0).toLocaleString()} L</span>
-            <span className="text-muted-foreground">{Math.round(((value as number) / row.capacity) * 100)}%</span>
-          </div>
-          <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-            <div
-              className="h-full bg-orange-500 rounded-full"
-              style={{ width: `${Math.min(100, Math.max(0, ((value as number) / row.capacity) * 100))}%` }}
-            />
-          </div>
-        </div>
-      )
+      render: (value: unknown, row: Tank) => {
+        const percent = Math.round(((value as number) / row.capacity) * 100)
+        let colorClass = 'bg-emerald-500'
+        if (percent < 20) colorClass = 'bg-red-500'
+        else if (percent < 40) colorClass = 'bg-yellow-500'
+
+        return (
+          <div className="space-y-1.5 min-w-[140px]">
+            <div className="flex justify-between text-xs font-medium">
+              <span className="text-muted-foreground">Level</span>
+              <span className={`${percent < 20 ? 'text-red-600' : 'text-foreground'}`}>{percent}%</span>
+            </div>
+            <Progress value={percent} className="h-3" indicatorClassName={colorClass} />
+
+            <p className="text-[10px] text-muted-foreground text-right font-mono">
+              {(value as (number) || 0).toLocaleString()} / {row.capacity.toLocaleString()} L
+            </p>
+          </div >
+        )
+      },
     },
     {
       key: 'id' as keyof Tank,
@@ -618,18 +619,20 @@ export default function TanksSettingsPage() {
   ]
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" onClick={() => router.push('/settings')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Settings
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <Fuel className="h-8 w-8 text-orange-600 dark:text-orange-400" />
-            Tank Settings
-          </h1>
-          <p className="text-muted-foreground">Manage tanks, pumps, and infrastructure</p>
+    <div className="space-y-6 p-6 max-w-[1600px] mx-auto">
+      {/* Standard Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => router.push('/settings')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Tank Management</h1>
+            <p className="text-muted-foreground mt-2">
+              Monitor stock levels, manage pumps, and configure station infrastructure.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -731,31 +734,9 @@ export default function TanksSettingsPage() {
         </DialogContent>
       </Dialog>
 
-      <FormCard
-        title="Infrastructure Setup"
-        description="Manage pumps and nozzles for stations"
-        actions={<Settings className="h-5 w-5 text-muted-foreground" />}
-        className="p-4"
-      >
+      {/* Infrastructure Setup Section removed - using global station selector */}
 
-        <div>
-          <Label htmlFor="infra-station">Select Station</Label>
-          <Select value={selectedStation} onValueChange={setSelectedStation}>
-            <SelectTrigger id="infra-station" className="mt-2">
-              <SelectValue placeholder="Select a station to manage" />
-            </SelectTrigger>
-            <SelectContent>
-              {stations.map((station) => (
-                <SelectItem key={station.id} value={station.id}>
-                  {station.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </FormCard>
-
-      {selectedStation && (
+      {globalSelectedStation && (
         <Tabs defaultValue="tanks" className="space-y-6">
           <TabsList>
             <TabsTrigger value="tanks">
@@ -770,7 +751,15 @@ export default function TanksSettingsPage() {
               <Droplets className="mr-2 h-4 w-4" />
               Nozzles
             </TabsTrigger>
+            <TabsTrigger value="infrastructure">
+              <Map className="mr-2 h-4 w-4" />
+              Infrastructure View
+            </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="infrastructure">
+            <InfrastructureView stationId={globalSelectedStation} />
+          </TabsContent>
 
           <TabsContent value="tanks" className="space-y-4">
             <div className="flex justify-end">
@@ -783,6 +772,30 @@ export default function TanksSettingsPage() {
               </Button>
             </div>
             <FormCard title="Existing Tanks">
+              <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-background/40 p-4 rounded-lg border border-muted/20 flex items-center gap-3">
+                  <div className="p-2 bg-blue-500/10 rounded-full text-blue-500"><Activity className="h-5 w-5" /></div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Capacity</p>
+                    <p className="text-xl font-bold">{tanks.reduce((acc, t) => acc + t.capacity, 0).toLocaleString()} L</p>
+                  </div>
+                </div>
+                <div className="bg-background/40 p-4 rounded-lg border border-muted/20 flex items-center gap-3">
+                  <div className="p-2 bg-green-500/10 rounded-full text-green-500"><Droplets className="h-5 w-5" /></div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Current Stock</p>
+                    <p className="text-xl font-bold">{tanks.reduce((acc, t) => acc + t.currentLevel, 0).toLocaleString()} L</p>
+                  </div>
+                </div>
+                <div className="bg-background/40 p-4 rounded-lg border border-muted/20 flex items-center gap-3">
+                  <div className="p-2 bg-orange-500/10 rounded-full text-orange-500"><Gauge className="h-5 w-5" /></div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Active Pumps</p>
+                    <p className="text-xl font-bold">{pumps.length}</p>
+                  </div>
+                </div>
+              </div>
+
               <DataTable
                 data={tanks}
                 columns={tankColumns}
@@ -795,7 +808,7 @@ export default function TanksSettingsPage() {
           </TabsContent>
 
           <TabsContent value="pumps" className="space-y-4">
-            <FormCard title="Create New Pump">
+            <FormCard title="Create New Pump" className="bg-card/50 backdrop-blur-sm border-muted/40">
               <form onSubmit={handleCreatePump} className="space-y-4">
                 <div>
                   <Label htmlFor="pumpNumber">Pump Number *</Label>
@@ -911,7 +924,7 @@ export default function TanksSettingsPage() {
         </Tabs>
       )}
 
-      {!selectedStation && (
+      {!globalSelectedStation && (
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>No Station Selected</AlertTitle>

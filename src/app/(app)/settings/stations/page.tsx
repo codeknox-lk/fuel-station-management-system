@@ -220,15 +220,15 @@ export default function StationsPage() {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Station Management</h1>
             <p className="text-muted-foreground mt-2">
-              Manage petrol stations, locations, and operational details
+              Manage petrol stations, locations, and operational details.
             </p>
             {limits && (
               <div className="flex items-center gap-2 mt-2">
-                <Badge variant={limits.canAdd ? "outline" : "destructive"}>
+                <Badge variant="outline" className="border-orange-400/50 text-orange-600 dark:text-orange-400">
                   {limits.currentStations} / {limits.maxStations} Stations Used
                 </Badge>
                 {!limits.canAdd && (
-                  <span className="text-xs text-red-500 font-medium">Plan limit reached</span>
+                  <span className="text-xs text-red-600 dark:text-red-400 font-medium bg-red-100 dark:bg-red-900/20 px-2 py-0.5 rounded">Plan limit reached</span>
                 )}
               </div>
             )}

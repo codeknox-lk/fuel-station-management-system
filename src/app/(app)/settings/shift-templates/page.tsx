@@ -396,7 +396,7 @@ export default function ShiftTemplatesPage() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={resetForm}>
+            <Button onClick={resetForm} className="bg-white text-teal-900 hover:bg-teal-100 border-none">
               <Plus className="mr-2 h-4 w-4" />
               Add Template
             </Button>

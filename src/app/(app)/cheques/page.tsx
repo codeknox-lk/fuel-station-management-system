@@ -33,11 +33,6 @@ import {
   ArrowUpCircle
 } from 'lucide-react'
 
-interface Station {
-  id: string
-  name: string
-  city: string
-}
 
 interface Cheque {
   id: string
@@ -78,14 +73,13 @@ const sriLankanBanks = [
 
 export default function ChequesPage() {
   const router = useRouter()
-  const [stations, setStations] = useState<Station[]>([])
   const [recentCheques, setRecentCheques] = useState<Cheque[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
   // Form state
-  const { selectedStation, setSelectedStation } = useStation()
+  const { selectedStation, stations } = useStation()
   const [chequeNumber, setChequeNumber] = useState('')
   const [bankName, setBankName] = useState('')
   const [amount, setAmount] = useState(0)
@@ -94,27 +88,23 @@ export default function ChequesPage() {
   const [receivedDate, setReceivedDate] = useState<Date>(new Date())
   const [notes, setNotes] = useState('')
 
-  // Load initial data
+  // Load recent cheques
   useEffect(() => {
-    const loadData = async () => {
+    const loadCheques = async () => {
       try {
-        const [stationsRes, chequesRes] = await Promise.all([
-          fetch('/api/stations?active=true'),
-          fetch('/api/cheques?limit=10')
-        ])
-
-        const stationsData = await stationsRes.json()
-        const chequesData = await chequesRes.json()
-
-        setStations(stationsData)
-        setRecentCheques(chequesData)
+        const url = !selectedStation || selectedStation === 'all'
+          ? '/api/cheques?limit=10'
+          : `/api/cheques?stationId=${selectedStation}&limit=10`
+        const response = await fetch(url)
+        const data = await response.json()
+        setRecentCheques(data)
       } catch {
         setError('Failed to load initial data')
       }
     }
 
-    loadData()
-  }, [])
+    loadCheques()
+  }, [selectedStation])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -164,8 +154,7 @@ export default function ChequesPage() {
       // Add to recent cheques list
       setRecentCheques(prev => [newCheque, ...prev.slice(0, 9)])
 
-      // Reset form
-      setSelectedStation('')
+      // Reset form (station preserved by context)
       setChequeNumber('')
       setBankName('')
       setAmount(0)
@@ -350,22 +339,11 @@ export default function ChequesPage() {
           {/* Station and Cheque Number */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="station">Station *</Label>
-              <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
-                <SelectTrigger id="station">
-                  <SelectValue placeholder="Select a station" />
-                </SelectTrigger>
-                <SelectContent>
-                  {stations.map((station) => (
-                    <SelectItem key={station.id} value={station.id}>
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        {station.name} ({station.city})
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Selected Station</Label>
+              <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-muted/50 text-sm">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <span>{stations.find(s => s.id === selectedStation)?.name || 'All Stations'}</span>
+              </div>
             </div>
 
             <div>

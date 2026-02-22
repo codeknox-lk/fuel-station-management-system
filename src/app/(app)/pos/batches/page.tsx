@@ -31,11 +31,6 @@ import {
 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 
-interface Station {
-  id: string
-  name: string
-  city: string
-}
 
 interface POSTerminal {
   id: string
@@ -81,7 +76,6 @@ const cardSchemes = [
 
 export default function POSBatchesPage() {
   const router = useRouter()
-  const [stations, setStations] = useState<Station[]>([])
   const [terminals, setTerminals] = useState<POSTerminal[]>([])
   const [recentBatches, setRecentBatches] = useState<POSBatch[]>([])
   const [loading, setLoading] = useState(false)
@@ -89,7 +83,7 @@ export default function POSBatchesPage() {
   const [success, setSuccess] = useState('')
 
   // Form state
-  const { selectedStation, setSelectedStation } = useStation()
+  const { selectedStation, stations } = useStation()
   const [selectedTerminal, setSelectedTerminal] = useState('')
   const [startNumber, setStartNumber] = useState('')
   const [endNumber, setEndNumber] = useState('')
@@ -104,17 +98,14 @@ export default function POSBatchesPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [stationsRes, terminalsRes, batchesRes] = await Promise.all([
-          fetch('/api/stations?active=true'),
+        const [terminalsRes, batchesRes] = await Promise.all([
           fetch('/api/pos/terminals'),
           fetch('/api/pos/batches?limit=10')
         ])
 
-        const stationsData = await stationsRes.json()
         const terminalsData = await terminalsRes.json()
         const batchesData = await batchesRes.json()
 
-        setStations(stationsData)
         setTerminals(terminalsData)
         setRecentBatches(batchesData)
       } catch (error) {
@@ -341,22 +332,11 @@ export default function POSBatchesPage() {
           {/* Station and Terminal Selection */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="station">Station *</Label>
-              <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
-                <SelectTrigger id="station">
-                  <SelectValue placeholder="Select a station" />
-                </SelectTrigger>
-                <SelectContent>
-                  {stations.map((station) => (
-                    <SelectItem key={station.id} value={station.id}>
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        {station.name} ({station.city})
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Selected Station</Label>
+              <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-muted/50 text-sm">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <span>{stations.find(s => s.id === selectedStation)?.name || 'All Stations'}</span>
+              </div>
             </div>
 
             <div>

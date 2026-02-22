@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Gauge, Save, RotateCcw, AlertTriangle, CheckCircle, Info, Calculator, ArrowLeft } from 'lucide-react'
+import { Save, RotateCcw, AlertTriangle, CheckCircle, Info, Calculator, ArrowLeft } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
 import { useRouter } from 'next/navigation'
@@ -158,25 +158,25 @@ export default function TolerancePage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Gauge className="h-6 w-6 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">System-wide settings</span>
-        </div>
+        <Badge variant="outline" className="flex items-center gap-2 px-3 py-1">
+          <Info className="h-4 w-4" />
+          <span className="text-sm font-medium">System Role: Owner</span>
+        </Badge>
       </div>
 
       {/* Current Configuration Alert */}
       {config && (
-        <Alert className="border-orange-500/20 dark:border-orange-500/30 bg-orange-500/10 dark:bg-orange-500/20">
-          <Info className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+        <Alert className="border-rose-500/20 dark:border-rose-500/30 bg-rose-500/10 dark:bg-rose-500/20">
+          <Info className="h-4 w-4 text-rose-600 dark:text-rose-400" />
           <AlertDescription>
             <div className="flex items-center justify-between">
               <div>
-                <strong className="text-orange-700 dark:text-orange-300">Current Tolerance:</strong>
-                <span className="ml-2 text-orange-700 dark:text-orange-300">
+                <strong className="text-rose-700 dark:text-rose-300">Current Tolerance:</strong>
+                <span className="ml-2 text-rose-700 dark:text-rose-300">
                   Flat {formatCurrency(config.flatAmountTolerance)} for any sale
                 </span>
               </div>
-              <div className="text-xs text-orange-600 dark:text-orange-400">
+              <div className="text-xs text-rose-600 dark:text-rose-400">
                 Last updated: {new Date(config.updatedAt).toLocaleString()} by {config.updatedBy}
               </div>
             </div>

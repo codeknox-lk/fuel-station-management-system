@@ -10,11 +10,13 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { DollarSign, Plus, AlertCircle, Fuel, BarChart3, Droplet } from 'lucide-react'
+import { DollarSign, Plus, AlertCircle, Fuel, BarChart3, Droplet, TrendingUp, Edit2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AreaChart, Area, ResponsiveContainer } from 'recharts'
+import { Progress } from '@/components/ui/progress'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 
@@ -460,27 +462,27 @@ export default function FuelsPage() {
   const stockPercentage = totalCapacity > 0 ? (totalStock / totalCapacity) * 100 : 0
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 p-6 max-w-[1600px] mx-auto">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="outline" onClick={() => router.push('/settings')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Fuels</h1>
-            <p className="text-muted-foreground mt-1">
-              Comprehensive fuel management - types, pricing, and inventory
+            <h1 className="text-3xl font-bold text-foreground">Product Pricing</h1>
+            <p className="text-muted-foreground mt-2">
+              Manage fuel types, daily pricing strategies, and inventory targets.
             </p>
           </div>
         </div>
+
         <div className="flex gap-2">
           <Dialog open={fuelTypeDialogOpen} onOpenChange={setFuelTypeDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline">
+              <Button>
                 <Plus className="mr-2 h-4 w-4" />
-                Add New Fuel Type
+                New Fuel Type
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
@@ -689,6 +691,9 @@ export default function FuelsPage() {
         </div>
       </div>
 
+
+
+
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full max-w-md grid-cols-3">
@@ -701,10 +706,10 @@ export default function FuelsPage() {
         <TabsContent value="overview" className="space-y-6">
           {/* Stats Cards */}
           <div className="grid gap-4 md:grid-cols-4">
-            <Card>
+            <Card className="transition-all hover:shadow-md">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Fuel Types</CardTitle>
-                <Fuel className="h-4 w-4 text-muted-foreground" />
+                <Fuel className="h-4 w-4 text-emerald-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{fuels.length}</div>
@@ -712,10 +717,10 @@ export default function FuelsPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="transition-all hover:shadow-md">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Capacity</CardTitle>
-                <Droplet className="h-4 w-4 text-muted-foreground" />
+                <Droplet className="h-4 w-4 text-blue-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{(totalCapacity || 0).toLocaleString()}</div>
@@ -723,10 +728,10 @@ export default function FuelsPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="transition-all hover:shadow-md">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Current Stock</CardTitle>
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                <BarChart3 className="h-4 w-4 text-orange-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{(totalStock || 0).toLocaleString()}</div>
@@ -734,10 +739,10 @@ export default function FuelsPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="transition-all hover:shadow-md">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Active Prices</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <DollarSign className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{activePricesCount}</div>
@@ -805,15 +810,11 @@ export default function FuelsPage() {
                       </div>
 
                       {/* Progress Bar */}
-                      <div className="w-full bg-muted rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full transition-all ${stockPerc < 20 ? 'bg-red-500' :
-                            stockPerc < 50 ? 'bg-yellow-500' :
-                              'bg-green-500'
-                            }`}
-                          style={{ width: `${Math.min(stockPerc, 100)}%` }}
-                        />
-                      </div>
+                      <Progress
+                        value={stockPerc}
+                        className="h-2"
+                        indicatorClassName={stockPerc < 20 ? 'bg-red-500' : stockPerc < 50 ? 'bg-yellow-500' : 'bg-green-500'}
+                      />
                     </CardContent>
                   </Card>
                 )
@@ -828,38 +829,98 @@ export default function FuelsPage() {
           <FormCard
             title="Current Prices"
             description="Latest effective prices for each fuel type"
+
           >
             {currentPrices.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {currentPrices.map(price => (
-                  <Card key={price.id}>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">{price.fuel?.icon || '⛽'}</span>
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                          {price.fuel?.name || 'Unknown Fuel'}
-                        </CardTitle>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold">
-                        Rs. {price.price ? price.price.toFixed(2) : '0.00'}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        per liter
-                      </p>
-                      <div className="mt-3 pt-3 border-t">
-                        <p className="text-xs text-muted-foreground">
-                          Effective: {price.effectiveDate ? new Date(price.effectiveDate).toLocaleDateString() : 'N/A'}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                {currentPrices.map(price => {
+                  const chartData = prices
+                    .filter(p => p.fuelId === price.fuelId && p.price > 0 && new Date(p.effectiveDate) <= new Date())
+                    .sort((a, b) => new Date(a.effectiveDate).getTime() - new Date(b.effectiveDate).getTime())
+                    .slice(-10) // Last 10 price points
+                    .map(p => ({
+                      date: new Date(p.effectiveDate).toLocaleDateString(),
+                      price: p.price
+                    }))
+
+                  return (
+                    <Card key={price.id} className="transition-all hover:shadow-md group">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-2xl">{price.fuel?.icon || '⛽'}</span>
+                            <CardTitle className="text-base font-medium">
+                              {price.fuel?.name || 'Unknown Fuel'}
+                            </CardTitle>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => {
+                              setFormData({
+                                fuelId: price.fuelId,
+                                price: price.price,
+                                effectiveDate: new Date().toISOString().slice(0, 16)
+                              })
+                              setPriceDialogOpen(true)
+                            }}
+                          >
+                            <Edit2 className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex justify-between items-end mb-4">
+                          <div>
+                            <div className="text-3xl font-bold text-foreground">
+                              Rs. {price.price ? price.price.toFixed(2) : '0.00'}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              per liter
+                            </p>
+                          </div>
+
+                          {/* Mini Sparkline */}
+                          <div className="w-[100px] h-[50px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <AreaChart data={chartData}>
+                                <defs>
+                                  <linearGradient id={`gradient-${price.id}`} x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                  </linearGradient>
+                                </defs>
+                                <Area
+                                  type="monotone"
+                                  dataKey="price"
+                                  stroke="#10b981"
+                                  fill={`url(#gradient-${price.id})`}
+                                  strokeWidth={2}
+                                />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 border-t border-muted/20">
+                          <span className="flex items-center gap-1">
+                            <TrendingUp className="h-3 w-3" />
+                            Trend (Last 10)
+                          </span>
+                          <span>
+                            Effective: {price.effectiveDate ? new Date(price.effectiveDate).toLocaleDateString() : 'N/A'}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
               </div>
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                No current prices available
+              <div className="text-center py-8 text-muted-foreground glass-panel">
+                <p>No current prices available</p>
+                <Button variant="link" onClick={() => setPriceDialogOpen(true)}>Add your first price</Button>
               </div>
             )}
           </FormCard>
@@ -888,6 +949,7 @@ export default function FuelsPage() {
           <FormCard
             title="Tank Inventory by Fuel Type"
             description={`Current stock levels across ${tanks.length} tanks`}
+
           >
             {tanks.length > 0 ? (
               <div className="space-y-6">
@@ -901,7 +963,7 @@ export default function FuelsPage() {
                   const fillPercentage = totalCap > 0 ? (currentStock / totalCap) * 100 : 0
 
                   return (
-                    <div key={fuel.id} className="border rounded-lg p-4 space-y-3">
+                    <div key={fuel.id} className="border border-muted/20 rounded-lg p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="text-xl">{fuel.icon}</span>
@@ -941,15 +1003,12 @@ export default function FuelsPage() {
                           </div>
 
                           {/* Progress Bar */}
-                          <div className="w-full bg-muted rounded-full h-2">
-                            <div
-                              className={`h-2 rounded-full transition-all ${fillPercentage < 20 ? 'bg-red-500' :
-                                fillPercentage < 50 ? 'bg-yellow-500' :
-                                  'bg-green-500'
-                                }`}
-                              style={{ width: `${Math.min(fillPercentage, 100)}%` }}
-                            />
-                          </div>
+                          <Progress
+                            value={fillPercentage}
+                            className="h-2"
+                            indicatorClassName={fillPercentage < 20 ? 'bg-red-500' : fillPercentage < 50 ? 'bg-yellow-500' : 'bg-green-500'}
+                          />
+
 
                           {/* Individual Tank Details */}
                           <div className="pt-3 border-t">
@@ -969,15 +1028,11 @@ export default function FuelsPage() {
                                       <span>Stock: {(tank.currentLevel || 0).toLocaleString()} L</span>
                                       <span>Cap: {(tank.capacity || 0).toLocaleString()} L</span>
                                     </div>
-                                    <div className="w-full bg-background rounded-full h-1 mt-1">
-                                      <div
-                                        className={`h-1 rounded-full ${tankFill < 20 ? 'bg-red-500' :
-                                          tankFill < 50 ? 'bg-yellow-500' :
-                                            'bg-green-500'
-                                          }`}
-                                        style={{ width: `${Math.min(tankFill, 100)}%` }}
-                                      />
-                                    </div>
+                                    <Progress
+                                      value={tankFill}
+                                      className="h-1 mt-1 bg-background"
+                                      indicatorClassName={tankFill < 20 ? 'bg-red-500' : tankFill < 50 ? 'bg-yellow-500' : 'bg-green-500'}
+                                    />
                                   </div>
                                 )
                               })}

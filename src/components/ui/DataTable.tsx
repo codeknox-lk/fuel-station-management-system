@@ -32,6 +32,7 @@ export interface Column<T> {
   render?: (value: unknown, row: T) => React.ReactNode
   sortable?: boolean
   width?: string
+  className?: string
   exportFormatter?: (value: unknown, row: T) => string | number
 }
 
@@ -173,11 +174,12 @@ export function DataTable<T = Record<string, unknown>>({
                   key={String(column.key)}
                   className={cn(
                     column.sortable && 'cursor-pointer hover:bg-muted',
-                    column.width && `w-[${column.width}]`
+                    column.width && `w-[${column.width}]`,
+                    column.className
                   )}
                   onClick={() => column.sortable && handleSort(column.key)}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className={cn("flex items-center gap-2", column.className?.includes('text-right') ? "justify-end" : column.className?.includes('text-center') && "justify-center")}>
                     {column.title}
                     {column.sortable && sortKey === column.key && (
                       <span className="text-xs">
@@ -215,7 +217,7 @@ export function DataTable<T = Record<string, unknown>>({
                   onClick={() => onRowClick?.(row)}
                 >
                   {columns.map((column) => (
-                    <TableCell key={String(column.key)}>
+                    <TableCell key={String(column.key)} className={column.className}>
                       {column.render
                         ? column.render(row[column.key], row)
                         : String(row[column.key] ?? '')

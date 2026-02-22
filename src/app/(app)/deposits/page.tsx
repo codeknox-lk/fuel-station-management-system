@@ -34,11 +34,6 @@ import {
   Camera
 } from 'lucide-react'
 
-interface Station {
-  id: string
-  name: string
-  city: string
-}
 
 interface BankAccount {
   id: string
@@ -69,7 +64,6 @@ interface Deposit {
 
 export default function DepositsPage() {
   const router = useRouter()
-  const [stations, setStations] = useState<Station[]>([])
   const [banks, setBanks] = useState<BankAccount[]>([])
   const [recentDeposits, setRecentDeposits] = useState<Deposit[]>([])
   const [loading, setLoading] = useState(false)
@@ -77,7 +71,7 @@ export default function DepositsPage() {
   const [success, setSuccess] = useState('')
 
   // Form state
-  const { selectedStation } = useStation()
+  const { selectedStation, stations } = useStation()
   const [selectedBankAccount, setSelectedBankAccount] = useState('')
   const [amount, setAmount] = useState<number | undefined>(undefined)
   const [depositDate, setDepositDate] = useState<Date>(new Date())
@@ -90,17 +84,18 @@ export default function DepositsPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [stationsRes, depositsRes, banksRes] = await Promise.all([
-          fetch('/api/stations?active=true'),
-          fetch('/api/deposits?limit=10'),
+        const url = !selectedStation || selectedStation === 'all'
+          ? '/api/deposits?limit=10'
+          : `/api/deposits?stationId=${selectedStation}&limit=10`
+
+        const [depositsRes, banksRes] = await Promise.all([
+          fetch(url),
           fetch('/api/banks?active=true')
         ])
 
-        const stationsData = await stationsRes.json()
         const depositsData = await depositsRes.json()
         const banksData = await banksRes.json()
 
-        setStations(stationsData)
         setRecentDeposits(depositsData)
         setBanks(Array.isArray(banksData) ? banksData : [])
       } catch {
@@ -109,7 +104,7 @@ export default function DepositsPage() {
     }
 
     loadData()
-  }, [])
+  }, [selectedStation])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -319,22 +314,11 @@ export default function DepositsPage() {
           {/* Station and Bank Account */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="station">Station *</Label>
-              <Select value={selectedStation} onValueChange={() => { }} disabled={true}>
-                <SelectTrigger id="station">
-                  <SelectValue placeholder="Select a station" />
-                </SelectTrigger>
-                <SelectContent>
-                  {stations.map((station) => (
-                    <SelectItem key={station.id} value={station.id}>
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        {station.name} ({station.city})
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Selected Station</Label>
+              <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-muted/50 text-sm">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <span>{stations.find(s => s.id === selectedStation)?.name || 'All Stations'}</span>
+              </div>
             </div>
 
             <div>

@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CheckCircle2, Wallet, Banknote, AlertTriangle } from 'lucide-react'
-import { DeliveryData } from './DeliveryWizard'
+import { DeliveryData } from './types'
 import { format } from 'date-fns'
 
 interface Bank {

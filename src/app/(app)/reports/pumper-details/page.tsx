@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { useStation } from '@/contexts/StationContext'
 import { useRouter } from 'next/navigation'
 import { getCurrentBusinessMonth } from '@/lib/businessMonth'
-import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
@@ -21,21 +20,31 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   Users,
-  TrendingUp,
   Fuel,
   ArrowLeft,
   RefreshCw,
   Download,
   AlertTriangle,
-  DollarSign,
-  Award,
   FileText,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Wallet,
+  Activity,
+  CheckCircle2
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { exportPumperDetailsReportPDF, exportPumperDetailsReportExcel } from '@/lib/exportUtils'
+import {
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  AreaChart,
+  Area
+} from 'recharts'
 
 interface ActiveLoan {
   id: string
@@ -44,6 +53,14 @@ interface ActiveLoan {
   balance: number
   monthlyRental: number
   createdAt: string
+}
+
+interface RecentShift {
+  shiftId: string
+  date: string
+  sales: number
+  variance: number
+  liters: number
 }
 
 interface PumperDetail {
@@ -81,6 +98,7 @@ interface PumperDetail {
   attendanceDays: number
   performanceScore: number
   lastActive: string
+  recentShifts: RecentShift[]
   fuelTypeBreakdown: Array<{
     fuelName: string
     liters: number
@@ -136,10 +154,10 @@ const months = [
 ]
 
 const performanceColors: Record<PumperDetail['performanceRating'], string> = {
-  EXCELLENT: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400',
-  GOOD: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-400',
-  NEEDS_IMPROVEMENT: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-400',
-  CRITICAL: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400'
+  EXCELLENT: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800',
+  GOOD: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
+  NEEDS_IMPROVEMENT: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800',
+  CRITICAL: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800'
 }
 
 const formatFuelName = (fuelName: string): string => {
@@ -252,25 +270,27 @@ export default function PumperDetailsReport() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.push('/reports')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
+          <Button variant="outline" size="icon" onClick={() => router.push('/reports')}>
+            <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Pumper Details Report</h1>
-            <p className="text-muted-foreground mt-2">
-              Comprehensive pumper performance, salary, and loan information
+            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+              <Users className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+              Staff Performance
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Detailed performance metrics and financial records for pump attendants
             </p>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchReport}>
+          <Button variant="outline" onClick={fetchReport} size="sm">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" disabled={!reportData}>
+              <Button variant="outline" size="sm" disabled={!reportData}>
                 <Download className="h-4 w-4 mr-2" />
                 Export Report
               </Button>
@@ -290,54 +310,46 @@ export default function PumperDetailsReport() {
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filters</CardTitle>
-          <CardDescription>Select parameters to view pumper data</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="year">Year</Label>
+      <Card className="border-none shadow-sm bg-muted/40">
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div className="md:col-span-1">
+              <Label className="text-xs font-semibold uppercase text-muted-foreground mb-1 block">Period Year</Label>
               <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger id="year">
+                <SelectTrigger className="bg-background">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {years.map(year => (
-                    <SelectItem key={year.value} value={year.value}>
-                      {year.label}
-                    </SelectItem>
+                    <SelectItem key={year.value} value={year.value}>{year.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label htmlFor="month">Month</Label>
+            <div className="md:col-span-1">
+              <Label className="text-xs font-semibold uppercase text-muted-foreground mb-1 block">Period Month</Label>
               <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger id="month">
+                <SelectTrigger className="bg-background">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {months.map(month => (
-                    <SelectItem key={month.value} value={month.value}>
-                      {month.label}
-                    </SelectItem>
+                    <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label htmlFor="pumper">Select Pumper (Optional)</Label>
+            <div className="md:col-span-2">
+              <Label className="text-xs font-semibold uppercase text-muted-foreground mb-1 block">Employee Profile</Label>
               <Select value={selectedPumper} onValueChange={setSelectedPumper}>
-                <SelectTrigger id="pumper">
-                  <SelectValue placeholder="All Pumpers" />
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder="All Staff Members" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Pumpers</SelectItem>
+                  <SelectItem value="all">View All Staff Members</SelectItem>
                   {reportData?.pumperDetails.map(pumper => (
                     <SelectItem key={pumper.id} value={pumper.id}>
-                      {pumper.name} ({pumper.employeeId})
+                      {pumper.name} - {pumper.employeeId}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -348,346 +360,335 @@ export default function PumperDetailsReport() {
       </Card>
 
       {error && (
-        <Card className="border-red-500/20 bg-red-500/10">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-red-600">
-              <AlertTriangle className="h-5 w-5" />
-              <span>{error}</span>
-            </div>
-          </CardContent>
-        </Card>
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       {/* Summary Cards */}
       {reportData && selectedPumper === 'all' && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Users className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                  <h3 className="text-sm font-semibold text-muted-foreground">Total Pumpers</h3>
+            <Card className="bg-gradient-to-br from-orange-500 to-red-600 text-white border-none shadow-md">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 bg-white/20 rounded-lg">
+                    <Users className="h-6 w-6 text-white" />
+                  </div>
+                  <Badge variant="outline" className="text-white border-white/40 bg-white/10">Total Staff</Badge>
                 </div>
-                <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                  {reportData.summary.totalPumpers}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {reportData.summary.totalShifts} total shifts
-                </p>
+                <div className="space-y-1">
+                  <p className="text-3xl font-bold">{reportData.summary.totalPumpers}</p>
+                  <p className="text-sm text-orange-100 flex items-center justify-between">
+                    <span>Active: {reportData.summary.activePumpers || reportData.summary.totalPumpers}</span>
+                    <span>{reportData.summary.totalShifts} Shifts</span>
+                  </p>
+                </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  <h3 className="text-sm font-semibold text-muted-foreground">Total Sales</h3>
-                </div>
-                <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Period Revenue</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-foreground">
                   Rs. {(reportData.summary.totalSales || 0).toLocaleString()}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {(reportData.summary.totalLiters || 0).toLocaleString()} L sold
-                </p>
+                </div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                  <Fuel className="h-3 w-3" />
+                  <span>{(reportData.summary.totalLiters || 0).toLocaleString()} L dispensed</span>
+                </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Award className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                  <h3 className="text-sm font-semibold text-muted-foreground">Performance</h3>
-                </div>
-                <div className="flex gap-1 mt-2">
-                  <Badge className="bg-green-100 text-green-700 text-xs">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Performance Overview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className={`${performanceColors.EXCELLENT} border-transparent`}>
                     {reportData.summary.excellentPerformers} Excellent
                   </Badge>
-                  <Badge className="bg-orange-100 text-orange-700 text-xs">
+                  <Badge variant="outline" className={`${performanceColors.GOOD} border-transparent`}>
                     {reportData.summary.goodPerformers} Good
+                  </Badge>
+                  <Badge variant="outline" className={`${performanceColors.NEEDS_IMPROVEMENT} border-transparent`}>
+                    {reportData.summary.needsImprovement} Review
                   </Badge>
                 </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <DollarSign className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                  <h3 className="text-sm font-semibold text-muted-foreground">Active Loans</h3>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Financial Health</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-foreground">
+                  Rs. {(reportData.summary.totalLoanBalance || 0).toLocaleString()}
                 </div>
-                <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                  {reportData.summary.totalActiveLoans}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Rs. {(reportData.summary.totalLoanBalance || 0).toLocaleString()} balance
-                </p>
+                <div className="flex items-center gap-1 text-xs text-red-600 mt-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  <span>{reportData.summary.totalActiveLoans} Active Loans</span>
+                </div>
               </CardContent>
             </Card>
           </div>
         </>
       )}
 
-      {/* Individual Pumper View */}
+      {/* Individual Pumper View - Player Card Style */}
       {selectedPumperData && (
-        <div className="space-y-6">
-          {/* Pumper Info Card */}
-          <FormCard title={`${selectedPumperData.name} - Details`} description={`Employee ID: ${selectedPumperData.employeeId}`}>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-              <div>
-                <Label className="text-xs text-muted-foreground">Phone Number</Label>
-                <p className="font-medium">{selectedPumperData.phoneNumber}</p>
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">NIC</Label>
-                <p className="font-medium">{selectedPumperData.nic}</p>
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">EPF Number</Label>
-                <p className="font-medium">{selectedPumperData.epfNumber}</p>
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Base Salary</Label>
-                <p className="font-medium">Rs. {(selectedPumperData.baseSalary || 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Holiday Allowance</Label>
-                <p className="font-medium">Rs. {(selectedPumperData.holidayAllowance || 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Advance Limit</Label>
-                <p className="font-medium text-orange-600">Rs. {(selectedPumperData.advanceLimit || 0).toLocaleString()}</p>
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Profile Card */}
+          <Card className="lg:col-span-1 overflow-hidden border-none shadow-md">
+            <div className="h-32 bg-gradient-to-br from-slate-800 to-slate-900 relative">
+              <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-background to-transparent"></div>
             </div>
-          </FormCard>
-
-          {/* Performance Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <h3 className="text-sm font-semibold text-muted-foreground mb-2">Total Shifts</h3>
-                <p className="text-3xl font-bold">{selectedPumperData.totalShifts}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <h3 className="text-sm font-semibold text-muted-foreground mb-2">Total Sales</h3>
-                <p className="text-3xl font-bold text-green-600">Rs. {(selectedPumperData.totalSales || 0).toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Avg: Rs. {(selectedPumperData.averageSalesPerShift || 0).toLocaleString()}/shift
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <h3 className="text-sm font-semibold text-muted-foreground mb-2">Total Liters</h3>
-                <p className="text-3xl font-bold text-orange-600">{(selectedPumperData.totalLiters || 0).toLocaleString()} L</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Avg: {(selectedPumperData.averageLitersPerShift || 0).toLocaleString()} L/shift
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <h3 className="text-sm font-semibold text-muted-foreground mb-2">Performance</h3>
-                <Badge className={performanceColors[selectedPumperData.performanceRating]}>
-                  {selectedPumperData.performanceRating}
+            <CardContent className="relative pt-0 px-6 pb-6">
+              <div className="flex justify-between items-end -mt-12 mb-6">
+                <div className="h-24 w-24 rounded-full border-4 border-background bg-slate-100 flex items-center justify-center text-slate-400 text-3xl font-bold shadow-sm">
+                  {selectedPumperData.name.charAt(0)}
+                </div>
+                <Badge className={`${performanceColors[selectedPumperData.performanceRating]} text-sm px-3 py-1`}>
+                  {selectedPumperData.performanceRating.replace('_', ' ')}
                 </Badge>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Variance Rate: {selectedPumperData.varianceRate}%
+              </div>
+
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-foreground">{selectedPumperData.name}</h2>
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <span>ID: {selectedPumperData.employeeId}</span>
+                  <span>•</span>
+                  <span>{selectedPumperData.phoneNumber}</span>
                 </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  <div className="p-3 rounded-lg bg-orange-50 dark:bg-orange-900/10">
+                    <div className="text-xs text-muted-foreground uppercase font-semibold">Total Sales</div>
+                    <div className="text-lg font-bold text-orange-700 dark:text-orange-400">{(selectedPumperData.totalSales / 1000).toFixed(1)}k</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/10">
+                    <div className="text-xs text-muted-foreground uppercase font-semibold">Total Shifts</div>
+                    <div className="text-lg font-bold text-blue-700 dark:text-blue-400">{selectedPumperData.totalShifts}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-4 border-t">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Wallet className="h-4 w-4" /> Financial Status
+                  </h3>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Base Salary</span>
+                    <span className="font-medium">Rs. {selectedPumperData.baseSalary.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Loan Balance</span>
+                    <span className="font-medium text-red-600">Rs. {selectedPumperData.totalLoanBalance.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Advances Taken</span>
+                    <span className="font-medium text-orange-600">Rs. {selectedPumperData.totalAdvances.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm border-t pt-2 mt-2">
+                    <span className="font-semibold text-foreground">Net Pay (Latest)</span>
+                    <span className="font-bold text-green-600">
+                      Rs. {(selectedPumperData.recentSalaryPayments[0]?.netSalary || 0).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Middle & Right Column - Stats & Charts */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Performance Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-orange-600" />
+                  Recent Performance
+                </CardTitle>
+                <CardDescription>Sales volume over the last 10 shifts</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[250px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={selectedPumperData.recentShifts?.slice().reverse() || []}>
+                      <defs>
+                        <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#ea580c" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#ea580c" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
+                      <XAxis
+                        dataKey="date"
+                        tickFormatter={(val) => new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        fontSize={12}
+                        tickFormatter={(val) => `${(val / 1000).toFixed(0)}k`}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
+                        formatter={(val: number) => [`Rs. ${val.toLocaleString()}`, 'Sales']}
+                        labelFormatter={(label) => new Date(label).toLocaleDateString()}
+                      />
+                      <Area type="monotone" dataKey="sales" stroke="#ea580c" strokeWidth={2} fillOpacity={1} fill="url(#colorSales)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               </CardContent>
             </Card>
-          </div>
 
-          {/* Fuel Type Breakdown */}
-          <FormCard title="Fuel Type Breakdown" description="Sales by fuel type">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-              {selectedPumperData.fuelTypeBreakdown.map((fuel) => (
-                <Card key={fuel.fuelName}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Fuel className="h-4 w-4 text-orange-600" />
-                      <h3 className="text-sm font-semibold">{formatFuelName(fuel.fuelName)}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="h-full">
+                <CardHeader>
+                  <CardTitle className="text-base">Fuel Mix</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {selectedPumperData.fuelTypeBreakdown.map((fuel) => (
+                      <div key={fuel.fuelName} className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="font-medium">{formatFuelName(fuel.fuelName)}</span>
+                          <span className="text-muted-foreground">{fuel.liters.toLocaleString()} L</span>
+                        </div>
+                        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-slate-600 dark:bg-slate-400"
+                            style={{ width: `${(fuel.liters / selectedPumperData.totalLiters) * 100}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="h-full">
+                <CardHeader>
+                  <CardTitle className="text-base">Active Loans</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {selectedPumperData.activeLoans.length > 0 ? (
+                    <div className="space-y-4">
+                      {selectedPumperData.activeLoans.map(loan => (
+                        <div key={loan.id} className="flex justify-between items-center p-3 border rounded-lg bg-muted/20">
+                          <div>
+                            <div className="font-medium text-sm">{loan.description || 'Personal Loan'}</div>
+                            <div className="text-xs text-muted-foreground">{new Date(loan.createdAt).toLocaleDateString()}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-bold text-red-600 text-sm">Rs. {loan.balance.toLocaleString()}</div>
+                            <div className="text-xs text-muted-foreground">bal</div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <p className="text-2xl font-bold">{(fuel.liters || 0).toLocaleString()} L</p>
-                    <p className="text-xs text-muted-foreground mt-1">{fuel.shifts} shifts</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </FormCard>
-
-          {/* Financial Summary */}
-          <FormCard title="Financial Summary" description="Salary, loans, and deductions">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="text-sm font-semibold text-muted-foreground mb-2">Salary Paid</h3>
-                  <p className="text-2xl font-bold text-green-600">Rs. {(selectedPumperData.totalSalaryPaid || 0).toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground mt-1">This period</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="text-sm font-semibold text-muted-foreground mb-2">Total Advances</h3>
-                  <p className="text-2xl font-bold text-orange-600">Rs. {(selectedPumperData.totalAdvances || 0).toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Deducted</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="text-sm font-semibold text-muted-foreground mb-2">Loan Balance</h3>
-                  <p className="text-2xl font-bold text-red-600">Rs. {(selectedPumperData.totalLoanBalance || 0).toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {selectedPumperData.activeLoansCount} active loans
-                  </p>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
+                      <CheckCircle2 className="h-8 w-8 mb-2 text-green-500 opacity-50" />
+                      <p className="text-sm">No active loans</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
-          </FormCard>
-
-          {/* Active Loans */}
-          {selectedPumperData.activeLoans.length > 0 && (
-            <FormCard title="Active Loans" description="Current outstanding loans">
-              <div className="overflow-x-auto mt-4">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b-2 bg-muted/30">
-                      <th className="text-left p-3 font-semibold">Description</th>
-                      <th className="text-right p-3 font-semibold">Original Amount</th>
-                      <th className="text-right p-3 font-semibold">Balance</th>
-                      <th className="text-right p-3 font-semibold">Monthly Rental</th>
-                      <th className="text-left p-3 font-semibold">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedPumperData.activeLoans.map((loan) => (
-                      <tr key={loan.id} className="border-b">
-                        <td className="p-3">{loan.description || 'N/A'}</td>
-                        <td className="text-right p-3">Rs. {(loan.amount || 0).toLocaleString()}</td>
-                        <td className="text-right p-3 text-red-600 font-semibold">
-                          Rs. {(loan.balance || 0).toLocaleString()}
-                        </td>
-                        <td className="text-right p-3">Rs. {(loan.monthlyRental || (0) || 0).toLocaleString()}</td>
-                        <td className="p-3">{new Date(loan.createdAt).toLocaleDateString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </FormCard>
-          )}
-
-          {/* Recent Salary Payments */}
-          {selectedPumperData.recentSalaryPayments.length > 0 && (
-            <FormCard title="Recent Salary Payments" description="Last 5 salary payments">
-              <div className="overflow-x-auto mt-4">
-                <table className="w-full border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b-2 bg-muted/30">
-                      <th className="text-left p-3 font-semibold">Date</th>
-                      <th className="text-right p-3 font-semibold">Base Salary</th>
-                      <th className="text-right p-3 font-semibold">Variance (+)</th>
-                      <th className="text-right p-3 font-semibold">Variance (-)</th>
-                      <th className="text-right p-3 font-semibold">Advances</th>
-                      <th className="text-right p-3 font-semibold">Loan Deduction</th>
-                      <th className="text-right p-3 font-semibold">Net Salary</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedPumperData.recentSalaryPayments.map((payment) => (
-                      <tr key={payment.id} className="border-b">
-                        <td className="p-3">{new Date(payment.paymentDate).toLocaleDateString()}</td>
-                        <td className="text-right p-3">Rs. {(payment.baseSalary || 0).toLocaleString()}</td>
-                        <td className="text-right p-3 text-green-600">
-                          +Rs. {(payment.varianceAdd || 0).toLocaleString()}
-                        </td>
-                        <td className="text-right p-3 text-orange-600">
-                          -Rs. {(payment.varianceDeduct || 0).toLocaleString()}
-                        </td>
-                        <td className="text-right p-3 text-orange-600">
-                          -Rs. {(payment.advances || 0).toLocaleString()}
-                        </td>
-                        <td className="text-right p-3 text-red-600">
-                          -Rs. {(payment.loans || 0).toLocaleString()}
-                        </td>
-                        <td className="text-right p-3 font-semibold text-orange-600">
-                          Rs. {(payment.netSalary || 0).toLocaleString()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </FormCard>
-          )}
+          </div>
         </div>
       )}
 
       {/* All Pumpers Table */}
       {reportData && selectedPumper === 'all' && (
-        <FormCard title="Pumper Overview" description="Complete pumper performance summary">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b-2 bg-muted/30">
-                  <th className="text-left p-3 font-semibold">Pumper</th>
-                  <th className="text-right p-3 font-semibold">Shifts</th>
-                  <th className="text-right p-3 font-semibold">Sales</th>
-                  <th className="text-right p-3 font-semibold">Liters</th>
-                  <th className="text-right p-3 font-semibold">Variance %</th>
-                  <th className="text-left p-3 font-semibold">Performance</th>
-                  <th className="text-right p-3 font-semibold">Loans</th>
-                  <th className="text-right p-3 font-semibold">Salary Paid</th>
-                  <th className="text-center p-3 font-semibold">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reportData.pumperDetails.map((pumper, index) => (
-                  <tr key={pumper.id} className={index % 2 === 0 ? 'bg-muted/50' : ''}>
-                    <td className="p-3">
-                      <div>
-                        <p className="font-medium">{pumper.name}</p>
-                        <p className="text-xs text-muted-foreground">{pumper.employeeId}</p>
-                      </div>
-                    </td>
-                    <td className="text-right p-3">{pumper.totalShifts}</td>
-                    <td className="text-right p-3">Rs. {(pumper.totalSales || 0).toLocaleString()}</td>
-                    <td className="text-right p-3">{(pumper.totalLiters || 0).toLocaleString()} L</td>
-                    <td className="text-right p-3">
-                      <span className={pumper.varianceRate > 15 ? 'text-red-600 font-semibold' : ''}>
-                        {pumper.varianceRate}%
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <Badge className={performanceColors[pumper.performanceRating]}>
-                        {pumper.performanceRating}
-                      </Badge>
-                    </td>
-                    <td className="text-right p-3">
-                      {pumper.activeLoansCount > 0 && (
-                        <div>
-                          <p className="text-red-600">Rs. {(pumper.totalLoanBalance || 0).toLocaleString()}</p>
-                          <p className="text-xs text-muted-foreground">{pumper.activeLoansCount} loans</p>
-                        </div>
-                      )}
-                    </td>
-                    <td className="text-right p-3">Rs. {(pumper.totalSalaryPaid || 0).toLocaleString()}</td>
-                    <td className="text-center p-3">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setSelectedPumper(pumper.id)}
-                      >
-                        View Details
-                      </Button>
-                    </td>
+        <Card className="border-none shadow-md">
+          <CardHeader>
+            <CardTitle>Staff Overview</CardTitle>
+            <CardDescription>Performance comparison for {months.find(m => m.value === selectedMonth)?.label} {selectedYear}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <th className="text-left p-3 font-semibold text-muted-foreground">Staff Member</th>
+                    <th className="text-right p-3 font-semibold text-muted-foreground">Shifts</th>
+                    <th className="text-right p-3 font-semibold text-muted-foreground">Sales</th>
+                    <th className="text-right p-3 font-semibold text-muted-foreground">Efficiency</th>
+                    <th className="text-left p-3 font-semibold text-muted-foreground">Rating</th>
+                    <th className="text-right p-3 font-semibold text-muted-foreground">Loans</th>
+                    <th className="text-right p-3 font-semibold text-muted-foreground">Salary Paid</th>
+                    <th className="text-center p-3 font-semibold text-muted-foreground">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </FormCard>
+                </thead>
+                <tbody>
+                  {reportData.pumperDetails.map((pumper) => (
+                    <tr key={pumper.id} className="border-b hover:bg-muted/30 transition-colors">
+                      <td className="p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold text-xs">
+                            {pumper.name.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-medium">{pumper.name}</p>
+                            <p className="text-xs text-muted-foreground">{pumper.employeeId}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="text-right p-3">
+                        <span className="font-medium bg-muted px-2 py-1 rounded text-xs">{pumper.totalShifts}</span>
+                      </td>
+                      <td className="text-right p-3 font-medium">Rs. {(pumper.totalSales || 0).toLocaleString()}</td>
+                      <td className="text-right p-3">
+                        <div className="flex flex-col items-end">
+                          <span className={pumper.varianceRate > 15 ? 'text-red-600 font-bold' : 'text-green-600'}>
+                            {(100 - pumper.varianceRate).toFixed(1)}%
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <Badge variant="outline" className={`${performanceColors[pumper.performanceRating]}`}>
+                          {pumper.performanceRating.replace('_', ' ')}
+                        </Badge>
+                      </td>
+                      <td className="text-right p-3">
+                        {pumper.activeLoansCount > 0 ? (
+                          <span className="text-red-600 font-medium text-xs">Rs. {(pumper.totalLoanBalance || 0).toLocaleString()}</span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">-</span>
+                        )}
+                      </td>
+                      <td className="text-right p-3 text-muted-foreground">Rs. {(pumper.totalSalaryPaid || 0).toLocaleString()}</td>
+                      <td className="text-center p-3">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setSelectedPumper(pumper.id)}
+                        >
+                          <Users className="h-4 w-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   )

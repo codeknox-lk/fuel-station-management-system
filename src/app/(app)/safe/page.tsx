@@ -287,7 +287,7 @@ function groupTransactionsByShift(transactions: SafeTransaction[]): (SafeTransac
 
 export default function SafePage() {
   const router = useRouter()
-  const { selectedStation, setSelectedStation, stations } = useStation()
+  const { selectedStation } = useStation()
   const { organization, isLoading } = useOrganization()
 
   // Robust check for Premium status (handle case sensitivity and different plan names)
@@ -1241,35 +1241,7 @@ export default function SafePage() {
         </div>
       </div>
 
-      {/* Station Selector */}
-      <Card>
-        <CardContent className="p-4 flex items-center gap-4">
-          <Building2 className="h-5 w-5 text-muted-foreground" />
-          <div className="flex-1">
-            <Label htmlFor="station-select" className="sr-only">Select Station</Label>
-            <Select
-              value={selectedStation || ''}
-              onValueChange={setSelectedStation}
-            >
-              <SelectTrigger id="station-select" className="w-[300px]">
-                <SelectValue placeholder="Select a station" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Stations</SelectItem>
-                {stations.map((station) => (
-                  <SelectItem key={station.id} value={station.id}>
-                    {station.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button variant="outline" onClick={fetchSafe}>
-            <TrendingUp className="mr-2 h-4 w-4" />
-            Refresh Data
-          </Button>
-        </CardContent>
-      </Card>
+      {/* Station Selector removed - using global station selector */}
 
       {/* Safe Balance Cards */},
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

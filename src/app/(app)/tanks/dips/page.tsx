@@ -673,8 +673,13 @@ export default function TankDipsPage() {
                                     value={reading.currentMeter}
                                     onChange={(e) => handleCurrentMeterChange(assignment.id, e.target.value)}
                                     placeholder="Enter"
-                                    className=""
+                                    className={reading.currentMeter && parseFloat(reading.currentMeter) < assignment.startMeterReading ? 'border-red-500 ring-red-500' : ''}
                                   />
+                                  {reading.currentMeter && parseFloat(reading.currentMeter) < assignment.startMeterReading && (
+                                    <p className="text-[10px] text-red-500 mt-1 font-medium">
+                                      Cannot be lower than opening
+                                    </p>
+                                  )}
                                 </div>
                                 <div>
                                   <Label className="text-xs text-muted-foreground">Fuel Sold</Label>
@@ -693,7 +698,11 @@ export default function TankDipsPage() {
                             variant="outline"
                             size="sm"
                             onClick={updateTankStock}
-                            disabled={pumpReadings.every(r => !r.currentMeter) || updatingStock}
+                            disabled={
+                              pumpReadings.every(r => !r.currentMeter) ||
+                              pumpReadings.some(r => r.currentMeter && parseFloat(r.currentMeter) < r.startMeterReading) ||
+                              updatingStock
+                            }
                           >
                             <Droplets className="mr-2 h-4 w-4" />
                             {updatingStock ? 'Updating...' : 'Update Tank Stock'}

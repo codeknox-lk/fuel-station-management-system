@@ -33,8 +33,11 @@ import {
     AlertCircle,
     ArrowLeft,
     Package,
-    ArrowUpRight,
-    ShoppingBag
+    ShoppingBag,
+    DollarSign,
+    TrendingUp,
+    AlertTriangle,
+    Layers
 } from 'lucide-react'
 
 interface PerformanceData {
@@ -84,7 +87,7 @@ const months = [
     { value: '12', label: 'December' }
 ]
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d']
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4']
 
 export default function ShopProfitReportPage() {
     const router = useRouter()
@@ -126,8 +129,16 @@ export default function ShopProfitReportPage() {
     }
 
     const performanceColumns: Column<PerformanceData>[] = [
-        { key: 'productName' as keyof PerformanceData, title: 'Product' },
-        { key: 'category' as keyof PerformanceData, title: 'Category' },
+        {
+            key: 'productName' as keyof PerformanceData,
+            title: 'Product',
+            render: (val, row) => (
+                <div>
+                    <div className="font-medium">{val as string}</div>
+                    <div className="text-xs text-muted-foreground">{row.category}</div>
+                </div>
+            )
+        },
         { key: 'quantitySold' as keyof PerformanceData, title: 'Sold' },
         {
             key: 'revenue' as keyof PerformanceData,
@@ -151,27 +162,47 @@ export default function ShopProfitReportPage() {
         {
             key: 'margin' as keyof PerformanceData,
             title: 'Margin',
-            render: (val) => `${(val as number).toFixed(1)}%`
+            render: (val) => {
+                const margin = val as number;
+                let colorClass = 'text-muted-foreground';
+                if (margin > 30) colorClass = 'text-green-600 font-medium';
+                else if (margin > 15) colorClass = 'text-green-500';
+                else if (margin < 0) colorClass = 'text-red-600 font-bold';
+                else if (margin < 10) colorClass = 'text-amber-500';
+
+                return <span className={colorClass}>{margin.toFixed(1)}%</span>
+            }
         }
     ]
+
+    // Prepare Top 5 Products by Margin (Filtered for significance - e.g. sold > 5 items)
+    const topMarginProducts = report?.performance
+        .filter(p => p.quantitySold > 5)
+        .sort((a, b) => b.margin - a.margin)
+        .slice(0, 5) || [];
 
     return (
         <div className="space-y-6 p-6">
             <div className="flex items-center gap-4 mb-6">
-                <Button variant="outline" onClick={() => router.push('/reports')}>
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back
+                <Button variant="outline" size="icon" onClick={() => router.push('/reports')}>
+                    <ArrowLeft className="h-4 w-4" />
                 </Button>
-                <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-                    <ShoppingBag className="h-8 w-8 text-orange-600" />
-                    Shop Profitability Report
-                </h1>
+                <div>
+                    <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+                        <ShoppingBag className="h-8 w-8 text-orange-600" />
+                        Shop Profitability Report
+                    </h1>
+                    <p className="text-muted-foreground mt-1">
+                        Inventory performance and product margins
+                    </p>
+                </div>
             </div>
 
-            <FormCard title="Select Period" description="Business month runs from 7th to 6th of next month">
+            <FormCard title="Report Configuration" description="Business month runs from 7th to 6th of next month">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     {isAllStations ? (
-                        <div className="col-span-full p-4 bg-amber-50 text-amber-700 rounded-lg border border-amber-200">
+                        <div className="col-span-full p-4 bg-amber-50 text-amber-700 rounded-lg border border-amber-200 flex items-center">
+                            <AlertCircle className="h-5 w-5 mr-2" />
                             Please select a specific station to view shop profitability.
                         </div>
                     ) : (
@@ -209,71 +240,93 @@ export default function ShopProfitReportPage() {
             </FormCard>
 
             {error && (
-                <div className="p-4 bg-red-50 text-red-700 rounded-lg flex items-center gap-2">
+                <div className="p-4 bg-red-50 text-red-700 rounded-lg flex items-center gap-2 border border-red-200">
                     <AlertCircle className="h-5 w-5" />
                     {error}
                 </div>
             )}
 
             {report && (
-                <div className="space-y-6">
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    {/* Glassmorphic Summary Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-muted-foreground">Shop Revenue</CardTitle>
+                        <Card className="border-none shadow-md bg-gradient-to-br from-blue-500 to-blue-600 text-white relative overflow-hidden">
+                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+                            <CardHeader className="pb-2 relative z-10">
+                                <CardTitle className="text-sm font-medium flex items-center justify-between text-white/90">
+                                    <span>Total Revenue</span>
+                                    <DollarSign className="h-4 w-4 text-white/80" />
+                                </CardTitle>
                             </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">Rs. {(report.summary.totalRevenue || 0).toLocaleString()}</div>
-                                <div className="text-xs text-green-600 flex items-center gap-1 mt-1">
-                                    <ArrowUpRight className="h-3 w-3" />
-                                    From {report.performance.reduce((sum: number, p: PerformanceData) => sum + p.quantitySold, 0)} items
+                            <CardContent className="relative z-10">
+                                <div className="text-3xl font-bold">
+                                    Rs. {(report.summary.totalRevenue || 0).toLocaleString()}
+                                </div>
+                                <div className="text-xs text-white/70 mt-1 flex items-center gap-1">
+                                    <Package className="h-3 w-3" />
+                                    {report.performance.reduce((sum, p) => sum + p.quantitySold, 0)} items sold
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <Card>
+                        <Card className="border-none shadow-md bg-gradient-to-br from-green-500 to-emerald-600 text-white relative overflow-hidden">
+                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+                            <CardHeader className="pb-2 relative z-10">
+                                <CardTitle className="text-sm font-medium flex items-center justify-between text-white/90">
+                                    <span>Gross Profit</span>
+                                    <TrendingUp className="h-4 w-4 text-white/80" />
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="relative z-10">
+                                <div className="text-3xl font-bold">
+                                    Rs. {(report.summary.totalProfit || 0).toLocaleString()}
+                                </div>
+                                <div className="text-xs text-white/70 mt-1">
+                                    {((report.summary.totalProfit / report.summary.totalRevenue) * 100).toFixed(1)}% Avg Margin
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-none shadow-md bg-gradient-to-br from-orange-500 to-red-500 text-white relative overflow-hidden">
+                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+                            <CardHeader className="pb-2 relative z-10">
+                                <CardTitle className="text-sm font-medium flex items-center justify-between text-white/90">
+                                    <span>Wastage & Loss</span>
+                                    <AlertTriangle className="h-4 w-4 text-white/80" />
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="relative z-10">
+                                <div className="text-3xl font-bold">
+                                    Rs. {(report.summary.totalWastageLoss || 0).toLocaleString()}
+                                </div>
+                                <div className="text-xs text-white/70 mt-1">
+                                    Damaged / Expired Goods
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border bg-card/50 backdrop-blur-sm">
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-muted-foreground">Profit (Gross)</CardTitle>
+                                <CardTitle className="text-sm font-medium text-purple-600 dark:text-purple-400 flex items-center justify-between">
+                                    <span>Inventory Value</span>
+                                    <Layers className="h-4 w-4" />
+                                </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-green-600">Rs. {(report.summary.totalProfit || 0).toLocaleString()}</div>
+                                <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">
+                                    Rs. {(report.summary.inventoryValuation || 0).toLocaleString()}
+                                </div>
                                 <div className="text-xs text-muted-foreground mt-1">
-                                    {((report.summary.totalProfit / report.summary.totalRevenue) * 100).toFixed(1)}% avg margin
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-muted-foreground">Wastage Loss</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-red-600">Rs. {(report.summary.totalWastageLoss || 0).toLocaleString()}</div>
-                                <div className="text-xs text-red-500 mt-1">
-                                    Includes damaged & expired stock
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card className="bg-orange-50 dark:bg-orange-900/20 border-orange-200">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-orange-700 dark:text-orange-400 font-bold">Inventory Value</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-orange-800 dark:text-orange-300">Rs. {(report.summary.inventoryValuation || 0).toLocaleString()}</div>
-                                <div className="text-xs text-orange-600 mt-1">
-                                    Current stock at cost price
+                                    Current stock at Cost Price
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Revenue by Category</CardTitle>
-                            </CardHeader>
-                            <CardContent className="h-[300px]">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Revenue by Category (Donut) */}
+                        <FormCard title="Revenue Distribution" description="By Product Category" className="lg:col-span-1">
+                            <div className="h-[300px] w-full mt-4">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie
@@ -282,51 +335,81 @@ export default function ShopProfitReportPage() {
                                             nameKey="category"
                                             cx="50%"
                                             cy="50%"
+                                            innerRadius={60}
                                             outerRadius={80}
-                                            label
+                                            paddingAngle={5}
+                                            label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
                                         >
-                                            {report.categories.map((item: CategoryData, index: number) => (
+                                            {report.categories.map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                             ))}
                                         </Pie>
-                                        <Tooltip formatter={(value) => `Rs. ${(Number(value) || 0).toLocaleString()}`} />
-                                        <Legend />
+                                        <Tooltip
+                                            formatter={(value) => `Rs. ${(Number(value) || 0).toLocaleString()}`}
+                                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                        />
+                                        <Legend verticalAlign="bottom" height={36} />
                                     </PieChart>
                                 </ResponsiveContainer>
-                            </CardContent>
-                        </Card>
+                            </div>
+                        </FormCard>
 
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Profit vs Revenue by Category</CardTitle>
-                            </CardHeader>
-                            <CardContent className="h-[300px]">
+                        {/* Top Products by Margin */}
+                        <FormCard title="Top High-Margin Products" description="Products with highest margins (sold > 5 units)" className="lg:col-span-2">
+                            <div className="h-[300px] w-full mt-4">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={report.categories}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="category" />
-                                        <YAxis tickFormatter={(val) => `Rs. ${val / 1000}K`} />
-                                        <Tooltip formatter={(value) => `Rs. ${(Number(value) || 0).toLocaleString()}`} />
-                                        <Legend />
-                                        <Bar dataKey="revenue" fill="#3b82f6" name="Revenue" />
-                                        <Bar dataKey="profit" fill="#10b981" name="Profit" />
+                                    <BarChart data={topMarginProducts} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#E5E7EB" />
+                                        <XAxis type="number" unit="%" hide />
+                                        <YAxis dataKey="productName" type="category" width={150} tick={{ fontSize: 12 }} />
+                                        <Tooltip
+                                            cursor={{ fill: 'transparent' }}
+                                            formatter={(value: number) => [`${value.toFixed(1)}%`, 'Margin']}
+                                        />
+                                        <Bar dataKey="margin" radius={[0, 4, 4, 0]} barSize={20}>
+                                            {topMarginProducts.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Bar>
                                     </BarChart>
                                 </ResponsiveContainer>
-                            </CardContent>
-                        </Card>
+                            </div>
+                        </FormCard>
+                    </div>
+
+                    <div className="grid grid-cols-1">
+                        <FormCard title="Profitability vs Revenue" description="Performance by Category">
+                            <div className="h-[350px] w-full mt-4">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={report.categories} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                                        <XAxis dataKey="category" tick={{ fontSize: 12 }} />
+                                        <YAxis tickFormatter={(val) => `Rs.${val / 1000}k`} tick={{ fontSize: 12 }} />
+                                        <Tooltip
+                                            formatter={(value) => `Rs. ${(Number(value) || 0).toLocaleString()}`}
+                                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                        />
+                                        <Legend />
+                                        <Bar dataKey="revenue" fill="#3b82f6" name="Revenue" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="profit" fill="#10b981" name="Gross Profit" radius={[4, 4, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </FormCard>
                     </div>
 
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <Package className="h-5 w-5 text-orange-600" />
-                                Product Performance details
+                                Detailed Product Performance
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <DataTable
                                 data={report.performance}
                                 columns={performanceColumns}
+                                searchPlaceholder="Search products..."
                                 pagination={true}
                             />
                         </CardContent>

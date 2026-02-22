@@ -17,25 +17,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
   Fuel,
   Droplets,
-
-  Plus,
   Truck,
-
-  ChevronDown,
-  ChevronRight,
-  Network,
-  Wrench
+  Wrench,
+  Network
 } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
 
 import { TankWithDetails } from '@/types/db'
 
@@ -70,18 +57,27 @@ interface Nozzle {
   pump: Pump
 }
 
-// Also define the Infrastructure type if possible, or keep as any for now but localized
-interface Infrastructure {
-  station: { id: string; name: string }
-  tanks: (TankWithDetails & { nozzles: Nozzle[] })[]
-  pumps: Pump[]
-}
-
 export default function TanksPage() {
   const router = useRouter()
-  const { stations, selectedStation, getSelectedStation } = useStation()
-  const { toast } = useToast()
+  const { selectedStation, getSelectedStation } = useStation()
+
   const [tanks, setTanks] = useState<UITank[]>([])
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'NORMAL': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+      case 'LOW': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
+      case 'CRITICAL': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+      default: return 'bg-muted text-foreground'
+    }
+  }
+
+  const getFillColor = (percentage: number) => {
+    if (percentage >= 75) return 'bg-green-500/60 dark:bg-green-500/70'
+    if (percentage >= 50) return 'bg-orange-500/60 dark:bg-orange-500/70'
+    if (percentage >= 25) return 'bg-yellow-500/60 dark:bg-yellow-500/70'
+    return 'bg-red-500/60 dark:bg-red-500/70'
+  }
 
 
 
@@ -106,11 +102,19 @@ export default function TanksPage() {
   const [tankDetails, setTankDetails] = useState<UITank & { recentDips: Dip[]; recentDeliveries: Delivery[]; nozzles: Nozzle[] } | null>(null)
   const [detailsLoading, setDetailsLoading] = useState(false)
 
-  // Infrastructure tree state
-  const [showInfrastructure, setShowInfrastructure] = useState(false)
-  const [infrastructure, setInfrastructure] = useState<Infrastructure | null>(null)
-  const [infraLoading, setInfraLoading] = useState(false)
-  const [expandedTanks, setExpandedTanks] = useState<Set<string>>(new Set())
+  // Load infrastructure logic removed from here
+
+  const [stats, setStats] = useState<{
+    totalTanks: number;
+    fuelTypes: Record<string, { capacity: number; stock: number }>;
+    criticalTanks: number;
+    lowTanks: number;
+  }>({
+    totalTanks: 0,
+    fuelTypes: {},
+    criticalTanks: 0,
+    lowTanks: 0,
+  })
 
   useEffect(() => {
     const fetchTanks = async () => {
@@ -137,15 +141,13 @@ export default function TanksPage() {
         }
 
         // Transform the data to include calculated fields
-        // The API returns TankWithDetails structure (mostly)
         const transformedTanks = data.map((tank: TankWithDetails & { station?: { name: string }; currentLevel?: number }) => ({
           ...tank,
-          // Ensure calculated fields are present
           tankNumber: tank.tankNumber || 'TANK-1',
           capacity: tank.capacity,
-          currentStock: tank.currentLevel || 0, // Handle potentially missing field mappings if API differs
+          currentStock: tank.currentLevel || 0,
           stationName: tank.station?.name || `Station ${tank.stationId}`,
-          fillPercentage: Math.round(((tank.currentLevel || 0) / tank.capacity) * 100),
+          fillPercentage: tank.capacity > 0 ? Math.round(((tank.currentLevel || 0) / tank.capacity) * 100) : 0,
           status: ((tank.currentLevel || 0) / tank.capacity < 0.1 ? 'CRITICAL' :
             (tank.currentLevel || 0) / tank.capacity < 0.25 ? 'LOW' : 'NORMAL') as 'NORMAL' | 'LOW' | 'CRITICAL',
           lastDipTime: new Date().toISOString(),
@@ -182,73 +184,6 @@ export default function TanksPage() {
     fetchTanks()
   }, [selectedStation, getSelectedStation])
 
-  const [stats, setStats] = useState<{
-    totalTanks: number;
-    fuelTypes: Record<string, { capacity: number; stock: number }>;
-    criticalTanks: number;
-    lowTanks: number;
-  }>({
-    totalTanks: 0,
-    fuelTypes: {},
-    criticalTanks: 0,
-    lowTanks: 0,
-  })
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'NORMAL': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
-      case 'LOW': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
-      case 'CRITICAL': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
-      default: return 'bg-muted text-foreground'
-    }
-  }
-
-  const getFillColor = (percentage: number) => {
-    if (percentage >= 75) return 'bg-green-500/60 dark:bg-green-500/70'
-    if (percentage >= 50) return 'bg-orange-500/60 dark:bg-orange-500/70'
-    if (percentage >= 25) return 'bg-yellow-500/60 dark:bg-yellow-500/70'
-    return 'bg-red-500/60 dark:bg-red-500/70'
-  }
-
-  const loadInfrastructure = async (stationId: string) => {
-    setInfraLoading(true)
-    try {
-      const response = await fetch(`/api/tanks/infrastructure?stationId=${stationId}`)
-      const data = await response.json()
-
-      if (data.error) {
-        throw new Error(data.error)
-      }
-
-      setInfrastructure(data)
-      setShowInfrastructure(true)
-      // Expand all tanks by default
-      if (data.tanks && Array.isArray(data.tanks)) {
-        setExpandedTanks(new Set(data.tanks.map((t: TankWithDetails) => t.id)))
-      }
-    } catch (err) {
-      console.error('Failed to load infrastructure:', err)
-      toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : 'Failed to load infrastructure',
-        variant: "destructive"
-      })
-    } finally {
-      setInfraLoading(false)
-    }
-  }
-
-  const toggleTankExpand = (tankId: string) => {
-    setExpandedTanks(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(tankId)) {
-        newSet.delete(tankId)
-      } else {
-        newSet.add(tankId)
-      }
-      return newSet
-    })
-  }
 
   const handleTankClick = async (tank: UITank) => {
     setSelectedTank(tank)
@@ -369,6 +304,10 @@ export default function TanksPage() {
     return 'text-orange-600 dark:text-orange-400'
   }
 
+  // ... existing code ...
+
+  // NOTE: loadInfrastructure and related state have been moved to settings/tanks/page.tsx
+
   return (
     <div className="space-y-6 p-6">
       <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
@@ -410,112 +349,6 @@ export default function TanksPage() {
           Manage Tanks & Infrastructure
         </Button>
       </div>
-
-      {/* Infrastructure Tree Selector */}
-      {!showInfrastructure && (
-        <FormCard
-          className="p-6"
-          title="View Infrastructure Tree"
-          description="See all tanks, pumps, and nozzles for a station"
-          actions={
-            <Select onValueChange={(value) => loadInfrastructure(value)} disabled={infraLoading}>
-              <SelectTrigger className="w-[250px]">
-                <SelectValue placeholder="Select station to view" />
-              </SelectTrigger>
-              <SelectContent>
-                {stations.map((station) => (
-                  <SelectItem key={station.id} value={station.id}>
-                    {station.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          }
-        >
-          <></>
-        </FormCard>
-      )}
-
-      {/* Infrastructure Tree Display */}
-      {showInfrastructure && infrastructure && (
-        <FormCard title={`Infrastructure: ${infrastructure.station.name}`} className="p-6">
-          <div className="space-y-4">
-            {/* Tanks Section */}
-            {infrastructure.tanks.length > 0 && (
-              <div>
-                <h4 className="text-md font-semibold mb-3 flex items-center gap-2">
-                  <Fuel className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                  Tanks ({infrastructure.tanks.length})
-                </h4>
-                <div className="space-y-2 border-l-2 border-border pl-4">
-                  {infrastructure.tanks.map((tank) => {
-                    const isExpanded = expandedTanks.has(tank.id)
-                    const fillPercentage = Math.round(((tank.currentLevel || 0) / tank.capacity) * 100)
-                    return (
-                      <div key={tank.id} className="space-y-1">
-                        <button
-                          onClick={() => toggleTankExpand(tank.id)}
-                          className="flex items-center gap-2 w-full text-left hover:bg-muted p-2 rounded-md transition-colors"
-                        >
-                          {isExpanded ? (
-                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                          )}
-                          <Fuel className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                          <span className="font-semibold">{tank.fuel?.icon} {tank.fuel?.name || 'Unknown'}</span>
-                          <Badge variant="outline">
-                            {fillPercentage}% full
-                          </Badge>
-                          <span className="text-xs text-muted-foreground ml-auto">
-                            {(tank.currentLevel || 0).toLocaleString()}L / {(tank.capacity || 0).toLocaleString()}L
-                          </span>
-                        </button>
-                        {isExpanded && tank.nozzles.length > 0 && (
-                          <div className="ml-8 space-y-1 border-l-2 border-orange-500/20 dark:border-orange-500/30 pl-4">
-                            {tank.nozzles.map((nozzle) => (
-                              <div key={nozzle.id} className="flex items-center gap-2 text-sm text-muted-foreground py-1">
-                                <Droplets className="h-3 w-3 text-green-600 dark:text-green-400" />
-                                Nozzle {nozzle.nozzleNumber}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {isExpanded && tank.nozzles.length === 0 && (
-                          <div className="ml-8 text-sm text-muted-foreground italic">
-                            No nozzles connected
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {infrastructure.tanks.length === 0 && (
-              <div className="text-center text-muted-foreground py-8">
-                <Network className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-                <p>No infrastructure found for this station.</p>
-                <Button
-                  variant="outline"
-                  className="mt-4"
-                  onClick={() => router.push('/settings/tanks')}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Infrastructure
-                </Button>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-6 pt-4 border-t">
-            <Button variant="outline" onClick={() => setShowInfrastructure(false)}>
-              Close View
-            </Button>
-          </div>
-        </FormCard>
-      )}
 
       {/* Tanks Table */}
       <FormCard title="Tank Overview" className="p-6">

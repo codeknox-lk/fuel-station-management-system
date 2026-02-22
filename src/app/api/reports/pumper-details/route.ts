@@ -242,6 +242,69 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // Calculate recent shift performance
+      const recentShiftsData: Array<{
+        shiftId: string
+        date: Date
+        sales: number
+        variance: number
+        liters: number
+      }> = []
+
+      for (const shiftId of shiftIds) {
+        const shift = shiftAssignments.find(a => a.shift.id === shiftId)?.shift
+        if (!shift) continue
+
+        let shiftSales = 0
+        let shiftVariance = 0
+        let shiftLiters = 0
+
+        // Get financial data from declared amounts
+        if (shift.declaredAmounts) {
+          const declaredAmounts = shift.declaredAmounts as unknown as DeclaredAmounts
+          const pumperBreakdown = declaredAmounts.pumperBreakdown || []
+          const pumperData = pumperBreakdown.find(p => p.pumperName === pumper.name)
+          if (pumperData) {
+            shiftSales = pumperData.totalSales || 0
+            shiftVariance = pumperData.variance || 0
+          }
+        }
+
+        // Get volume data from assignments
+        const shiftAssignmentsForPumper = pumperAssignments.filter(a => a.shift.id === shiftId)
+        for (const assignment of shiftAssignmentsForPumper) {
+          if (assignment.status === 'CLOSED' && assignment.endMeterReading && assignment.startMeterReading) {
+            let liters = assignment.endMeterReading - assignment.startMeterReading
+            if (liters < 0) {
+              const METER_MAX = 99999
+              if (assignment.startMeterReading > 90000 && assignment.endMeterReading < 10000) {
+                liters = (METER_MAX - assignment.startMeterReading) + assignment.endMeterReading
+              } else {
+                liters = 0
+              }
+            }
+            if (liters > 0) shiftLiters += liters
+          }
+        }
+
+        recentShiftsData.push({
+          shiftId,
+          date: new Date(shift.startTime),
+          sales: shiftSales,
+          variance: shiftVariance,
+          liters: shiftLiters
+        })
+      }
+
+      // Sort by date descending and take last 10
+      const recentShifts = recentShiftsData
+        .sort((a, b) => b.date.getTime() - a.date.getTime())
+        .slice(0, 10)
+        .map(s => ({
+          ...s,
+          date: s.date.toISOString()
+        }))
+
       return {
         id: pumper.id,
         name: pumper.name,
@@ -259,6 +322,9 @@ export async function GET(request: NextRequest) {
         totalLiters: Math.round(totalLiters),
         averageSalesPerShift: totalShifts > 0 ? Math.round(totalSales / totalShifts) : 0,
         averageLitersPerShift: totalShifts > 0 ? Math.round(totalLiters / totalShifts) : 0,
+
+        // Recent shifts for charts
+        recentShifts,
 
         // Variance metrics
         totalVariance: Math.round(totalVariance),

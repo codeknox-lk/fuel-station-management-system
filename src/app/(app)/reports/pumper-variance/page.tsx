@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStation } from '@/contexts/StationContext'
 import { getCurrentBusinessMonth } from '@/lib/businessMonth'
@@ -19,28 +19,29 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  LineChart,
-  Line,
-  ResponsiveContainer
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip
 } from 'recharts'
 import {
-  Building2,
-  User,
-  DollarSign,
   AlertCircle,
   Calculator,
   AlertTriangle,
   CheckCircle,
   XCircle,
   Calendar,
-  ArrowLeft
+  ArrowLeft,
+  TrendingDown,
+  Activity,
+  RefreshCw,
+  User,
+  DollarSign
 } from 'lucide-react'
 
-interface Station {
-  id: string
-  name: string
-  city: string
-}
 
 interface PumperVariance {
   pumperId: string
@@ -70,6 +71,11 @@ interface PumperVariance {
   totalDueAmount: number
 }
 
+interface StationDailyVariance {
+  day: number
+  variance: number
+}
+
 const months = [
   { value: '01', label: 'January' },
   { value: '02', label: 'February' },
@@ -92,48 +98,34 @@ const years = Array.from({ length: 3 }, (_, i) => currentYear - i)
 const Sparkline = ({ data }: { data: { day: number; variance: number }[] }) => (
   <div className="w-24 h-8">
     <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={data}>
-        <Line
+      <AreaChart data={data}>
+        <Area
           type="monotone"
           dataKey="variance"
-          stroke="#3b82f6"
+          stroke="#ef4444"
+          fill="#fee2e2"
           strokeWidth={1}
-          dot={false}
         />
-      </LineChart>
+      </AreaChart>
     </ResponsiveContainer>
   </div>
 )
 
 export default function PumperVariancePage() {
   const router = useRouter()
-  const [stations, setStations] = useState<Station[]>([])
   const [pumperVariances, setPumperVariances] = useState<PumperVariance[]>([])
+  const [stationDailyVariances, setStationDailyVariances] = useState<StationDailyVariance[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   // Form state
-  const { selectedStation, setSelectedStation } = useStation()
+  const { selectedStation, stations } = useStation()
   const currentBusinessMonth = getCurrentBusinessMonth()
   const [selectedMonth, setSelectedMonth] = useState(String(currentBusinessMonth.month).padStart(2, '0'))
   const [selectedYear, setSelectedYear] = useState(String(currentBusinessMonth.year))
 
-  // Load initial data
-  useEffect(() => {
-    const loadStations = async () => {
-      try {
-        const response = await fetch('/api/stations?active=true')
-        const stationsData = await response.json()
-        setStations(stationsData)
-      } catch {
-        setError('Failed to load stations')
-      }
-    }
 
-    loadStations()
-  }, [])
-
-  const generateReport = async () => {
+  const generateReport = useCallback(async () => {
     if (!selectedStation || !selectedMonth || !selectedYear) {
       setError('Please select station, month, and year')
       return
@@ -141,6 +133,8 @@ export default function PumperVariancePage() {
 
     setLoading(true)
     setError('')
+    setPumperVariances([])
+    setStationDailyVariances([])
 
     try {
       // Call API endpoint to get real pumper variance data
@@ -220,38 +214,46 @@ export default function PumperVariancePage() {
       pumperVariances.sort((a, b) => b.varianceRate - a.varianceRate)
 
       setPumperVariances(pumperVariances)
+      setStationDailyVariances(reportData.stationDailyVariances || [])
 
     } catch {
       setError('Failed to generate pumper variance report')
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedStation, selectedMonth, selectedYear])
+
+  // Effect to auto-generate report on load or filter change
+  useEffect(() => {
+    if (selectedStation) {
+      generateReport()
+    }
+  }, [selectedStation, selectedMonth, selectedYear, generateReport])
 
   const getPerformanceColor = (rating: string) => {
     switch (rating) {
-      case 'EXCELLENT': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
-      case 'GOOD': return 'bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300'
-      case 'NEEDS_IMPROVEMENT': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
-      case 'CRITICAL': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+      case 'EXCELLENT': return 'bg-green-500/10 text-green-600 border-green-200 dark:border-green-800'
+      case 'GOOD': return 'bg-blue-500/10 text-blue-600 border-blue-200 dark:border-blue-800'
+      case 'NEEDS_IMPROVEMENT': return 'bg-orange-500/10 text-orange-600 border-orange-200 dark:border-orange-800'
+      case 'CRITICAL': return 'bg-red-500/10 text-red-600 border-red-200 dark:border-red-800'
       default: return 'bg-muted text-foreground'
     }
   }
 
   const getPerformanceIcon = (rating: string) => {
     switch (rating) {
-      case 'EXCELLENT': return <CheckCircle className="h-4 w-4" />
-      case 'GOOD': return <CheckCircle className="h-4 w-4" />
-      case 'NEEDS_IMPROVEMENT': return <AlertTriangle className="h-4 w-4" />
-      case 'CRITICAL': return <XCircle className="h-4 w-4" />
-      default: return <AlertCircle className="h-4 w-4" />
+      case 'EXCELLENT': return <CheckCircle className="h-3 w-3" />
+      case 'GOOD': return <Activity className="h-3 w-3" />
+      case 'NEEDS_IMPROVEMENT': return <AlertTriangle className="h-3 w-3" />
+      case 'CRITICAL': return <XCircle className="h-3 w-3" />
+      default: return <AlertCircle className="h-3 w-3" />
     }
   }
 
   const getVarianceRateColor = (rate: number) => {
     if (rate <= 5) return 'text-green-600 dark:text-green-400'
-    if (rate <= 15) return 'text-orange-600 dark:text-orange-400'
-    if (rate <= 30) return 'text-yellow-600 dark:text-yellow-400'
+    if (rate <= 15) return 'text-blue-600 dark:text-blue-400'
+    if (rate <= 30) return 'text-orange-600 dark:text-orange-400'
     return 'text-red-600 dark:text-red-400'
   }
 
@@ -260,12 +262,14 @@ export default function PumperVariancePage() {
       key: 'pumperName' as keyof PumperVariance,
       title: 'Pumper',
       render: (value: unknown, row: PumperVariance) => (
-        <div className="flex items-center gap-2">
-          <User className="h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold text-xs text-slate-700 dark:text-slate-300">
+            {(value as string).charAt(0)}
+          </div>
           <div>
             <div className="font-medium">{value as string}</div>
-            <div className="text-xs text-muted-foreground">
-              {row.nozzleAssignments.join(', ')}
+            <div className="text-xs text-muted-foreground hidden md:block">
+              {row.nozzleAssignments.length > 0 ? row.nozzleAssignments.join(', ') : 'No assignments'}
             </div>
           </div>
         </div>
@@ -273,28 +277,16 @@ export default function PumperVariancePage() {
     },
     {
       key: 'totalShifts' as keyof PumperVariance,
-      title: 'Total Shifts',
+      title: 'Shifts',
+      className: 'text-right',
       render: (value: unknown) => (
-        <span className="text-sm">{value as number}</span>
-      )
-    },
-    {
-      key: 'varianceCount' as keyof PumperVariance,
-      title: 'Variance Count',
-      render: (value: unknown, row: PumperVariance) => (
-        <div className="text-center">
-          <div className="font-semibold text-red-600 dark:text-red-400">
-            {value as number}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {row.shiftsWithVariance} shifts affected
-          </div>
-        </div>
+        <span className="text-sm font-medium">{value as number}</span>
       )
     },
     {
       key: 'totalVarianceAmount' as keyof PumperVariance,
       title: 'Total Variance',
+      className: 'text-right',
       render: (value: unknown) => (
         <span className="font-semibold text-red-600 dark:text-red-400">
           Rs. {((value as number) || 0).toLocaleString()}
@@ -302,37 +294,40 @@ export default function PumperVariancePage() {
       )
     },
     {
-      key: 'totalDueAmount' as keyof PumperVariance,
-      title: 'Amount Due',
+      key: 'averageVariancePerShift' as keyof PumperVariance,
+      title: 'Avg / Shift',
+      className: 'text-right hidden md:table-cell',
       render: (value: unknown) => (
-        <span className="font-semibold text-orange-600 dark:text-orange-400">
-          Rs. {((value as number) || 0).toLocaleString()}
-        </span>
-      )
-    },
-    {
-      key: 'maxSingleVariance' as keyof PumperVariance,
-      title: 'Max Shortage',
-      render: (value: unknown) => (
-        <span className="font-semibold text-red-700">
-          Rs. {((value as number) || 0).toLocaleString()}
+        <span className="text-sm text-muted-foreground">
+          Rs. {(value as number)?.toFixed(0)}
         </span>
       )
     },
     {
       key: 'varianceRate' as keyof PumperVariance,
       title: 'Variance Rate',
+      className: 'text-center',
       render: (value: unknown) => (
-        <div className="text-center">
-          <div className={`font-semibold ${getVarianceRateColor(value as number)}`}>
-            {(value as number)?.toFixed(1) || 0}%
+        <div className="flex flex-col items-center">
+          <div className={`font-bold ${getVarianceRateColor(value as number)}`}>
+            {(value as number)?.toFixed(1)}%
+          </div>
+          <div className="w-16 h-1 bg-slate-100 rounded-full overflow-hidden mt-1">
+            <div
+              className={`h-full ${(value as number) > 30 ? 'bg-red-500' :
+                (value as number) > 15 ? 'bg-orange-500' :
+                  (value as number) > 5 ? 'bg-blue-500' : 'bg-green-500'
+                }`}
+              style={{ width: `${Math.min((value as number) * 2, 100)}%` }}
+            ></div>
           </div>
         </div>
       )
     },
     {
       key: 'dailyVariances' as keyof PumperVariance,
-      title: 'Trend (30 days)',
+      title: '30 Day Trend',
+      className: 'hidden md:table-cell',
       render: (value: unknown) => (
         <div className="flex justify-center">
           <Sparkline data={value as { day: number; variance: number }[]} />
@@ -341,13 +336,12 @@ export default function PumperVariancePage() {
     },
     {
       key: 'performanceRating' as keyof PumperVariance,
-      title: 'Performance',
+      title: 'Status',
+      className: 'text-center',
       render: (value: unknown) => (
-        <Badge className={getPerformanceColor(value as string)}>
-          <div className="flex items-center gap-1">
-            {getPerformanceIcon(value as string)}
-            <span>{(value as string)?.replace('_', ' ') || 'Unknown'}</span>
-          </div>
+        <Badge variant="outline" className={`gap-1 pr-3 pl-2 py-1 ${getPerformanceColor(value as string)}`}>
+          {getPerformanceIcon(value as string)}
+          <span className="text-[10px] font-semibold">{(value as string)?.replace('_', ' ') || 'Unknown'}</span>
         </Badge>
       )
     }
@@ -363,12 +357,27 @@ export default function PumperVariancePage() {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="outline" onClick={() => router.push('/reports')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-        <h1 className="text-3xl font-bold text-foreground">Pumper Variance Report</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" onClick={() => router.push('/reports')}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+              <Activity className="h-8 w-8 text-red-600 dark:text-red-400" />
+              Pumper Variance Report
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Detailed breakdown of pump attendant variances and performance
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={generateReport} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -379,74 +388,59 @@ export default function PumperVariancePage() {
         </Alert>
       )}
 
-      <FormCard title="Generate Pumper Variance Report">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <Label htmlFor="station">Station</Label>
-            <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
-              <SelectTrigger id="station">
-                <SelectValue placeholder="Select a station" />
-              </SelectTrigger>
-              <SelectContent>
-                {stations.map((station) => (
-                  <SelectItem key={station.id} value={station.id}>
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4" />
-                      {station.name} ({station.city})
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      {/* Filters */}
+      <Card className="bg-muted/30 border-none shadow-none">
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="w-40">
+              <Label htmlFor="month" className="text-xs mb-1 block text-muted-foreground">Month</Label>
+              <Select value={selectedMonth} onValueChange={setSelectedMonth} disabled={loading}>
+                <SelectTrigger id="month" className="bg-background">
+                  <SelectValue placeholder="Select month" />
+                </SelectTrigger>
+                <SelectContent>
+                  {months.map((month) => (
+                    <SelectItem key={month.value} value={month.value}>
+                      {month.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div>
-            <Label htmlFor="month">Month</Label>
-            <Select value={selectedMonth} onValueChange={setSelectedMonth} disabled={loading}>
-              <SelectTrigger id="month">
-                <SelectValue placeholder="Select month" />
-              </SelectTrigger>
-              <SelectContent>
-                {months.map((month) => (
-                  <SelectItem key={month.value} value={month.value}>
-                    {month.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="w-32">
+              <Label htmlFor="year" className="text-xs mb-1 block text-muted-foreground">Year</Label>
+              <Select value={selectedYear} onValueChange={setSelectedYear} disabled={loading}>
+                <SelectTrigger id="year" className="bg-background">
+                  <SelectValue placeholder="Select year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {years.map((year) => (
+                    <SelectItem key={year} value={String(year)}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div>
-            <Label htmlFor="year">Year</Label>
-            <Select value={selectedYear} onValueChange={setSelectedYear} disabled={loading}>
-              <SelectTrigger id="year">
-                <SelectValue placeholder="Select year" />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map((year) => (
-                  <SelectItem key={year} value={String(year)}>
-                    {year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="ml-auto">
+              <Button onClick={generateReport} disabled={loading || !selectedStation || !selectedMonth || !selectedYear}>
+                {loading ? 'Generating...' : (
+                  <>
+                    <Calculator className="mr-2 h-4 w-4" />
+                    Generate Report
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
-
-          <div className="flex items-end">
-            <Button onClick={generateReport} disabled={loading || !selectedStation || !selectedMonth || !selectedYear}>
-              {loading ? 'Generating...' : (
-                <>
-                  <Calculator className="mr-2 h-4 w-4" />
-                  Generate Report
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      </FormCard>
+        </CardContent>
+      </Card>
 
       {pumperVariances.length > 0 && (
         <div className="space-y-6">
+
           {/* Header */}
           <Card>
             <CardHeader>
@@ -463,128 +457,125 @@ export default function PumperVariancePage() {
             </CardHeader>
           </Card>
 
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Total Pumpers</CardTitle>
+          {/* Summary Cards with Premium Styling */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="border-none shadow-md bg-gradient-to-br from-red-500 to-red-600 text-white relative overflow-hidden">
+              <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+              <CardHeader className="pb-2 relative z-10">
+                <CardTitle className="text-sm font-medium flex items-center justify-between text-white/90">
+                  <span>Total Variance</span>
+                  <TrendingDown className="h-4 w-4 text-white/80" />
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-700">{totalPumpers}</div>
-                <div className="text-xs text-muted-foreground">Active this month</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-green-600 dark:text-green-400">Excellent</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-700">{excellentPumpers}</div>
-                <div className="text-xs text-muted-foreground">≤5% variance rate</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-red-600 dark:text-red-400">Critical</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-700">{criticalPumpers}</div>
-                <div className="text-xs text-muted-foreground">≥30% variance rate</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Total Variance</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-700">
+              <CardContent className="relative z-10">
+                <div className="text-3xl font-bold">
                   Rs. {(totalVarianceAmount || 0).toLocaleString()}
                 </div>
-                <div className="text-xs text-muted-foreground">All pumpers combined</div>
+                <div className="text-xs text-white/70 mt-1">
+                  Cumulative loss for selected period
+                </div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border bg-card/50 backdrop-blur-sm">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Amount Due</CardTitle>
+                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Avg. Variance Rate</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-orange-700">
-                  Rs. {(totalDueAmount || 0).toLocaleString()}
+                <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">
+                  {averageVarianceRate.toFixed(1)}%
                 </div>
-                <div className="text-xs text-muted-foreground">From pumpers</div>
+                <div className="w-full h-1 bg-muted rounded-full overflow-hidden mt-2">
+                  <div className="h-full bg-orange-500" style={{ width: `${Math.min(averageVarianceRate * 2, 100)}%` }}></div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border bg-card/50 backdrop-blur-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-red-600 dark:text-red-400">Critical Pumpers</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-700 dark:text-red-300">
+                  {criticalPumpers} <span className="text-sm font-normal text-muted-foreground">/ {totalPumpers}</span>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Staff requiring immediate attention
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border bg-card/50 backdrop-blur-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-green-600 dark:text-green-400">Excellent Performance</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-700 dark:text-green-300">
+                  {excellentPumpers} <span className="text-sm font-normal text-muted-foreground">/ {totalPumpers}</span>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Staff with minimal variance
+                </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Average Performance */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Overall Performance Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="text-center">
-                  <div className="text-lg font-semibold text-muted-foreground">Average Variance Rate</div>
-                  <div className={`text-3xl font-bold ${getVarianceRateColor(averageVarianceRate)}`}>
-                    {averageVarianceRate.toFixed(1)}%
-                  </div>
-                  <div className="text-sm text-muted-foreground">Across all pumpers</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-semibold text-muted-foreground">Performance Distribution</div>
-                  <div className="flex justify-center gap-2 mt-2">
-                    <Badge className="bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300">
-                      {excellentPumpers} Excellent
-                    </Badge>
-                    <Badge className="bg-orange-500/20 text-orange-400 dark:bg-orange-600/30 dark:text-orange-300">
-                      {pumperVariances.filter(p => p.performanceRating === 'GOOD').length} Good
-                    </Badge>
-                    <Badge className="bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300">
-                      {pumperVariances.filter(p => p.performanceRating === 'NEEDS_IMPROVEMENT').length} Needs Improvement
-                    </Badge>
-                    <Badge className="bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300">
-                      {criticalPumpers} Critical
-                    </Badge>
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-semibold text-muted-foreground">Recovery Rate</div>
-                  <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">
-                    {((totalDueAmount / totalVarianceAmount) * 100).toFixed(0)}%
-                  </div>
-                  <div className="text-sm text-muted-foreground">Expected recovery</div>
-                </div>
+          {/* Main Trend Chart */}
+          {stationDailyVariances.length > 0 && (
+            <FormCard
+              title="Station Daily Variance Trend"
+              description="Total variance accumulated by all pumpers per day"
+            >
+              <div className="w-full h-80 mt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={stationDailyVariances} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorVariance" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.1} />
+                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                    <XAxis
+                      dataKey="day"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fontSize: 12, fill: '#6B7280' }}
+                      tickFormatter={(value) => `Day ${value}`}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fontSize: 12, fill: '#6B7280' }}
+                      tickFormatter={(value) => `Rs.${value / 1000}k`}
+                    />
+                    <Tooltip
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                      formatter={(value: number) => [`Rs. ${value.toLocaleString()}`, 'Total Variance']}
+                      labelFormatter={(label) => `Day ${label}`}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="variance"
+                      stroke="#ef4444"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorVariance)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Pumper Variance Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Pumper Variance Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <DataTable
-                data={pumperVariances}
-                columns={pumperColumns}
-                searchPlaceholder="Search pumpers..."
-                emptyMessage="No pumper variance data available."
-              />
-            </CardContent>
-          </Card>
+            </FormCard>
+          )}
 
           {/* Critical Alerts */}
           {criticalPumpers > 0 && (
-            <Alert>
+            <Alert variant="destructive" className="bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900/50">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Critical Performance Alert</AlertTitle>
               <AlertDescription>
                 {criticalPumpers} pumper{criticalPumpers > 1 ? 's have' : ' has'} critical variance rates exceeding 30%.
-                Immediate training and monitoring required to reduce losses.
+                Immediate training or disciplinary action may be required.
               </AlertDescription>
             </Alert>
           )}
@@ -599,6 +590,20 @@ export default function PumperVariancePage() {
               </AlertDescription>
             </Alert>
           )}
+
+          {/* Pumper Variance Table */}
+          <FormCard
+            title="Individual Performance"
+            description="Detailed variance metrics for each pumper"
+          >
+            <DataTable
+              data={pumperVariances}
+              columns={pumperColumns}
+              searchPlaceholder="Search pumpers..."
+              emptyMessage="No pumper variance data available."
+            />
+          </FormCard>
+
         </div>
       )}
     </div>

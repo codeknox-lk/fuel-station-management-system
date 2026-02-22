@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
-import { Briefcase, Plus, Edit, Trash2, Phone, Mail, Building2, DollarSign, ArrowLeft } from 'lucide-react'
+import { Briefcase, Plus, Edit, Trash2, Phone, Mail, Building2, DollarSign, ArrowLeft, Users } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useRouter } from 'next/navigation'
 
@@ -343,220 +343,269 @@ export default function OfficeStaffPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.push('/settings')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-              <Briefcase className="h-8 w-8 text-orange-600 dark:text-orange-400" />
-              Office Staff Management
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Manage office employees (Managers, Supervisors, Office Staff, Accountants, Cashiers)
-            </p>
-          </div>
-        </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={handleCloseDialog}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Office Staff
+      <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-indigo-900 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
+        <div className="relative z-10 flex justify-between items-start">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => router.push('/settings')} className="text-indigo-100 hover:text-white hover:bg-white/10">
+              <ArrowLeft className="h-6 w-6" />
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editingStaff ? 'Edit Office Staff' : 'Add New Office Staff'}</DialogTitle>
-              <DialogDescription>
-                {editingStaff ? 'Update office staff information' : 'Enter details for the new office staff member'}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="name">Name *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="John Doe"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="employeeId">Employee ID</Label>
-                  <Input
-                    id="employeeId"
-                    value={formData.employeeId}
-                    onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                    placeholder={editingStaff ? formData.employeeId : "Auto-generated (OFC001)"}
-                    disabled={!editingStaff}
-                  />
-                  {!editingStaff && (
-                    <p className="text-xs text-muted-foreground mt-1">Auto-generated on creation</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="role">Role *</Label>
-                  <Select
-                    value={formData.role}
-                    onValueChange={(value) => {
-                      const newRole = value as OfficeStaff['role']
-                      // Reset fuel allowance if role changes from MANAGER
-                      setFormData({
-                        ...formData,
-                        role: newRole,
-                        fuelAllowance: newRole === 'MANAGER' ? formData.fuelAllowance : 0
-                      })
-                    }}
-                  >
-                    <SelectTrigger id="role">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="MANAGER">Manager</SelectItem>
-                      <SelectItem value="SUPERVISOR">Supervisor</SelectItem>
-                      <SelectItem value="OFFICE_STAFF">Office Staff</SelectItem>
-                      <SelectItem value="ACCOUNTANT">Accountant</SelectItem>
-                      <SelectItem value="CASHIER">Cashier</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="baseSalary">Base Salary (Rs.) *</Label>
-                  <MoneyInput
-                    value={formData.baseSalary}
-                    onChange={(value) => setFormData({ ...formData, baseSalary: value || 0 })}
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-
-              {/* Allowances Section */}
-              <div className="space-y-3 pt-2 border-t">
-                <h4 className="text-sm font-semibold">Allowances (Rs.)</h4>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+                <Briefcase className="h-8 w-8 text-indigo-400" />
+                Office Staff Management
+              </h1>
+              <p className="text-indigo-100 mt-2 text-lg max-w-2xl">
+                Manage office employees (Managers, Supervisors, Office Staff, Accountants, Cashiers).
+              </p>
+            </div>
+          </div>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={handleCloseDialog} className="bg-white text-indigo-900 hover:bg-indigo-50">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Office Staff
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{editingStaff ? 'Edit Office Staff' : 'Add New Office Staff'}</DialogTitle>
+                <DialogDescription>
+                  {editingStaff ? 'Update office staff information' : 'Enter details for the new office staff member'}
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="specialAllowance">Special Allowance</Label>
-                    <MoneyInput
-                      value={formData.specialAllowance}
-                      onChange={(value) => setFormData({ ...formData, specialAllowance: value || 0 })}
-                      placeholder="0.00"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">Different for each staff member</p>
-                  </div>
-                  <div>
-                    <Label htmlFor="otherAllowances">Other Allowances</Label>
-                    <MoneyInput
-                      value={formData.otherAllowances}
-                      onChange={(value) => setFormData({ ...formData, otherAllowances: value || 0 })}
-                      placeholder="0.00"
+                    <Label htmlFor="name">Name *</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="John Doe"
+                      required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="medicalAllowance">Medical Allowance</Label>
-                    <MoneyInput
-                      value={formData.medicalAllowance}
-                      onChange={(value) => setFormData({ ...formData, medicalAllowance: value || 0 })}
-                      placeholder="0.00"
+                    <Label htmlFor="employeeId">Employee ID</Label>
+                    <Input
+                      id="employeeId"
+                      value={formData.employeeId}
+                      onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+                      placeholder={editingStaff ? formData.employeeId : "Auto-generated (OFC001)"}
+                      disabled={!editingStaff}
                     />
-                  </div>
-                  <div>
-                    <Label htmlFor="holidayAllowance">Holiday Allowance</Label>
-                    <MoneyInput
-                      value={formData.holidayAllowance}
-                      onChange={(value) => setFormData({ ...formData, holidayAllowance: value || 0 })}
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="fuelAllowance">Fuel Allowance</Label>
-                    <MoneyInput
-                      value={formData.fuelAllowance}
-                      onChange={(value) => setFormData({ ...formData, fuelAllowance: value || 0 })}
-                      placeholder="0.00"
-                      disabled={formData.role !== 'MANAGER'}
-                    />
-                    {formData.role === 'MANAGER' ? (
-                      <p className="text-xs text-muted-foreground mt-1">Only for managers</p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground mt-1 text-orange-600">Only available for Manager role</p>
+                    {!editingStaff && (
+                      <p className="text-xs text-muted-foreground mt-1">Auto-generated on creation</p>
                     )}
                   </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="0712345678"
-                    type="tel"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="role">Role *</Label>
+                    <Select
+                      value={formData.role}
+                      onValueChange={(value) => {
+                        const newRole = value as OfficeStaff['role']
+                        // Reset fuel allowance if role changes from MANAGER
+                        setFormData({
+                          ...formData,
+                          role: newRole,
+                          fuelAllowance: newRole === 'MANAGER' ? formData.fuelAllowance : 0
+                        })
+                      }}
+                    >
+                      <SelectTrigger id="role">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="MANAGER">Manager</SelectItem>
+                        <SelectItem value="SUPERVISOR">Supervisor</SelectItem>
+                        <SelectItem value="OFFICE_STAFF">Office Staff</SelectItem>
+                        <SelectItem value="ACCOUNTANT">Accountant</SelectItem>
+                        <SelectItem value="CASHIER">Cashier</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="baseSalary">Base Salary (Rs.) *</Label>
+                    <MoneyInput
+                      value={formData.baseSalary}
+                      onChange={(value) => setFormData({ ...formData, baseSalary: value || 0 })}
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="john@example.com"
-                    type="email"
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="hireDate">Hire Date</Label>
-                  <Input
-                    id="hireDate"
-                    value={formData.hireDate}
-                    onChange={(e) => setFormData({ ...formData, hireDate: e.target.value })}
-                    type="date"
-                  />
+                {/* Allowances Section */}
+                <div className="space-y-3 pt-2 border-t">
+                  <h4 className="text-sm font-semibold">Allowances (Rs.)</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="specialAllowance">Special Allowance</Label>
+                      <MoneyInput
+                        value={formData.specialAllowance}
+                        onChange={(value) => setFormData({ ...formData, specialAllowance: value || 0 })}
+                        placeholder="0.00"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Different for each staff member</p>
+                    </div>
+                    <div>
+                      <Label htmlFor="otherAllowances">Other Allowances</Label>
+                      <MoneyInput
+                        value={formData.otherAllowances}
+                        onChange={(value) => setFormData({ ...formData, otherAllowances: value || 0 })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="medicalAllowance">Medical Allowance</Label>
+                      <MoneyInput
+                        value={formData.medicalAllowance}
+                        onChange={(value) => setFormData({ ...formData, medicalAllowance: value || 0 })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="holidayAllowance">Holiday Allowance</Label>
+                      <MoneyInput
+                        value={formData.holidayAllowance}
+                        onChange={(value) => setFormData({ ...formData, holidayAllowance: value || 0 })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="fuelAllowance">Fuel Allowance</Label>
+                      <MoneyInput
+                        value={formData.fuelAllowance}
+                        onChange={(value) => setFormData({ ...formData, fuelAllowance: value || 0 })}
+                        placeholder="0.00"
+                        disabled={formData.role !== 'MANAGER'}
+                      />
+                      {formData.role === 'MANAGER' ? (
+                        <p className="text-xs text-muted-foreground mt-1">Only for managers</p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground mt-1 text-orange-600">Only available for Manager role</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="isActive">Status</Label>
-                  <Select
-                    value={formData.isActive ? 'true' : 'false'}
-                    onValueChange={(value) => setFormData({ ...formData, isActive: value === 'true' })}
-                  >
-                    <SelectTrigger id="isActive">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="true">Active</SelectItem>
-                      <SelectItem value="false">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
 
-              <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={handleCloseDialog} disabled={isSubmitting}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Saving...' : editingStaff ? 'Update' : 'Create'}
-                </Button>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input
+                      id="phone"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      placeholder="0712345678"
+                      type="tel"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="john@example.com"
+                      type="email"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="hireDate">Hire Date</Label>
+                    <Input
+                      id="hireDate"
+                      value={formData.hireDate}
+                      onChange={(e) => setFormData({ ...formData, hireDate: e.target.value })}
+                      type="date"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="isActive">Status</Label>
+                    <Select
+                      value={formData.isActive ? 'true' : 'false'}
+                      onValueChange={(value) => setFormData({ ...formData, isActive: value === 'true' })}
+                    >
+                      <SelectTrigger id="isActive">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="true">Active</SelectItem>
+                        <SelectItem value="false">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button type="button" variant="outline" onClick={handleCloseDialog} disabled={isSubmitting}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? 'Saving...' : editingStaff ? 'Update' : 'Create'}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          {
+            title: 'Total Staff',
+            value: officeStaff.length.toString(),
+            description: 'Registered employees',
+            icon: <Users className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+          },
+          {
+            title: 'Active',
+            value: officeStaff.filter(s => s.isActive).length.toString(),
+            description: 'Currently active',
+            icon: <div className="h-5 w-5 bg-green-500/10 dark:bg-green-500/20 rounded-full" />
+          },
+          {
+            title: 'Managers',
+            value: officeStaff.filter(s => s.role === 'MANAGER').length.toString(),
+            description: 'Management roles',
+            icon: <Briefcase className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+          },
+          {
+            title: 'Total Salary',
+            value: `Rs. ${officeStaff.reduce((acc, curr) => acc + (curr.baseSalary || 0), 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+            description: 'Monthly base payroll',
+            icon: <DollarSign className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+          }
+        ].map((stat, index) => (
+          <div key={index} className="rounded-xl border bg-card/50 backdrop-blur-sm text-card-foreground shadow-sm p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-bold">{stat.value}</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
               </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+              <div className="p-2 bg-background/50 rounded-full">
+                {stat.icon}
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       <FormCard
         title="Office Staff List"
         description={`Office staff members for ${stations.find(s => s.id === selectedStation)?.name || 'selected station'}`}
+        className="bg-card/50 backdrop-blur-sm border-muted/40"
       >
         {loading ? (
           <div className="flex items-center justify-center py-8">
@@ -576,6 +625,6 @@ export default function OfficeStaffPage() {
           />
         )}
       </FormCard>
-    </div>
+    </div >
   )
 }

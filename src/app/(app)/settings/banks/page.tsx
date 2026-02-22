@@ -336,7 +336,7 @@ export default function BanksPage() {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Bank Management</h1>
             <p className="text-muted-foreground mt-2">
-              Manage bank accounts and payment processing configurations
+              Manage bank accounts and payment processing configurations.
             </p>
           </div>
         </div>
@@ -478,7 +478,6 @@ export default function BanksPage() {
           </DialogContent>
         </Dialog>
       </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, index) => (
@@ -509,6 +508,6 @@ export default function BanksPage() {
           exportFileName="banks-list"
         />
       </FormCard>
-    </div>
+    </div >
   )
 }

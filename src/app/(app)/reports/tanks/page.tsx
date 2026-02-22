@@ -1,23 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useStation } from '@/contexts/StationContext'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  Building2,
   Fuel,
   AlertCircle,
   Download,
@@ -35,11 +27,6 @@ import {
 } from 'lucide-react'
 import { exportTankReportPDF } from '@/lib/exportUtils'
 
-interface Station {
-  id: string
-  name: string
-  city: string
-}
 
 interface DeliveryDetail {
   id: string
@@ -137,30 +124,15 @@ interface TankApiResponse {
 }
 
 export default function TanksReportsPage() {
-  const [stations, setStations] = useState<Station[]>([])
   const [tankMovements, setTankMovements] = useState<TankMovement[]>([])
   const [summary, setSummary] = useState<TankReportSummary | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   // Form state
-  const { selectedStation, setSelectedStation } = useStation()
+  const { selectedStation } = useStation()
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
 
-  // Load initial data
-  useEffect(() => {
-    const loadStations = async () => {
-      try {
-        const response = await fetch('/api/stations?active=true')
-        const stationsData = await response.json()
-        setStations(stationsData)
-      } catch {
-        setError('Failed to load stations')
-      }
-    }
-
-    loadStations()
-  }, [])
 
   const generateReport = async () => {
     if (!selectedStation || !selectedDate) {
@@ -283,8 +255,7 @@ export default function TanksReportsPage() {
       return
     }
 
-    const station = stations.find(s => s.id === selectedStation)
-    const stationName = station?.name || 'Unknown Station'
+    const stationName = 'Selected Station'
     const dateStr = selectedDate
 
     const exportData = tankMovements.map(tm => ({
@@ -599,24 +570,7 @@ export default function TanksReportsPage() {
       {/* Report Generator */}
       <FormCard title="Generate Tank Report" description="Select station and date to generate comprehensive tank movement report">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <Label htmlFor="station">Station *</Label>
-            <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
-              <SelectTrigger id="station">
-                <SelectValue placeholder="Select a station" />
-              </SelectTrigger>
-              <SelectContent>
-                {stations.map((station) => (
-                  <SelectItem key={station.id} value={station.id}>
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4" />
-                      {station.name} ({station.city})
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Station selection handled globally */}
 
           <div>
             <Label htmlFor="date">Date *</Label>
@@ -656,7 +610,7 @@ export default function TanksReportsPage() {
                     Tank Movement Report
                   </CardTitle>
                   <CardDescription className="mt-2 text-base">
-                    {stations.find(s => s.id === selectedStation)?.name} • {new Date(selectedDate).toLocaleDateString('en-US', {
+                    Business Date: {new Date(selectedDate).toLocaleDateString('en-US', {
                       weekday: 'long',
                       year: 'numeric',
                       month: 'long',

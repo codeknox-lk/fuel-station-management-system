@@ -5,6 +5,7 @@ import { useOrganization } from '@/contexts/OrganizationContext'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
 import {
     CreditCard,
     Check,
@@ -13,7 +14,8 @@ import {
     Clock,
     ChevronRight,
     History,
-    AlertCircle
+    AlertCircle,
+    ArrowLeft
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
@@ -125,16 +127,23 @@ export default function SubscriptionPage() {
 
     return (
         <div className="max-w-7xl mx-auto space-y-8 p-6">
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-foreground">Subscription & Billing</h1>
-                    <p className="text-muted-foreground mt-2 text-lg">Manage your business plan, usage limits, and payment history.</p>
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <Button variant="outline" onClick={() => window.history.back()}>
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back
+                    </Button>
+                    <div>
+                        <h1 className="text-3xl font-bold text-foreground">Subscription & Billing</h1>
+                        <p className="text-muted-foreground mt-2">
+                            Manage your business plan, usage limits, and payment history.
+                        </p>
+                    </div>
                 </div>
-            </header>
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Current Plan Overview */}
-                <Card className="lg:col-span-2 overflow-hidden border-2 border-border shadow-md">
+                <Card className="lg:col-span-2 overflow-hidden shadow-sm">
                     <CardHeader className="border-b bg-muted/30">
                         <div className="flex justify-between items-start">
                             <div className="space-y-1">
@@ -184,17 +193,18 @@ export default function SubscriptionPage() {
                             <div className="space-y-4 bg-muted/40 p-6 rounded-2xl border-2 border-dashed border-border/60">
                                 <div className="flex justify-between items-center">
                                     <span className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Stations Usage</span>
-                                    <span className="text-lg font-bold text-foreground">{data?.usage.stations.current} / {data?.usage.stations.max}</span>
+                                    <span className="text-lg font-bold text-foreground">{data?.usage.stations.current ?? 0} / {data?.usage.stations.max ?? 0}</span>
                                 </div>
-                                <div className="h-3 bg-muted rounded-full overflow-hidden border-2 border-background shadow-inner">
-                                    <div
-                                        className={cn(
-                                            "h-full transition-all duration-1000 ease-out rounded-full",
-                                            (data?.usage.stations.current || 0) / (data?.usage.stations.max || 1) > 0.9 ? "bg-red-500" : "bg-orange-600"
-                                        )}
-                                        style={{ width: `${Math.min(100, ((data?.usage.stations.current || 0) / (data?.usage.stations.max || 1)) * 100)}%` }}
-                                    />
-                                </div>
+                                <Progress
+                                    value={((data?.usage.stations.current ?? 0) / (data?.usage.stations.max || 1)) * 100}
+                                    className="h-3 ring-2 ring-background ring-offset-2 ring-offset-muted/40 shadow-inner"
+                                    indicatorClassName={cn(
+                                        "bg-gradient-to-r transition-all duration-1000",
+                                        ((data?.usage.stations.current ?? 0) / (data?.usage.stations.max || 1)) > 0.9 ? "from-red-500 to-red-600" :
+                                            ((data?.usage.stations.current ?? 0) / (data?.usage.stations.max || 1)) > 0.7 ? "from-amber-500 to-amber-600" :
+                                                "from-emerald-500 to-emerald-600"
+                                    )}
+                                />
                                 <p className="text-xs text-muted-foreground flex items-center gap-2 font-medium">
                                     <AlertCircle className="w-4 h-4 text-orange-500" />
                                     You have {Math.max(0, (data?.usage.stations.max || 0) - (data?.usage.stations.current || 0))} slots remaining.
@@ -219,9 +229,8 @@ export default function SubscriptionPage() {
                     </CardContent>
                 </Card>
 
-                {/* Quick Info Card */}
                 <div className="space-y-6">
-                    <Card className="border-2 border-border shadow-md">
+                    <Card className="shadow-sm">
                         <CardHeader className="pb-4">
                             <CardTitle className="text-xl font-bold flex items-center gap-2">
                                 <Shield className="w-6 h-6 text-orange-600 leading-none" />
@@ -329,7 +338,7 @@ export default function SubscriptionPage() {
                     <div className="h-10 w-1.5 bg-orange-600 rounded-full" />
                     <h2 className="text-2xl font-bold tracking-tight uppercase">Billing History</h2>
                 </div>
-                <Card className="border-2 border-border shadow-lg overflow-hidden rounded-2xl">
+                <Card className="shadow-sm overflow-hidden rounded-2xl">
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left">

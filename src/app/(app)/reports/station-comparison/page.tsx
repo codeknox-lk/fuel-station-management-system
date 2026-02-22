@@ -26,11 +26,24 @@ import {
   Download,
   RefreshCw,
   FileText,
-  FileSpreadsheet
+  FileSpreadsheet,
+  BarChart as BarChartIcon,
+  PieChart as PieChartIcon
 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Cell
+} from 'recharts'
 
 interface StationStats {
   id: string
@@ -43,6 +56,8 @@ interface StationStats {
   shiftsCount: number
   profitMargin: number
 }
+
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4']
 
 export default function StationComparisonPage() {
   const router = useRouter()
@@ -106,7 +121,6 @@ export default function StationComparisonPage() {
     }
     fetchStationData()
   }, [fetchStationData, router])
-
 
 
   const handleApplyFilters = () => {
@@ -264,7 +278,15 @@ export default function StationComparisonPage() {
   }
 
   const bestPerformer = stations.length > 0
-    ? stations.reduce((best, station) => station.totalSales > best.totalSales ? station : best, stations[0])
+    ? stations.reduce((best, station) => station.totalProfit > best.totalProfit ? station : best, stations[0])
+    : null
+
+  const topVolume = stations.length > 0
+    ? stations.reduce((best, station) => station.totalVolume > best.totalVolume ? station : best, stations[0])
+    : null
+
+  const topMargin = stations.length > 0
+    ? stations.reduce((best, station) => station.profitMargin > best.profitMargin ? station : best, stations[0])
     : null
 
   const totalAcrossStations = {
@@ -284,11 +306,11 @@ export default function StationComparisonPage() {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Station Comparison Report</h1>
             <p className="text-muted-foreground mt-1">
-              Compare performance metrics across all stations
+              Cross-station performance analytics
             </p>
           </div>
         </div>
-        <Badge variant="default" className="bg-orange-600">Owner Only</Badge>
+        <Badge variant="default" className="bg-orange-600 hover:bg-orange-700">Owner Access Only</Badge>
       </div>
 
       {/* Error Display */}
@@ -316,7 +338,7 @@ export default function StationComparisonPage() {
       )}
 
       {/* Filters Section */}
-      <FormCard title="Filters & Date Range">
+      <FormCard title="Report Configuration" description="Select date range for comparison">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="space-y-1">
             <Label className="text-sm font-semibold">Start Date</Label>
@@ -326,7 +348,6 @@ export default function StationComparisonPage() {
                 if (date) {
                   date.setHours(0, 0, 0, 0)
                   setStartDate(date)
-                  console.log('Start date changed to:', date)
                 }
               }}
               placeholder="Select start date"
@@ -342,7 +363,6 @@ export default function StationComparisonPage() {
                 if (date) {
                   date.setHours(23, 59, 59, 999)
                   setEndDate(date)
-                  console.log('End date changed to:', date)
                 }
               }}
               placeholder="Select end date"
@@ -355,9 +375,10 @@ export default function StationComparisonPage() {
               onClick={handleApplyFilters}
               className="w-full"
               disabled={loading}
+              variant="default"
             >
               <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              {loading ? 'Loading...' : 'Apply Filters'}
+              {loading ? 'Analyzing...' : 'Analyze Data'}
             </Button>
           </div>
 
@@ -370,7 +391,7 @@ export default function StationComparisonPage() {
                   disabled={stations.length === 0}
                 >
                   <Download className="mr-2 h-4 w-4" />
-                  Export Report
+                  Export Data
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
@@ -386,87 +407,135 @@ export default function StationComparisonPage() {
             </DropdownMenu>
           </div>
         </div>
-        <p className="text-xs text-muted-foreground mt-3">
-          📅 Showing data from <span className="font-semibold">{startDate.toLocaleDateString()}</span> to <span className="font-semibold">{endDate.toLocaleDateString()}</span>
-        </p>
       </FormCard>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Stations</p>
-                <p className="text-2xl font-bold">{stations.length}</p>
+      {/* Leaderboard Cards */}
+      {stations.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {bestPerformer && (
+            <Card className="bg-gradient-to-br from-indigo-500 to-indigo-600 border-none text-white shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <Award className="h-24 w-24" />
               </div>
-              <Building2 className="h-8 w-8 text-orange-600 dark:text-orange-400" />
-            </div>
-          </CardContent>
-        </Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-indigo-100 text-sm font-medium">
+                  <DollarSign className="h-4 w-4" />
+                  Most Profitable
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white mb-1">{bestPerformer.name}</div>
+                <div className="text-indigo-100">
+                  Rs. {bestPerformer.totalProfit.toLocaleString()}
+                </div>
+                <div className="mt-4 text-xs text-indigo-200 bg-indigo-700/30 inline-block px-2 py-1 rounded">
+                  {bestPerformer.profitMargin.toFixed(1)}% Margin
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Sales</p>
-                <p className="text-2xl font-bold">Rs. {(totalAcrossStations.sales || 0).toLocaleString()}</p>
+          {topVolume && (
+            <Card className="bg-gradient-to-br from-blue-500 to-blue-600 border-none text-white shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <Fuel className="h-24 w-24" />
               </div>
-              <DollarSign className="h-8 w-8 text-green-600 dark:text-green-400" />
-            </div>
-          </CardContent>
-        </Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-blue-100 text-sm font-medium">
+                  <Fuel className="h-4 w-4" />
+                  Highest Volume
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white mb-1">{topVolume.name}</div>
+                <div className="text-blue-100">
+                  {topVolume.totalVolume.toLocaleString()} Liters
+                </div>
+                <div className="mt-4 text-xs text-blue-200 bg-blue-700/30 inline-block px-2 py-1 rounded">
+                  {topVolume.pumperCount} Active Pumpers
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Volume</p>
-                <p className="text-2xl font-bold">{(totalAcrossStations.volume || 0).toLocaleString()} L</p>
+          {topMargin && (
+            <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 border-none text-white shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <TrendingUp className="h-24 w-24" />
               </div>
-              <Fuel className="h-8 w-8 text-orange-600 dark:text-orange-400" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Profit</p>
-                <p className="text-2xl font-bold">Rs. {(totalAcrossStations.profit || 0).toLocaleString()}</p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-orange-600 dark:text-orange-400" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Best Performer */}
-      {bestPerformer && (
-        <Card className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-200 dark:border-green-800">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-400">
-              <Award className="h-5 w-5" />
-              Best Performing Station
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold text-green-900 dark:text-green-100">{bestPerformer.name}</p>
-                <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                  Total Sales: Rs. {(bestPerformer.totalSales || 0).toLocaleString()}
-                </p>
-              </div>
-              <Badge className="bg-green-600 text-white">Top Performer</Badge>
-            </div>
-          </CardContent>
-        </Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-emerald-100 text-sm font-medium">
+                  <TrendingUp className="h-4 w-4" />
+                  Best Margin
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white mb-1">{topMargin.name}</div>
+                <div className="text-emerald-100">
+                  {topMargin.profitMargin.toFixed(2)}% Net Margin
+                </div>
+                <div className="mt-4 text-xs text-emerald-200 bg-emerald-700/30 inline-block px-2 py-1 rounded">
+                  Rs. {topMargin.avgDailySales.toLocaleString()} Avg Daily
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
 
+      {stations.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Sales vs Volume Chart */}
+          <FormCard title="Sales vs Volume" description="Comparative performance by station">
+            <div className="h-[350px] w-full mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stations}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                  <YAxis yAxisId="left" orientation="left" tickFormatter={(val) => `Rs.${val / 1000}k`} stroke="#3b82f6" />
+                  <YAxis yAxisId="right" orientation="right" tickFormatter={(val) => `${val / 1000}k L`} stroke="#f59e0b" />
+                  <Tooltip
+                    formatter={(value: number, name: string) => [
+                      name === 'totalSales' ? `Rs. ${value.toLocaleString()}` : `${value.toLocaleString()} L`,
+                      name === 'totalSales' ? 'Total Sales' : 'Total Volume'
+                    ]}
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                  />
+                  <Legend />
+                  <Bar yAxisId="left" dataKey="totalSales" name="Total Sales" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Bar yAxisId="right" dataKey="totalVolume" name="Total Volume" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </FormCard>
+
+          {/* Profit Margin Chart */}
+          <FormCard title="Profit Margin Comparison" description="Net profit percentage Comparison">
+            <div className="h-[350px] w-full mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stations} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#E5E7EB" />
+                  <XAxis type="number" unit="%" hide />
+                  <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    formatter={(value: number) => [`${value.toFixed(2)}%`, 'Profit Margin']}
+                    cursor={{ fill: 'transparent' }}
+                  />
+                  <Bar dataKey="profitMargin" radius={[0, 4, 4, 0]} barSize={30}>
+                    {stations.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.profitMargin > 15 ? '#10b981' : entry.profitMargin > 5 ? '#f59e0b' : '#ef4444'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </FormCard>
+        </div>
+      )}
+
+
       {/* Station Comparison Table */}
-      <FormCard title="Station Performance Comparison">
+      <FormCard title="Detailed Station Performance">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -478,100 +547,84 @@ export default function StationComparisonPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full text-sm">
               <thead>
-                <tr className="border-b">
-                  <th className="text-left p-3 font-semibold">Station</th>
-                  <th className="text-right p-3 font-semibold">Total Sales</th>
-                  <th className="text-right p-3 font-semibold">Volume (L)</th>
-                  <th className="text-right p-3 font-semibold">Profit</th>
-                  <th className="text-right p-3 font-semibold">Avg Daily Sales</th>
-                  <th className="text-center p-3 font-semibold">Pumpers</th>
-                  <th className="text-center p-3 font-semibold">Shifts</th>
-                  <th className="text-right p-3 font-semibold">Profit Margin</th>
+                <tr className="border-b bg-muted/30">
+                  <th className="text-left p-3 font-semibold text-muted-foreground">Station</th>
+                  <th className="text-right p-3 font-semibold text-muted-foreground">Total Sales</th>
+                  <th className="text-right p-3 font-semibold text-muted-foreground">Volume</th>
+                  <th className="text-right p-3 font-semibold text-muted-foreground">Net Profit</th>
+                  <th className="text-right p-3 font-semibold text-muted-foreground">Daily Avg</th>
+                  <th className="text-center p-3 font-semibold text-muted-foreground">Pumpers</th>
+                  <th className="text-center p-3 font-semibold text-muted-foreground">Shifts</th>
+                  <th className="text-right p-3 font-semibold text-muted-foreground">Margin</th>
                 </tr>
               </thead>
               <tbody>
                 {stations.map((station, index) => (
-                  <tr key={station.id} className={`border-b ${index % 2 === 0 ? 'bg-muted/50' : ''}`}>
+                  <tr key={station.id} className={`border-b hover:bg-muted/20 transition-colors ${index % 2 === 0 ? 'bg-muted/5' : ''}`}>
                     <td className="p-3 font-medium">
                       <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        <Badge variant="outline" className="w-6 h-6 rounded-full p-0 flex items-center justify-center bg-background">
+                          {index + 1}
+                        </Badge>
                         {station.name}
                         {station.id === bestPerformer?.id && (
-                          <Award className="h-4 w-4 text-green-600 dark:text-green-400" />
+                          <Award className="h-4 w-4 text-amber-500 fill-amber-500" />
                         )}
                       </div>
                     </td>
-                    <td className="p-3 text-right">
+                    <td className="p-3 text-right font-medium">
                       Rs. {(station.totalSales || 0).toLocaleString()}
                     </td>
                     <td className="p-3 text-right">
-                      {(station.totalVolume || 0).toLocaleString()}
+                      {(station.totalVolume || 0).toLocaleString()} <span className="text-muted-foreground text-xs">L</span>
                     </td>
-                    <td className="p-3 text-right text-green-600 dark:text-green-400">
+                    <td className="p-3 text-right font-bold text-green-600 dark:text-green-500">
                       Rs. {(station.totalProfit || 0).toLocaleString()}
                     </td>
                     <td className="p-3 text-right">
                       Rs. {(station.avgDailySales || 0).toLocaleString()}
                     </td>
                     <td className="p-3 text-center">
-                      <Badge variant="outline">{station.pumperCount}</Badge>
+                      {station.pumperCount}
                     </td>
                     <td className="p-3 text-center">
-                      <Badge variant="outline">{station.shiftsCount}</Badge>
+                      {station.shiftsCount}
                     </td>
                     <td className="p-3 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <span className="">{station.profitMargin}%</span>
-                        {station.profitMargin >= 10 ? (
-                          <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
-                        ) : (
-                          <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
-                        )}
+                        <span className={`font-medium ${station.profitMargin > 15 ? 'text-green-600' : 'text-amber-600'}`}>
+                          {station.profitMargin.toFixed(1)}%
+                        </span>
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot>
-                <tr className="border-t-2 font-bold bg-muted">
-                  <td className="p-3">TOTAL</td>
+              <tfoot className="bg-muted/50 font-medium">
+                <tr className="border-t-2 border-primary/20">
+                  <td className="p-3">TOTAL / AVG</td>
                   <td className="p-3 text-right">
                     Rs. {(totalAcrossStations.sales || 0).toLocaleString()}
                   </td>
                   <td className="p-3 text-right">
-                    {(totalAcrossStations.volume || 0).toLocaleString()}
+                    {(totalAcrossStations.volume || 0).toLocaleString()} L
                   </td>
-                  <td className="p-3 text-right text-green-600 dark:text-green-400">
+                  <td className="p-3 text-right text-green-700 dark:text-green-400">
                     Rs. {(totalAcrossStations.profit || 0).toLocaleString()}
                   </td>
-                  <td colSpan={4}></td>
+                  <td colSpan={3}></td>
+                  <td className="p-3 text-right">
+                    {/* Weighted average margin */}
+                    {(totalAcrossStations.sales > 0 ? (totalAcrossStations.profit / totalAcrossStations.sales * 100) : 0).toFixed(1)}%
+                  </td>
                 </tr>
               </tfoot>
             </table>
           </div>
         )}
       </FormCard>
-
-      {/* Info Box */}
-      <Card className="bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800">
-        <CardContent className="p-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-orange-900 dark:text-orange-100">
-              <p className="font-semibold mb-1">About This Report:</p>
-              <ul className="list-disc list-inside space-y-1">
-                <li>Shows real-time data from your database</li>
-                <li>Compares all active stations in the selected date range</li>
-                <li>Includes only CLOSED shifts for accurate reporting</li>
-                <li>Profit = Total Sales - Total Expenses</li>
-                <li>Use filters above to customize the date range</li>
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

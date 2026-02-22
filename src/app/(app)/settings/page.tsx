@@ -8,8 +8,7 @@ import {
   Building2,
   CreditCard,
   Clock,
-
-  Monitor,
+  LayoutDashboard,
   Users,
   Settings as SettingsIcon,
   ChevronRight,
@@ -18,7 +17,8 @@ import {
   Shield,
   Fuel,
   Briefcase,
-  AlertCircle
+  AlertCircle,
+  Zap
 } from 'lucide-react'
 
 interface SettingCard {
@@ -30,6 +30,7 @@ interface SettingCard {
   color: string
   minRole?: 'OWNER' | 'DEVELOPER'
   minPlan?: 'BASIC' | 'PREMIUM'
+  status?: string
 }
 
 export default function SettingsPage() {
@@ -47,171 +48,111 @@ export default function SettingsPage() {
   // Get user role from localStorage
   const userRole = typeof window !== 'undefined' ? localStorage.getItem('userRole') : null
   const isDeveloper = userRole === 'DEVELOPER'
-  const isOwner = userRole === 'OWNER' || isDeveloper // Developer provides Owner access too
-
+  const isOwner = userRole === 'OWNER' || isDeveloper
 
   const settings: SettingCard[] = [
     {
       title: 'Organization',
       description: 'Manage your organization profile and identity',
-      icon: <Building2 className="h-8 w-8" />,
+      icon: <Building2 className="h-6 w-6" />,
       href: '/settings/organization',
-      features: [
-        'Organization details',
-        'Location and contact setup',
-        'Business branding',
-        'Slug management'
-      ],
+      features: ['Profile & Branding', 'Contact Details', 'Slug Management'],
       color: 'text-purple-600 dark:text-purple-400',
       minRole: 'OWNER'
     },
     {
-      title: 'Subscription & Billing',
+      title: 'Subscription',
       description: 'Manage your plan, billing history, and usage limits',
-      icon: <CreditCard className="h-8 w-8" />,
+      icon: <CreditCard className="h-6 w-6" />,
       href: '/settings/subscription',
-      features: [
-        'Plan upgrades & downgrades',
-        'Payment history & receipts',
-        'Usage metrics (Stations)',
-        'Billing cycle management'
-      ],
+      features: ['Plan & Billing', 'Usage Metrics', 'Payment History'],
       color: 'text-blue-600 dark:text-blue-400',
-      minRole: 'OWNER'
+      minRole: 'OWNER',
+      status: currentPlan === 'PREMIUM' ? 'Premium Active' : 'Basic Plan'
     },
     {
       title: 'Stations',
       description: 'Manage petrol stations, locations, and basic information',
-      icon: <Building2 className="h-8 w-8" />,
+      icon: <LayoutDashboard className="h-6 w-6" />,
       href: '/settings/stations',
-      features: [
-        // Owner/Developer can Add/Delete
-        isOwner ? 'Add/Edit/Delete stations' : 'View stations',
-        'Station codes and names',
-        'Location and contact details',
-        'Operating hours configuration'
-      ],
+      features: ['Station Management', 'Locations', 'Operating Hours'],
       color: 'text-orange-600 dark:text-orange-400',
       minRole: 'OWNER'
     },
     {
+      title: 'Tanks & Pumps',
+      description: 'Manage fuel tanks, pumps, and nozzle infrastructure',
+      icon: <Fuel className="h-6 w-6" />,
+      href: '/settings/tanks',
+      features: ['Tank Capacity', 'Pump Configuration', 'Nozzle Setup'],
+      color: 'text-red-600 dark:text-red-400'
+    },
+    {
+      title: 'Product Pricing',
+      description: 'Manage fuel types, daily prices, and inventory targets',
+      icon: <Fuel className="h-6 w-6" />, // Using Fuel icon again but could use DollarSign
+      href: '/settings/prices',
+      features: ['Price Updates', 'Fuel Types', 'Inventory Targets'],
+      color: 'text-emerald-600 dark:text-emerald-400'
+    },
+    {
       title: 'Pumpers',
       description: 'Manage pumper employees, shifts, and specializations',
-      icon: <Users className="h-8 w-8" />,
+      icon: <Users className="h-6 w-6" />,
       href: '/settings/pumpers',
-      features: [
-        'Add/Edit/Delete pumpers',
-        'Employee details and contact',
-        'Shift preferences and assignments',
-        'Performance ratings and specializations'
-      ],
-      color: 'text-orange-600'
+      features: ['Employee Profiles', 'Shift Assignments', 'Performance'],
+      color: 'text-indigo-600 dark:text-indigo-400'
     },
     {
       title: 'Office Staff',
-      description: 'Manage office employees (managers, supervisors, office staff)',
-      icon: <Briefcase className="h-8 w-8" />,
+      description: 'Manage office employees (managers, supervisors)',
+      icon: <Briefcase className="h-6 w-6" />,
       href: '/settings/office-staff',
-      features: [
-        'Add/Edit/Delete office staff',
-        'Employee details and contact',
-        'Role management (Manager, Supervisor, etc.)',
-        'Base salary configuration'
-      ],
+      features: ['Staff Profiles', 'Role Assignment', 'Access Levels'],
       color: 'text-teal-600 dark:text-teal-400'
     },
     {
       title: 'Banks',
-      description: 'Configure bank accounts and payment processing settings',
-      icon: <CreditCard className="h-8 w-8" />,
+      description: 'Configure bank accounts and payment processing',
+      icon: <Building2 className="h-6 w-6" />,
       href: '/settings/banks',
-      features: [
-        'Bank account management',
-        'Account numbers and details',
-        'Payment processing setup',
-        'Integration configurations'
-      ],
-      color: 'text-green-600 dark:text-green-400'
+      features: ['Account Setup', 'Terminals', 'Reconciliation'],
+      color: 'text-cyan-600 dark:text-cyan-400'
     },
     {
       title: 'Shift Templates',
-      description: 'Define shift patterns and working hour templates',
-      icon: <Clock className="h-8 w-8" />,
+      description: 'Define recurring shift patterns and timings',
+      icon: <Clock className="h-6 w-6" />,
       href: '/settings/shift-templates',
-      features: [
-        'Create shift patterns',
-        'Start/End time templates',
-        'Break configurations',
-        'Template assignments'
-      ],
-      color: 'text-orange-600 dark:text-orange-400'
+      features: ['Shift Patterns', 'Timing Rules', 'Break Schedules'],
+      color: 'text-pink-600 dark:text-pink-400'
     },
     {
-      title: 'Fuels',
-      description: 'Manage fuel types, pricing, inventory, and price history',
-      icon: <Fuel className="h-8 w-8" />,
-      href: '/settings/prices',
-      features: [
-        'Add new fuel types to system',
-        'Current price management',
-        'Price history tracking',
-        'Inventory monitoring by fuel type'
-      ],
-      color: 'text-orange-600 dark:text-orange-400'
-    },
-    {
-      title: 'POS Terminals',
-      description: 'Configure point-of-sale terminals and payment devices',
-      icon: <Monitor className="h-8 w-8" />,
-      href: '/settings/pos-terminals',
-      features: [
-        'Terminal registration',
-        'Device configurations',
-        'Bank associations',
-        'Status monitoring'
-      ],
-      color: 'text-cyan-600'
-    },
-    {
-      title: 'Users',
-      description: 'Manage system users, roles, and access permissions',
-      icon: <Users className="h-8 w-8" />,
-      href: '/settings/users',
-      features: [
-        'User account management',
-        'Role assignments',
-        'Access control',
-        'Profile management'
-      ],
-      color: 'text-red-600 dark:text-red-400',
-      minRole: 'OWNER'
-    },
-    {
-      title: 'Tolerance Settings',
+      title: 'Tolerance Control',
       description: 'Configure variance tolerance levels and thresholds',
-      icon: <Gauge className="h-8 w-8" />,
+      icon: <Gauge className="h-6 w-6" />,
       href: '/settings/tolerance',
-      features: [
-        'Percentage tolerance setup',
-        'Flat amount thresholds',
-        'Combined tolerance rules',
-        'Alert configurations'
-      ],
+      features: ['Variance Limits', 'Alert Thresholds', 'Auto-actions'],
       color: 'text-orange-600',
       minRole: 'OWNER'
     },
     {
-      title: 'Tanks & Infrastructure',
-      description: 'Manage fuel tanks, pumps, and nozzle infrastructure',
-      icon: <Fuel className="h-8 w-8" />,
-      href: '/settings/tanks',
-      features: [
-        'Add/Edit/Delete tanks',
-        'Create pumps and nozzles',
-        'Infrastructure setup',
-        'Tank capacity management'
-      ],
-      color: 'text-orange-600 dark:text-orange-400'
+      title: 'Users & Access',
+      description: 'Manage system users, roles, and permissions',
+      icon: <Shield className="h-6 w-6" />,
+      href: '/settings/users',
+      features: ['User Accounts', 'Role Matrix', 'Activity Logs'],
+      color: 'text-red-600 dark:text-red-400',
+      minRole: 'OWNER'
+    },
+    {
+      title: 'System Data',
+      description: 'Master data and system configurations',
+      icon: <Database className="h-6 w-6" />,
+      href: '/settings/profile', // Redirecting to profile for now as a catch-all
+      features: ['Backup/Restore', 'Audit Logs', 'System Health'],
+      color: 'text-gray-600 dark:text-gray-400',
+      minRole: 'DEVELOPER'
     }
   ]
 
@@ -220,36 +161,38 @@ export default function SettingsPage() {
 
     if (setting.minRole === 'DEVELOPER') {
       badges.push(
-        <span key="role" className="text-[10px] bg-rose-500/20 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded-full font-medium border border-rose-500/20">
-          DEVELOPER ONLY
+        <span key="role" className="text-[10px] bg-rose-500/10 text-rose-600 dark:text-rose-400 px-2 py-0.5 rounded-full font-medium border border-rose-500/20">
+          DEV
         </span>
       )
     } else if (setting.minRole === 'OWNER') {
       badges.push(
-        <span key="role" className="text-[10px] bg-orange-500/20 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded-full font-medium border border-orange-500/20">
-          OWNER ONLY
+        <span key="role" className="text-[10px] bg-orange-500/10 text-orange-600 dark:text-orange-400 px-2 py-0.5 rounded-full font-medium border border-orange-500/20">
+          OWNER
         </span>
       )
     }
 
     if (setting.minPlan === 'PREMIUM' && currentPlan === 'BASIC') {
       badges.push(
-        <span key="plan" className="text-[10px] bg-amber-500/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full font-medium border border-amber-500/20">
-          PREMIUM
+        <span key="plan" className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full font-medium border border-amber-500/20">
+          PRO
         </span>
       )
     }
 
-    return badges.length > 0 ? <div className="flex gap-1">{badges}</div> : null
+    if (setting.status) {
+      badges.push(
+        <span key="status" className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full font-medium border border-emerald-500/20">
+          {setting.status}
+        </span>
+      )
+    }
+
+    return badges.length > 0 ? <div className="flex gap-1 flex-wrap">{badges}</div> : null
   }
 
-  const getRoleStyle = (minRole?: string) => {
-    if (minRole === 'DEVELOPER') return 'bg-rose-50/50 dark:bg-rose-950/10 border-rose-100 dark:border-rose-900/50'
-    if (minRole === 'OWNER') return 'bg-orange-50/50 dark:bg-orange-950/10 border-orange-100 dark:border-orange-900/50'
-    return ''
-  }
-
-  // Filter settings based on role ONLY (we show premium cards but lock them)
+  // Filter settings based on role
   const visibleSettings = settings.filter(setting => {
     if (setting.minRole === 'DEVELOPER') return isDeveloper
     if (setting.minRole === 'OWNER') return isOwner
@@ -257,96 +200,76 @@ export default function SettingsPage() {
   })
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <SettingsIcon className="h-8 w-8 text-orange-600 dark:text-orange-400" />
-            System Settings
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Configure system parameters, manage master data, and control access permissions
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <SettingsIcon className="h-6 w-6 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Configuration Management</span>
-        </div>
+    <div className="space-y-8 p-6 max-w-[1600px] mx-auto">
+      {/* Standard Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+          <SettingsIcon className="h-8 w-8 text-primary" />
+          Settings
+        </h1>
+        <p className="text-muted-foreground mt-2 text-lg">
+          Manage system configurations, user access, and operational parameters.
+        </p>
       </div>
 
-      {/* Settings Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Settings Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {visibleSettings.map((setting, index) => {
           const isRestricted = !planMeetsRequirement(setting.minPlan)
 
           return (
             <Card
               key={index}
-              className={`hover:shadow-lg transition-shadow cursor-pointer ${getRoleStyle(setting.minRole)} ${isRestricted ? 'opacity-90' : ''}`}
+              className={`
+                group relative overflow-hidden transition-all duration-200
+                hover:shadow-lg cursor-pointer border-muted
+                ${isRestricted ? 'opacity-70 grayscale' : ''}
+              `}
               onClick={() => {
                 if (!isRestricted) {
                   router.push(setting.href)
                 }
               }}
             >
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={setting.color}>
-                      {setting.icon}
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
-                        {setting.title}
-                        {getRoleBadge(setting)}
-                      </h3>
-                      <p className="text-sm text-muted-foreground font-normal">{setting.description}</p>
-                    </div>
+              {/* Top Accent Line */}
+              <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-${setting.color.split('-')[1]}-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
+
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start mb-2">
+                  <div className={`p-2 rounded-lg bg-muted text-foreground group-hover:scale-110 transition-transform duration-200`}>
+                    {setting.icon}
                   </div>
-                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  {getRoleBadge(setting)}
+                </div>
+                <CardTitle className="text-lg font-semibold group-hover:text-primary transition-colors">
+                  {setting.title}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="text-sm font-medium text-foreground mb-2">Features:</div>
-                  <ul className="space-y-1">
-                    {setting.features.map((feature, featureIndex) => (
-                      <li key={featureIndex} className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full flex-shrink-0"></div>
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
 
-                  {isRestricted ? (
-                    <div className="pt-3">
-                      <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg text-amber-800 dark:text-amber-200 text-xs mb-3">
-                        <AlertCircle className="h-4 w-4 shrink-0" />
-                        <span>Upgrade to Premium to unlock these settings</span>
-                      </div>
-                      <Button
-                        className="w-full bg-amber-600 hover:bg-amber-700 text-white"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          router.push('/settings/subscription') // Redirect to billing/plan
-                        }}
-                      >
-                        Upgrade Now
-                      </Button>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4 line-clamp-2 min-h-[40px]">
+                  {setting.description}
+                </p>
+
+                <div className="space-y-2">
+                  {setting.features.map((feature, idx) => (
+                    <div key={idx} className="flex items-center text-xs text-muted-foreground/80">
+                      <div className={`w-1 h-1 rounded-full mr-2 ${setting.color.split(' ')[0].replace('text-', 'bg-')}`} />
+                      {feature}
                     </div>
-                  ) : (
-                    <div className="pt-3">
-                      <Button
-                        className="w-full"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          router.push(setting.href)
-                        }}
-                      >
-                        Configure
-                      </Button>
-                    </div>
-                  )}
+                  ))}
+                </div>
+
+                {isRestricted && (
+                  <div className="absolute inset-0 bg-background/60 backdrop-blur-[1px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="secondary" size="sm" className="shadow-lg">
+                      <AlertCircle className="w-4 h-4 mr-2" /> Upgrade to Unlock
+                    </Button>
+                  </div>
+                )}
+
+                <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </div>
               </CardContent>
             </Card>
@@ -354,89 +277,66 @@ export default function SettingsPage() {
         })}
       </div>
 
-      {/* System Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>System Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Quick Stats / System Health */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-none shadow-lg">
+          <CardContent className="p-6 flex items-center justify-between">
             <div>
-              <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-                <Database className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                Data Management
-              </h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Master data configuration</li>
-                <li>• Reference data management</li>
-                <li>• Data validation rules</li>
-                <li>• Backup and restore</li>
-              </ul>
+              <p className="text-indigo-100 text-sm font-medium mb-1">System Status</p>
+              <h3 className="text-2xl font-bold flex items-center gap-2">
+                Operational <Zap className="h-5 w-5 text-yellow-300 fill-yellow-300" />
+              </h3>
             </div>
+            <div className="h-12 w-12 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
+              <ActivityIcon />
+            </div>
+          </CardContent>
+        </Card>
 
+        <Card className="bg-gradient-to-br from-orange-500 to-red-500 text-white border-none shadow-lg">
+          <CardContent className="p-6 flex items-center justify-between">
             <div>
-              <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-                <Users className="h-4 w-4 text-green-600 dark:text-green-400" />
-                Access Control
-              </h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Role-based permissions</li>
-                <li>• Feature-level access</li>
-                <li>• Audit trail logging</li>
-                <li>• Session management</li>
-              </ul>
+              <p className="text-orange-100 text-sm font-medium mb-1">Active Alerts</p>
+              <h3 className="text-2xl font-bold">0 Active</h3>
             </div>
+            <div className="h-12 w-12 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
+              <AlertCircle className="h-6 w-6" />
+            </div>
+          </CardContent>
+        </Card>
 
+        <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/settings/organization')}>
+          <CardContent className="p-6 flex items-center justify-between">
             <div>
-              <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-                <SettingsIcon className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                Configuration
-              </h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• System parameters</li>
-                <li>• Business rules</li>
-                <li>• Integration settings</li>
-                <li>• Notification preferences</li>
-              </ul>
+              <p className="text-muted-foreground text-sm font-medium mb-1">Organization</p>
+              <h3 className="text-xl font-bold text-foreground truncate max-w-[200px]">{organization?.name || 'Loading...'}</h3>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            <Button variant="outline" onClick={() => router.push('/settings/stations')}>
-              <Building2 className="mr-2 h-4 w-4" />
-              Manage Stations
-            </Button>
-            <Button variant="outline" onClick={() => router.push('/settings/pumpers')}>
-              <Users className="mr-2 h-4 w-4" />
-              Manage Pumpers
-            </Button>
-            <Button variant="outline" onClick={() => router.push('/settings/office-staff')}>
-              <Briefcase className="mr-2 h-4 w-4" />
-              Manage Office Staff
-            </Button>
-            <Button variant="outline" onClick={() => router.push('/settings/prices')}>
-              <Fuel className="mr-2 h-4 w-4" />
-              Manage Fuels
-            </Button>
-            <Button variant="outline" onClick={() => router.push('/settings/users')}>
-              <Shield className="mr-2 h-4 w-4" />
-              User Management
-            </Button>
-            <Button variant="outline" onClick={() => router.push('/settings/tolerance')}>
-              <Gauge className="mr-2 h-4 w-4" />
-              Tolerance Config
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="h-12 w-12 bg-muted rounded-full flex items-center justify-center">
+              <Building2 className="h-6 w-6 text-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
+
+function ActivityIcon() {
+  return (
+    <svg
+      className="h-6 w-6"
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+    </svg>
+  )
+}
+

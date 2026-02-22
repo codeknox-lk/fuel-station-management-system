@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { AlertCircle, ArrowRight, Timer, SkipForward } from 'lucide-react'
-import { DeliveryData } from './DeliveryWizard'
+import { DeliveryData } from './types'
 import { addMinutes, differenceInSeconds } from 'date-fns'
 
 interface Props {

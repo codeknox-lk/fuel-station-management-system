@@ -28,11 +28,6 @@ import {
   Calculator
 } from 'lucide-react'
 
-interface Station {
-  id: string
-  name: string
-  city: string
-}
 
 interface CustomerAging {
   customerId: string
@@ -70,30 +65,15 @@ interface AgingSummary {
 }
 
 export default function CreditAgingPage() {
-  const [stations, setStations] = useState<Station[]>([])
   const [agingData, setAgingData] = useState<CustomerAging[]>([])
   const [summary, setSummary] = useState<AgingSummary | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   // Form state
-  const { selectedStation, setSelectedStation } = useStation()
+  const { selectedStation, stations } = useStation()
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0])
 
-  // Load initial data
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const response = await fetch('/api/stations?active=true')
-        const stationsData = await response.json()
-        setStations(stationsData)
-      } catch {
-        setError('Failed to load stations')
-      }
-    }
-
-    loadData()
-  }, [])
 
   const generateReport = async () => {
     setLoading(true)
@@ -313,23 +293,11 @@ export default function CreditAgingPage() {
       <FormCard title="Generate Aging Report">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <Label htmlFor="station">Station (Optional)</Label>
-            <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
-              <SelectTrigger id="station">
-                <SelectValue placeholder="All Stations" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Stations</SelectItem>
-                {stations.map((station) => (
-                  <SelectItem key={station.id} value={station.id}>
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4" />
-                      {station.name} ({station.city})
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Selected Station</Label>
+            <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-muted/50 text-sm">
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+              <span>{stations.find(s => s.id === selectedStation)?.name || 'All Stations'}</span>
+            </div>
           </div>
 
           <div>

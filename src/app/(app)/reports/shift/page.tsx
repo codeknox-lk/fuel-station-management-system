@@ -22,9 +22,8 @@ import {
 import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
-  Building2,
   Clock,
   User,
   Fuel,
@@ -35,15 +34,24 @@ import {
   ArrowLeft,
   Download,
   FileSpreadsheet,
-  ShoppingBag
+  ShoppingBag,
+  Gauge,
+  CheckCircle2,
+  XCircle,
+  TrendingUp,
+  CreditCard,
+  Banknote,
+  Coins
 } from 'lucide-react'
 import { exportShiftReportPDF } from '@/lib/exportUtils'
-
-interface Station {
-  id: string
-  name: string
-  city: string
-}
+import {
+  RadialBarChart,
+  RadialBar,
+  Legend,
+  ResponsiveContainer,
+  PolarAngleAxis
+} from 'recharts'
+import { cn } from '@/lib/utils'
 
 interface DeclaredAmounts {
   cash: number
@@ -118,6 +126,7 @@ interface ShiftReport {
   totalVariance: number
   variancePercentage: number
   overallStatus: 'BALANCED' | 'MINOR_VARIANCE' | 'MAJOR_VARIANCE'
+  efficiencyScore: number
 }
 
 interface NozzleReport {
@@ -150,35 +159,19 @@ interface TenderSummary {
 
 export default function ShiftReportsPage() {
   const router = useRouter()
-  const [stations, setStations] = useState<Station[]>([])
   const [shifts, setShifts] = useState<Shift[]>([])
   const [shiftReport, setShiftReport] = useState<ShiftReport | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   // Form state
-  const { selectedStation, setSelectedStation } = useStation()
+  const { selectedStation } = useStation()
   const [selectedShift, setSelectedShift] = useState('')
-
-  // Load initial data
-  useEffect(() => {
-    const loadStations = async () => {
-      try {
-        const response = await fetch('/api/stations?active=true')
-        const stationsData = await response.json()
-        setStations(stationsData)
-      } catch {
-        setError('Failed to load stations')
-      }
-    }
-
-    loadStations()
-  }, [])
 
   // Load shifts from API
   const loadShifts = useCallback(async () => {
     try {
-      const response = await fetch(`/api/shifts?stationId=${selectedStation}&status=CLOSED&limit=10`)
+      const response = await fetch(`/api/shifts?stationId=${selectedStation}&status=CLOSED&limit=20`)
       if (!response.ok) {
         throw new Error('Failed to fetch shifts')
       }
@@ -336,6 +329,11 @@ export default function ShiftReportsPage() {
         overallStatus = 'MINOR_VARIANCE'
       }
 
+      // Calculate efficiency score (100 - weighted variance impact)
+      // 0.1% variance is acceptable (100 score). >1% variance starts dropping score fast.
+      const varianceImpact = Math.min(100, Math.abs(variancePercentage) * 50)
+      const efficiencyScore = Math.max(0, Math.round(100 - varianceImpact))
+
       const report: ShiftReport = {
         shift,
         nozzleReports,
@@ -343,7 +341,8 @@ export default function ShiftReportsPage() {
         shopAssignment: reportData.shopAssignment,
         totalVariance,
         variancePercentage,
-        overallStatus
+        overallStatus,
+        efficiencyScore
       }
 
       setShiftReport(report)
@@ -361,8 +360,7 @@ export default function ShiftReportsPage() {
       return
     }
 
-    const station = stations.find(s => s.id === selectedStation)
-    const stationName = station?.name || 'Unknown Station'
+    const stationName = shiftReport.shift.stationName || 'Station'
 
     const exportData = {
       nozzlePerformance: shiftReport.nozzleReports.map(nr => ({
@@ -395,9 +393,9 @@ export default function ShiftReportsPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'BALANCED': return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
-      case 'MINOR_VARIANCE': return 'bg-yellow-500/20 text-yellow-400 dark:bg-yellow-600/30 dark:text-yellow-300'
-      case 'MAJOR_VARIANCE': return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
+      case 'BALANCED': return 'bg-green-500/10 text-green-600 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800'
+      case 'MINOR_VARIANCE': return 'bg-yellow-500/10 text-yellow-600 border-yellow-200 dark:bg-yellow-950/30 dark:text-yellow-400 dark:border-yellow-800'
+      case 'MAJOR_VARIANCE': return 'bg-red-500/10 text-red-600 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800'
       default: return 'bg-muted text-foreground'
     }
   }
@@ -408,10 +406,12 @@ export default function ShiftReportsPage() {
       title: 'Nozzle',
       render: (value: unknown, row: NozzleReport) => (
         <div className="flex items-center gap-2">
-          <Fuel className="h-4 w-4 text-muted-foreground" />
+          <div className="p-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+            <Fuel className="h-3.5 w-3.5" />
+          </div>
           <div>
             <div className="font-medium">{value as string}</div>
-            <div className="text-xs text-muted-foreground">{row.fuel?.icon} {row.fuel?.name || 'Unknown'}</div>
+            <div className="text-xs text-muted-foreground">{row.fuel?.name || 'Unknown'}</div>
           </div>
         </div>
       )
@@ -422,446 +422,356 @@ export default function ShiftReportsPage() {
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
           <User className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm">{value as string}</span>
+          <span className="text-sm font-medium">{value as string}</span>
         </div>
       )
     },
     {
       key: 'startMeter' as keyof NozzleReport,
-      title: 'Start Meter',
-      render: (value: unknown) => {
-        const numValue = typeof value === 'number' ? value : 0
-        return <span className="text-sm">{numValue.toFixed(1)}</span>
-      }
+      title: 'Start',
+      render: (value: unknown) => <span className="text-xs text-muted-foreground">{(value as number).toFixed(1)}</span>
     },
     {
       key: 'endMeter' as keyof NozzleReport,
-      title: 'End Meter',
-      render: (value: unknown) => {
-        const numValue = typeof value === 'number' ? value : 0
-        return <span className="text-sm">{numValue.toFixed(1)}</span>
-      }
+      title: 'End',
+      render: (value: unknown) => <span className="text-xs text-muted-foreground">{(value as number).toFixed(1)}</span>
     },
     {
       key: 'litersSold' as keyof NozzleReport,
-      title: 'Litres Sold',
-      render: (value: unknown) => {
-        const numValue = typeof value === 'number' ? value : 0
-        return (
-          <span className="font-semibold text-orange-600 dark:text-orange-400">
-            {numValue.toFixed(1)}L
-          </span>
-        )
-      }
+      title: 'Volume',
+      render: (value: unknown) => (
+        <span className="font-medium">
+          {(value as number).toFixed(1)} <span className="text-xs text-muted-foreground">L</span>
+        </span>
+      )
     },
     {
       key: 'salesAmount' as keyof NozzleReport,
-      title: 'Sales Amount',
-      render: (value: unknown) => {
-        const numValue = typeof value === 'number' ? value : 0
-        return (
-          <span className="font-semibold text-green-600 dark:text-green-400">
-            Rs. {(numValue || 0).toLocaleString()}
-          </span>
-        )
-      }
+      title: 'Revenue',
+      render: (value: unknown) => (
+        <span className="font-semibold tabular-nums">
+          Rs. {(value as number).toLocaleString()}
+        </span>
+      )
     },
     {
       key: 'variance' as keyof NozzleReport,
       title: 'Variance',
       render: (value: unknown, row: NozzleReport) => {
         const numValue = typeof value === 'number' ? value : 0
+        const isClean = Math.abs(row.variancePercentage) <= 0.1
+
         return (
-          <div className="text-center">
-            <div className={`font-semibold ${getVarianceColor(row.variancePercentage)}`}>
-              {numValue >= 0 ? '+' : ''}Rs. {(numValue || 0).toLocaleString()}
-            </div>
-            <div className={`text-xs ${getVarianceColor(row.variancePercentage)}`}>
-              {row.variancePercentage >= 0 ? '+' : ''}{row.variancePercentage.toFixed(3)}%
-            </div>
+          <div className="text-right">
+            {isClean ? (
+              <div className="flex items-center justify-end gap-1 text-green-600">
+                <CheckCircle2 className="h-3 w-3" />
+                <span className="text-xs font-medium">Balanced</span>
+              </div>
+            ) : (
+              <>
+                <div className={`font-semibold text-sm tabular-nums ${getVarianceColor(row.variancePercentage)}`}>
+                  {numValue > 0 ? '+' : ''}{numValue.toLocaleString()}
+                </div>
+                <div className={`text-[10px] ${getVarianceColor(row.variancePercentage)}`}>
+                  {row.variancePercentage > 0 ? '+' : ''}{row.variancePercentage.toFixed(2)}%
+                </div>
+              </>
+            )}
           </div>
         )
       }
-    },
-    {
-      key: 'status' as keyof NozzleReport,
-      title: 'Status',
-      render: (value: unknown) => (
-        <Badge className={getStatusColor(value as string)}>
-          {(value as string)?.replace('_', ' ') || 'Unknown'}
-        </Badge>
-      )
     }
   ]
 
+  // Data for the radial chart
+  const getEfficiencyColor = (score: number) => {
+    if (score >= 95) return '#22c55e' // green-500
+    if (score >= 80) return '#eab308' // yellow-500
+    return '#ef4444' // red-500
+  }
+
+  const radialData = shiftReport ? [
+    {
+      name: 'Efficiency',
+      uv: shiftReport.efficiencyScore,
+      fill: getEfficiencyColor(shiftReport.efficiencyScore)
+    }
+  ] : []
+
   return (
     <div className="space-y-6 p-6">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="outline" onClick={() => router.push('/reports')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-        <h1 className="text-3xl font-bold text-foreground">Shift Reports</h1>
-      </div>
-
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      <FormCard title="Generate Shift Report">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" onClick={() => router.push('/reports')}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
           <div>
-            <Label htmlFor="station">Station</Label>
-            <Select value={selectedStation} onValueChange={setSelectedStation} disabled={loading}>
-              <SelectTrigger id="station">
-                <SelectValue placeholder="Select a station" />
-              </SelectTrigger>
-              <SelectContent>
-                {stations.map((station) => (
-                  <SelectItem key={station.id} value={station.id}>
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4" />
-                      {station.name} ({station.city})
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label htmlFor="shift">Shift</Label>
-            <Select value={selectedShift} onValueChange={setSelectedShift} disabled={loading || !selectedStation}>
-              <SelectTrigger id="shift">
-                <SelectValue placeholder="Select a shift" />
-              </SelectTrigger>
-              <SelectContent>
-                {shifts.map((shift) => (
-                  <SelectItem key={shift.id} value={shift.id}>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      <div>
-                        <div>{shift.templateName}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(shift.startTime).toLocaleDateString()} - {new Date(shift.startTime).toLocaleTimeString()}
-                        </div>
-                      </div>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-end">
-            <Button onClick={generateReport} disabled={loading || !selectedShift}>
-              {loading ? 'Generating...' : (
-                <>
-                  <Calculator className="mr-2 h-4 w-4" />
-                  Generate Report
-                </>
-              )}
-            </Button>
+            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+              <Clock className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+              Shift Reports
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Detailed analysis of shift performance and reconciliation
+            </p>
           </div>
         </div>
-      </FormCard>
+      </div>
 
-      {shiftReport && (
-        <div className="space-y-6">
-          {/* Header */}
-          <Card>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Left Column: Selection & Key Metrics */}
+        <div className="space-y-6 lg:col-span-1">
+          <Card className="border-none shadow-md bg-muted/40">
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Shift Report - {shiftReport.shift.stationName}
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-sm text-muted-foreground">
-                    {shiftReport.shift.templateName}
+              <CardTitle className="text-lg">Select Shift</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Shift to Analyze</Label>
+                <Select value={selectedShift} onValueChange={setSelectedShift} disabled={loading || !selectedStation}>
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder="Latest Closed Shift" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {shifts.map((shift) => (
+                      <SelectItem key={shift.id} value={shift.id}>
+                        <span className="font-medium">{new Date(shift.startTime).toLocaleDateString()}</span>
+                        <span className="text-muted-foreground mx-2">-</span>
+                        <span>{shift.templateName}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={generateReport} className="w-full" disabled={loading || !selectedShift}>
+                {loading ? 'Analyzing...' : (
+                  <>
+                    <Calculator className="mr-2 h-4 w-4" />
+                    Generate Analysis
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {shiftReport && (
+            <Card className="overflow-hidden border-none shadow-md">
+              <CardHeader className="bg-primary/5 pb-4">
+                <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground text-center">Efficiency Score</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center justify-center p-6 bg-background relative">
+                <div className="h-48 w-full relative">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadialBarChart
+                      innerRadius="70%"
+                      outerRadius="100%"
+                      barSize={15}
+                      data={radialData}
+                      startAngle={90}
+                      endAngle={-270}
+                    >
+                      <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
+                      <RadialBar
+                        background
+                        dataKey="uv"
+                        cornerRadius={30} // rounded-full
+                        label={false}
+                      />
+                    </RadialBarChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-4xl font-bold">{shiftReport.efficiencyScore}</span>
+                    <span className="text-xs text-muted-foreground uppercase">Score</span>
                   </div>
-                  <Badge className={getStatusColor(shiftReport.overallStatus)}>
+                </div>
+                <div className="text-center mt-2">
+                  <Badge variant="outline" className={`${getStatusColor(shiftReport.overallStatus)}`}>
                     {shiftReport.overallStatus.replace('_', ' ')}
                   </Badge>
                 </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <div className="text-sm text-muted-foreground">Start Time</div>
-                  <div className="font-medium">
-                    {new Date(shiftReport.shift.startTime).toLocaleString()}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">End Time</div>
-                  <div className="font-medium">
-                    {new Date(shiftReport.shift.endTime).toLocaleString()}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Duration</div>
-                  <div className="font-medium">
-                    {Math.round((new Date(shiftReport.shift.endTime).getTime() - new Date(shiftReport.shift.startTime).getTime()) / (1000 * 60 * 60))} hours
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Total Sales</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-700">
-                  Rs. {(shiftReport.tenderSummary.totalCalculated || 0).toLocaleString()}
-                </div>
-                <div className="text-xs text-muted-foreground flex gap-2">
-                  <span>{shiftReport.nozzleReports.reduce((sum: number, report: NozzleReport) => sum + report.litersSold, 0).toFixed(1)}L Fuel</span>
-                  {shiftReport.shopAssignment && <span>+ Shop Sales</span>}
-                </div>
               </CardContent>
             </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Shop Sales</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-700">
-                  Rs. {(shiftReport.tenderSummary.shopSales || 0).toLocaleString()}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {shiftReport.shopAssignment?.items.length || 0} items sold
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-green-600 dark:text-green-400">Declared Total</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-700">
-                  Rs. {(shiftReport.tenderSummary.totalDeclared || 0).toLocaleString()}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  All payment methods
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Total Variance</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${getVarianceColor(shiftReport.variancePercentage)}`}>
-                  {shiftReport.totalVariance >= 0 ? '+' : ''}Rs. {(shiftReport.totalVariance || 0).toLocaleString()}
-                </div>
-                <div className={`text-xs ${getVarianceColor(shiftReport.variancePercentage)}`}>
-                  {shiftReport.variancePercentage >= 0 ? '+' : ''}{shiftReport.variancePercentage.toFixed(3)}%
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Nozzles Active</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground">
-                  {shiftReport.nozzleReports.length}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {shiftReport.nozzleReports.filter(r => r.status === 'BALANCED').length} balanced
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Per-Nozzle/Pumper Sales */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Per-Nozzle/Pumper Sales</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <DataTable
-                data={shiftReport.nozzleReports}
-                columns={nozzleColumns}
-                searchPlaceholder="Search nozzles..."
-                pagination={false}
-                emptyMessage="No nozzle data available."
-              />
-            </CardContent>
-          </Card>
-
-          {/* Tender Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Tender Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="space-y-3">
-                  <div className="font-semibold text-foreground">Cash Payments</div>
-                  <div className="flex justify-between">
-                    <span>Cash Total:</span>
-                    <span className="font-semibold">Rs. {(shiftReport.tenderSummary.cashTotal || 0).toLocaleString()}</span>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="font-semibold text-foreground">Card Payments</div>
-                  {Object.entries(shiftReport.tenderSummary.cardTotals).map(([bank, amount]) => (
-                    <div key={bank} className="flex justify-between">
-                      <span>{bank}:</span>
-                      <span className="font-semibold">Rs. {(amount || 0).toLocaleString()}</span>
-                    </div>
-                  ))}
-                  <div className="flex justify-between border-t pt-2">
-                    <span className="font-semibold">Card Total:</span>
-                    <span className="font-semibold">
-                      Rs. {Object.values(shiftReport.tenderSummary.cardTotals).reduce((sum, amount) => sum + amount, (0) || 0).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="font-semibold text-foreground">Other Payments</div>
-                  <div className="flex justify-between">
-                    <span>Credit:</span>
-                    <span className="font-semibold">Rs. {(shiftReport.tenderSummary.creditTotal || 0).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Cheques:</span>
-                    <span className="font-semibold">Rs. {(shiftReport.tenderSummary.chequeTotal || 0).toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 pt-4 border-t">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center">
-                    <div className="text-sm text-muted-foreground">Total Declared</div>
-                    <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
-                      Rs. {(shiftReport.tenderSummary.totalDeclared || 0).toLocaleString()}
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-sm text-muted-foreground">Total Calculated</div>
-                    <div className="text-xl font-bold text-green-600 dark:text-green-400">
-                      Rs. {(shiftReport.tenderSummary.totalCalculated || 0).toLocaleString()}
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-sm text-muted-foreground">Tender Variance</div>
-                    <div className={`text-xl font-bold ${getVarianceColor((shiftReport.tenderSummary.variance / shiftReport.tenderSummary.totalDeclared) * 100)}`}>
-                      {shiftReport.tenderSummary.variance >= 0 ? '+' : ''}Rs. {(shiftReport.tenderSummary.variance || 0).toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Shop Sales Details */}
-          {shiftReport.shopAssignment && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <ShoppingBag className="h-5 w-5 text-orange-600" />
-                    <CardTitle>Shop Sales Breakdown</CardTitle>
-                  </div>
-                  <div className="text-sm font-medium">
-                    Pumper: {shiftReport.shopAssignment.pumperName}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <DataTable
-                  data={shiftReport.shopAssignment.items}
-                  columns={[
-                    { key: 'productName' as keyof typeof shiftReport.shopAssignment.items[0], title: 'Product' },
-                    { key: 'openingStock' as keyof typeof shiftReport.shopAssignment.items[0], title: 'Opening' },
-                    { key: 'addedStock' as keyof typeof shiftReport.shopAssignment.items[0], title: 'Added' },
-                    { key: 'closingStock' as keyof typeof shiftReport.shopAssignment.items[0], title: 'Closing', render: (val) => (val as number) ?? '-' },
-                    { key: 'soldQuantity' as keyof typeof shiftReport.shopAssignment.items[0], title: 'Sold' },
-                    {
-                      key: 'revenue' as keyof typeof shiftReport.shopAssignment.items[0],
-                      title: 'Revenue',
-                      render: (val: unknown) => {
-                        const numValue = typeof val === 'number' ? val : 0
-                        return <span className="font-semibold text-green-600">Rs. {(numValue || 0).toLocaleString()}</span>
-                      }
-                    }
-                  ]}
-                  pagination={false}
-                  emptyMessage="No shop sales recorded."
-                />
-                <div className="mt-4 flex justify-end">
-                  <div className="text-right">
-                    <div className="text-sm text-muted-foreground">Shop Revenue</div>
-                    <div className="text-xl font-bold text-orange-600">
-                      Rs. {(shiftReport.shopAssignment.totalRevenue || 0).toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Print Action */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Export & Print</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-4">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" disabled={!shiftReport}>
-                      <Download className="mr-2 h-4 w-4" />
-                      Export Report
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem onClick={printShiftPDF} className="cursor-pointer">
-                      <FileText className="mr-2 h-4 w-4 text-red-600" />
-                      <span>Export as PDF</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="cursor-pointer">
-                      <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" />
-                      <span>Export as Excel</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Variance Alert */}
-          {shiftReport.overallStatus === 'MAJOR_VARIANCE' && (
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Major Variance Detected</AlertTitle>
-              <AlertDescription>
-                This shift has a variance of {shiftReport.variancePercentage.toFixed(3)}% which exceeds acceptable limits.
-                Please review all transactions and investigate discrepancies before finalizing.
-              </AlertDescription>
-            </Alert>
           )}
         </div>
-      )}
+
+        {/* Right Column: Detailed Report */}
+        <div className="lg:col-span-3 space-y-6">
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {!shiftReport && !loading && (
+            <div className="h-full flex flex-col items-center justify-center p-12 text-muted-foreground border-2 border-dashed rounded-xl bg-muted/10">
+              <CheckCircle2 className="h-16 w-16 mb-4 opacity-20" />
+              <p className="text-lg font-medium">Select a shift to view detailed analysis</p>
+              <p className="text-sm">Only closed shifts are available for reporting</p>
+            </div>
+          )}
+
+          {shiftReport && (
+            <>
+              {/* Top Stats Row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-none shadow-md relative overflow-hidden">
+                  <div className="absolute right-0 top-0 h-32 w-32 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-indigo-100 flex items-center justify-between">
+                      Total Declared Revenue
+                      <Banknote className="h-4 w-4 text-indigo-200" />
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">Rs. {shiftReport.tenderSummary.totalDeclared.toLocaleString()}</div>
+                    <div className="text-xs text-indigo-100/80 mt-1">Cash + Card + Credit</div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border bg-card">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
+                      Fuel Volume
+                      <Fuel className="h-4 w-4 text-muted-foreground" />
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">
+                      {shiftReport.nozzleReports.reduce((sum, r) => sum + r.litersSold, 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                      <span className="text-sm font-normal text-muted-foreground ml-1">L</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Across {shiftReport.nozzleReports.filter(n => n.litersSold > 0).length} active nozzles
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border bg-card">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
+                      Net Variance
+                      <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-2xl font-bold ${getVarianceColor(shiftReport.variancePercentage)}`}>
+                      {shiftReport.totalVariance > 0 ? '+' : ''}Rs. {shiftReport.totalVariance.toLocaleString()}
+                    </div>
+                    <div className={`text-xs mt-1 ${getVarianceColor(shiftReport.variancePercentage)}`}>
+                      {Math.abs(shiftReport.variancePercentage).toFixed(3)}% of revenue
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Tender Breakdown Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Banknote className="h-5 w-5 text-green-600" />
+                      Payment Methods
+                    </CardTitle>
+                    <CardDescription>Breakdown of collected payments</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-muted/40 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-full text-green-600">
+                          <Banknote className="h-4 w-4" />
+                        </div>
+                        <span className="font-medium">Cash</span>
+                      </div>
+                      <span className="font-bold">Rs. {shiftReport.tenderSummary.cashTotal.toLocaleString()}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 bg-muted/40 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-full text-blue-600">
+                          <CreditCard className="h-4 w-4" />
+                        </div>
+                        <span className="font-medium">Card</span>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold">Rs. {Object.values(shiftReport.tenderSummary.cardTotals).reduce((a, b) => a + b, 0).toLocaleString()}</div>
+                        <div className="text-xs text-muted-foreground">{Object.keys(shiftReport.tenderSummary.cardTotals).length} Terminals</div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between pt-2 border-t text-sm text-muted-foreground">
+                      <span>Credit Sales</span>
+                      <span>Rs. {shiftReport.tenderSummary.creditTotal.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>Cheques/Returns</span>
+                      <span>Rs. {shiftReport.tenderSummary.chequeTotal.toLocaleString()}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ShoppingBag className="h-5 w-5 text-orange-600" />
+                      Shop Performance
+                    </CardTitle>
+                    <CardDescription>
+                      {shiftReport.shopAssignment ? `Managed by ${shiftReport.shopAssignment.pumperName}` : 'No shop data'}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {shiftReport.shopAssignment ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Total Revenue</span>
+                          <span className="text-xl font-bold font-mono">Rs. {shiftReport.shopAssignment.totalRevenue.toLocaleString()}</span>
+                        </div>
+                        <div className="h-[1px] bg-border w-full my-2"></div>
+                        <div className="space-y-2 max-h-[160px] overflow-y-auto pr-2">
+                          {shiftReport.shopAssignment.items.map(item => (
+                            <div key={item.id} className="flex justify-between text-sm">
+                              <span>{item.productName} <span className="text-xs text-muted-foreground">x{item.soldQuantity}</span></span>
+                              <span className="font-medium">Rs. {item.revenue.toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
+                        <ShoppingBag className="h-8 w-8 mb-2 opacity-50" />
+                        <p>No shop assignment active</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Nozzle Table */}
+              <Card className="border-none shadow-md">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Fuel Sales Breakdown</CardTitle>
+                    <CardDescription>Per-nozzle performance & variance analysis</CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={printShiftPDF}>
+                    <Download className="mr-2 h-4 w-4" />
+                    PDF Export
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <DataTable
+                    data={shiftReport.nozzleReports}
+                    columns={nozzleColumns}
+                    searchPlaceholder="Filter by pumper or nozzle..."
+                  />
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

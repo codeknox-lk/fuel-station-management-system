@@ -33,11 +33,6 @@ import {
 
 } from 'lucide-react'
 
-interface Station {
-  id: string
-  name: string
-  city: string
-}
 
 interface CreditCustomer {
   id: string
@@ -79,7 +74,6 @@ interface CreditSale {
 
 export default function CreditSalesPage() {
   const router = useRouter()
-  const [stations, setStations] = useState<Station[]>([])
   const [customers, setCustomers] = useState<CreditCustomer[]>([])
   const [recentSales, setRecentSales] = useState<CreditSale[]>([])
   const [loading, setLoading] = useState(false)
@@ -88,7 +82,7 @@ export default function CreditSalesPage() {
 
   // Form state
   const [selectedCustomer, setSelectedCustomer] = useState('')
-  const { selectedStation } = useStation()
+  const { selectedStation, stations } = useStation()
   const [amount, setAmount] = useState(0)
   const [saleDate, setSaleDate] = useState<Date>(new Date())
   const [slipNumber, setSlipNumber] = useState('')
@@ -97,23 +91,25 @@ export default function CreditSalesPage() {
   const [signedSlipFile, setSignedSlipFile] = useState<File | null>(null)
   const [fuels, setFuels] = useState<Fuel[]>([])
 
-  // Load initial data
+  // Load data based on selected station
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [stationsRes, customersRes, salesRes, fuelsRes] = await Promise.all([
-          fetch('/api/stations?active=true'),
+        const stationParam = !selectedStation || selectedStation === 'all' ? '' : `&stationId=${selectedStation}`
+        const salesUrl = !selectedStation || selectedStation === 'all'
+          ? '/api/credit/sales?limit=10'
+          : `/api/credit/sales?stationId=${selectedStation}&limit=10`
+
+        const [customersRes, salesRes, fuelsRes] = await Promise.all([
           fetch('/api/credit/customers?status=ACTIVE'),
-          fetch('/api/credit/sales?limit=10'),
+          fetch(salesUrl),
           fetch('/api/fuels')
         ])
 
-        const stationsData = await stationsRes.json()
         const customersData = await customersRes.json()
         const salesData = await salesRes.json()
         const fuelsData = await fuelsRes.json()
 
-        setStations(stationsData)
         setFuels(fuelsData.filter((f: Fuel) => f.isActive))
         setCustomers(customersData.map((customer: { id: string; name: string; creditLimit: number; currentBalance: number }) => ({
           ...customer,
@@ -126,7 +122,7 @@ export default function CreditSalesPage() {
     }
 
     loadData()
-  }, [])
+  }, [selectedStation])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -383,22 +379,11 @@ export default function CreditSalesPage() {
             </div>
 
             <div>
-              <Label htmlFor="station">Station *</Label>
-              <Select value={selectedStation} onValueChange={() => { }} disabled={true}>
-                <SelectTrigger id="station">
-                  <SelectValue placeholder="Select a station" />
-                </SelectTrigger>
-                <SelectContent>
-                  {stations.map((station) => (
-                    <SelectItem key={station.id} value={station.id}>
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        {station.name} ({station.city})
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Selected Station</Label>
+              <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-muted/50 text-sm">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <span>{stations.find(s => s.id === selectedStation)?.name || 'All Stations'}</span>
+              </div>
             </div>
           </div>
 

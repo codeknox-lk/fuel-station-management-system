@@ -258,23 +258,23 @@ export default function ProfilePage() {
   return (
     <div className="space-y-6">
       {/* Header */}
+      {/* Header */}
+      {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="outline" onClick={() => router.push('/settings')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
+        <Button variant="ghost" size="icon" onClick={() => router.push('/settings')}>
+          <ArrowLeft className="h-6 w-6" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <User className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+            <User className="h-8 w-8 text-primary" />
             Profile Settings
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your account information and security settings
+          <p className="text-muted-foreground mt-2 text-lg max-w-2xl">
+            Manage your account information and security settings.
           </p>
         </div>
       </div>
 
-      {/* Profile Information */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

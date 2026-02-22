@@ -6,8 +6,7 @@ import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { useOrganization } from '@/contexts/OrganizationContext'
-import { hasFeature } from '@/lib/features'
-import { PlanType } from '@prisma/client'
+import { hasFeature, PlanType } from '@/lib/features'
 import {
   LayoutDashboard,
   Clock,

@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Users, Plus, Edit, Trash2, Mail, Shield, User, Crown, UserCheck, ArrowLeft, Key, Building2 } from 'lucide-react'
+import { Users, Plus, Edit, Trash2, Mail, Shield, User, Crown, UserCheck, ArrowLeft, Key, Building2, Check, X, History, Activity } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useRouter } from 'next/navigation'
 import { TempPasswordModal } from '@/components/admin/TempPasswordModal'
@@ -492,162 +492,164 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-6 max-w-[1600px] mx-auto">
+      {/* Premium Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.push('/settings')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
+          <Button variant="outline" size="icon" onClick={() => router.push('/settings')}>
+            <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">User Management</h1>
-            <p className="text-muted-foreground mt-2">
-              Manage system users, roles, and access permissions
+            <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
+            <p className="text-muted-foreground">
+              Control system access, manage roles, and monitor user activity.
             </p>
           </div>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add User
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {editingUser ? 'Edit User' : 'Add New User'}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+        <div className="flex items-center gap-2">
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={resetForm}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add User
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingUser ? 'Edit User' : 'Add New User'}
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="name">Full Name</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="e.g., John Doe"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email Address</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="e.g., john@example.com"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Password field - required for new users, optional for editing */}
                 <div>
-                  <Label htmlFor="name">Full Name</Label>
+                  <Label htmlFor="password">
+                    Password {editingUser ? '(leave blank to keep current)' : ''}
+                  </Label>
                   <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g., John Doe"
-                    required
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="Enter password"
+                    required={!editingUser}
                   />
                 </div>
-                <div>
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="e.g., john@example.com"
-                    required
-                  />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="role">Role</Label>
+                    <select
+                      id="role"
+                      title="Select User Role"
+                      value={formData.role}
+                      onChange={(e) => setFormData({ ...formData, role: e.target.value as SystemUser['role'] })}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      required
+                    >
+                      {/* Show roles based on current user's permissions */}
+                      {isDeveloper && <option value="DEVELOPER">Developer</option>}
+                      {(isDeveloper || isOwner) && <option value="OWNER">Owner</option>}
+                      {(isDeveloper || isOwner || isManager) && <option value="MANAGER">Manager</option>}
+                      {(isDeveloper || isOwner || isManager) && <option value="ACCOUNTS">Accounts</option>}
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="status">Status</Label>
+                    <select
+                      id="status"
+                      title="Select User Status"
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value as SystemUser['status'] })}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      required
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                      <option value="suspended">Suspended</option>
+                    </select>
+                  </div>
                 </div>
-              </div>
 
-              {/* Password field - required for new users, optional for editing */}
-              <div>
-                <Label htmlFor="password">
-                  Password {editingUser ? '(leave blank to keep current)' : ''}
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder="Enter password"
-                  required={!editingUser}
-                />
-              </div>
+                {/* Station Selection - Show for Managers/Staff if stations exist */}
+                {isDeveloper || isOwner && (
+                  <div>
+                    <Label htmlFor="station">Assigned Station</Label>
+                    <Select
+                      value={formData.stationId || "none"}
+                      onValueChange={(value) => setFormData({ ...formData, stationId: value === "none" ? undefined : value })}
+                      disabled={stations.length === 0}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a station (Optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None (Global/No Station)</SelectItem>
+                        {stations.map((station) => (
+                          <SelectItem key={station.id} value={station.id}>
+                            {station.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Assigning a station limits the user&apos;s scope to that station (especially for Managers).
+                    </p>
+                  </div>
+                )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="role">Role</Label>
-                  <select
-                    id="role"
-                    title="Select User Role"
-                    value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value as SystemUser['role'] })}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    required
-                  >
-                    {/* Show roles based on current user's permissions */}
-                    {isDeveloper && <option value="DEVELOPER">Developer</option>}
-                    {(isDeveloper || isOwner) && <option value="OWNER">Owner</option>}
-                    {(isDeveloper || isOwner || isManager) && <option value="MANAGER">Manager</option>}
-                    {(isDeveloper || isOwner || isManager) && <option value="ACCOUNTS">Accounts</option>}
-                  </select>
+                {/* Role Permissions Preview */}
+                <div className="bg-muted p-4 rounded-lg">
+                  <h4 className="font-medium text-foreground mb-2 flex items-center gap-2">
+                    {getRoleIcon(formData.role)}
+                    {formData.role} Permissions
+                  </h4>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    {rolePermissions[formData.role].map((permission, index) => (
+                      <li key={index} className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full flex-shrink-0"></div>
+                        {permission}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <div>
-                  <Label htmlFor="status">Status</Label>
-                  <select
-                    id="status"
-                    title="Select User Status"
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value as SystemUser['status'] })}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    required
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="suspended">Suspended</option>
-                  </select>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">
+                    {editingUser ? 'Update User' : 'Create User'}
+                  </Button>
                 </div>
-              </div>
-
-              {/* Station Selection - Show for Managers/Staff if stations exist */}
-              {isDeveloper || isOwner && (
-                <div>
-                  <Label htmlFor="station">Assigned Station</Label>
-                  <Select
-                    value={formData.stationId || "none"}
-                    onValueChange={(value) => setFormData({ ...formData, stationId: value === "none" ? undefined : value })}
-                    disabled={stations.length === 0}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a station (Optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None (Global/No Station)</SelectItem>
-                      {stations.map((station) => (
-                        <SelectItem key={station.id} value={station.id}>
-                          {station.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Assigning a station limits the user&apos;s scope to that station (especially for Managers).
-                  </p>
-                </div>
-              )}
-
-              {/* Role Permissions Preview */}
-              <div className="bg-muted p-4 rounded-lg">
-                <h4 className="font-medium text-foreground mb-2 flex items-center gap-2">
-                  {getRoleIcon(formData.role)}
-                  {formData.role} Permissions
-                </h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  {rolePermissions[formData.role].map((permission, index) => (
-                    <li key={index} className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full flex-shrink-0"></div>
-                      {permission}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4">
-                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">
-                  {editingUser ? 'Update User' : 'Create User'}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -670,33 +672,83 @@ export default function UsersPage() {
         ))}
       </div>
 
-      {/* Role Permissions Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {Object.entries(rolePermissions)
-          .filter(([role]) => !isOwner || role !== 'DEVELOPER')
-          .map(([role, permissions]) => (
-            <Card key={role}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  {getRoleIcon(role as SystemUser['role'])}
-                  {role}
-                  <Badge className={getRoleColor(role as SystemUser['role'])} variant="secondary">
-                    {filteredUsers.filter(u => u.role === role).length} users
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  {permissions.map((permission, index) => (
-                    <li key={index} className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full flex-shrink-0"></div>
-                      {permission}
-                    </li>
+      {/* Permission Matrix & Activity Log Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+        {/* Visual Permission Matrix */}
+        <Card className="xl:col-span-2 transition-all hover:shadow-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5 text-blue-500" />
+              Permission Matrix
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-muted/20">
+                    <th className="text-left font-medium text-muted-foreground p-2">Feature / Access</th>
+                    <th className="text-center font-medium text-muted-foreground p-2">Owner</th>
+                    <th className="text-center font-medium text-muted-foreground p-2">Manager</th>
+                    <th className="text-center font-medium text-muted-foreground p-2">Accounts</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-muted/10">
+                  {[
+                    { name: 'System Configuration', roles: ['OWNER'] },
+                    { name: 'User Management', roles: ['OWNER'] },
+                    { name: 'Financial Reports', roles: ['OWNER', 'ACCOUNTS'] },
+                    { name: 'Station Operations', roles: ['OWNER', 'MANAGER'] },
+                    { name: 'Shift Management', roles: ['OWNER', 'MANAGER'] },
+                    { name: 'Tank Operations', roles: ['OWNER', 'MANAGER'] },
+                    { name: 'Credit Management', roles: ['OWNER', 'MANAGER', 'ACCOUNTS'] },
+                    { name: 'POS Reconciliation', roles: ['OWNER', 'ACCOUNTS'] },
+                  ].map((perm) => (
+                    <tr key={perm.name} className="hover:bg-muted/5 transition-colors">
+                      <td className="p-3 font-medium">{perm.name}</td>
+                      <td className="p-3 text-center">{perm.roles.includes('OWNER') ? <Check className="h-4 w-4 text-green-500 mx-auto" /> : <X className="h-4 w-4 text-muted-foreground/30 mx-auto" />}</td>
+                      <td className="p-3 text-center">{perm.roles.includes('MANAGER') ? <Check className="h-4 w-4 text-green-500 mx-auto" /> : <X className="h-4 w-4 text-muted-foreground/30 mx-auto" />}</td>
+                      <td className="p-3 text-center">{perm.roles.includes('ACCOUNTS') ? <Check className="h-4 w-4 text-green-500 mx-auto" /> : <X className="h-4 w-4 text-muted-foreground/30 mx-auto" />}</td>
+                    </tr>
                   ))}
-                </ul>
-              </CardContent>
-            </Card>
-          ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Activity Log (Last Login) */}
+        <Card className="flex flex-col transition-all hover:shadow-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-green-500" />
+              Recent Activity
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex-1">
+            <div className="space-y-4">
+              {users
+                .sort((a, b) => new Date(b.lastLogin || 0).getTime() - new Date(a.lastLogin || 0).getTime())
+                .slice(0, 5)
+                .map((user) => (
+                  <div key={user.id} className="flex items-center justify-between border-b border-muted/10 pb-2 last:border-0 last:pb-0">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-blue-500/10 p-2 rounded-full text-blue-500">
+                        <User className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{user.name}</p>
+                        <p className="text-xs text-muted-foreground">{formatLastLogin(user.lastLogin)}</p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">{user.role}</Badge>
+                  </div>
+                ))}
+              {users.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No recent activity</p>}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Users Table */}
@@ -712,17 +764,19 @@ export default function UsersPage() {
       </FormCard>
 
       {/* Temp Password Modal */}
-      {resetPasswordUser && (
-        <TempPasswordModal
-          isOpen={showTempPasswordModal}
-          onClose={() => {
-            setShowTempPasswordModal(false)
-            setResetPasswordUser(null)
-          }}
-          tempPassword={resetPasswordUser.tempPassword}
-          username={resetPasswordUser.username}
-        />
-      )}
-    </div>
+      {
+        resetPasswordUser && (
+          <TempPasswordModal
+            isOpen={showTempPasswordModal}
+            onClose={() => {
+              setShowTempPasswordModal(false)
+              setResetPasswordUser(null)
+            }}
+            tempPassword={resetPasswordUser.tempPassword}
+            username={resetPasswordUser.username}
+          />
+        )
+      }
+    </div >
   )
 }

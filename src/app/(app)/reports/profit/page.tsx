@@ -31,7 +31,12 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  ComposedChart,
+  ReferenceLine,
+  Cell
 } from 'recharts'
 import {
   Calendar,
@@ -42,7 +47,10 @@ import {
   Download,
   FileText,
   ArrowLeft,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Wallet,
+  Briefcase,
+  DollarSign
 } from 'lucide-react'
 import { exportProfitReportPDF } from '@/lib/exportUtils'
 
@@ -110,6 +118,8 @@ interface ProfitReportResponse {
     averageMargin: number
     bestDay?: ProfitData
     worstDay?: ProfitData
+    previousMonthProfit?: number
+    profitGrowth?: number
   }
 }
 
@@ -207,12 +217,9 @@ export default function ProfitReportsPage() {
       const bestDay = reportData.summary.bestDay || dailyData[0] || { day: 0, date: '', profit: 0, revenue: 0, expenses: 0, margin: 0 }
       const worstDay = reportData.summary.worstDay || dailyData[0] || { day: 0, date: '', profit: 0, revenue: 0, expenses: 0, margin: 0 }
 
-      console.log('[Profit Report Frontend] Using bestDay:', bestDay.date, 'Profit:', bestDay.profit)
-      console.log('[Profit Report Frontend] Using worstDay:', worstDay.date, 'Profit:', worstDay.profit)
-
-      // Mock previous month data
-      const previousMonthProfit = totalProfit * (0.9 + Math.random() * 0.2)
-      const profitGrowth = ((totalProfit - previousMonthProfit) / previousMonthProfit) * 100
+      // Use API values for previous month comparison
+      const previousMonthProfit = reportData.summary.previousMonthProfit || 0
+      const profitGrowth = reportData.summary.profitGrowth || 0
 
       const report: MonthlyProfitReport = {
         month: monthName,
@@ -240,6 +247,23 @@ export default function ProfitReportsPage() {
       setLoading(false)
     }
   }
+
+  // Calculate Waterfall Data
+  const waterfallData = profitReport ? (() => {
+    const revenue = profitReport.totalRevenue;
+    const cogs = profitReport.expenseBreakdown.find(e => e.category === 'Shop COGS')?.amount || 0;
+    const wastage = profitReport.expenseBreakdown.find(e => e.category === 'Shop Wastage/Loss')?.amount || 0;
+    const operatingExpenses = profitReport.totalExpenses - cogs - wastage;
+    const netProfit = profitReport.totalProfit;
+
+    return [
+      { name: 'Revenue', value: revenue, fill: '#10b981', type: 'positive' },
+      { name: 'Cost of Goods', value: -cogs, fill: '#f59e0b', type: 'negative' },
+      { name: 'Wastage', value: -wastage, fill: '#f97316', type: 'negative' },
+      { name: 'Op. Expenses', value: -operatingExpenses, fill: '#ef4444', type: 'negative' },
+      { name: 'Net Profit', value: netProfit, fill: netProfit >= 0 ? '#3b82f6' : '#ef4444', type: 'total' }
+    ].filter(d => d.value !== 0 || d.name === 'Net Profit');
+  })() : [];
 
   const exportToPDF = () => {
     if (!profitReport || !selectedStation) {
@@ -352,12 +376,21 @@ export default function ProfitReportsPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="outline" onClick={() => router.push('/reports')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-        <h1 className="text-3xl font-bold text-foreground">Profit Reports</h1>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" onClick={() => router.push('/reports')}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+              <Briefcase className="h-8 w-8 text-green-600 dark:text-green-400" />
+              Profit & Loss Report
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Financial performance analysis
+            </p>
+          </div>
+        </div>
       </div>
 
       {error && (
@@ -368,22 +401,17 @@ export default function ProfitReportsPage() {
         </Alert>
       )}
 
-      <FormCard title="Generate Monthly Profit Report" description="Business month runs from 7th to 6th of next month">
+      <FormCard title="Report Configuration" description="Business month runs from 7th to 6th of next month">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-
-          {/* Station Warning */}
           {isAllStations && (
             <div className="col-span-full md:col-span-4 flex items-center p-4 text-amber-800 bg-amber-50 rounded-lg dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800 mb-4">
               <AlertCircle className="h-5 w-5 mr-3 flex-shrink-0" />
-              <span className="font-medium">Please select a specific station from the top menu to generate a report.</span>
+              <span className="font-medium">Please select a specific station to generate report.</span>
             </div>
           )}
 
           {!isAllStations && (
             <>
-              {/* Station display (read-only or hidden, since it's global) could constitute just removing the selector */}
-              {/* Logic: If specific station selected, just show other filters. Global bar shows current station. */}
-
               <div>
                 <Label htmlFor="month">Month</Label>
                 <Select value={selectedMonth} onValueChange={setSelectedMonth} disabled={loading}>
@@ -417,7 +445,7 @@ export default function ProfitReportsPage() {
               </div>
 
               <div className="flex items-end">
-                <Button onClick={generateReport} disabled={loading || isAllStations || !selectedMonth || !selectedYear}>
+                <Button onClick={generateReport} disabled={loading || isAllStations || !selectedMonth || !selectedYear} className="w-full">
                   {loading ? 'Generating...' : (
                     <>
                       <Calculator className="mr-2 h-4 w-4" />
@@ -429,241 +457,182 @@ export default function ProfitReportsPage() {
             </>
           )}
         </div>
-      </FormCard >
+      </FormCard>
 
       {profitReport && (
-        <div className="space-y-6">
-          {/* Header */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Profit Report - {profitReport.stationName}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  {profitReport.month} {profitReport.year}
-                </div>
-              </CardTitle>
-            </CardHeader>
-          </Card>
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-          {/* Summary Cards */}
+          {/* Glassmorphic Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-green-600 dark:text-green-400">Total Revenue</CardTitle>
+            <Card className="border-none shadow-md bg-gradient-to-br from-green-500 to-emerald-600 text-white relative overflow-hidden">
+              <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+              <CardHeader className="pb-2 relative z-10">
+                <CardTitle className="text-sm font-medium flex items-center justify-between text-white/90">
+                  <span>Total Revenue</span>
+                  <Wallet className="h-4 w-4 text-white/80" />
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-700">
+              <CardContent className="relative z-10">
+                <div className="text-3xl font-bold">
                   Rs. {(profitReport.totalRevenue || 0).toLocaleString()}
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  Daily avg: Rs. {Math.floor(profitReport.totalRevenue / (profitReport.dailyData.length) || 0).toLocaleString()}
+                <div className="text-xs text-white/70 mt-1">
+                  Daily Avg: Rs. {Math.floor(profitReport.totalRevenue / (profitReport.dailyData.length || 1)).toLocaleString()}
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border bg-card/50 backdrop-blur-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-red-600 dark:text-red-400">Total Expenses</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-700">
+                <div className="text-2xl font-bold text-red-700 dark:text-red-400">
                   Rs. {(profitReport.totalExpenses || 0).toLocaleString()}
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {((profitReport.totalExpenses / profitReport.totalRevenue) * 100).toFixed(1)}% of revenue
+                <div className="text-xs text-muted-foreground mt-1">
+                  {((profitReport.totalExpenses / profitReport.totalRevenue) * 100).toFixed(1)}% of Revenue
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Net Profit</CardTitle>
+            <Card className="border-none shadow-md bg-gradient-to-br from-blue-600 to-indigo-600 text-white relative overflow-hidden">
+              <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+              <CardHeader className="pb-2 relative z-10">
+                <CardTitle className="text-sm font-medium flex items-center justify-between text-white/90">
+                  <span>Net Profit</span>
+                  <DollarSign className="h-4 w-4 text-white/80" />
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${profitReport.totalProfit >= 0 ? 'text-orange-700' : 'text-red-700'}`}>
+              <CardContent className="relative z-10">
+                <div className="text-3xl font-bold">
                   Rs. {(profitReport.totalProfit || 0).toLocaleString()}
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {profitReport.averageMargin.toFixed(1)}% margin
+                <div className="text-xs text-white/70 mt-1">
+                  {profitReport.averageMargin.toFixed(1)}% Net Margin
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border bg-card/50 backdrop-blur-sm">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Growth</CardTitle>
+                <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">M-o-M Growth</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold ${profitReport.profitGrowth >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                <div className={`text-2xl font-bold ${profitReport.profitGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {profitReport.profitGrowth >= 0 ? '+' : ''}{profitReport.profitGrowth.toFixed(1)}%
                 </div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground mt-1">
                   vs previous month
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Profit Line Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Daily Profit Trend</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Business Month: {formatBusinessMonthRange(getBusinessMonth(parseInt(selectedMonth), parseInt(selectedYear)))}
-              </p>
-            </CardHeader>
-            <CardContent>
-              <div className="h-80">
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Profit Bridge / Waterfall */}
+            <FormCard
+              title="Profit Bridge"
+              description="Revenue to Net Profit Flow"
+              className="lg:col-span-1"
+            >
+              <div className="w-full h-80 mt-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={profitReport.dailyData}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                  <BarChart data={waterfallData} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" />
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11 }} />
+                    <Tooltip
+                      formatter={(value: number) => `Rs. ${(value).toLocaleString()}`}
+                      cursor={{ fill: 'transparent' }}
+                    />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                      {waterfallData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </FormCard>
+
+            {/* Main Composed Chart */}
+            <FormCard
+              title="Daily Profit & Margin Analysis"
+              description={`Business Month: ${profitReport.month} ${profitReport.year}`}
+              className="lg:col-span-2"
+            >
+              <div className="w-full h-80 mt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={profitReport.dailyData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                     <XAxis
                       dataKey="date"
-                      tick={{ fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fontSize: 12, fill: '#6B7280' }}
                       tickFormatter={(value) => {
                         const d = new Date(value)
-                        return `${d.getDate()}/${d.getMonth() + 1}`
+                        return `${d.getDate()}`
                       }}
                     />
                     <YAxis
-                      tick={{ fontSize: 12 }}
-                      tickFormatter={(value) => `Rs. ${(value / 1000).toFixed(0)}K`}
+                      yAxisId="left"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fontSize: 12, fill: '#6B7280' }}
+                      tickFormatter={(value) => `Rs.${(value / 1000).toFixed(0)}k`}
+                    />
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fontSize: 12, fill: '#f97316' }}
+                      unit="%"
                     />
                     <Tooltip
-                      formatter={(value: number, name: string) => [
-                        `Rs. ${(value || 0).toLocaleString()}`,
-                        name === 'profit' ? 'Profit' : name === 'revenue' ? 'Revenue' : 'Expenses'
-                      ]}
-                      labelFormatter={(date) => {
-                        const d = new Date(date)
-                        return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-                      }}
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                      labelFormatter={(date) => new Date(date).toLocaleDateString()}
                     />
+                    <Bar yAxisId="left" dataKey="revenue" name="Revenue" fill="#10b981" radius={[4, 4, 0, 0]} barSize={20} />
+                    <Bar yAxisId="left" dataKey="expenses" name="Expenses" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={20} />
                     <Line
+                      yAxisId="right"
                       type="monotone"
-                      dataKey="revenue"
-                      stroke="#10b981"
+                      dataKey="margin"
+                      name="Net Margin %"
+                      stroke="#f97316"
                       strokeWidth={2}
-                      name="revenue"
+                      dot={false}
                     />
-                    <Line
-                      type="monotone"
-                      dataKey="expenses"
-                      stroke="#ef4444"
-                      strokeWidth={2}
-                      name="expenses"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="profit"
-                      stroke="#3b82f6"
-                      strokeWidth={3}
-                      name="profit"
-                    />
-                  </LineChart>
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Best/Worst Days */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-green-600 dark:text-green-400">Best Performing Day</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Date:</span>
-                    <span className="font-medium">{new Date(profitReport.bestDay.date).toLocaleDateString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Revenue:</span>
-                    <span className="text-green-600 dark:text-green-400">Rs. {(profitReport.bestDay.revenue || 0).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Expenses:</span>
-                    <span className="text-red-600 dark:text-red-400">Rs. {(profitReport.bestDay.expenses || 0).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between border-t pt-2">
-                    <span className="font-semibold">Profit:</span>
-                    <span className="font-bold text-orange-600 dark:text-orange-400">Rs. {(profitReport.bestDay.profit || 0).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Margin:</span>
-                    <span className="">{profitReport.bestDay.margin.toFixed(1)}%</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-red-600 dark:text-red-400">Lowest Performing Day</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Date:</span>
-                    <span className="font-medium">{new Date(profitReport.worstDay.date).toLocaleDateString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Revenue:</span>
-                    <span className="text-green-600 dark:text-green-400">Rs. {(profitReport.worstDay.revenue || 0).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Expenses:</span>
-                    <span className="text-red-600 dark:text-red-400">Rs. {(profitReport.worstDay.expenses || 0).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between border-t pt-2">
-                    <span className="font-semibold">Profit:</span>
-                    <span className="font-bold text-orange-600 dark:text-orange-400">Rs. {(profitReport.worstDay.profit || 0).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Margin:</span>
-                    <span className="">{profitReport.worstDay.margin.toFixed(1)}%</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            </FormCard>
           </div>
 
-          {/* Revenue Breakdown */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Revenue Breakdown</CardTitle>
-            </CardHeader>
-            <CardContent>
+          {/* Breakdowns */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <FormCard title="Revenue Distribution" description="Income sources breakdown">
               <DataTable
                 data={profitReport.revenueBreakdown}
                 columns={revenueColumns}
-                searchPlaceholder="Search revenue sources..."
+                searchPlaceholder="Search sources..."
                 pagination={false}
-                emptyMessage="No revenue breakdown available."
               />
-            </CardContent>
-          </Card>
+            </FormCard>
 
-          {/* Expense Breakdown */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Expense Breakdown</CardTitle>
-            </CardHeader>
-            <CardContent>
+            <FormCard title="Expense Distribution" description="Cost breakdown">
               <DataTable
                 data={profitReport.expenseBreakdown}
                 columns={expenseColumns}
-                searchPlaceholder="Search expense categories..."
+                searchPlaceholder="Search expenses..."
                 pagination={false}
-                emptyMessage="No expense breakdown available."
               />
-            </CardContent>
-          </Card>
+            </FormCard>
+          </div>
 
           {/* Export Actions */}
           <Card>
@@ -698,8 +667,7 @@ export default function ProfitReportsPage() {
             </CardContent>
           </Card>
         </div>
-      )
-      }
-    </div >
+      )}
+    </div>
   )
 }

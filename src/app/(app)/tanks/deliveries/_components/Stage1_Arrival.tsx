@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { AlertTriangle, CheckCircle, Droplets, Loader2, Fuel } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
-import { DeliveryData } from './DeliveryWizard'
+import { DeliveryData } from './types'
 import { depthToVolume, TankCapacity, validateDepth, getMaxDepth } from '@/lib/tank-calibration'
 import { Badge } from '@/components/ui/badge'
 

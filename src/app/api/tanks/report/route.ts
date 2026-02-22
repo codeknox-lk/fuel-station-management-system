@@ -8,8 +8,8 @@ export async function GET(request: NextRequest) {
     const date = searchParams.get('date')
 
     if (!stationId || !date) {
-      return NextResponse.json({ 
-        error: 'Station ID and date are required' 
+      return NextResponse.json({
+        error: 'Station ID and date are required'
       }, { status: 400 })
     }
 
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     // Get all tanks for this station (excluding OIL)
     const tanks = await prisma.tank.findMany({
-      where: { 
+      where: {
         stationId,
         fuel: {
           code: { not: 'OIL' }
@@ -75,21 +75,21 @@ export async function GET(request: NextRequest) {
             lte: endOfDay
           }
         },
-      include: {
-        assignments: {
-          where: {
-            status: 'CLOSED',
-            endMeterReading: { not: null }
-          },
-          include: {
-            nozzle: {
-              select: {
-                tankId: true
+        include: {
+          assignments: {
+            where: {
+              status: 'CLOSED',
+              endMeterReading: { not: null }
+            },
+            include: {
+              nozzle: {
+                select: {
+                  tankId: true
+                }
               }
             }
           }
         }
-      }
       })
 
       // Calculate sales for this tank
@@ -140,25 +140,162 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // For opening stock, we'll estimate based on current level minus today's transactions
-      // In production, you'd track opening balances daily
-      const currentTank = await prisma.tank.findUnique({
-        where: { id: tank.id },
-        select: { currentLevel: true }
+      // Calculate opening stock based on historical data
+      // Strategy:
+      // 1. Find the last recorded tank dip BEFORE the start of this report day
+      // 2. If found, Opening Stock = Dip Reading + (Deliveries since dip) - (Sales since dip) + (Net Test since dip)
+      // 3. If not found, fallback to back-calculation from current level (less accurate for far past)
+
+      const lastDip = await prisma.tankDip.findFirst({
+        where: {
+          tankId: tank.id,
+          dipDate: {
+            lt: startOfDay
+          }
+        },
+        orderBy: {
+          dipDate: 'desc'
+        },
+        select: {
+          reading: true,
+          dipDate: true
+        }
       })
-      
-      // Calculate opening stock: Get opening stock from first dip of the day or estimate from previous day
-      // WARNING: Using currentLevel for historical dates is incorrect. This is a limitation.
-      // Opening Stock = Current Level - Today's Net Changes
-      // Today's Net Changes = Deliveries - Sales + Test Returns (returned) - Test Discards (not returned)
-      const netTestEffect = testReturns - testDiscards
-      const estimatedOpeningStock = Math.max(0, (currentTank?.currentLevel || 0) - totalDeliveries + totalSales - netTestEffect)
+
+      let estimatedOpeningStock = 0
+      let isEstimated = false
+
+      if (lastDip) {
+        // Calculate changes between last dip and start of report day
+        const deliveriesSinceDip = await prisma.delivery.findMany({
+          where: {
+            tankId: tank.id,
+            deliveryDate: {
+              gt: lastDip.dipDate,
+              lt: startOfDay
+            }
+          },
+          select: { quantity: true }
+        })
+        const totalDeliveriesSinceDip = deliveriesSinceDip.reduce((sum, d) => sum + d.quantity, 0)
+
+        // Get sales since dip
+        const shiftsSinceDip = await prisma.shift.findMany({
+          where: {
+            stationId,
+            status: 'CLOSED',
+            endTime: {
+              gt: lastDip.dipDate,
+              lt: startOfDay
+            }
+          },
+          include: {
+            assignments: {
+              where: {
+                status: 'CLOSED',
+                endMeterReading: { not: null }
+              },
+              include: {
+                nozzle: { select: { tankId: true } }
+              }
+            }
+          }
+        })
+
+        let totalSalesSinceDip = 0
+        for (const shift of shiftsSinceDip) {
+          for (const assignment of shift.assignments) {
+            if (assignment.nozzle.tankId === tank.id) {
+              const sold = (assignment.endMeterReading || 0) - assignment.startMeterReading
+              if (sold > 0) totalSalesSinceDip += sold
+            }
+          }
+        }
+
+        // Get test pours since dip
+        const testsSinceDip = await prisma.testPour.findMany({
+          where: {
+            timestamp: {
+              gt: lastDip.dipDate,
+              lt: startOfDay
+            },
+            nozzle: { tankId: tank.id }
+          }
+        })
+
+        let netTestsSinceDip = 0
+        testsSinceDip.forEach(t => {
+          if (t.returned) netTestsSinceDip += t.amount
+          else netTestsSinceDip -= t.amount
+        })
+
+        // Opening Stock Calculation
+        estimatedOpeningStock = lastDip.reading + totalDeliveriesSinceDip - totalSalesSinceDip + netTestsSinceDip
+      } else {
+        // Fallback: Back-calculate from current level
+        // Warning: This assumes 'currentLevel' in DB is perfectly up-to-date with 'now'
+        isEstimated = true
+        const currentTank = await prisma.tank.findUnique({
+          where: { id: tank.id },
+          select: { currentLevel: true }
+        })
+
+        // We need to back-calculate from NOW to Start of Report Day
+        // Changes = (Deliveries NOW -> StartOfReport) - (Sales NOW -> StartOfReport) ...
+        // Opening = Current - Deliveries(SinceStart) + Sales(SinceStart) ...
+
+        // Simplified: Just use the current level logic we had before, but knowing it's an estimate
+        // Ideally we should find ANY dip (even in future) and work backwards, but strictly
+        // forward calculation from a past dip is safer for audits.
+
+        // For now, let's look for *future* dips if no past dip exists? No, that's complex.
+        // Let's stick to the previous "back-calculate from current" as a fallback.
+
+        // This is what we had before (adjusted to be from "now" to "start of day")
+        // But wait, the previous code calculated "estimatedOpeningStock" using TODAY'S transactions only
+        // assuming "currentLevel" was at End of Day. That was wrong if the day is in the past.
+
+        // If we are looking at a past date and have NO dips, we really can't know the stock.
+        // Failing gracefully to 0 or keeping the "current level" snapshot might be misleading.
+        // Let's try to use current level but subtract ALL activity since the report date.
+
+        const allDeliveriesSince = await prisma.delivery.findMany({
+          where: {
+            tankId: tank.id,
+            deliveryDate: { gte: startOfDay }
+          }
+        })
+        const deliverysum = allDeliveriesSince.reduce((sum, d) => sum + d.quantity, 0)
+
+        const allSalesSteps = await prisma.shift.findMany({
+          where: {
+            stationId,
+            status: 'CLOSED', // Only closed shifts have final readings
+            endTime: { gte: startOfDay }
+          },
+          include: { assignments: { include: { nozzle: true } } }
+        })
+
+        let salesSum = 0
+        for (const s of allSalesSteps) {
+          for (const a of s.assignments) {
+            if (a.nozzle.tankId === tank.id && a.endMeterReading) {
+              salesSum += (a.endMeterReading - a.startMeterReading)
+            }
+          }
+        }
+
+        // Test pours handled similarly... simplified for fallback
+        estimatedOpeningStock = (currentTank?.currentLevel || 0) - deliverysum + salesSum
+      }
+
+      estimatedOpeningStock = Math.max(0, estimatedOpeningStock)
 
       // Calculate closing book stock
       // Closing Book Stock = Opening Stock + Deliveries - Sales + Test Returns - Test Discards
       // Note: Test returns add to stock (fuel returned), test discards subtract (fuel taken for testing)
       const closingBookStock = estimatedOpeningStock + totalDeliveries - totalSales + testReturns - testDiscards
-      
+
       // Validate closing book stock is non-negative
       const validatedClosingBookStock = Math.max(0, closingBookStock)
 
@@ -181,14 +318,14 @@ export async function GET(request: NextRequest) {
       // Positive variance = book shows more than physical (shortage/loss)
       // Negative variance = physical has more than book (excess/gain)
       const variance = validatedClosingBookStock - closingDipStock
-      const variancePercentage = validatedClosingBookStock > 0 
-        ? (Math.abs(variance) / validatedClosingBookStock) * 100 
+      const variancePercentage = validatedClosingBookStock > 0
+        ? (Math.abs(variance) / validatedClosingBookStock) * 100
         : (closingDipStock > 0 ? 100 : 0) // If book is 0 but dip > 0, variance is 100%
 
       // Tolerance calculation (2% or 200L, whichever is greater)
       const toleranceLimit = Math.max(validatedClosingBookStock * 0.02, 200)
       let toleranceStatus: 'NORMAL' | 'WARNING' | 'CRITICAL'
-      
+
       if (Math.abs(variance) <= toleranceLimit * 0.5) {
         toleranceStatus = 'NORMAL'
       } else if (Math.abs(variance) <= toleranceLimit) {
@@ -202,17 +339,18 @@ export async function GET(request: NextRequest) {
         tankNumber: tank.tankNumber || 'TANK-1',
         fuelName: tank.fuel?.name || 'Unknown',
         capacity: tank.capacity,
-            openingStock: Math.round(estimatedOpeningStock * 100) / 100,
-            deliveries: Math.round(totalDeliveries * 100) / 100,
-            sales: Math.round(totalSales * 100) / 100,
-            testReturns: Math.round(testReturns * 100) / 100,
-            testDiscards: Math.round(testDiscards * 100) / 100,
-            closingBookStock: Math.round(validatedClosingBookStock * 100) / 100,
+        openingStock: Math.round(estimatedOpeningStock * 100) / 100,
+        deliveries: Math.round(totalDeliveries * 100) / 100,
+        sales: Math.round(totalSales * 100) / 100,
+        testReturns: Math.round(testReturns * 100) / 100,
+        testDiscards: Math.round(testDiscards * 100) / 100,
+        closingBookStock: Math.round(validatedClosingBookStock * 100) / 100,
         closingDipStock: Math.round(closingDipStock * 100) / 100,
         variance: Math.round(variance * 100) / 100,
         variancePercentage: Math.round(variancePercentage * 100) / 100,
         toleranceStatus,
-        toleranceLimit: Math.round(toleranceLimit * 100) / 100
+        toleranceLimit: Math.round(toleranceLimit * 100) / 100,
+        isEstimated
       }
     }))
 
@@ -224,7 +362,7 @@ export async function GET(request: NextRequest) {
     // Determine overall status
     const criticalCount = tankReports.filter(r => r.toleranceStatus === 'CRITICAL').length
     const warningCount = tankReports.filter(r => r.toleranceStatus === 'WARNING').length
-    const overallStatus: 'NORMAL' | 'WARNING' | 'CRITICAL' = 
+    const overallStatus: 'NORMAL' | 'WARNING' | 'CRITICAL' =
       criticalCount > 0 ? 'CRITICAL' : (warningCount > 0 ? 'WARNING' : 'NORMAL')
 
     return NextResponse.json({

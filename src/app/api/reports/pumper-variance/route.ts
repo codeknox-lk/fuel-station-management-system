@@ -24,6 +24,10 @@ export async function GET(request: NextRequest) {
     const startOfMonth = new Date(year, monthNum - 1, 7, 0, 0, 0, 0)
     const endOfMonth = new Date(year, monthNum, 6, 23, 59, 59, 999)
 
+    // Get number of days in the month to initialize arrays correctly
+    // We'll just use 31 days to be safe and simple for the arrays, filtering later if needed
+    const daysInGenericMonth = 31
+
     // Get all closed shifts for the month
     const shifts = await prisma.shift.findMany({
       where: {
@@ -67,6 +71,10 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    // Helper to create empty daily variances
+    const createEmptyDailyVariances = () =>
+      Array.from({ length: daysInGenericMonth }, (_, i) => ({ day: i + 1, variance: 0 }))
+
     // Initialize pumper map
     for (const pumper of pumpers) {
       pumperVarianceMap.set(pumper.name, {
@@ -78,7 +86,7 @@ export async function GET(request: NextRequest) {
         totalVarianceAmount: 0,
         maxSingleVariance: 0,
         varianceRate: 0,
-        dailyVariances: []
+        dailyVariances: createEmptyDailyVariances()
       })
     }
 
@@ -90,6 +98,9 @@ export async function GET(request: NextRequest) {
     interface DeclaredAmounts {
       pumperBreakdown?: PumperBreakdown[]
     }
+
+    // Station-wide daily variance trend
+    const stationDailyVariances = createEmptyDailyVariances()
 
     // Process each shift's pumper breakdown
     for (const shift of shifts) {
@@ -112,7 +123,7 @@ export async function GET(request: NextRequest) {
             totalVarianceAmount: 0,
             maxSingleVariance: 0,
             varianceRate: 0,
-            dailyVariances: []
+            dailyVariances: createEmptyDailyVariances()
           }
           pumperVarianceMap.set(pumperName, pumperData)
         }
@@ -122,18 +133,23 @@ export async function GET(request: NextRequest) {
         const variance = breakdown.variance || 0
         const varianceThreshold = 20 // Threshold for considering it a variance
 
+        // Track specific stats if variance is significant
         if (Math.abs(variance) > varianceThreshold) {
           pumperData.shiftsWithVariance += 1
           pumperData.varianceCount += 1
           pumperData.totalVarianceAmount += Math.abs(variance)
           pumperData.maxSingleVariance = Math.max(pumperData.maxSingleVariance, Math.abs(variance))
+        }
 
-          // Add to daily variance for the day of the shift
-          const shiftDate = new Date(shift.startTime)
-          const dayOfMonth = shiftDate.getDate()
-          if (dayOfMonth >= 1 && dayOfMonth <= 31) {
-            pumperData.dailyVariances[dayOfMonth - 1].variance += variance
-          }
+        // Always track daily variance for trend, regardless of threshold
+        const shiftDate = new Date(shift.startTime)
+        const dayOfMonth = shiftDate.getDate()
+        if (dayOfMonth >= 1 && dayOfMonth <= 31) {
+          // Update pumper's daily variance
+          pumperData.dailyVariances[dayOfMonth - 1].variance += Math.abs(variance) // Use absolute for visual trend of "error magnitude"
+
+          // Update station's daily variance
+          stationDailyVariances[dayOfMonth - 1].variance += Math.abs(variance)
         }
       }
     }
@@ -171,12 +187,14 @@ export async function GET(request: NextRequest) {
       month,
       stationId,
       pumperVariances,
+      stationDailyVariances,
       summary: {
         totalPumpers: pumperVariances.length,
         excellent: pumperVariances.filter(p => p.performanceRating === 'EXCELLENT').length,
         good: pumperVariances.filter(p => p.performanceRating === 'GOOD').length,
         needsImprovement: pumperVariances.filter(p => p.performanceRating === 'NEEDS_IMPROVEMENT').length,
-        critical: pumperVariances.filter(p => p.performanceRating === 'CRITICAL').length
+        critical: pumperVariances.filter(p => p.performanceRating === 'CRITICAL').length,
+        totalVariance: pumperVariances.reduce((sum, p) => sum + p.totalVarianceAmount, 0)
       }
     })
   } catch (error) {

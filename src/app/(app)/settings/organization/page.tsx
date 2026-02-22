@@ -21,9 +21,12 @@ export default function OrganizationSettingsPage() {
     return (
         <div className="space-y-6 p-6">
             <div>
-                <h1 className="text-3xl font-bold text-foreground">Organization Profile</h1>
-                <p className="text-muted-foreground mt-2">
-                    Manage your organization details and subscription
+                <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+                    <Building2 className="h-8 w-8 text-primary" />
+                    Organization Profile
+                </h1>
+                <p className="text-muted-foreground mt-2 text-lg max-w-2xl">
+                    Manage your organization details and subscription.
                 </p>
             </div>
 
@@ -32,7 +35,7 @@ export default function OrganizationSettingsPage() {
                 <Card className="md:col-span-2">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <Building2 className="h-5 w-5 text-purple-600" />
+                            <Building2 className="h-5 w-5 text-muted-foreground" />
                             Overview
                         </CardTitle>
                     </CardHeader>
@@ -80,7 +83,7 @@ export default function OrganizationSettingsPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <CreditCard className="h-5 w-5 text-green-600" />
+                            <CreditCard className="h-5 w-5 text-muted-foreground" />
                             Subscription
                         </CardTitle>
                     </CardHeader>

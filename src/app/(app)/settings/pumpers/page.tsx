@@ -9,10 +9,13 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Users, Plus, Edit, Trash2, Phone, Star, Building2, Clock, ArrowLeft } from 'lucide-react'
+import { Users, Plus, Edit, Trash2, Phone, Star, Building2, Clock, ArrowLeft, LayoutGrid, List, Award, Medal, Table } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useRouter } from 'next/navigation'
 import { useStation } from '@/contexts/StationContext'
+import { cn } from '@/lib/utils'
+// import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar' // Removed missing component
+// import { ScrollArea } from '@/components/ui/scroll-area' // Removed missing component
 
 interface Pumper {
   id: string
@@ -44,6 +47,7 @@ export default function PumpersPage() {
   const { selectedStation, isAllStations } = useStation()
   const [pumpers, setPumpers] = useState<Pumper[]>([])
   const [stations, setStations] = useState<Station[]>([])
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   // const [loading, setLoading] = useState(true) // Removed unused loading state
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingPumper, setEditingPumper] = useState<Pumper | null>(null)
@@ -560,250 +564,273 @@ export default function PumpersPage() {
   const specializationOptions = ['PETROL', 'DIESEL', 'MAINTENANCE', 'CUSTOMER_SERVICE', 'CASHIER']
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-6 max-w-[1600px] mx-auto">
+      {/* Premium Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.push('/settings')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
+          <Button variant="outline" size="icon" onClick={() => router.push('/settings')}>
+            <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Pumper Management</h1>
-            <p className="text-muted-foreground mt-2">
-              Manage pumper employees, their shifts, and specializations
+            <h1 className="text-3xl font-bold tracking-tight">Staff Management</h1>
+            <p className="text-muted-foreground">
+              Manage your team, track performance, and handle shift assignments.
             </p>
           </div>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Pumper
+
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 border rounded-lg p-1 bg-background">
+            <Button
+              variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => setViewMode('grid')}
+            >
+              <LayoutGrid className="h-4 w-4" />
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {editingPumper ? 'Edit Pumper' : 'Add New Pumper'}
-              </DialogTitle>
-              <DialogDescription>
-                {editingPumper ? 'Update pumper information and details' : 'Add a new pumper to the system'}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name || ''}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g., John Silva"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="employeeId">
-                    Employee ID
-                    <span className="text-xs text-muted-foreground ml-2">(Auto-generated)</span>
-                  </Label>
-                  <Input
-                    id="employeeId"
-                    value={editingPumper ? (formData.employeeId || '') : 'Auto-generated on save'}
-                    disabled
-                    className="bg-muted cursor-not-allowed"
-                    placeholder={editingPumper ? "Employee ID (read-only)" : "Will be auto-generated (e.g., EMP001)"}
-                  />
-                </div>
-              </div>
+            <Button
+              variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => setViewMode('list')}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
 
-              <div className="grid grid-cols-2 gap-4">
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={resetForm}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Staff Member
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingPumper ? 'Edit Pumper' : 'Add New Pumper'}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingPumper ? 'Update pumper information and details' : 'Add a new pumper to the system'}
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="name">Full Name</Label>
+                    <Input
+                      id="name"
+                      value={formData.name || ''}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="e.g., John Silva"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="employeeId">
+                      Employee ID
+                      <span className="text-xs text-muted-foreground ml-2">(Auto-generated)</span>
+                    </Label>
+                    <Input
+                      id="employeeId"
+                      value={editingPumper ? (formData.employeeId || '') : 'Auto-generated on save'}
+                      disabled
+                      className="bg-muted cursor-not-allowed"
+                      placeholder={editingPumper ? "Employee ID (read-only)" : "Will be auto-generated (e.g., EMP001)"}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="stationId">Station</Label>
+                    <select
+                      id="stationId"
+                      aria-label="Station"
+                      value={formData.stationId}
+                      onChange={(e) => setFormData({ ...formData, stationId: e.target.value })}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      required
+                    >
+                      <option value="">Select Station</option>
+                      {stations.map((station) => (
+                        <option key={station.id} value={station.id}>
+                          {station.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="phoneNumber">Phone Number</Label>
+                    <Input
+                      id="phoneNumber"
+                      value={formData.phoneNumber || ''}
+                      onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                      placeholder="+94771234567"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="shift">Preferred Shift</Label>
+                    <select
+                      id="shift"
+                      aria-label="Preferred Shift"
+                      value={formData.shift}
+                      onChange={(e) => setFormData({ ...formData, shift: e.target.value as Pumper['shift'] })}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      required
+                    >
+                      <option value="MORNING">Morning</option>
+                      <option value="EVENING">Evening</option>
+                      <option value="NIGHT">Night</option>
+                      <option value="ANY">Any Shift</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="status">Status</Label>
+                    <select
+                      id="status"
+                      aria-label="Status"
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value as Pumper['status'] })}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      required
+                    >
+                      <option value="ACTIVE">Active</option>
+                      <option value="INACTIVE">Inactive</option>
+                      <option value="ON_LEAVE">On Leave</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="hireDate">Hire Date</Label>
+                    <Input
+                      id="hireDate"
+                      type="date"
+                      value={formData.hireDate || new Date().toISOString().split('T')[0]}
+                      onChange={(e) => setFormData({ ...formData, hireDate: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="experience">Experience (Years)</Label>
+                    <Input
+                      id="experience"
+                      type="number"
+                      min="0"
+                      max="50"
+                      value={formData.experience || 0}
+                      onChange={(e) => setFormData({ ...formData, experience: parseInt(e.target.value) || 0 })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="rating">Performance Rating (1-5)</Label>
+                    <Input
+                      id="rating"
+                      type="number"
+                      min="1"
+                      max="5"
+                      step="0.1"
+                      value={formData.rating || 5}
+                      onChange={(e) => setFormData({ ...formData, rating: parseFloat(e.target.value) || 5 })}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="baseSalary">Base Monthly Salary (LKR)</Label>
+                    <Input
+                      id="baseSalary"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.baseSalary || 0}
+                      onChange={(e) => setFormData({ ...formData, baseSalary: parseFloat(e.target.value) || 0 })}
+                      placeholder="27000"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Base monthly salary (default: 27000)
+                    </p>
+                  </div>
+                  <div>
+                    <Label htmlFor="holidayAllowance">Holiday Allowance (LKR)</Label>
+                    <Input
+                      id="holidayAllowance"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.holidayAllowance || 4500}
+                      onChange={(e) => setFormData({ ...formData, holidayAllowance: parseFloat(e.target.value) || 4500 })}
+                      placeholder="4500"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Monthly holiday allowance (default: 4500).
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="advanceLimit">Monthly Advance Limit (LKR)</Label>
+                    <Input
+                      id="advanceLimit"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.advanceLimit || 50000}
+                      onChange={(e) => setFormData({ ...formData, advanceLimit: parseFloat(e.target.value) || 50000 })}
+                      placeholder="50000"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Max total advance this pumper can take per month.
+                    </p>
+                  </div>
+                </div>
+
                 <div>
-                  <Label htmlFor="stationId">Station</Label>
-                  <select
-                    id="stationId"
-                    aria-label="Station"
-                    value={formData.stationId}
-                    onChange={(e) => setFormData({ ...formData, stationId: e.target.value })}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    required
-                  >
-                    <option value="">Select Station</option>
-                    {stations.map((station) => (
-                      <option key={station.id} value={station.id}>
-                        {station.name}
-                      </option>
+                  <Label>Specializations</Label>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    {specializationOptions.map((spec) => (
+                      <div key={spec} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={spec}
+                          title={spec.replace('_', ' ')}
+                          checked={formData.specializations.includes(spec)}
+                          onChange={(e) => handleSpecializationChange(spec, e.target.checked)}
+                          className="rounded border-border"
+                        />
+                        <Label htmlFor={spec} className="text-sm font-normal">
+                          {spec.replace('_', ' ')}
+                        </Label>
+                      </div>
                     ))}
-                  </select>
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="phoneNumber">Phone Number</Label>
-                  <Input
-                    id="phoneNumber"
-                    value={formData.phoneNumber || ''}
-                    onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                    placeholder="+94771234567"
-                    required
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="shift">Preferred Shift</Label>
-                  <select
-                    id="shift"
-                    aria-label="Preferred Shift"
-                    value={formData.shift}
-                    onChange={(e) => setFormData({ ...formData, shift: e.target.value as Pumper['shift'] })}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    required
-                  >
-                    <option value="MORNING">Morning</option>
-                    <option value="EVENING">Evening</option>
-                    <option value="NIGHT">Night</option>
-                    <option value="ANY">Any Shift</option>
-                  </select>
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={isSubmitting}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? 'Saving...' : (editingPumper ? 'Update Pumper' : 'Create Pumper')}
+                  </Button>
                 </div>
-                <div>
-                  <Label htmlFor="status">Status</Label>
-                  <select
-                    id="status"
-                    aria-label="Status"
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value as Pumper['status'] })}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    required
-                  >
-                    <option value="ACTIVE">Active</option>
-                    <option value="INACTIVE">Inactive</option>
-                    <option value="ON_LEAVE">On Leave</option>
-                  </select>
-                </div>
-                <div>
-                  <Label htmlFor="hireDate">Hire Date</Label>
-                  <Input
-                    id="hireDate"
-                    type="date"
-                    value={formData.hireDate || new Date().toISOString().split('T')[0]}
-                    onChange={(e) => setFormData({ ...formData, hireDate: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="experience">Experience (Years)</Label>
-                  <Input
-                    id="experience"
-                    type="number"
-                    min="0"
-                    max="50"
-                    value={formData.experience || 0}
-                    onChange={(e) => setFormData({ ...formData, experience: parseInt(e.target.value) || 0 })}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="rating">Performance Rating (1-5)</Label>
-                  <Input
-                    id="rating"
-                    type="number"
-                    min="1"
-                    max="5"
-                    step="0.1"
-                    value={formData.rating || 5}
-                    onChange={(e) => setFormData({ ...formData, rating: parseFloat(e.target.value) || 5 })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="baseSalary">Base Monthly Salary (LKR)</Label>
-                  <Input
-                    id="baseSalary"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.baseSalary || 0}
-                    onChange={(e) => setFormData({ ...formData, baseSalary: parseFloat(e.target.value) || 0 })}
-                    placeholder="27000"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Base monthly salary (default: 27000)
-                  </p>
-                </div>
-                <div>
-                  <Label htmlFor="holidayAllowance">Holiday Allowance (LKR)</Label>
-                  <Input
-                    id="holidayAllowance"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.holidayAllowance || 4500}
-                    onChange={(e) => setFormData({ ...formData, holidayAllowance: parseFloat(e.target.value) || 4500 })}
-                    placeholder="4500"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Monthly holiday allowance (default: 4500).
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="advanceLimit">Monthly Advance Limit (LKR)</Label>
-                  <Input
-                    id="advanceLimit"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.advanceLimit || 50000}
-                    onChange={(e) => setFormData({ ...formData, advanceLimit: parseFloat(e.target.value) || 50000 })}
-                    placeholder="50000"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Max total advance this pumper can take per month.
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <Label>Specializations</Label>
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  {specializationOptions.map((spec) => (
-                    <div key={spec} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id={spec}
-                        title={spec.replace('_', ' ')}
-                        checked={formData.specializations.includes(spec)}
-                        onChange={(e) => handleSpecializationChange(spec, e.target.checked)}
-                        className="rounded border-border"
-                      />
-                      <Label htmlFor={spec} className="text-sm font-normal">
-                        {spec.replace('_', ' ')}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4">
-                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={isSubmitting}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Saving...' : (editingPumper ? 'Update Pumper' : 'Create Pumper')}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
+
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -825,15 +852,86 @@ export default function PumpersPage() {
         ))}
       </div>
 
-      {/* Pumpers Table */}
-      <FormCard title="Pumpers" description="Manage pumper employees and their assignments">
-        <DataTable
-          data={pumpers}
-          columns={columns}
-          searchPlaceholder="Search pumpers..."
-          enableExport={true}
-          exportFileName="pumpers-list"
-        />
+      {/* Pumpers Table / Grid */}
+      <FormCard
+        title="Pumpers"
+        description="Manage pumper employees and their assignments"
+      >
+        {viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {pumpers.map(pumper => (
+              <Card key={pumper.id} className="transition-all hover:shadow-md group relative overflow-hidden">
+                {/* Top Performer Badge */}
+                {pumper.rating >= 4.5 && (
+                  <div className="absolute top-0 right-0 p-2">
+                    <div className="bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-[10px] font-bold px-2 py-1 rounded-bl-lg rounded-tr-lg flex items-center gap-1 shadow-sm border border-amber-200 dark:border-amber-800">
+                      <Award className="h-3 w-3" />
+                      TOP STAFF
+                    </div>
+                  </div>
+                )}
+
+                <CardContent className="pt-6">
+                  <div className="flex flex-col items-center text-center">
+                    <div className="h-20 w-20 rounded-full overflow-hidden border-4 border-background shadow-lg mb-4 relative mx-auto bg-violet-100 flex items-center justify-center">
+                      <img
+                        src={`https://api.dicebear.com/7.x/initials/svg?seed=${pumper.name}&backgroundColor=6d28d9`}
+                        alt={pumper.name}
+                        className="object-cover w-full h-full absolute inset-0 opacity-100 hover:opacity-0 transition-opacity z-10"
+                        onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0' }}
+                      />
+                      <span className="text-violet-700 text-xl font-bold z-0">
+                        {pumper.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                      </span>
+                    </div>
+
+                    <h3 className="font-bold text-lg truncate w-full px-2" title={pumper.name}>{pumper.name}</h3>
+                    <p className="text-xs text-muted-foreground font-mono mb-2">{pumper.employeeId}</p>
+
+                    <div className="flex gap-2 mb-4">
+                      <Badge className={getShiftColor(pumper.shift)} variant="outline">
+                        {pumper.shift}
+                      </Badge>
+                      <Badge className={getStatusColor(pumper.status)} variant="outline">
+                        {pumper.status}
+                      </Badge>
+                    </div>
+
+                    <div className="w-full grid grid-cols-2 gap-2 text-xs text-muted-foreground bg-muted/30 p-3 rounded-lg border border-muted/20 mb-4">
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="flex items-center gap-1"><Star className="h-3 w-3 text-yellow-500" /> Rating</span>
+                        <span className="font-bold text-foreground">{pumper.rating} / 5</span>
+                      </div>
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Exp</span>
+                        <span className="font-bold text-foreground">{pumper.experience} yrs</span>
+                      </div>
+                    </div>
+
+                    <div className="w-full flex justify-between gap-2">
+                      <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(pumper)}>
+                        <Edit className="h-3 w-3 mr-2" />
+                        Edit
+                      </Button>
+                      <Button variant="outline" size="sm" className="flex-1 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/20" onClick={() => handleDelete(pumper)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <DataTable
+            data={pumpers}
+            columns={columns}
+            searchPlaceholder="Search pumpers..."
+            enableExport={true}
+            exportFileName="pumpers-list"
+            emptyMessage="No pumpers found"
+          />
+        )}
       </FormCard>
     </div>
   )
