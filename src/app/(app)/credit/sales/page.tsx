@@ -95,7 +95,6 @@ export default function CreditSalesPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const stationParam = !selectedStation || selectedStation === 'all' ? '' : `&stationId=${selectedStation}`
         const salesUrl = !selectedStation || selectedStation === 'all'
           ? '/api/credit/sales?limit=10'
           : `/api/credit/sales?stationId=${selectedStation}&limit=10`

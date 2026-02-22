@@ -18,7 +18,7 @@ async function main() {
 
     for (const modelName of modelsWithStation) {
         console.log(`Processing model "${modelName}"...`)
-        // @ts-ignore
+        // @ts-expect-error - Dynamic model access is not fully typed in Prisma client
         const records = await prisma[modelName].findMany({
             where: { organizationId: null },
             include: {
@@ -41,7 +41,7 @@ async function main() {
                 })
 
                 if (station?.organizationId) {
-                    // @ts-ignore
+                    // @ts-expect-error - Dynamic model access is not fully typed in Prisma client
                     await prisma[modelName].update({
                         where: { id: record.id },
                         data: { organizationId: station.organizationId }

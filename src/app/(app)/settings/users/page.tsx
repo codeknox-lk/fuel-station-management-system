@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Users, Plus, Edit, Trash2, Mail, Shield, User, Crown, UserCheck, ArrowLeft, Key, Building2, Check, X, History, Activity } from 'lucide-react'
+import { Users, Plus, Edit, Trash2, Mail, Shield, User, Crown, UserCheck, ArrowLeft, Key, Building2, Check, X, Activity } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useRouter } from 'next/navigation'
 import { TempPasswordModal } from '@/components/admin/TempPasswordModal'

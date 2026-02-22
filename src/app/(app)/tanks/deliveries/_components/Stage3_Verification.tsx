@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, Ruler } from 'lucide-react'
+import { AlertCircle, ArrowRight, CheckCircle2, Ruler } from 'lucide-react'
 import { DeliveryData } from './types'
 import { Card, CardContent } from '@/components/ui/card'
 import { depthToVolume, TankCapacity } from '@/lib/tank-calibration'
@@ -105,7 +105,6 @@ export default function Stage3_Verification({ data, onUpdate, onNext }: Props) {
         onUpdate({ afterMeterReadings: readings })
     }
 
-    const isVarianceHigh = variance && variance.percent > 0.5
     const canProceed = !!data.afterDipReading && (!nozzles.length || !!data.afterMeterReadings)
 
     return (

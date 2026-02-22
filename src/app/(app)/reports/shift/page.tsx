@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStation } from '@/contexts/StationContext'
-import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
@@ -13,12 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { DataTable, Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -28,30 +21,22 @@ import {
   User,
   Fuel,
   AlertCircle,
-  FileText,
   Calculator,
   AlertTriangle,
   ArrowLeft,
   Download,
-  FileSpreadsheet,
   ShoppingBag,
-  Gauge,
   CheckCircle2,
-  XCircle,
-  TrendingUp,
   CreditCard,
   Banknote,
-  Coins
 } from 'lucide-react'
 import { exportShiftReportPDF } from '@/lib/exportUtils'
 import {
   RadialBarChart,
   RadialBar,
-  Legend,
   ResponsiveContainer,
   PolarAngleAxis
 } from 'recharts'
-import { cn } from '@/lib/utils'
 
 interface DeclaredAmounts {
   cash: number

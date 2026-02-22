@@ -50,7 +50,7 @@ async function main() {
 
     for (const model of models) {
         try {
-            // @ts-ignore
+            // @ts-expect-error - Dynamic model access is not fully typed in Prisma client
             const count = await prisma[model].count({
                 where: {
                     organizationId: null

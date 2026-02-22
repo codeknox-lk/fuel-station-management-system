@@ -1,5 +1,4 @@
-import { Station } from '@/types'
-// For now, let's keep the local definition if it matches or re-export.
+// Shared types for shift close flow
 export interface LocalStation {
     id: string
     name: string

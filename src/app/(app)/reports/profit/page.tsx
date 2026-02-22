@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useStation } from '@/contexts/StationContext'
 import { useRouter } from 'next/navigation'
-import { getCurrentBusinessMonth, getBusinessMonth, formatBusinessMonthRange } from '@/lib/businessMonth'
+import { getCurrentBusinessMonth, getBusinessMonth } from '@/lib/businessMonth'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -25,7 +25,6 @@ import { DataTable, Column } from '@/components/ui/DataTable'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  LineChart,
   Line,
   XAxis,
   YAxis,
@@ -35,11 +34,9 @@ import {
   BarChart,
   Bar,
   ComposedChart,
-  ReferenceLine,
   Cell
 } from 'recharts'
 import {
-  Calendar,
   TrendingUp,
   TrendingDown,
   AlertCircle,

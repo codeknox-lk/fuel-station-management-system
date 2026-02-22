@@ -17,7 +17,6 @@ import { DateTimePicker } from '@/components/inputs/DateTimePicker'
 import {
   ArrowLeft,
   TrendingUp,
-  TrendingDown,
   Building2,
   DollarSign,
   Fuel,
@@ -27,8 +26,6 @@ import {
   RefreshCw,
   FileText,
   FileSpreadsheet,
-  BarChart as BarChartIcon,
-  PieChart as PieChartIcon
 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -57,7 +54,6 @@ interface StationStats {
   profitMargin: number
 }
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4']
 
 export default function StationComparisonPage() {
   const router = useRouter()
