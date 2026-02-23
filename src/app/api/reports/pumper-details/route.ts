@@ -2,12 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getAuthenticatedStationContext } from '@/lib/api-utils'
 
+interface ShiftData {
+  shiftId: string
+  date: Date
+  sales: number
+  variance: number
+  liters: number
+}
+
 export async function GET(request: NextRequest) {
   try {
-    const { stationId, searchParams, errorResponse } = await getAuthenticatedStationContext(request)
+    const { stationId, organizationId, searchParams, errorResponse } = await getAuthenticatedStationContext(request)
     if (errorResponse) return errorResponse
 
-    if (!stationId) throw new Error("Station ID missing after auth check")
+    if (!stationId || !organizationId) throw new Error("Context missing after auth check")
 
     const startDate = searchParams!.get('startDate')
     const endDate = searchParams!.get('endDate')
@@ -39,7 +47,8 @@ export async function GET(request: NextRequest) {
     // Get all pumpers or specific pumper
     const pumpers = await prisma.pumper.findMany({
       where: {
-        stationId,
+        stationId: stationId === 'all' ? undefined : stationId,
+        organizationId: organizationId,
         isActive: true,
         ...(pumperId ? { id: pumperId } : {})
       },
@@ -60,7 +69,8 @@ export async function GET(request: NextRequest) {
     const shiftAssignments = await prisma.shiftAssignment.findMany({
       where: {
         shift: {
-          stationId,
+          stationId: stationId === 'all' ? undefined : stationId,
+          organizationId: organizationId,
           status: 'CLOSED',
           endTime: {
             gte: dateStart,
@@ -96,7 +106,8 @@ export async function GET(request: NextRequest) {
     // Get active loans for pumpers
     const loans = await prisma.loanPumper.findMany({
       where: {
-        stationId,
+        stationId: stationId === 'all' ? undefined : stationId,
+        organizationId: organizationId,
         status: 'ACTIVE',
         pumperName: {
           in: pumpers.map(p => p.name)
@@ -109,29 +120,38 @@ export async function GET(request: NextRequest) {
 
     // Build comprehensive pumper details
     const pumperDetails = await Promise.all(pumpers.map(async (pumper) => {
-      // Get assignments for this pumper
-      const pumperAssignments = shiftAssignments.filter(a => a.pumperName === pumper.name)
-
-      // Calculate total shifts
-      const uniqueShifts = new Set(pumperAssignments.map(a => a.shift.id))
-      const totalShifts = uniqueShifts.size
-
-      // Calculate sales and variance
+      // Local tracking for this pumper
       let totalSales = 0
       let totalLiters = 0
       let totalVariance = 0
       let shiftsWithVariance = 0
-      const varianceThreshold = 20
+      let periodAdvances = 0
+      const recentShiftsData: ShiftData[] = []
 
+      const pumperAssignments = shiftAssignments.filter(a => a.pumperName === pumper.name)
+      const uniqueShifts = new Set(pumperAssignments.map(a => a.shift.id))
+      const totalShifts = uniqueShifts.size
+      const varianceThreshold = 20
       const shiftIds = Array.from(uniqueShifts)
+
+      // Temporary storage for daily aggregation
+      const dailyAggregation = new Map<string, {
+        sales: number,
+        variance: number,
+        liters: number
+      }>()
+
       for (const shiftId of shiftIds) {
-        const shift = shiftAssignments.find(a => a.shift.id === shiftId)?.shift
+        const shiftAssignment = shiftAssignments.find(a => a.shift.id === shiftId)
+        const shift = shiftAssignment?.shift
         if (!shift || !shift.declaredAmounts) continue
 
         interface PumperBreakdown {
           pumperName: string
+          calculatedSales?: number
           totalSales?: number
           variance?: number
+          advanceTaken?: number
         }
         interface DeclaredAmounts {
           pumperBreakdown?: PumperBreakdown[]
@@ -141,37 +161,78 @@ export async function GET(request: NextRequest) {
         const pumperBreakdown = declaredAmounts.pumperBreakdown || []
         const pumperData = pumperBreakdown.find(p => p.pumperName === pumper.name)
 
-        if (pumperData) {
-          totalSales += pumperData.totalSales || 0
-          const variance = pumperData.variance || 0
-          totalVariance += Math.abs(variance)
+        let shiftSales = 0
+        let shiftVariance = 0
+        let shiftLiters = 0
 
-          if (Math.abs(variance) > varianceThreshold) {
+        if (pumperData) {
+          shiftSales = pumperData.calculatedSales || pumperData.totalSales || 0
+          shiftVariance = pumperData.variance || 0
+          periodAdvances += pumperData.advanceTaken || 0
+
+          totalSales += shiftSales
+          totalVariance += Math.abs(shiftVariance)
+
+          if (Math.abs(shiftVariance) > varianceThreshold) {
             shiftsWithVariance++
           }
         }
-      }
 
-      // Calculate liters from assignments
-      for (const assignment of pumperAssignments) {
-        if (assignment.status === 'CLOSED' && assignment.endMeterReading && assignment.startMeterReading) {
-          let litersSold = assignment.endMeterReading - assignment.startMeterReading
-
-          // Handle meter rollover
-          if (litersSold < 0) {
-            const METER_MAX = 99999
-            if (assignment.startMeterReading > 90000 && assignment.endMeterReading < 10000) {
-              litersSold = (METER_MAX - assignment.startMeterReading) + assignment.endMeterReading
-            } else {
-              continue
+        // Calculate liters for this shift
+        const shiftAssignmentsForPumper = pumperAssignments.filter(a => a.shift.id === shiftId)
+        for (const assignment of shiftAssignmentsForPumper) {
+          if (assignment.status === 'CLOSED' && assignment.endMeterReading && assignment.startMeterReading) {
+            let liters = assignment.endMeterReading - assignment.startMeterReading
+            if (liters < 0) {
+              const METER_MAX = 99999
+              if (assignment.startMeterReading > 90000 && assignment.endMeterReading < 10000) {
+                liters = (METER_MAX - assignment.startMeterReading) + assignment.endMeterReading
+              } else {
+                liters = 0
+              }
             }
-          }
-
-          if (litersSold > 0) {
-            totalLiters += litersSold
+            if (liters > 0) shiftLiters += liters
           }
         }
+        totalLiters += shiftLiters
+
+        // Add to daily aggregation
+        const dateKey = new Date(shift.startTime).toISOString().split('T')[0]
+        if (!dailyAggregation.has(dateKey)) {
+          dailyAggregation.set(dateKey, { sales: 0, variance: 0, liters: 0 })
+        }
+        const dailyData = dailyAggregation.get(dateKey)!
+        dailyData.sales += shiftSales
+        dailyData.variance += shiftVariance
+        dailyData.liters += shiftLiters
+
+        recentShiftsData.push({
+          shiftId,
+          date: new Date(shift.startTime),
+          sales: shiftSales,
+          variance: shiftVariance,
+          liters: shiftLiters
+        })
       }
+
+      // Prepare aggregated chart data (last 10 days)
+      const recentShifts = Array.from(dailyAggregation.entries())
+        .sort((a, b) => b[0].localeCompare(a[0]))
+        .slice(0, 10)
+        .map(([date, data]) => ({
+          date,
+          sales: Math.round(data.sales),
+          variance: Math.round(data.variance),
+          liters: Math.round(data.liters)
+        }))
+
+      // All shifts in period sorted descending for table
+      const shiftsInPeriod = recentShiftsData
+        .sort((a, b) => b.date.getTime() - a.date.getTime())
+        .map(s => ({
+          ...s,
+          date: s.date.toISOString()
+        }))
 
       // Calculate variance rate
       const varianceRate = totalShifts > 0
@@ -202,6 +263,7 @@ export async function GET(request: NextRequest) {
       const salaryPayments = await prisma.salaryPayment.findMany({
         where: {
           pumperId: pumper.id,
+          organizationId: organizationId,
           paymentDate: {
             gte: dateStart,
             lte: dateEnd
@@ -213,10 +275,10 @@ export async function GET(request: NextRequest) {
       })
 
       const totalSalaryPaid = salaryPayments.reduce((sum, payment) => sum + payment.netSalary, 0)
-      const totalAdvances = salaryPayments.reduce((sum, payment) => sum + payment.advances, 0)
+      const totalSettledAdvances = salaryPayments.reduce((sum, payment) => sum + payment.advances, 0)
       const totalLoanDeductions = salaryPayments.reduce((sum, payment) => sum + payment.loans, 0)
 
-      // Calculate fuel type breakdown
+      // Fuel type breakdown
       const fuelTypeBreakdown = new Map<string, { liters: number, shifts: number }>()
       for (const assignment of pumperAssignments) {
         if (assignment.status !== 'CLOSED' || !assignment.endMeterReading || !assignment.startMeterReading) continue
@@ -242,79 +304,15 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Calculate recent shift performance
-      const recentShiftsData: Array<{
-        shiftId: string
-        date: Date
-        sales: number
-        variance: number
-        liters: number
-      }> = []
-
-      for (const shiftId of shiftIds) {
-        const shift = shiftAssignments.find(a => a.shift.id === shiftId)?.shift
-        if (!shift) continue
-
-        let shiftSales = 0
-        let shiftVariance = 0
-        let shiftLiters = 0
-
-        // Get financial data from declared amounts
-        if (shift.declaredAmounts) {
-          const declaredAmounts = shift.declaredAmounts as unknown as DeclaredAmounts
-          const pumperBreakdown = declaredAmounts.pumperBreakdown || []
-          const pumperData = pumperBreakdown.find(p => p.pumperName === pumper.name)
-          if (pumperData) {
-            shiftSales = pumperData.totalSales || 0
-            shiftVariance = pumperData.variance || 0
-          }
-        }
-
-        // Get volume data from assignments
-        const shiftAssignmentsForPumper = pumperAssignments.filter(a => a.shift.id === shiftId)
-        for (const assignment of shiftAssignmentsForPumper) {
-          if (assignment.status === 'CLOSED' && assignment.endMeterReading && assignment.startMeterReading) {
-            let liters = assignment.endMeterReading - assignment.startMeterReading
-            if (liters < 0) {
-              const METER_MAX = 99999
-              if (assignment.startMeterReading > 90000 && assignment.endMeterReading < 10000) {
-                liters = (METER_MAX - assignment.startMeterReading) + assignment.endMeterReading
-              } else {
-                liters = 0
-              }
-            }
-            if (liters > 0) shiftLiters += liters
-          }
-        }
-
-        recentShiftsData.push({
-          shiftId,
-          date: new Date(shift.startTime),
-          sales: shiftSales,
-          variance: shiftVariance,
-          liters: shiftLiters
-        })
-      }
-
-      // Sort by date descending and take last 10
-      const recentShifts = recentShiftsData
-        .sort((a, b) => b.date.getTime() - a.date.getTime())
-        .slice(0, 10)
-        .map(s => ({
-          ...s,
-          date: s.date.toISOString()
-        }))
-
       return {
         id: pumper.id,
         name: pumper.name,
         employeeId: pumper.employeeId || 'N/A',
         phoneNumber: pumper.phone || 'N/A',
-        address: 'N/A', // Not in schema
-        nic: 'N/A', // Not in schema
+        address: 'N/A',
+        nic: 'N/A',
         baseSalary: pumper.baseSalary || 0,
         holidayAllowance: pumper.holidayAllowance || 0,
-        epfNumber: 'N/A', // Not in schema
 
         // Performance metrics
         totalShifts,
@@ -323,7 +321,7 @@ export async function GET(request: NextRequest) {
         averageSalesPerShift: totalShifts > 0 ? Math.round(totalSales / totalShifts) : 0,
         averageLitersPerShift: totalShifts > 0 ? Math.round(totalLiters / totalShifts) : 0,
 
-        // Recent shifts for charts
+        // Recent shifts for charts (aggregated)
         recentShifts,
 
         // Variance metrics
@@ -338,7 +336,8 @@ export async function GET(request: NextRequest) {
         advanceLimit,
         activeLoansCount: pumperLoans.length,
         totalSalaryPaid,
-        totalAdvances,
+        periodAdvances: Math.round(periodAdvances),
+        totalSettledAdvances: Math.round(totalSettledAdvances),
         totalLoanDeductions,
 
         // Salary payments
@@ -352,6 +351,9 @@ export async function GET(request: NextRequest) {
           loans: payment.loans,
           netSalary: payment.netSalary
         })),
+
+        // All shifts in the period for the table
+        shiftsInPeriod,
 
         // Loans
         activeLoans: pumperLoans.map(loan => ({
@@ -376,21 +378,34 @@ export async function GET(request: NextRequest) {
     pumperDetails.sort((a, b) => b.totalSales - a.totalSales)
 
     // Calculate summary statistics
+    const totalSales = pumperDetails.reduce((sum, p) => sum + p.totalSales, 0)
+    const totalVariance = pumperDetails.reduce((sum, p) => sum + Math.abs(p.totalVariance), 0)
+
+    // Identified top performer (highest efficiency with significant shifts)
+    const candidates = pumperDetails.filter(p => p.totalShifts >= 3)
+    const topPerformer = candidates.length > 0
+      ? candidates.sort((a, b) => (100 - a.varianceRate) - (100 - b.varianceRate))[0]
+      : pumperDetails.sort((a, b) => (100 - a.varianceRate) - (100 - b.varianceRate))[0]
+
     const summary = {
       totalPumpers: pumpers.length,
       totalShifts: pumperDetails.reduce((sum, p) => sum + p.totalShifts, 0),
-      totalSales: pumperDetails.reduce((sum, p) => sum + p.totalSales, 0),
+      totalSales,
       totalLiters: pumperDetails.reduce((sum, p) => sum + p.totalLiters, 0),
-      averageSalesPerPumper: pumpers.length > 0
-        ? Math.round(pumperDetails.reduce((sum, p) => sum + p.totalSales, 0) / pumpers.length)
-        : 0,
       excellentPerformers: pumperDetails.filter(p => p.performanceRating === 'EXCELLENT').length,
       goodPerformers: pumperDetails.filter(p => p.performanceRating === 'GOOD').length,
       needsImprovement: pumperDetails.filter(p => p.performanceRating === 'NEEDS_IMPROVEMENT').length,
       criticalPerformers: pumperDetails.filter(p => p.performanceRating === 'CRITICAL').length,
       totalActiveLoans: pumperDetails.reduce((sum, p) => sum + p.activeLoansCount, 0),
       totalLoanBalance: pumperDetails.reduce((sum, p) => sum + p.totalLoanBalance, 0),
-      totalSalaryPaid: pumperDetails.reduce((sum, p) => sum + p.totalSalaryPaid, 0)
+      totalSalaryPaid: pumperDetails.reduce((sum, p) => sum + p.totalSalaryPaid, 0),
+      totalVariance,
+      avgEfficiency: totalSales > 0 ? Math.max(0, 100 - (totalVariance / totalSales * 100)) : 100,
+      topPerformer: topPerformer ? {
+        name: topPerformer.name,
+        efficiency: 100 - topPerformer.varianceRate,
+        id: topPerformer.id
+      } : null
     }
 
     return NextResponse.json({
@@ -403,12 +418,10 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('[Pumper Report] ERROR:', error)
-    console.error('[Pumper Report] Stack:', error instanceof Error ? error.stack : 'No stack trace')
     return NextResponse.json(
       {
         error: 'Failed to fetch pumper details report',
-        details: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     )

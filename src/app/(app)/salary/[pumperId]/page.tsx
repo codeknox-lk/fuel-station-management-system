@@ -16,10 +16,17 @@ import {
   Download,
   CheckCircle,
   XCircle,
+  FileText,
   CreditCard,
   Settings,
-  FileText
+  Zap,
+  Store
 } from 'lucide-react'
+import {
+  exportIndividualSalaryReportPDF,
+  exportIndividualSalaryReportExcel,
+  type IndividualSalaryReportData
+} from '@/lib/exportUtils'
 import Link from 'next/link'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -58,6 +65,8 @@ interface SalaryData {
     varianceStatus: string
     overtimeHours?: number
     overtimeAmount?: number
+    isInShop?: boolean
+    shopRevenue?: number
   }>
 }
 
@@ -80,7 +89,7 @@ export default function PumperSalaryDetailsPage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { selectedStation } = useStation()
+  const { selectedStation, stations } = useStation()
 
   // Extract values immediately using useMemo to avoid Next.js 15 enumeration issues
   const pumperId = useMemo(() => (params?.pumperId as string) || '', [params])
@@ -127,6 +136,74 @@ export default function PumperSalaryDetailsPage() {
       console.error('Error fetching payment history:', err)
     }
   }, [selectedStation, pumperId, month])
+
+  const handleExportPDF = () => {
+    if (!salaryData || !selectedStation) return
+
+    const exportData: IndividualSalaryReportData = {
+      pumperId: salaryData.pumperId,
+      pumperName: salaryData.pumperName,
+      employeeId: salaryData.employeeId,
+      monthLabel: `${months.find(m => m.value === month)?.label} ${year}`,
+      stationName: stations.find(s => s.id === selectedStation)?.name || 'Unknown Station',
+      baseSalary: salaryData.baseSalary,
+      holidayAllowance: salaryData.holidayAllowance || 0,
+      totalOvertimeAmount: salaryData.totalOvertimeAmount || 0,
+      commission: salaryData.commission || 0,
+      varianceAdd: salaryData.varianceAdd,
+      totalAdvances: salaryData.totalAdvances,
+      totalLoans: salaryData.totalLoans,
+      varianceDeduct: salaryData.varianceDeduct,
+      epf: salaryData.epf || 0,
+      netSalary: salaryData.netSalary,
+      shiftDetails: salaryData.shiftDetails.map((s: SalaryData['shiftDetails'][0]) => ({
+        shiftId: s.shiftId,
+        date: s.date,
+        hours: s.hours,
+        sales: s.sales,
+        advance: s.advance,
+        variance: s.variance,
+        varianceStatus: s.varianceStatus,
+        overtimeAmount: s.overtimeAmount || 0
+      }))
+    }
+
+    exportIndividualSalaryReportPDF(exportData)
+  }
+
+  const handleExportExcel = () => {
+    if (!salaryData || !selectedStation) return
+
+    const exportData: IndividualSalaryReportData = {
+      pumperId: salaryData.pumperId,
+      pumperName: salaryData.pumperName,
+      employeeId: salaryData.employeeId,
+      monthLabel: `${months.find(m => m.value === month)?.label} ${year}`,
+      stationName: stations.find(s => s.id === selectedStation)?.name || 'Unknown Station',
+      baseSalary: salaryData.baseSalary,
+      holidayAllowance: salaryData.holidayAllowance || 0,
+      totalOvertimeAmount: salaryData.totalOvertimeAmount || 0,
+      commission: salaryData.commission || 0,
+      varianceAdd: salaryData.varianceAdd,
+      totalAdvances: salaryData.totalAdvances,
+      totalLoans: salaryData.totalLoans,
+      varianceDeduct: salaryData.varianceDeduct,
+      epf: salaryData.epf || 0,
+      netSalary: salaryData.netSalary,
+      shiftDetails: salaryData.shiftDetails.map((s: SalaryData['shiftDetails'][0]) => ({
+        shiftId: s.shiftId,
+        date: s.date,
+        hours: s.hours,
+        sales: s.sales,
+        advance: s.advance,
+        variance: s.variance,
+        varianceStatus: s.varianceStatus,
+        overtimeAmount: s.overtimeAmount || 0
+      }))
+    }
+
+    exportIndividualSalaryReportExcel(exportData)
+  }
 
   const handleMarkAsPaid = async () => {
     // Prevent multiple clicks
@@ -216,11 +293,11 @@ export default function PumperSalaryDetailsPage() {
         throw new Error(errorData.error || 'Failed to fetch salary data')
       }
 
-      const data = await res.json()
+      const data = await res.json() as { salaryData: SalaryData[] }
 
       // If pumperId is specified, the API should return data for that pumper
       // If not found in array, check if it's an empty result
-      let pumperData = data.salaryData?.find((p: SalaryData) => p.pumperId === pumperId)
+      let pumperData = data.salaryData?.find((p) => p.pumperId === pumperId)
 
       // If not found and salaryData exists, it might be the first (and only) item
       if (!pumperData && data.salaryData && data.salaryData.length > 0) {
@@ -440,9 +517,13 @@ export default function PumperSalaryDetailsPage() {
               </div>
             </DialogContent>
           </Dialog>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExportPDF}>
             <Download className="h-4 w-4 mr-2" />
             Export PDF
+          </Button>
+          <Button variant="outline" onClick={handleExportExcel}>
+            <FileText className="h-4 w-4 mr-2" />
+            Export Excel
           </Button>
           <Button
             variant="outline"
@@ -527,34 +608,42 @@ export default function PumperSalaryDetailsPage() {
             <CardDescription>Amounts deducted from salary</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {salaryData.epf && salaryData.epf > 0 && (
-              <div className="flex justify-between items-center p-3 bg-card rounded-lg border">
-                <span className="text-sm font-medium">EPF (8%):</span>
-                <span className="font-semibold text-red-600 text-lg">
+            <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-red-500/30">
+              <span className="text-sm font-medium">EPF (8%):</span>
+              <div className="flex flex-col items-end">
+                <span className={`font-semibold text-lg ${salaryData.epf && salaryData.epf > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
                   -Rs. {(salaryData.epf || 0).toLocaleString()}
                 </span>
               </div>
-            )}
-            <div className="flex justify-between items-center p-3 bg-card rounded-lg border">
+            </div>
+
+            <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-red-500/30">
               <span className="text-sm font-medium">Advances Taken:</span>
-              <span className="font-semibold text-red-600 text-lg">
-                -Rs. {(salaryData.totalAdvances || 0).toLocaleString()}
-              </span>
+              <div className="flex flex-col items-end">
+                <span className={`font-semibold text-lg ${salaryData.totalAdvances > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                  -Rs. {(salaryData.totalAdvances || 0).toLocaleString()}
+                </span>
+              </div>
             </div>
-            <div className="flex justify-between items-center p-3 bg-card rounded-lg border">
+
+            <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-red-500/30">
               <span className="text-sm font-medium">Loans:</span>
-              <span className="font-semibold text-red-600 text-lg">
-                -Rs. {(salaryData.totalLoans || 0).toLocaleString()}
-              </span>
+              <div className="flex flex-col items-end">
+                <span className={`font-semibold text-lg ${salaryData.totalLoans > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                  -Rs. {(salaryData.totalLoans || 0).toLocaleString()}
+                </span>
+              </div>
             </div>
-            {salaryData.varianceDeduct > 0 && (
-              <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-red-500/30">
-                <span className="text-sm font-medium">Variance Deductions:</span>
-                <span className="font-semibold text-red-600 text-lg">
+
+            <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-red-500/30">
+              <span className="text-sm font-medium">Variance Deductions:</span>
+              <div className="flex flex-col items-end">
+                <span className={`font-semibold text-lg ${salaryData.varianceDeduct > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
                   -Rs. {(salaryData.varianceDeduct || 0).toLocaleString()}
                 </span>
               </div>
-            )}
+            </div>
+
             <div className="pt-2 border-t">
               <div className="flex justify-between items-center">
                 <span className="font-semibold">Total Deductions:</span>
@@ -572,48 +661,52 @@ export default function PumperSalaryDetailsPage() {
             <CardDescription>Amounts added to salary</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {salaryData.holidayAllowance !== undefined && salaryData.holidayAllowance > 0 && (
-              <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-green-500/30">
-                <span className="text-sm font-medium">Holiday Allowance:</span>
-                <span className="font-semibold text-green-600 text-lg">
+            <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-green-500/30">
+              <span className="text-sm font-medium">Holiday Allowance:</span>
+              <div className="flex flex-col items-end">
+                <span className={`font-semibold text-lg ${salaryData.holidayAllowance && salaryData.holidayAllowance > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
                   +Rs. {(salaryData.holidayAllowance || 0).toLocaleString()}
                 </span>
-                {salaryData.restDaysTaken !== undefined && salaryData.restDaysTaken > 0 && (
-                  <span className="text-xs text-muted-foreground ml-2">
+                {!!salaryData.restDaysTaken && salaryData.restDaysTaken > 0 && (
+                  <span className="text-[10px] text-muted-foreground">
                     ({salaryData.restDaysTaken} rest days deducted)
                   </span>
                 )}
               </div>
-            )}
-            {salaryData.totalOvertimeAmount && salaryData.totalOvertimeAmount > 0 && (
-              <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-green-500/30">
-                <span className="text-sm font-medium">Overtime:</span>
-                <span className="font-semibold text-green-600 text-lg">
+            </div>
+
+            <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-green-500/30">
+              <span className="text-sm font-medium">Overtime:</span>
+              <div className="flex flex-col items-end">
+                <span className={`font-semibold text-lg ${salaryData.totalOvertimeAmount && salaryData.totalOvertimeAmount > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
                   +Rs. {(salaryData.totalOvertimeAmount || 0).toLocaleString()}
                 </span>
-                {salaryData.totalOvertimeHours && (
-                  <span className="text-xs text-muted-foreground ml-2">
+                {!!salaryData.totalOvertimeHours && salaryData.totalOvertimeHours > 0 && (
+                  <span className="text-[10px] text-muted-foreground">
                     ({salaryData.totalOvertimeHours.toFixed(1)}h)
                   </span>
                 )}
               </div>
-            )}
-            {salaryData.commission !== undefined && salaryData.commission > 0 && (
-              <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-green-500/30">
-                <span className="text-sm font-medium">Commission:</span>
-                <span className="font-semibold text-green-600 text-lg">
+            </div>
+
+            <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-green-500/30">
+              <span className="text-sm font-medium">Commission:</span>
+              <div className="flex flex-col items-end">
+                <span className={`font-semibold text-lg ${salaryData.commission && salaryData.commission > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
                   +Rs. {(salaryData.commission || 0).toLocaleString()}
                 </span>
               </div>
-            )}
-            {salaryData.varianceAdd > 0 && (
-              <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-green-500/30">
-                <span className="text-sm font-medium">Variance Bonuses:</span>
-                <span className="font-semibold text-green-600 text-lg">
+            </div>
+
+            <div className="flex justify-between items-center p-3 bg-card rounded-lg border border-green-500/30">
+              <span className="text-sm font-medium">Variance Bonuses:</span>
+              <div className="flex flex-col items-end">
+                <span className={`font-semibold text-lg ${salaryData.varianceAdd > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
                   +Rs. {(salaryData.varianceAdd || 0).toLocaleString()}
                 </span>
               </div>
-            )}
+            </div>
+
             <div className="pt-2 border-t">
               <div className="flex justify-between items-center">
                 <span className="font-semibold">Total Additions:</span>
@@ -676,127 +769,160 @@ export default function PumperSalaryDetailsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {salaryData.shiftDetails.map((shift, idx) => (
-                <div key={idx} className="border rounded-lg p-4 space-y-3 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-primary/10 rounded-lg">
-                        <Calendar className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-lg">
-                          {new Date(shift.date).toLocaleDateString('en-US', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
+              {salaryData.shiftDetails.map((baseShift, idx) => {
+                const shift = {
+                  ...baseShift,
+                  isInShop: baseShift.isInShop || false,
+                  shopRevenue: baseShift.shopRevenue || 0
+                }
+                return (
+                  <div key={idx} className="border rounded-lg p-4 space-y-3 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                          <Calendar className="h-5 w-5 text-primary" />
                         </div>
-                        <Link
-                          href={`/shifts/${shift.shiftId}`}
-                          className="text-sm text-primary hover:underline"
-                        >
-                          View Shift Details →
-                        </Link>
+                        <div>
+                          <div className="font-semibold text-lg">
+                            {new Date(shift.date).toLocaleDateString('en-US', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </div>
+                          <Link
+                            href={`/shifts/${shift.shiftId}`}
+                            className="text-sm text-primary hover:underline"
+                          >
+                            View Shift Details →
+                          </Link>
+                        </div>
                       </div>
+                      <Badge variant="outline" className="text-lg px-3 py-1">
+                        <Clock className="h-4 w-4 mr-1" />
+                        {shift.hours.toFixed(1)}h
+                        {(shift.overtimeHours || 0) > 0 && (
+                          <span className="ml-2 text-orange-600">
+                            (OT: {(shift.overtimeHours || 0).toFixed(1)}h)
+                          </span>
+                        )}
+                      </Badge>
                     </div>
-                    <Badge variant="outline" className="text-lg px-3 py-1">
-                      <Clock className="h-4 w-4 mr-1" />
-                      {shift.hours.toFixed(1)}h
-                      {shift.overtimeHours && shift.overtimeHours > 0 && (
-                        <span className="ml-2 text-orange-600">
-                          (OT: {shift.overtimeHours.toFixed(1)}h)
-                        </span>
-                      )}
-                    </Badge>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                    {shift.overtimeAmount && shift.overtimeAmount > 0 && (
-                      <div className="p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
-                        <div className="text-xs text-muted-foreground mb-1">Overtime</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                      <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                        <div className="text-xs text-muted-foreground mb-1">Efficiency</div>
                         <div className="flex items-center gap-1">
-                          <Clock className="h-4 w-4 text-orange-600" />
-                          <span className="font-semibold text-orange-600 text-lg">
-                            Rs. {(shift.overtimeAmount || 0).toLocaleString()}
+                          <Zap className="h-4 w-4 text-blue-600" />
+                          <span className="font-semibold text-blue-600 text-lg">
+                            Rs. {Math.round(shift.sales / (shift.hours || 1)).toLocaleString()}/hr
                           </span>
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
-                          {shift.overtimeHours?.toFixed(1)}h @ 1.5x rate
+                          Sales per hour
                         </div>
                       </div>
-                    )}
-                    <div className="p-3 bg-green-500/10 rounded-lg border border-green-500/20">
-                      <div className="text-xs text-muted-foreground mb-1">Sales</div>
-                      <div className="flex items-center gap-1">
-                        <TrendingUp className="h-4 w-4 text-green-600" />
-                        <span className="font-semibold text-green-600 text-lg">
-                          Rs. {(shift.sales || 0).toLocaleString()}
+
+                      {(shift.overtimeAmount || 0) > 0 && (
+                        <div className="p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
+                          <div className="text-xs text-muted-foreground mb-1">Overtime</div>
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-4 w-4 text-orange-600" />
+                            <span className="font-semibold text-orange-600 text-lg">
+                              Rs. {(shift.overtimeAmount || 0).toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {(shift.overtimeHours || 0).toFixed(1)}h @ 1.5x rate
+                          </div>
+                        </div>
+                      )}
+                      <div className="p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                        <div className="text-xs text-muted-foreground mb-1">Sales</div>
+                        <div className="flex items-center gap-1">
+                          <TrendingUp className="h-4 w-4 text-green-600" />
+                          <span className="font-semibold text-green-600 text-lg">
+                            Rs. {(shift.sales || 0).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Commission: Rs. {Math.floor(shift.sales / (1000) || 0).toLocaleString()}
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
+                        <div className="text-xs text-muted-foreground mb-1">Advance Taken</div>
+                        <span className="font-semibold text-orange-600 text-lg">
+                          Rs. {(shift.advance || 0).toLocaleString()}
                         </span>
                       </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        Commission: Rs. {Math.floor(shift.sales / (1000) || 0).toLocaleString()}
+
+                      <div className={`p-3 rounded-lg border ${shift.varianceStatus === 'ADD_TO_SALARY'
+                        ? 'bg-green-500/10 border-green-500/20'
+                        : shift.varianceStatus === 'DEDUCT_FROM_SALARY'
+                          ? 'bg-red-500/10 border-red-500/20'
+                          : 'bg-muted border-border'
+                        }`}>
+                        <div className="text-xs text-muted-foreground mb-1">Variance</div>
+                        <div className="flex items-center gap-1">
+                          {shift.varianceStatus === 'ADD_TO_SALARY' && (
+                            <>
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                              <span className="font-semibold text-green-600 text-lg">
+                                +Rs. {(Math.abs(shift.variance) || 0).toLocaleString()}
+                              </span>
+                            </>
+                          )}
+                          {shift.varianceStatus === 'DEDUCT_FROM_SALARY' && (
+                            <>
+                              <XCircle className="h-4 w-4 text-red-600" />
+                              <span className="font-semibold text-red-600 text-lg">
+                                -Rs. {(shift.variance || 0).toLocaleString()}
+                              </span>
+                            </>
+                          )}
+                          {shift.varianceStatus === 'NORMAL' && (
+                            <span className="text-muted-foreground text-sm">No variance</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
-                      <div className="text-xs text-muted-foreground mb-1">Advance Taken</div>
-                      <span className="font-semibold text-orange-600 text-lg">
-                        Rs. {(shift.advance || 0).toLocaleString()}
-                      </span>
-                    </div>
-
-                    <div className={`p-3 rounded-lg border ${shift.varianceStatus === 'ADD_TO_SALARY'
-                      ? 'bg-green-500/10 border-green-500/20'
-                      : shift.varianceStatus === 'DEDUCT_FROM_SALARY'
-                        ? 'bg-red-500/10 border-red-500/20'
-                        : 'bg-muted border-border'
-                      }`}>
-                      <div className="text-xs text-muted-foreground mb-1">Variance</div>
-                      <div className="flex items-center gap-1">
-                        {shift.varianceStatus === 'ADD_TO_SALARY' && (
-                          <>
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                            <span className="font-semibold text-green-600 text-lg">
-                              +Rs. {(Math.abs(shift.variance) || 0).toLocaleString()}
-                            </span>
-                          </>
-                        )}
-                        {shift.varianceStatus === 'DEDUCT_FROM_SALARY' && (
-                          <>
-                            <XCircle className="h-4 w-4 text-red-600" />
-                            <span className="font-semibold text-red-600 text-lg">
-                              -Rs. {(shift.variance || 0).toLocaleString()}
-                            </span>
-                          </>
-                        )}
-                        {shift.varianceStatus === 'NORMAL' && (
-                          <span className="text-muted-foreground text-sm">No variance</span>
-                        )}
+                      <div className="p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
+                        <div className="text-xs text-muted-foreground mb-1">Shift Impact</div>
+                        <span className="font-semibold text-orange-600 text-lg">
+                          {(() => {
+                            // Calculate net impact: variance adjustment + advance deduction
+                            let impact = -shift.advance // Advance is always deducted
+                            if (shift.varianceStatus === 'ADD_TO_SALARY') {
+                              impact += Math.abs(shift.variance) // Add variance bonus
+                            } else if (shift.varianceStatus === 'DEDUCT_FROM_SALARY') {
+                              impact -= Math.abs(shift.variance) // Deduct variance penalty
+                            }
+                            // impact is negative = deduction, positive = addition
+                            return impact >= 0
+                              ? `+Rs. ${(impact || 0).toLocaleString()}`
+                              : `-Rs. ${(Math.abs(impact) || 0).toLocaleString()}`
+                          })()}
+                        </span>
                       </div>
-                    </div>
 
-                    <div className="p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
-                      <div className="text-xs text-muted-foreground mb-1">Shift Impact</div>
-                      <span className="font-semibold text-orange-600 text-lg">
-                        {(() => {
-                          // Calculate net impact: variance adjustment + advance deduction
-                          let impact = -shift.advance // Advance is always deducted
-                          if (shift.varianceStatus === 'ADD_TO_SALARY') {
-                            impact += Math.abs(shift.variance) // Add variance bonus
-                          } else if (shift.varianceStatus === 'DEDUCT_FROM_SALARY') {
-                            impact -= Math.abs(shift.variance) // Deduct variance penalty
-                          }
-                          // impact is negative = deduction, positive = addition
-                          return impact >= 0
-                            ? `+Rs. ${(impact || 0).toLocaleString()}`
-                            : `-Rs. ${(Math.abs(impact) || 0).toLocaleString()}`
-                        })()}
-                      </span>
+                      <div className={`p-3 rounded-lg border ${shift.isInShop ? 'bg-purple-500/10 border-purple-500/20' : 'bg-muted border-border'}`}>
+                        <div className="text-xs text-muted-foreground mb-1">Shop Involvement</div>
+                        <div className="flex items-center gap-1">
+                          <Store className={`h-4 w-4 ${shift.isInShop ? 'text-purple-600' : 'text-muted-foreground'}`} />
+                          <span className={`font-semibold text-lg ${shift.isInShop ? 'text-purple-600' : 'text-muted-foreground'}`}>
+                            {shift.isInShop ? `Rs. ${(shift.shopRevenue || 0).toLocaleString()}` : 'No Assignment'}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {shift.isInShop ? 'Shop Sales' : 'Not assigned to shop'}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </CardContent>
         </Card>

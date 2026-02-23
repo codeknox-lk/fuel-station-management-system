@@ -251,6 +251,185 @@ export class PDFExporter {
     }
   }
 
+  // Native bar chart drawn using jsPDF primitives — no SVG/canvas needed
+  addBarChart(
+    title: string,
+    labels: string[],
+    datasets: { label: string; data: number[]; color: [number, number, number] }[],
+    chartHeight: number = 70
+  ) {
+    this.checkPageBreak(chartHeight + 30)
+
+    if (title) {
+      this.addSectionTitle(title)
+    }
+
+    const chartWidth = this.pageWidth - 2 * this.margin
+    const chartX = this.margin
+    const chartY = this.currentY
+    const maxVal = Math.max(...datasets.flatMap(d => d.data), 1)
+    const barGroupWidth = chartWidth / Math.max(labels.length, 1)
+    const barWidth = (barGroupWidth * 0.65) / datasets.length
+    const barSpacing = barGroupWidth * 0.1
+
+    // Draw chart border & background
+    this.doc.setFillColor(250, 250, 252)
+    this.doc.rect(chartX, chartY, chartWidth, chartHeight, 'F')
+    this.doc.setDrawColor(220, 220, 220)
+    this.doc.setLineWidth(0.3)
+    this.doc.rect(chartX, chartY, chartWidth, chartHeight, 'S')
+
+    // Grid lines — 5 lines (0% to 100%) using same coordinate system as bars
+    // Data bottom = chartY + chartHeight - 2, data top = chartY + 2
+    const innerH = chartHeight - 4 // same as bar height calculation
+    const formatY = (v: number) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(Math.round(v))
+    for (let i = 0; i <= 4; i++) {
+      // i=0 → top (maxVal), i=4 → bottom (0)
+      const gY = chartY + 2 + (i / 4) * innerH
+      const yVal = maxVal * (4 - i) / 4
+      this.doc.setDrawColor(235, 235, 235)
+      this.doc.setLineWidth(i === 4 ? 0.3 : 0.2)
+      this.doc.line(chartX + 2, gY, chartX + chartWidth - 2, gY)
+      this.doc.setFontSize(6)
+      this.doc.setTextColor(140, 140, 140)
+      this.doc.text(formatY(yVal), chartX + 1, gY + 1)
+    }
+
+    // Draw bars
+    labels.forEach((label, li) => {
+      const groupX = chartX + li * barGroupWidth + barSpacing
+
+      datasets.forEach((ds, di) => {
+        const val = ds.data[li] || 0
+        const barH = maxVal > 0 ? (val / maxVal) * (chartHeight - 4) : 0
+        const bX = groupX + di * (barWidth + 1)
+        const bY = chartY + chartHeight - barH - 2
+
+        this.doc.setFillColor(ds.color[0], ds.color[1], ds.color[2])
+        this.doc.rect(bX, bY, barWidth, barH, 'F')
+      })
+
+      // X-axis label (every nth to avoid crowding)
+      const step = Math.ceil(labels.length / 15)
+      if (li % step === 0) {
+        this.doc.setFontSize(5.5)
+        this.doc.setTextColor(120, 120, 120)
+        this.doc.text(label, groupX + (datasets.length * (barWidth + 1)) / 2, chartY + chartHeight + 3, { align: 'center' })
+      }
+    })
+
+    // Legend
+    let legendX = chartX
+    const legendY = chartY + chartHeight + 8
+    datasets.forEach(ds => {
+      this.doc.setFillColor(ds.color[0], ds.color[1], ds.color[2])
+      this.doc.rect(legendX, legendY - 3, 6, 3, 'F')
+      this.doc.setFontSize(7)
+      this.doc.setTextColor(60, 60, 60)
+      this.doc.text(ds.label, legendX + 8, legendY)
+      legendX += 8 + this.doc.getTextWidth(ds.label) + 6
+    })
+
+    this.doc.setTextColor(0, 0, 0)
+    this.currentY = legendY + 8
+  }
+
+  // Native line chart drawn using jsPDF primitives — no SVG/canvas needed
+  addLineChart(
+    title: string,
+    labels: string[],
+    datasets: { label: string; data: number[]; color: [number, number, number] }[],
+    chartHeight: number = 70
+  ) {
+    this.checkPageBreak(chartHeight + 30)
+
+    if (title) {
+      this.addSectionTitle(title)
+    }
+
+    const chartWidth = this.pageWidth - 2 * this.margin
+    const chartX = this.margin
+    const chartY = this.currentY
+    const maxVal = Math.max(...datasets.flatMap(d => d.data), 1)
+    const n = Math.max(labels.length - 1, 1)
+
+    // Background
+    this.doc.setFillColor(250, 250, 252)
+    this.doc.rect(chartX, chartY, chartWidth, chartHeight, 'F')
+    this.doc.setDrawColor(220, 220, 220)
+    this.doc.setLineWidth(0.3)
+    this.doc.rect(chartX, chartY, chartWidth, chartHeight, 'S')
+
+    // Grid lines — 5 lines using same coordinate system as data points
+    // Data bottom = chartY + chartHeight - 2, data top = chartY + 2
+    const innerH = chartHeight - 4
+    const formatY = (v: number) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(Math.round(v))
+    for (let i = 0; i <= 4; i++) {
+      // i=0 → top (maxVal), i=4 → bottom (0)
+      const gY = chartY + 2 + (i / 4) * innerH
+      const yVal = maxVal * (4 - i) / 4
+      this.doc.setDrawColor(235, 235, 235)
+      this.doc.setLineWidth(i === 4 ? 0.3 : 0.2)
+      this.doc.line(chartX + 2, gY, chartX + chartWidth - 2, gY)
+      this.doc.setFontSize(6)
+      this.doc.setTextColor(140, 140, 140)
+      this.doc.text(formatY(yVal), chartX + 1, gY + 1)
+    }
+
+    // Draw lines
+    datasets.forEach(ds => {
+      this.doc.setDrawColor(ds.color[0], ds.color[1], ds.color[2])
+      this.doc.setLineWidth(0.8)
+
+      for (let i = 0; i < ds.data.length - 1; i++) {
+        const x1 = chartX + (i / n) * chartWidth
+        const y1 = chartY + chartHeight - ((ds.data[i] || 0) / maxVal) * (chartHeight - 4) - 2
+        const x2 = chartX + ((i + 1) / n) * chartWidth
+        const y2 = chartY + chartHeight - ((ds.data[i + 1] || 0) / maxVal) * (chartHeight - 4) - 2
+        this.doc.line(x1, y1, x2, y2)
+      }
+
+      // Dots at each point
+      this.doc.setFillColor(ds.color[0], ds.color[1], ds.color[2])
+      const step = Math.ceil(ds.data.length / 20) // limit dots to avoid crowding
+      ds.data.forEach((val, i) => {
+        if (i % step !== 0 && i !== ds.data.length - 1) return
+        const x = chartX + (i / n) * chartWidth
+        const y = chartY + chartHeight - (val / maxVal) * (chartHeight - 4) - 2
+        this.doc.circle(x, y, 0.8, 'F')
+      })
+    })
+
+    // X-axis labels (show every nth)
+    const labelStep = Math.ceil(labels.length / 15)
+    labels.forEach((label, i) => {
+      if (i % labelStep !== 0 && i !== labels.length - 1) return
+      const x = chartX + (i / n) * chartWidth
+      this.doc.setFontSize(5.5)
+      this.doc.setTextColor(120, 120, 120)
+      this.doc.text(label, x, chartY + chartHeight + 3, { align: 'center' })
+    })
+
+    // Legend
+    let legendX = chartX
+    const legendY = chartY + chartHeight + 8
+    datasets.forEach(ds => {
+      this.doc.setDrawColor(ds.color[0], ds.color[1], ds.color[2])
+      this.doc.setLineWidth(1.5)
+      this.doc.line(legendX, legendY - 1.5, legendX + 8, legendY - 1.5)
+      this.doc.setFontSize(7)
+      this.doc.setTextColor(60, 60, 60)
+      this.doc.text(ds.label, legendX + 10, legendY)
+      legendX += 10 + this.doc.getTextWidth(ds.label) + 6
+    })
+
+    this.doc.setTextColor(0, 0, 0)
+    this.doc.setLineWidth(0.3)
+    this.currentY = legendY + 8
+  }
+
+
+
   addKeyValuePairs(data: { label: string; value: string | number }[], columns: number = 2) {
     this.checkPageBreak(data.length * 8 / columns)
 
@@ -414,7 +593,7 @@ export class ExcelExporter {
   }
 }
 
-// Chart capture utility - Enhanced for better quality
+// Chart capture utility - Inlines computed styles for reliable SVG → Canvas rendering
 export const captureChartAsImage = async (chartId: string): Promise<string | null> => {
   try {
     const chartElement = document.getElementById(chartId)
@@ -429,81 +608,101 @@ export const captureChartAsImage = async (chartId: string): Promise<string | nul
       return null
     }
 
-    // Clone the SVG to avoid modifying the original
-    const clonedSvg = svgElement.cloneNode(true) as SVGElement
-
-    // Get dimensions
+    // Get real dimensions from the bounding rect
     const bbox = svgElement.getBoundingClientRect()
-    const width = bbox.width || 800
-    const height = bbox.height || 400
+    const width = Math.round(bbox.width) || 800
+    const height = Math.round(bbox.height) || 400
 
-    // Set explicit dimensions on cloned SVG
-    clonedSvg.setAttribute('width', width.toString())
-    clonedSvg.setAttribute('height', height.toString())
+    // Clone the SVG so we can mutate it without affecting the page
+    const clonedSvg = svgElement.cloneNode(true) as SVGSVGElement
 
-    // Inline all styles
-    const styleSheets = Array.from(document.styleSheets)
-    let allCSS = ''
+    // Set explicit width/height and viewBox so canvas scales correctly
+    clonedSvg.setAttribute('width', String(width))
+    clonedSvg.setAttribute('height', String(height))
+    if (!clonedSvg.getAttribute('viewBox')) {
+      clonedSvg.setAttribute('viewBox', `0 0 ${width} ${height}`)
+    }
 
-    try {
-      styleSheets.forEach(sheet => {
-        try {
-          const rules = Array.from(sheet.cssRules || [])
-          rules.forEach(rule => {
-            allCSS += rule.cssText + '\n'
-          })
-        } catch {
-          // Skip cross-origin stylesheets
+    // Inline computed styles from the LIVE element onto the CLONE element
+    // This is the key step — recharts colors are set via computed CSS, not inline styles
+    const inlineStyles = (liveEl: Element, clonedEl: Element) => {
+      if (liveEl.nodeType !== Node.ELEMENT_NODE) return
+
+      const computed = window.getComputedStyle(liveEl)
+      const style = (clonedEl as HTMLElement).style
+
+      // Only copy the properties that matter for SVG rendering
+      const svgProps = [
+        'fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-opacity',
+        'stroke-dasharray', 'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin',
+        'font-family', 'font-size', 'font-weight', 'text-anchor', 'dominant-baseline',
+        'opacity', 'visibility', 'display', 'color', 'letter-spacing'
+      ]
+
+      svgProps.forEach(prop => {
+        const val = computed.getPropertyValue(prop)
+        if (val && val !== '' && val !== 'none' && val !== 'initial' && val !== 'inherit') {
+          // Convert to camelCase for style assignment
+          const camel = prop.replace(/-([a-z])/g, (_, c) => c.toUpperCase())
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ; (style as any)[camel] = val
+          } catch {
+            // Some properties may be read-only; skip
+          }
         }
       })
-    } catch (e) {
-      console.warn('Could not read stylesheets', e)
+
+      // Recurse into children
+      const liveChildren = Array.from(liveEl.children)
+      const clonedChildren = Array.from(clonedEl.children)
+      liveChildren.forEach((child, i) => {
+        if (clonedChildren[i]) inlineStyles(child, clonedChildren[i])
+      })
     }
 
-    // Add style element to SVG
-    if (allCSS) {
-      const styleElement = document.createElementNS('http://www.w3.org/2000/svg', 'style')
-      styleElement.textContent = allCSS
-      clonedSvg.insertBefore(styleElement, clonedSvg.firstChild)
-    }
+    inlineStyles(svgElement, clonedSvg)
 
-    // Serialize SVG
+    // Set white background explicitly
+    clonedSvg.style.background = 'white'
+
+    // Serialize to string
     const serializer = new XMLSerializer()
-    let svgString = serializer.serializeToString(clonedSvg)
+    const svgString = '<?xml version="1.0" encoding="UTF-8"?>' + serializer.serializeToString(clonedSvg)
 
-    // Add XML declaration and ensure proper encoding
-    svgString = '<?xml version="1.0" encoding="UTF-8"?>' + svgString
-
-    // Create canvas with higher resolution
-    const scale = 3 // 3x for high quality
+    // Render at 2x resolution for crispness
+    const scale = 2
     const canvas = document.createElement('canvas')
     canvas.width = width * scale
     canvas.height = height * scale
     const ctx = canvas.getContext('2d')
-
     if (!ctx) return null
 
-    // Fill with white background
     ctx.fillStyle = 'white'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.scale(scale, scale)
 
-    // Create blob and image
-    const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-
-    return new Promise((resolve) => {
+    return new Promise<string | null>((resolve) => {
+      const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
       const img = new Image()
       img.onload = () => {
-        ctx.scale(scale, scale)
         ctx.drawImage(img, 0, 0, width, height)
         URL.revokeObjectURL(url)
-        const dataUrl = canvas.toDataURL('image/png', 1.0)
-        resolve(dataUrl)
+        resolve(canvas.toDataURL('image/png', 1.0))
       }
-      img.onerror = (error) => {
-        console.error('Image load error:', error)
+      img.onerror = () => {
         URL.revokeObjectURL(url)
-        resolve(null)
+        console.warn('SVG blob image failed; trying inline data URI fallback')
+        // Fallback: use data URI directly (avoids blob CORS issues in some browsers)
+        const dataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString)
+        const img2 = new Image()
+        img2.onload = () => {
+          ctx.drawImage(img2, 0, 0, width, height)
+          resolve(canvas.toDataURL('image/png', 1.0))
+        }
+        img2.onerror = () => resolve(null)
+        img2.src = dataUri
       }
       img.src = url
     })
@@ -512,6 +711,7 @@ export const captureChartAsImage = async (chartId: string): Promise<string | nul
     return null
   }
 }
+
 
 // Report-specific export functions
 export interface DailyReportData {
@@ -739,6 +939,149 @@ interface SalaryReportData {
   netSalary: number
 }
 
+export interface IndividualSalaryReportData {
+  pumperId: string
+  pumperName: string
+  employeeId?: string
+  monthLabel: string
+  stationName: string
+  baseSalary: number
+  holidayAllowance: number
+  totalOvertimeAmount: number
+  commission: number
+  varianceAdd: number
+  totalAdvances: number
+  totalLoans: number
+  varianceDeduct: number
+  epf: number
+  netSalary: number
+  shiftDetails: Array<{
+    shiftId: string
+    date: string
+    hours: number
+    sales: number
+    advance: number
+    variance: number
+    varianceStatus: string
+    overtimeAmount: number
+  }>
+}
+
+export const exportIndividualSalaryReportPDF = (data: IndividualSalaryReportData) => {
+  const pdf = new PDFExporter(`Salary Report - ${data.pumperName} - ${data.monthLabel}`)
+
+  // Employee details
+  pdf.addSectionTitle('Employee Information')
+  pdf.addKeyValuePairs([
+    { label: 'Pumper Name', value: data.pumperName },
+    { label: 'Employee ID', value: data.employeeId || 'N/A' },
+    { label: 'Station', value: data.stationName },
+    { label: 'Month', value: data.monthLabel }
+  ], 2)
+  pdf.addDivider()
+
+  // Salary breakdown
+  pdf.addSectionTitle('Net Salary Calculation')
+  pdf.addStatisticsGrid([[
+    { label: 'Base Salary', value: `Rs. ${data.baseSalary.toLocaleString()}`, color: 'blue' },
+    { label: 'Additions', value: `Rs. ${(data.holidayAllowance + data.totalOvertimeAmount + data.commission + data.varianceAdd).toLocaleString()}`, color: 'green' },
+    { label: 'Deductions', value: `Rs. ${(data.totalAdvances + data.totalLoans + data.varianceDeduct + data.epf).toLocaleString()}`, color: 'red' },
+    { label: 'Net Salary', value: `Rs. ${data.netSalary.toLocaleString()}`, color: 'purple' }
+  ]])
+  pdf.addDivider()
+
+  // Detailed additions
+  pdf.addSectionTitle('Earnings & Additions')
+  pdf.addKeyValuePairs([
+    { label: 'Holiday Allowance', value: `Rs. ${data.holidayAllowance.toLocaleString()}` },
+    { label: 'Overtime Pay', value: `Rs. ${data.totalOvertimeAmount.toLocaleString()}` },
+    { label: 'Commission', value: `Rs. ${data.commission.toLocaleString()}` },
+    { label: 'Variance Bonuses', value: `Rs. ${data.varianceAdd.toLocaleString()}` }
+  ], 2)
+
+  // Detailed deductions
+  pdf.addSectionTitle('Deductions')
+  pdf.addKeyValuePairs([
+    { label: 'Shift Advances', value: `Rs. ${data.totalAdvances.toLocaleString()}` },
+    { label: 'Loan Deductions', value: `Rs. ${data.totalLoans.toLocaleString()}` },
+    { label: 'Variance Deductions', value: `Rs. ${data.varianceDeduct.toLocaleString()}` },
+    { label: 'EPF (8%)', value: `Rs. ${data.epf.toLocaleString()}` }
+  ], 2)
+  pdf.addDivider()
+
+  // Shift breakdown table
+  pdf.addSectionTitle('Shift-by-Shift Breakdown')
+  const shiftTableData = data.shiftDetails.map((shift) => [
+    new Date(shift.date).toLocaleDateString(),
+    shift.shiftId.slice(0, 8),
+    `${shift.hours.toFixed(1)}h`,
+    `Rs. ${shift.sales.toLocaleString()}`,
+    `Rs. ${shift.overtimeAmount.toLocaleString()}`,
+    `Rs. ${shift.advance.toLocaleString()}`,
+    `Rs. ${shift.variance.toLocaleString()}`
+  ])
+
+  pdf.addTable([
+    'Date',
+    'Shift ID',
+    'Hours',
+    'Sales',
+    'Overtime',
+    'Advances',
+    'Variance'
+  ], shiftTableData, 'Detailed Shift Records')
+
+  pdf.save(`salary-report-${data.pumperName.replace(/\s+/g, '-')}-${data.monthLabel}.pdf`)
+}
+
+export const exportIndividualSalaryReportExcel = (data: IndividualSalaryReportData) => {
+  const excel = new ExcelExporter()
+
+  // Summary worksheet
+  const summaryData = [
+    { label: 'Pumper Name', value: data.pumperName },
+    { label: 'Employee ID', value: data.employeeId || 'N/A' },
+    { label: 'Month', value: data.monthLabel },
+    { label: 'Station', value: data.stationName },
+    { label: 'Base Salary', value: data.baseSalary },
+    { label: 'Holiday Allowance', value: data.holidayAllowance },
+    { label: 'Overtime Amount', value: data.totalOvertimeAmount },
+    { label: 'Commission', value: data.commission },
+    { label: 'Variance Bonuses', value: data.varianceAdd },
+    { label: 'Total Advances', value: data.totalAdvances },
+    { label: 'Total Loans', value: data.totalLoans },
+    { label: 'Variance Deductions', value: data.varianceDeduct },
+    { label: 'EPF (8%)', value: data.epf },
+    { label: 'Net Salary', value: data.netSalary }
+  ]
+  excel.addSummaryWorksheet('Salary Summary', summaryData)
+
+  // Shift details worksheet
+  const shiftData = data.shiftDetails.map(shift => [
+    new Date(shift.date).toLocaleDateString(),
+    shift.shiftId,
+    shift.hours,
+    shift.sales,
+    shift.overtimeAmount,
+    shift.advance,
+    shift.variance,
+    shift.varianceStatus
+  ])
+
+  excel.addWorksheet('Shift Records', [
+    'Date',
+    'Shift ID',
+    'Hours',
+    'Sales (Rs)',
+    'Overtime (Rs)',
+    'Advances (Rs)',
+    'Variance (Rs)',
+    'Variance Status'
+  ], shiftData)
+
+  excel.save(`salary-report-${data.pumperName.replace(/\s+/g, '-')}-${data.monthLabel}.xlsx`)
+}
+
 export const exportSalaryReportPDF = (salaryData: SalaryReportData[], monthLabel: string) => {
   const pdf = new PDFExporter(`Monthly Salary Report - ${monthLabel}`, 'landscape')
 
@@ -801,10 +1144,9 @@ interface DailySalesReportData {
   }>
   fuelTypes: string[]
   grandTotal: number
-  chartImage?: string
 }
 
-export const exportDailySalesReportPDF = async (reportData: DailySalesReportData, stationName: string, monthLabel: string, chartImage?: string) => {
+export const exportDailySalesReportPDF = (reportData: DailySalesReportData, stationName: string, monthLabel: string) => {
   const pdf = new PDFExporter(`Daily Sales Report (Rs) - ${stationName} - ${monthLabel}`, 'landscape')
 
   const totalDays = reportData.dailySales.length || 1
@@ -847,12 +1189,40 @@ export const exportDailySalesReportPDF = async (reportData: DailySalesReportData
 
   pdf.addDivider()
 
-  // Sales Trend Chart
-  if (chartImage) {
-    pdf.addSectionTitle('Daily Sales Trend')
-    pdf.addChart(chartImage, '', 250, 100)
+  // Sales Trend Chart — drawn natively with jsPDF (no SVG capture needed)
+  if (reportData.dailySales.length > 0) {
+    const chartLabels = reportData.dailySales.map(day => {
+      const d = new Date(day.date)
+      return `${d.getDate()}/${d.getMonth() + 1}`
+    })
+
+    // Color palette for fuel types
+    const palette: [number, number, number][] = [
+      [59, 130, 246],  // blue
+      [139, 92, 246],  // purple
+      [16, 185, 129],  // green
+      [245, 158, 11],  // amber
+      [236, 72, 153],  // pink
+      [239, 68, 68],   // red
+    ]
+
+    const chartDatasets = reportData.fuelTypes.map((fuelName, idx) => ({
+      label: fuelName,
+      data: reportData.dailySales.map(day => day.sales[fuelName] || 0),
+      color: palette[idx % palette.length]
+    }))
+
+    // Add a "Total" line as well
+    chartDatasets.push({
+      label: 'Total',
+      data: reportData.dailySales.map(day => day.totalSales),
+      color: [249, 115, 22] // orange
+    })
+
+    pdf.addLineChart('Daily Sales Trend', chartLabels, chartDatasets, 80)
     pdf.addDivider()
   }
+
 
   // Revenue by Fuel Type
   pdf.addSectionTitle('Revenue Breakdown by Fuel Type')
@@ -1673,4 +2043,113 @@ export const exportTableToCSV = (columns: any[], data: any[], filename: string) 
 
   XLSX.utils.book_append_sheet(wb, ws, 'Sheet1')
   XLSX.writeFile(wb, `${filename}.xlsx`)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pumper Variance Report Export
+// ─────────────────────────────────────────────────────────────────────────────
+export interface PumperVarianceExportData {
+  pumperId: string
+  pumperName: string
+  nozzleAssignments: string[]
+  totalShifts: number
+  shiftsWithVariance: number
+  varianceCount: number
+  totalVarianceAmount: number
+  averageVariancePerShift: number
+  maxSingleVariance: number
+  varianceRate: number
+  performanceRating: string
+  consecutiveDaysWithoutVariance: number
+  totalDueAmount: number
+  lastVarianceDate?: string
+}
+
+export const exportPumperVariancePDF = (
+  pumpers: PumperVarianceExportData[],
+  stationName: string,
+  monthLabel: string
+) => {
+  const pdf = new PDFExporter(`Pumper Variance Report - ${stationName} - ${monthLabel}`, 'landscape')
+
+  const totalVariance = pumpers.reduce((s, p) => s + p.totalVarianceAmount, 0)
+  const totalDue = pumpers.reduce((s, p) => s + p.totalDueAmount, 0)
+  const excellent = pumpers.filter(p => p.performanceRating === 'EXCELLENT').length
+  const critical = pumpers.filter(p => p.performanceRating === 'CRITICAL').length
+  const avgRate = pumpers.length > 0
+    ? pumpers.reduce((s, p) => s + p.varianceRate, 0) / pumpers.length
+    : 0
+
+  // Header info
+  pdf.addSectionTitle('Report Information')
+  pdf.addKeyValuePairs([
+    { label: 'Reporting Period', value: monthLabel },
+    { label: 'Station', value: stationName },
+    { label: 'Total Pumpers', value: pumpers.length.toString() },
+    { label: 'Report Generated', value: new Date().toLocaleString() }
+  ], 2)
+  pdf.addDivider()
+
+  // KPI summary
+  pdf.addSectionTitle('Key Performance Metrics')
+  pdf.addStatisticsGrid([[
+    { label: 'Total Variance Amount', value: `Rs. ${totalVariance.toLocaleString()}`, color: 'red' },
+    { label: 'Total Amount Due', value: `Rs. ${totalDue.toLocaleString()}`, color: 'orange' },
+    { label: 'Avg Variance Rate', value: `${avgRate.toFixed(1)}%`, color: 'blue' },
+    { label: 'Excellent Pumpers', value: excellent.toString(), color: 'green' },
+    { label: 'Critical Pumpers', value: critical.toString(), color: 'red' },
+    { label: 'Total Pumpers', value: pumpers.length.toString(), color: 'purple' }
+  ]])
+  pdf.addDivider()
+
+  // Per-pumper table
+  pdf.addSectionTitle('Pumper Performance Breakdown')
+  pdf.addTable(
+    ['Pumper', 'Nozzles', 'Shifts', 'Variances', 'Total Variance', 'Avg/Shift', 'Rate %', 'Due Amount', 'Rating'],
+    pumpers.map(p => [
+      p.pumperName,
+      p.nozzleAssignments.join(', ') || '—',
+      p.totalShifts.toString(),
+      p.varianceCount.toString(),
+      `Rs. ${p.totalVarianceAmount.toLocaleString()}`,
+      `Rs. ${p.averageVariancePerShift.toFixed(0)}`,
+      `${p.varianceRate.toFixed(1)}%`,
+      `Rs. ${p.totalDueAmount.toLocaleString()}`,
+      p.performanceRating.replace('_', ' ')
+    ])
+  )
+
+  pdf.save(`pumper-variance-${stationName.replace(/\s+/g, '-')}-${monthLabel}.pdf`)
+}
+
+export const exportPumperVarianceExcel = (
+  pumpers: PumperVarianceExportData[],
+  stationName: string,
+  monthLabel: string
+) => {
+  const excelData = pumpers.map(p => ({
+    'Pumper Name': p.pumperName,
+    'Nozzles': p.nozzleAssignments.join(', '),
+    'Total Shifts': p.totalShifts,
+    'Shifts With Variance': p.shiftsWithVariance,
+    'Variance Count': p.varianceCount,
+    'Total Variance (Rs)': p.totalVarianceAmount,
+    'Avg Variance / Shift (Rs)': parseFloat(p.averageVariancePerShift.toFixed(2)),
+    'Max Single Variance (Rs)': p.maxSingleVariance,
+    'Variance Rate (%)': parseFloat(p.varianceRate.toFixed(2)),
+    'Total Due Amount (Rs)': p.totalDueAmount,
+    'Performance Rating': p.performanceRating.replace(/_/g, ' '),
+    'Days Without Variance': p.consecutiveDaysWithoutVariance,
+    'Last Variance Date': p.lastVarianceDate || 'N/A',
+  }))
+
+  const wb = XLSX.utils.book_new()
+  const ws = XLSX.utils.json_to_sheet(excelData)
+  ws['!cols'] = [
+    { wch: 25 }, { wch: 20 }, { wch: 14 }, { wch: 20 }, { wch: 16 },
+    { wch: 22 }, { wch: 24 }, { wch: 24 }, { wch: 18 }, { wch: 22 },
+    { wch: 22 }, { wch: 22 }, { wch: 22 }
+  ]
+  XLSX.utils.book_append_sheet(wb, ws, 'Pumper Variance')
+  XLSX.writeFile(wb, `pumper-variance-${stationName.replace(/\s+/g, '-')}-${monthLabel}.xlsx`)
 }

@@ -1,6 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
+interface PumperBreakdown {
+  pumperName: string
+  calculatedSales?: number
+  advanceTaken?: number
+  variance?: number
+  varianceStatus?: string
+}
+
+interface DeclaredAmounts {
+  pumperBreakdown?: PumperBreakdown[]
+  shopRevenue?: number
+}
+
+interface ShiftStatistics {
+  totalSales?: number
+  totalAdvances?: number
+  totalVariance?: number
+}
+
+interface ShiftWithAssignments {
+  id: string
+  startTime: Date
+  endTime: Date | null
+  statistics: ShiftStatistics | null
+  declaredAmounts: DeclaredAmounts | null
+  assignments: Array<{
+    pumperName: string
+    startMeterReading: number | null
+    endMeterReading: number | null
+    assignedAt: Date
+    closedAt: Date | null
+  }>
+  shopAssignment: {
+    pumperName: string
+    totalRevenue: number
+    createdAt: Date
+    updatedAt: Date
+  } | null
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -79,14 +119,24 @@ export async function GET(request: NextRequest) {
           select: {
             pumperName: true,
             startMeterReading: true,
-            endMeterReading: true
+            endMeterReading: true,
+            assignedAt: true,
+            closedAt: true
+          }
+        },
+        shopAssignment: {
+          select: {
+            pumperName: true,
+            totalRevenue: true,
+            createdAt: true,
+            updatedAt: true
           }
         }
       },
       orderBy: {
         endTime: 'asc'
       }
-    })
+    }) as ShiftWithAssignments[]
 
     // Get ALL active (unpaid) loans for pumpers
     // Monthly rental should be deducted every month for active loans, regardless of when they were created
@@ -127,25 +177,13 @@ export async function GET(request: NextRequest) {
 
 
 
-    // Process salary data for each pumper
     const salaryData = pumpers.map(pumper => {
       // Filter shifts where this pumper worked
-      interface PumperBreakdown {
-        pumperName: string
-        calculatedSales?: number
-        advanceTaken?: number
-        variance?: number
-        varianceStatus?: string
-      }
-      interface DeclaredAmounts {
-        pumperBreakdown?: PumperBreakdown[]
-      }
-
-      const pumperShifts = shifts.filter(shift => {
-        const declaredAmounts = shift.declaredAmounts as unknown as DeclaredAmounts
+      const pumperShifts = shifts.filter((shift: ShiftWithAssignments) => {
+        const declaredAmounts = shift.declaredAmounts
         const pumperBreakdown = declaredAmounts?.pumperBreakdown || []
-        return pumperBreakdown.some(pb => pb.pumperName === pumper.name) ||
-          shift.assignments.some(a => a.pumperName === pumper.name)
+        return pumperBreakdown.some((pb: PumperBreakdown) => pb.pumperName === pumper.name) ||
+          (shift.assignments || []).some((a: { pumperName: string }) => a.pumperName === pumper.name)
       })
 
       // Get base salary (default to 27000 if not set)
@@ -184,20 +222,62 @@ export async function GET(request: NextRequest) {
         varianceStatus: string
         overtimeHours?: number
         overtimeAmount?: number
+        isInShop: boolean
+        shopRevenue: number
       }> = []
 
       pumperShifts.forEach(shift => {
-        const declaredAmounts = shift.declaredAmounts as unknown as DeclaredAmounts
+        const declaredAmounts = shift.declaredAmounts
         const pumperBreakdown = declaredAmounts?.pumperBreakdown || []
         const breakdown = pumperBreakdown.find(pb => pb.pumperName === pumper.name)
 
         if (breakdown) {
-          const shiftStart = new Date(shift.startTime)
-          const shiftEnd = shift.endTime ? new Date(shift.endTime) : new Date()
-          const hours = (shiftEnd.getTime() - shiftStart.getTime()) / (1000 * 60 * 60)
+          // Calculate pumper-specific working hours for this shift
+          // 1. Get all nozzle assignments for this pumper in this shift
+          const pumperAssignments = (shift.assignments || []).filter(a => a.pumperName === pumper.name)
+
+          // 2. Check if pumper was in shop
+          const isInShop = shift.shopAssignment?.pumperName === pumper.name
+          const shopRevenue = isInShop ? (shift.shopAssignment?.totalRevenue || 0) : 0
+
+          // 3. Find the earliest start and latest end across all their activities in this shift
+          let pumperStart: Date | null = null
+          let pumperEnd: Date | null = null
+
+          for (const a of pumperAssignments) {
+            if (!pumperStart || a.assignedAt.getTime() < pumperStart.getTime()) pumperStart = a.assignedAt
+            if (a.closedAt && (!pumperEnd || a.closedAt.getTime() > pumperEnd.getTime())) pumperEnd = a.closedAt
+          }
+
+          if (isInShop && shift.shopAssignment) {
+            const shopCreatedAt = new Date(shift.shopAssignment.createdAt)
+            const shopUpdatedAt = new Date(shift.shopAssignment.updatedAt)
+            if (!pumperStart || shopCreatedAt.getTime() < pumperStart.getTime()) pumperStart = shopCreatedAt
+            if (!pumperEnd || shopUpdatedAt.getTime() > pumperEnd.getTime()) pumperEnd = shopUpdatedAt
+          }
+
+          // 4. Calculate hours (fallback to shift duration if no assignment timestamps found)
+          let hours = 0
+          if (pumperStart && pumperEnd) {
+            hours = (pumperEnd.getTime() - pumperStart.getTime()) / (1000 * 60 * 60)
+          } else {
+            const shiftStart = new Date(shift.startTime)
+            const shiftEnd = shift.endTime ? new Date(shift.endTime) : new Date()
+            hours = (shiftEnd.getTime() - shiftStart.getTime()) / (1000 * 60 * 60)
+          }
+
+          // Ensure hours is not negative and at least 0.1 if they had sales but 0 duration
+          hours = Math.max(0, hours)
+          if (hours < 0.1 && (breakdown.calculatedSales || 0) > 0) {
+            // Safety fallback: if they have sales but 0 duration, 
+            // maybe assignments were closed immediately. Use shift duration.
+            const shiftStart = new Date(shift.startTime)
+            const shiftEnd = shift.endTime ? new Date(shift.endTime) : new Date()
+            hours = Math.max(0.1, (shiftEnd.getTime() - shiftStart.getTime()) / (1000 * 60 * 60))
+          }
 
           // Track worked date (just the date, not time)
-          const workedDate = shiftEnd.toISOString().split('T')[0]
+          const workedDate = (pumperEnd || (shift.endTime ? new Date(shift.endTime) : new Date())).toISOString().split('T')[0]
           workedDates.add(workedDate)
 
           totalHours += hours
@@ -239,7 +319,9 @@ export async function GET(request: NextRequest) {
             variance: breakdown.variance || 0,
             varianceStatus: breakdown.varianceStatus || 'NORMAL',
             overtimeHours: Math.round(shiftOvertimeHours * 100) / 100,
-            overtimeAmount: Math.round(shiftOvertimeAmount * 100) / 100
+            overtimeAmount: Math.round(shiftOvertimeAmount * 100) / 100,
+            isInShop,
+            shopRevenue
           })
         }
       })
