@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useStation } from '@/contexts/StationContext'
 import { useRouter } from 'next/navigation'
-import { getCurrentBusinessMonth, formatBusinessMonthRange } from '@/lib/businessMonth'
+import { getCurrentBusinessMonth, getBusinessMonth, formatBusinessMonthRange } from '@/lib/businessMonth'
 import { FormCard } from '@/components/ui/FormCard'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -40,6 +40,7 @@ import {
   RefreshCw,
   Download,
   AlertTriangle,
+  AlertCircle,
   FileSpreadsheet
 } from 'lucide-react'
 import { exportPOSSalesReportPDF, exportPOSSalesReportExcel } from '@/lib/exportUtils'
@@ -132,14 +133,17 @@ const months = [
 
 export default function POSSalesReportPage() {
   const router = useRouter()
-  const { selectedStation, stations } = useStation()
+  const { selectedStation, stations, isAllStations } = useStation()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [reportData, setReportData] = useState<POSSalesReport | null>(null)
   const [dailyViewMode, setDailyViewMode] = useState<'bank' | 'pos'>('bank')
 
+  const station = stations.find(s => s.id === selectedStation)
+  const monthStartDay = station?.monthStartDate || 1
+
   // Month selection - using business month
-  const currentBusinessMonth = getCurrentBusinessMonth()
+  const currentBusinessMonth = getCurrentBusinessMonth(monthStartDay)
   const [selectedYear, setSelectedYear] = useState(currentBusinessMonth.year.toString())
   const [selectedMonth, setSelectedMonth] = useState(String(currentBusinessMonth.month).padStart(2, '0'))
 
@@ -192,8 +196,8 @@ export default function POSSalesReportPage() {
       // Calculate business month date range
       const year = parseInt(selectedYear)
       const month = parseInt(selectedMonth)
-      const startDate = new Date(year, month - 1, 7)
-      const endDate = new Date(year, month, 6, 23, 59, 59)
+
+      const { startDate, endDate } = getBusinessMonth(month, year, monthStartDay)
 
       const res = await fetch(
         `/api/reports/pos-sales?stationId=${selectedStation}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
@@ -213,7 +217,7 @@ export default function POSSalesReportPage() {
     } finally {
       setLoading(false)
     }
-  }, [selectedStation, selectedYear, selectedMonth])
+  }, [selectedStation, selectedYear, selectedMonth, monthStartDay])
 
   useEffect(() => {
     if (selectedStation) {
@@ -270,6 +274,14 @@ export default function POSSalesReportPage() {
           </DropdownMenu>
         </div>
       </div>
+
+      {/* All Stations Warning */}
+      {isAllStations && (
+        <div className="flex items-center p-4 text-amber-800 bg-amber-50 rounded-lg dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+          <AlertCircle className="h-5 w-5 mr-3 flex-shrink-0" />
+          <span className="font-medium">Please select a specific station to view this report.</span>
+        </div>
+      )}
 
       {/* Filters */}
       <Card>
@@ -404,15 +416,24 @@ export default function POSSalesReportPage() {
                   <XAxis
                     dataKey="date"
                     tickFormatter={(value) => {
-                      const d = new Date(value)
-                      return `${d.getDate()}/${d.getMonth() + 1}`
+                      if (typeof value === 'string' && value.includes('-')) {
+                        const parts = value.split('-')
+                        if (parts.length === 3) return `${parseInt(parts[2], 10)}/${parseInt(parts[1], 10)}`
+                      }
+                      return value
                     }}
                     tick={{ fontSize: 10 }}
                   />
                   <YAxis tickFormatter={(value) => `Rs. ${(value / 1000).toFixed(0)}k`} />
                   <Tooltip
                     formatter={(value: number) => `Rs. ${(value || 0).toLocaleString()}`}
-                    labelFormatter={(date) => new Date(date).toLocaleDateString()}
+                    labelFormatter={(date) => {
+                      if (typeof date === 'string' && date.includes('-')) {
+                        const parts = date.split('-')
+                        if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
+                      }
+                      return date
+                    }}
                   />
                   <Legend wrapperStyle={{ fontSize: '12px' }} />
                   {/* Create a line for each POS terminal */}

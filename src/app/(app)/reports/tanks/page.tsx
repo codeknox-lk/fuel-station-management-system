@@ -130,7 +130,7 @@ export default function TanksReportsPage() {
   const [error, setError] = useState('')
 
   // Form state
-  const { selectedStation } = useStation()
+  const { selectedStation, isAllStations } = useStation()
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
 
 
@@ -565,6 +565,14 @@ export default function TanksReportsPage() {
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
+      )}
+
+      {/* All Stations Warning */}
+      {isAllStations && (
+        <div className="flex items-center p-4 text-amber-800 bg-amber-50 rounded-lg dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+          <AlertCircle className="h-5 w-5 mr-3 flex-shrink-0" />
+          <span className="font-medium">Please select a specific station to view this report.</span>
+        </div>
       )}
 
       {/* Report Generator */}

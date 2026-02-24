@@ -16,6 +16,7 @@ export interface StationData {
     phone: string
     email: string
     openingHours: string
+    monthStartDate: number
     isActive: boolean
 }
 
@@ -34,6 +35,7 @@ export function StationForm({ initialData, onSuccess, onCancel, isFirstStation =
         phone: '',
         email: '',
         openingHours: '',
+        monthStartDate: 1,
         isActive: true
     })
     const [isLoading, setIsLoading] = useState(false)
@@ -143,15 +145,31 @@ export function StationForm({ initialData, onSuccess, onCancel, isFirstStation =
                 </div>
             </div>
 
-            <div>
-                <Label htmlFor="openingHours">Opening Hours</Label>
-                <Input
-                    id="openingHours"
-                    value={formData.openingHours}
-                    onChange={(e) => setFormData({ ...formData, openingHours: e.target.value })}
-                    placeholder="e.g., Mon-Fri: 6AM-10PM, Sat-Sun: 7AM-9PM"
-                    disabled={isLoading}
-                />
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <Label htmlFor="openingHours">Opening Hours</Label>
+                    <Input
+                        id="openingHours"
+                        value={formData.openingHours}
+                        onChange={(e) => setFormData({ ...formData, openingHours: e.target.value })}
+                        placeholder="e.g., Mon-Fri: 6AM-10PM, Sat-Sun: 7AM-9PM"
+                        disabled={isLoading}
+                    />
+                </div>
+                <div>
+                    <Label htmlFor="monthStartDate">Month Start Date (1-31)</Label>
+                    <Input
+                        id="monthStartDate"
+                        type="number"
+                        min="1"
+                        max="31"
+                        value={formData.monthStartDate || ''}
+                        onChange={(e) => setFormData({ ...formData, monthStartDate: parseInt(e.target.value) || 1 })}
+                        placeholder="e.g., 7"
+                        required
+                        disabled={isLoading}
+                    />
+                </div>
             </div>
 
             {!isFirstStation && (

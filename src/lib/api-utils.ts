@@ -16,21 +16,22 @@ export async function getAuthenticatedStationContext(request: NextRequest) {
             return { errorResponse: NextResponse.json({ error: 'Station ID is required' }, { status: 400 }) }
         }
 
-        // Security: Verify user belongs to the organization that owns the station
-        // Optimization: Check ownership without fetching entire station object if possible, 
-        // but we need organizationId. 
-        const station = await prisma.station.findUnique({
-            where: { id: stationId },
-            select: { organizationId: true }
-        })
+        // Handle "all" station context (organization level reports)
+        if (stationId !== 'all') {
+            const station = await prisma.station.findUnique({
+                where: { id: stationId },
+                select: { organizationId: true }
+            })
 
-        if (!station || station.organizationId !== user.organizationId) {
-            return { errorResponse: NextResponse.json({ error: 'Station not found or access denied' }, { status: 403 }) }
+            if (!station || station.organizationId !== user.organizationId) {
+                return { errorResponse: NextResponse.json({ error: 'Station not found or access denied' }, { status: 403 }) }
+            }
         }
 
         return {
             user,
             stationId,
+            organizationId: user.organizationId,
             searchParams,
             errorResponse: null
         }

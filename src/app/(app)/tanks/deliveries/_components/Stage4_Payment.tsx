@@ -11,6 +11,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CheckCircle2, Wallet, Banknote, AlertTriangle } from 'lucide-react'
 import { DeliveryData } from './types'
 import { format } from 'date-fns'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { History } from 'lucide-react'
 
 interface Bank {
     id: string
@@ -30,6 +33,7 @@ export default function Stage4_Payment({ data, onUpdate, onSubmit, loading }: Pr
     const [banks, setBanks] = useState<Bank[]>([])
     const [error, setError] = useState('')
     const [formValid, setFormValid] = useState(false)
+    const [supplierBalance, setSupplierBalance] = useState<number | null>(null)
 
     const paymentType = data.paymentType || 'CASH'
 
@@ -75,6 +79,20 @@ export default function Stage4_Payment({ data, onUpdate, onSubmit, loading }: Pr
             console.warn('No stationId available, cannot fetch safe balance')
         }
     }, [data.stationId])
+
+    // Load supplier balance
+    useEffect(() => {
+        if (data.supplierId) {
+            fetch(`/api/suppliers/${data.supplierId}`)
+                .then(res => res.json())
+                .then(resData => {
+                    if (resData && typeof resData.currentBalance === 'number') {
+                        setSupplierBalance(resData.currentBalance)
+                    }
+                })
+                .catch(err => console.error('Failed to load supplier balance:', err))
+        }
+    }, [data.supplierId])
 
     // Validate form
     useEffect(() => {
@@ -247,27 +265,36 @@ export default function Stage4_Payment({ data, onUpdate, onSubmit, loading }: Pr
                     <CardContent>
                         <RadioGroup
                             value={paymentType}
-                            onValueChange={(val: string) => onUpdate({ paymentType: val as 'CASH' | 'CHEQUE' })}
-                            className="grid grid-cols-2 gap-4"
+                            onValueChange={(val: string) => onUpdate({ paymentType: val as 'CASH' | 'CHEQUE' | 'CREDIT' })}
+                            className="grid grid-cols-1 md:grid-cols-3 gap-4"
                         >
                             <div>
                                 <RadioGroupItem value="CASH" id="cash" className="peer sr-only" />
-                                <Label htmlFor="cash" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-transparent p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer relative overflow-hidden">
-                                    <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                                <Label htmlFor="cash" className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-transparent p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer relative overflow-hidden min-h-[140px]">
+                                    <div className="absolute top-2 right-2 text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
                                         Safe Balance
                                     </div>
                                     <Banknote className="mb-3 h-6 w-6" />
-                                    Cash
-                                    <div className={`text-sm font-bold mt-1 ${safeBalance !== null && safeBalance < (data.totalCost || 0) ? 'text-red-500' : 'text-green-600'}`}>
-                                        (Rs. {(safeBalance || 0).toLocaleString()})
+                                    <span className="font-bold">Cash</span>
+                                    <div className={`text-sm font-semibold mt-1 ${safeBalance !== null && safeBalance < (data.totalCost || 0) ? 'text-red-500' : 'text-green-600'}`}>
+                                        Rs. {(safeBalance || 0).toLocaleString()}
                                     </div>
                                 </Label>
                             </div>
                             <div>
                                 <RadioGroupItem value="CHEQUE" id="cheque" className="peer sr-only" />
-                                <Label htmlFor="cheque" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-transparent p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
+                                <Label htmlFor="cheque" className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-transparent p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer min-h-[140px]">
                                     <Wallet className="mb-3 h-6 w-6" />
-                                    Cheque
+                                    <span className="font-bold">Cheque</span>
+                                    <span className="text-xs text-muted-foreground mt-1">Bank Account</span>
+                                </Label>
+                            </div>
+                            <div>
+                                <RadioGroupItem value="CREDIT" id="credit" className="peer sr-only" />
+                                <Label htmlFor="credit" className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-transparent p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer min-h-[140px]">
+                                    <History className="mb-3 h-6 w-6" />
+                                    <span className="font-bold">On Credit</span>
+                                    <span className="text-xs text-muted-foreground mt-1">Pay Later</span>
                                 </Label>
                             </div>
                         </RadioGroup>
@@ -333,22 +360,63 @@ export default function Stage4_Payment({ data, onUpdate, onSubmit, loading }: Pr
                     </Card>
                 )}
 
-                {/* Summary */}
-                <Card className="bg-muted/50">
-                    <CardContent className="pt-6">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <div className="text-sm font-medium text-muted-foreground">Total Payable</div>
-                                <div className="text-xs text-muted-foreground mt-1">
-                                    Payment: {paymentType}
+                {/* Summary & Supplier Balance Preview */}
+                <Card className="bg-muted/50 overflow-hidden border-primary/20">
+                    <CardHeader className="bg-primary/5 py-3">
+                        <CardTitle className="text-sm font-semibold flex items-center justify-between">
+                            <span>Balance Impact Preview</span>
+                            <Badge variant="outline" className="bg-background">Supplier: {data.supplier}</Badge>
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-4 space-y-4">
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div className="space-y-1">
+                                <span className="text-muted-foreground">Current Balance:</span>
+                                <div className={`font-semibold ${(supplierBalance ?? 0) > 0 ? 'text-red-500' : 'text-green-600'}`}>
+                                    Rs. {Math.abs(supplierBalance ?? 0).toLocaleString()}
+                                    {(supplierBalance ?? 0) > 0 ? ' (Debt)' : ' (Advance)'}
                                 </div>
                             </div>
-                            <div className="text-3xl font-bold text-foreground">
-                                Rs. {(data.totalCost || 0).toLocaleString()}
+                            <div className="space-y-1 text-right">
+                                <span className="text-muted-foreground">Delivery Cost (Debit):</span>
+                                <div className="font-semibold text-orange-600">+ Rs. {(data.totalCost || 0).toLocaleString()}</div>
+                            </div>
+                        </div>
+
+                        <Separator className="bg-muted-foreground/20" />
+
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div className="space-y-1">
+                                <span className="text-muted-foreground">Payment (Credit):</span>
+                                <div className="font-semibold text-green-600">
+                                    {paymentType === 'CREDIT' ? '- Rs. 0' : `- Rs. ${(data.totalCost || 0).toLocaleString()}`}
+                                </div>
+                            </div>
+                            <div className="space-y-1 text-right">
+                                <span className="text-muted-foreground font-bold italic text-primary">Forecasted Balance:</span>
+                                <div className="text-lg font-bold">
+                                    Rs. {Math.abs(
+                                        (supplierBalance || 0) +
+                                        (data.totalCost || 0) -
+                                        (paymentType === 'CREDIT' ? 0 : (data.totalCost || 0))
+                                    ).toLocaleString()}
+                                    {((supplierBalance || 0) + (data.totalCost || 0) - (paymentType === 'CREDIT' ? 0 : (data.totalCost || 0))) > 0 ? ' (Debt)' : ' (Advance)'}
+                                </div>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Total Cost Highlight */}
+                <div className="bg-primary/10 p-6 rounded-xl border-2 border-primary/20 flex justify-between items-center">
+                    <div>
+                        <div className="text-xs font-bold uppercase tracking-wider text-primary/70">Total Invoice Amount</div>
+                        <div className="text-sm text-muted-foreground uppercase text-xs font-semibold">Settlement via {paymentType}</div>
+                    </div>
+                    <div className="text-4xl font-black text-primary">
+                        Rs. {(data.totalCost || 0).toLocaleString()}
+                    </div>
+                </div>
             </div>
 
             <div className="flex justify-end pt-4">

@@ -1,0 +1,2 @@
+src/app/api/reports/pumper-variance/route.ts(82,11): error TS2451: Cannot redeclare block-scoped variable 'stationDailyVariances'.
+src/app/api/reports/pumper-variance/route.ts(122,11): error TS2451: Cannot redeclare block-scoped variable 'stationDailyVariances'.

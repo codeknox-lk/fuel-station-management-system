@@ -6,6 +6,7 @@ export type DeliveryData = {
     stationId: string
     tankId: string
     supplier: string
+    supplierId?: string
     invoiceNumber: string
     invoiceQuantity: number
     beforeDipReading?: number

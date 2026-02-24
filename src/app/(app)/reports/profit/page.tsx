@@ -147,8 +147,11 @@ export default function ProfitReportsPage() {
 
   // Form state
   // Use isAllStations from context
-  const { selectedStation, isAllStations } = useStation()
-  const currentBusinessMonth = getCurrentBusinessMonth()
+  const { selectedStation, isAllStations, stations } = useStation()
+  const station = stations.find(s => s.id === selectedStation)
+  const monthStartDay = station?.monthStartDate || 1
+
+  const currentBusinessMonth = getCurrentBusinessMonth(monthStartDay)
   const [selectedMonth, setSelectedMonth] = useState(String(currentBusinessMonth.month).padStart(2, '0'))
   const [selectedYear, setSelectedYear] = useState(String(currentBusinessMonth.year))
 
@@ -165,7 +168,7 @@ export default function ProfitReportsPage() {
 
     try {
       // Get business month date range (7th to 6th)
-      const businessMonth = getBusinessMonth(parseInt(selectedMonth), parseInt(selectedYear))
+      const businessMonth = getBusinessMonth(parseInt(selectedMonth), parseInt(selectedYear), monthStartDay)
       const url = `/api/reports/profit?stationId=${selectedStation}&month=${selectedMonth}&year=${selectedYear}&startDate=${businessMonth.startDate.toISOString()}&endDate=${businessMonth.endDate.toISOString()}`
 
       const response = await fetch(url, {
@@ -401,58 +404,54 @@ export default function ProfitReportsPage() {
       <FormCard title="Report Configuration" description="Business month runs from 7th to 6th of next month">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {isAllStations && (
-            <div className="col-span-full md:col-span-4 flex items-center p-4 text-amber-800 bg-amber-50 rounded-lg dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800 mb-4">
-              <AlertCircle className="h-5 w-5 mr-3 flex-shrink-0" />
-              <span className="font-medium">Please select a specific station to generate report.</span>
+            <div className="col-span-full flex items-center p-3 text-amber-800 bg-amber-50 rounded-lg dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+              <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+              <span className="text-sm font-medium">Please select a specific station using the station switcher in the header to generate this report.</span>
             </div>
           )}
 
-          {!isAllStations && (
-            <>
-              <div>
-                <Label htmlFor="month">Month</Label>
-                <Select value={selectedMonth} onValueChange={setSelectedMonth} disabled={loading}>
-                  <SelectTrigger id="month">
-                    <SelectValue placeholder="Select month" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {months.map((month) => (
-                      <SelectItem key={month.value} value={month.value}>
-                        {month.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          <div>
+            <Label htmlFor="month">Month</Label>
+            <Select value={selectedMonth} onValueChange={setSelectedMonth} disabled={loading}>
+              <SelectTrigger id="month">
+                <SelectValue placeholder="Select month" />
+              </SelectTrigger>
+              <SelectContent>
+                {months.map((month) => (
+                  <SelectItem key={month.value} value={month.value}>
+                    {month.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-              <div>
-                <Label htmlFor="year">Year</Label>
-                <Select value={selectedYear} onValueChange={setSelectedYear} disabled={loading}>
-                  <SelectTrigger id="year">
-                    <SelectValue placeholder="Select year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {years.map((year) => (
-                      <SelectItem key={year} value={String(year)}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          <div>
+            <Label htmlFor="year">Year</Label>
+            <Select value={selectedYear} onValueChange={setSelectedYear} disabled={loading}>
+              <SelectTrigger id="year">
+                <SelectValue placeholder="Select year" />
+              </SelectTrigger>
+              <SelectContent>
+                {years.map((year) => (
+                  <SelectItem key={year} value={String(year)}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-              <div className="flex items-end">
-                <Button onClick={generateReport} disabled={loading || isAllStations || !selectedMonth || !selectedYear} className="w-full">
-                  {loading ? 'Generating...' : (
-                    <>
-                      <Calculator className="mr-2 h-4 w-4" />
-                      Generate Report
-                    </>
-                  )}
-                </Button>
-              </div>
-            </>
-          )}
+          <div className="flex items-end">
+            <Button onClick={generateReport} disabled={loading || isAllStations || !selectedMonth || !selectedYear} className="w-full">
+              {loading ? 'Generating...' : (
+                <>
+                  <Calculator className="mr-2 h-4 w-4" />
+                  Generate Report
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </FormCard>
 

@@ -52,25 +52,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Station ID is required' }, { status: 400 })
     }
 
+    // Get monthStartDay from station
+    const station = await prisma.station.findUnique({ where: { id: stationId } })
+    const monthStartDay = station?.monthStartDate || 1
+
     // Parse month or use current month
-    // Salary month runs from 7th of current month to 6th of next month
+    // Salary month calculation
     let startDate: Date
     let endDate: Date
 
     if (month) {
       const [year, monthNum] = month.split('-').map(Number)
-      // Start: 7th of the specified month
-      startDate = new Date(year, monthNum - 1, 7, 0, 0, 0, 0)
-      // End: 6th of next month at 23:59:59
-      endDate = new Date(year, monthNum, 6, 23, 59, 59, 999)
+      // Start: Dynamic start day of the specified month
+      startDate = new Date(year, monthNum - 1, monthStartDay, 0, 0, 0, 0)
+      // End: Previous day of next month at 23:59:59
+      endDate = new Date(year, monthNum, monthStartDay - 1, 23, 59, 59, 999)
     } else {
       const now = new Date()
-      // If current date is before 7th, use previous month's salary period
-      // If current date is 7th or after, use current month's salary period
+      // If current date is before start day, use previous month's salary period
+      // If current date is start day or after, use current month's salary period
       let salaryMonth = now.getMonth()
       let salaryYear = now.getFullYear()
 
-      if (now.getDate() < 7) {
+      if (now.getDate() < monthStartDay) {
         // Use previous month
         salaryMonth = now.getMonth() - 1
         if (salaryMonth < 0) {
@@ -79,8 +83,8 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      startDate = new Date(salaryYear, salaryMonth, 7, 0, 0, 0, 0)
-      endDate = new Date(salaryYear, salaryMonth + 1, 6, 23, 59, 59, 999)
+      startDate = new Date(salaryYear, salaryMonth, monthStartDay, 0, 0, 0, 0)
+      endDate = new Date(salaryYear, salaryMonth + 1, monthStartDay - 1, 23, 59, 59, 999)
     }
 
     // Get all pumpers for the station with base salary

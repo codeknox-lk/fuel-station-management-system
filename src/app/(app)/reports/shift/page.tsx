@@ -17,6 +17,12 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
   Clock,
   User,
   Fuel,
@@ -25,6 +31,8 @@ import {
   AlertTriangle,
   ArrowLeft,
   Download,
+  RefreshCw,
+  FileText,
   ShoppingBag,
   CheckCircle2,
   CreditCard,
@@ -150,7 +158,7 @@ export default function ShiftReportsPage() {
   const [error, setError] = useState('')
 
   // Form state
-  const { selectedStation } = useStation()
+  const { selectedStation, isAllStations } = useStation()
   const [selectedShift, setSelectedShift] = useState('')
 
   // Load shifts from API
@@ -501,6 +509,26 @@ export default function ShiftReportsPage() {
             </p>
           </div>
         </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={loadShifts} size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" disabled={!shiftReport}>
+                <Download className="h-4 w-4 mr-2" />
+                Export Report
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={printShiftPDF} className="cursor-pointer">
+                <FileText className="mr-2 h-4 w-4 text-red-600" />
+                <span>Export as PDF</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -512,6 +540,12 @@ export default function ShiftReportsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
+                {isAllStations && (
+                  <div className="flex items-center p-3 text-amber-800 bg-amber-50 rounded-lg dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-sm">
+                    <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+                    <span className="font-medium">Select a specific station first.</span>
+                  </div>
+                )}
                 <Label>Shift to Analyze</Label>
                 <Select value={selectedShift} onValueChange={setSelectedShift} disabled={loading || !selectedStation}>
                   <SelectTrigger className="bg-background">
@@ -740,10 +774,6 @@ export default function ShiftReportsPage() {
                     <CardTitle>Fuel Sales Breakdown</CardTitle>
                     <CardDescription>Per-nozzle performance & variance analysis</CardDescription>
                   </div>
-                  <Button variant="outline" size="sm" onClick={printShiftPDF}>
-                    <Download className="mr-2 h-4 w-4" />
-                    PDF Export
-                  </Button>
                 </CardHeader>
                 <CardContent>
                   <DataTable

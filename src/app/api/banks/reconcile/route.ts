@@ -88,6 +88,7 @@ export async function GET(request: NextRequest) {
             accountNumber: bank.accountNumber,
             reconciliation: {
                 currentBalance: calculatedBalance,
+                storedBalance: bank.currentBalance || 0,
                 expectedBalanceIfCleared,
                 pendingAmount: pendingCheques
             },
@@ -136,6 +137,10 @@ export async function GET(request: NextRequest) {
 
         if (pendingCheques > 0) {
             result.warnings.push(`${bank.cheques.filter(c => c.status === 'PENDING' || c.status === 'DEPOSITED').length} pending cheque(s) totaling Rs.${(pendingCheques || 0).toLocaleString()}`)
+        }
+
+        if (Math.abs(calculatedBalance - (bank.currentBalance || 0)) > 0.01) {
+            result.warnings.push(`Discrepancy detected: Calculated balance (Rs.${calculatedBalance.toLocaleString()}) does not match stored balance (Rs.${(bank.currentBalance || 0).toLocaleString()})`)
         }
 
         return NextResponse.json(result)

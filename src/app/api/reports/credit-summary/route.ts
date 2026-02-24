@@ -12,7 +12,9 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams!.get('startDate')
     const endDate = searchParams!.get('endDate')
 
-    // Parse dates or use defaults (current business month)
+    const station = stationId !== 'all' ? await prisma.station.findUnique({ where: { id: stationId } }) : null
+    const monthStartDay = station?.monthStartDate || 1
+
     let dateStart: Date
     let dateEnd: Date
 
@@ -22,16 +24,15 @@ export async function GET(request: NextRequest) {
       dateEnd = new Date(endDate)
       dateEnd.setHours(23, 59, 59, 999)
     } else {
-      // Default to current business month (7th to 6th)
       const now = new Date()
       const currentDay = now.getDate()
 
-      if (currentDay < 7) {
-        dateStart = new Date(now.getFullYear(), now.getMonth() - 1, 7, 0, 0, 0, 0)
-        dateEnd = new Date(now.getFullYear(), now.getMonth(), 6, 23, 59, 59, 999)
+      if (currentDay < monthStartDay) {
+        dateStart = new Date(now.getFullYear(), now.getMonth() - 1, monthStartDay, 0, 0, 0, 0)
+        dateEnd = new Date(now.getFullYear(), now.getMonth(), monthStartDay - 1, 23, 59, 59, 999)
       } else {
-        dateStart = new Date(now.getFullYear(), now.getMonth(), 7, 0, 0, 0, 0)
-        dateEnd = new Date(now.getFullYear(), now.getMonth() + 1, 6, 23, 59, 59, 999)
+        dateStart = new Date(now.getFullYear(), now.getMonth(), monthStartDay, 0, 0, 0, 0)
+        dateEnd = new Date(now.getFullYear(), now.getMonth() + 1, monthStartDay - 1, 23, 59, 59, 999)
       }
     }
 

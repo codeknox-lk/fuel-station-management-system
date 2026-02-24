@@ -106,11 +106,25 @@ export async function POST(request: NextRequest) {
                 // Create Bank Transaction (Money enters bank now)
                 const totalAmount = cheques.reduce((sum, c) => sum + c.amount, 0)
 
+                // Update bank balance
+                const bank = await tx.bank.findUnique({ where: { id: targetBankId } })
+                if (!bank) throw new Error('Target bank not found')
+
+                const bankBalanceBefore = bank.currentBalance || 0
+                const bankBalanceAfter = bankBalanceBefore + totalAmount
+
+                await tx.bank.update({
+                    where: { id: targetBankId },
+                    data: { currentBalance: bankBalanceAfter }
+                })
+
                 await tx.bankTransaction.create({
                     data: {
                         bankId: targetBankId,
                         type: 'DEPOSIT', // It is a deposit effectively
                         amount: totalAmount,
+                        balanceBefore: bankBalanceBefore,
+                        balanceAfter: bankBalanceAfter,
                         description: `Cheque Clearance (${cheques.length} cheques)`,
                         transactionDate: new Date(clearedDate),
                         createdBy: performedBy,

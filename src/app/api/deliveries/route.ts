@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
           stationId: true,
           tankId: true,
           supplier: true,
+          supplierId: true,
           invoiceNumber: true,
           quantity: true,
           actualReceived: true,
@@ -106,6 +107,7 @@ export async function GET(request: NextRequest) {
         stationId: true,
         tankId: true,
         supplier: true,
+        supplierId: true,
         invoiceNumber: true,
         invoiceQuantity: true, // Needed for variance calculation
         actualReceived: true,  // Needed for variance calculation
@@ -191,7 +193,8 @@ export async function POST(request: NextRequest) {
       supplier,
       deliveryTime,
       invoiceNumber,
-      notes
+      notes,
+      supplierId
     } = result.data
 
     const deliveryDate = deliveryTime || new Date()
@@ -264,6 +267,7 @@ export async function POST(request: NextRequest) {
         quantity: invoiceQuantity, // Temporary, will be updated after verification
         invoiceQuantity: invoiceQuantity,
         supplier: supplier || 'Unknown',
+        supplierId: supplierId || null,
         deliveryDate: deliveryDateObj,
         receivedBy: currentUser?.username || 'System',
         invoiceNumber: invoiceNumber || null,

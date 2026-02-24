@@ -10,18 +10,19 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Building2,
   TrendingUp,
   TrendingDown,
-  RefreshCw,
   Plus,
-  Eye,
   Landmark,
+  Eye,
   CreditCard
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { Textarea } from '@/components/ui/textarea'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import SupplierAccountList from './_components/SupplierAccountList'
 
 interface Transaction {
   id: string
@@ -52,7 +53,6 @@ interface BankAccount {
   createdAt: string
   updatedAt: string
 }
-
 
 
 export default function BankAccountsPage() {
@@ -200,162 +200,173 @@ export default function BankAccountsPage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
             <Landmark className="h-8 w-8 text-orange-600 dark:text-orange-400" />
-            Bank Accounts
+            Financial Accounts
           </h1>
           <p className="text-muted-foreground mt-1">
-            Manage all bank accounts, balances, and transactions
+            Manage bank accounts, POS terminals, and supplier credits
           </p>
         </div>
-        <Button onClick={fetchBankAccounts} variant="outline">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
       </div>
 
-      {/* Overall Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Balance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              Rs. {(overallBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <div className="text-sm text-muted-foreground mt-1">Across all accounts</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Deposits</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              Rs. {(overallDeposits || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <div className="text-sm text-muted-foreground mt-1">All time</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Cheques</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">
-              Rs. {(overallPendingCheques || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <div className="text-sm text-muted-foreground mt-1">Awaiting clearance</div>
-          </CardContent>
-        </Card>
-      </div>
+      <Tabs defaultValue="banks" className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="banks">Bank & Safe Accounts</TabsTrigger>
+          <TabsTrigger value="suppliers">Supplier Credit Accounts</TabsTrigger>
+        </TabsList>
 
-      {/* Bank Accounts Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {bankAccounts.map((bank) => (
-          <Card key={bank.id}>
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5 text-muted-foreground" />
-                    {bank.name}
-                  </CardTitle>
-                  <CardDescription className="mt-1">
-                    {bank.branch && <div>Branch: {bank.branch}</div>}
-                    {bank.accountNumber && <div>A/C: {bank.accountNumber}</div>}
-                  </CardDescription>
-                </div>
-                <Badge variant={bank.isActive ? 'default' : 'secondary'}>
-                  {bank.isActive ? 'Active' : 'Inactive'}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Current Balance */}
-              <div className="p-4 bg-muted/50 rounded-lg">
-                <div className="text-sm text-muted-foreground mb-1">Current Balance</div>
+        <TabsContent value="banks" className="space-y-6">
+
+          {/* Overall Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Balance</CardTitle>
+              </CardHeader>
+              <CardContent>
                 <div className="text-2xl font-bold text-green-600">
-                  Rs. {(bank.currentBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  Rs. {(overallBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
-              </div>
+                <div className="text-sm text-muted-foreground mt-1">Across all accounts</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Deposits</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  Rs. {(overallDeposits || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                <div className="text-sm text-muted-foreground mt-1">All time</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Pending Cheques</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-yellow-600">
+                  Rs. {(overallPendingCheques || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                <div className="text-sm text-muted-foreground mt-1">Awaiting clearance</div>
+              </CardContent>
+            </Card>
+          </div>
 
-              {/* Transaction Summary */}
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <div className="text-muted-foreground">Deposits</div>
-                  <div className="font-mono font-semibold">
-                    Rs. {(bank.totalDeposits || 0).toLocaleString()}
+          {/* Bank Accounts Cards */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {bankAccounts.map((bank) => (
+              <Card key={bank.id}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Building2 className="h-5 w-5 text-muted-foreground" />
+                        {bank.name}
+                      </CardTitle>
+                      <CardDescription className="mt-1">
+                        {bank.branch && <div>Branch: {bank.branch}</div>}
+                        {bank.accountNumber && <div>A/C: {bank.accountNumber}</div>}
+                      </CardDescription>
+                    </div>
+                    <Badge variant={bank.isActive ? 'default' : 'secondary'}>
+                      {bank.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
                   </div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground">Cheques</div>
-                  <div className="font-mono font-semibold">
-                    Rs. {(bank.totalCheques || 0).toLocaleString()}
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Current Balance */}
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <div className="text-sm text-muted-foreground mb-1">Current Balance</div>
+                    <div className="text-2xl font-bold text-green-600">
+                      Rs. {(bank.currentBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground">Credit Payments</div>
-                  <div className="font-mono font-semibold text-green-600">
-                    Rs. {(bank.totalCreditPayments || 0).toLocaleString()}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground">Pending</div>
-                  <div className="font-mono font-semibold text-yellow-600">
-                    Rs. {(bank.pendingCheques || 0).toLocaleString()}
-                  </div>
-                </div>
-              </div>
 
-              {/* POS Terminals */}
-              {bank.posTerminals.length > 0 && (
-                <div className="pt-2 border-t">
-                  <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
-                    <CreditCard className="h-3 w-3" />
-                    POS Terminals
+                  {/* Transaction Summary */}
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <div className="text-muted-foreground">Deposits</div>
+                      <div className="font-mono font-semibold">
+                        Rs. {(bank.totalDeposits || 0).toLocaleString()}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">Cheques</div>
+                      <div className="font-mono font-semibold">
+                        Rs. {(bank.totalCheques || 0).toLocaleString()}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">Credit Payments</div>
+                      <div className="font-mono font-semibold text-green-600">
+                        Rs. {(bank.totalCreditPayments || 0).toLocaleString()}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">Pending</div>
+                      <div className="font-mono font-semibold text-yellow-600">
+                        Rs. {(bank.pendingCheques || 0).toLocaleString()}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {bank.posTerminals.map(terminal => (
-                      <Badge key={terminal.id} variant="outline" className="text-xs">
-                        {terminal.name}
-                      </Badge>
-                    ))}
+
+                  {/* POS Terminals */}
+                  {bank.posTerminals.length > 0 && (
+                    <div className="pt-2 border-t">
+                      <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                        <CreditCard className="h-3 w-3" />
+                        POS Terminals
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {bank.posTerminals.map(terminal => (
+                          <Badge key={terminal.id} variant="outline" className="text-xs">
+                            {terminal.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="grid grid-cols-2 gap-2 pt-2">
+                    <Button
+                      onClick={() => handleOpenTransaction(bank)}
+                      variant="default"
+                      size="sm"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Transaction
+                    </Button>
+                    <Button
+                      onClick={() => handleViewDetails(bank.id)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      View All ({bank.transactionCount})
+                    </Button>
                   </div>
-                </div>
-              )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
-              {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-2 pt-2">
-                <Button
-                  onClick={() => handleOpenTransaction(bank)}
-                  variant="default"
-                  size="sm"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Transaction
-                </Button>
-                <Button
-                  onClick={() => handleViewDetails(bank.id)}
-                  variant="outline"
-                  size="sm"
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  View All ({bank.transactionCount})
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+          {bankAccounts.length === 0 && (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Building2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">No bank accounts found</p>
+              </CardContent>
+            </Card>
+          )}
 
-      {bankAccounts.length === 0 && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Building2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground">No bank accounts found</p>
-          </CardContent>
-        </Card>
-      )}
+        </TabsContent>
+
+        <TabsContent value="suppliers">
+          <SupplierAccountList />
+        </TabsContent>
+      </Tabs>
 
       {/* Manual Transaction Dialog */}
       <Dialog open={transactionDialogOpen} onOpenChange={setTransactionDialogOpen}>

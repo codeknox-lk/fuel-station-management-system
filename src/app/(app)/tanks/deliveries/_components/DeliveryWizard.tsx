@@ -70,7 +70,8 @@ export default function DeliveryWizard({ initialStep = 1, initialData }: Props) 
                 invoiceNumber: data.invoiceNumber,
                 beforeDipReading: data.beforeDipReading,
                 waterLevelBefore: data.waterLevelBefore,
-                beforeMeterReadings: data.beforeMeterReadings
+                beforeMeterReadings: data.beforeMeterReadings,
+                supplierId: data.supplierId
             }
 
             // We need stationId. If it's not in data, we might fail.
@@ -126,6 +127,7 @@ export default function DeliveryWizard({ initialStep = 1, initialData }: Props) 
                 bankId: data.bankId,
                 chequeDate: data.chequeDate,
 
+                supplierId: data.supplierId,
                 verifiedBy: 'System User' // Should be current user
             }
 

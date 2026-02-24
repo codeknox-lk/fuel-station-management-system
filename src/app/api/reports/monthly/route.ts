@@ -11,10 +11,13 @@ export async function GET(request: NextRequest) {
 
     const month = searchParams!.get('month') || new Date().toISOString().substring(0, 7) // YYYY-MM
 
-    // Parse month and get business month date range (7th to 6th)
+    const station = await prisma.station.findUnique({ where: { id: stationId } })
+    const monthStartDay = station?.monthStartDate || 1
+
+    // Parse month and get business month date range
     const [year, monthNum] = month.split('-').map(Number)
-    const startOfMonth = new Date(year, monthNum - 1, 7, 0, 0, 0, 0)
-    const endOfMonth = new Date(year, monthNum, 6, 23, 59, 59, 999)
+    const startOfMonth = new Date(year, monthNum - 1, monthStartDay, 0, 0, 0, 0)
+    const endOfMonth = new Date(year, monthNum, monthStartDay - 1, 23, 59, 59, 999)
 
     // Get all CLOSED shifts for the month
     // Use endTime to capture shifts that ended in this month (even if started previous month)

@@ -159,7 +159,8 @@ export const CreateDeliverySchema = z.object({
     supplier: z.string().optional().nullable(),
     deliveryTime: z.union([z.string(), z.date()]).optional().transform(val => val ? new Date(val) : new Date()),
     receivedBy: z.string().optional(),
-    notes: z.string().optional().nullable()
+    notes: z.string().optional().nullable(),
+    supplierId: z.string().optional().nullable()
 });
 
 export const VerifyDeliverySchema = z.object({
@@ -189,7 +190,8 @@ export const VerifyDeliverySchema = z.object({
     chequeDate: z.union([z.string(), z.date()]).optional().transform(val => val ? new Date(val) : new Date()),
 
     verifiedBy: z.string().min(1, 'Verified by is required'),
-    notes: z.string().optional()
+    notes: z.string().optional(),
+    supplierId: z.string().optional().nullable()
 });
 
 // --- Tank Schemas ---
@@ -239,7 +241,7 @@ export const UpdateBankSchema = CreateBankSchema.partial();
 export const CreateBankTransactionSchema = z.object({
     bankId: z.string().min(1, 'Bank account ID is required'),
     stationId: z.string().optional().nullable(),
-    type: z.enum(['DEPOSIT', 'WITHDRAWAL', 'TRANSFER', 'EXPENSE', 'INTEREST', 'ADJUSTMENT']),
+    type: z.enum(['DEPOSIT', 'WITHDRAWAL', 'TRANSFER_IN', 'TRANSFER_OUT', 'FEE', 'INTEREST', 'ADJUSTMENT']),
     amount: z.union([z.string(), z.number()]).transform(val => Number(val)),
     description: z.string().min(1, 'Description is required'),
     referenceNumber: z.string().optional().nullable(),
@@ -295,4 +297,22 @@ export const CreateOilSaleSchema = z.object({
     totalAmount: z.union([z.string(), z.number()]).optional().transform(val => val ? Number(val) : 0),
     customerName: z.string().optional().nullable(),
     saleDate: z.union([z.string(), z.date()]).optional().transform(val => val ? new Date(val) : new Date())
+});
+
+// --- Supplier Schemas ---
+
+export const SupplierTransactionTypeEnum = z.enum(['PURCHASE', 'SETTLEMENT', 'ADJUSTMENT']);
+
+export const CreateSupplierTransactionSchema = z.object({
+    supplierId: z.string().min(1, 'Supplier ID is required'),
+    type: SupplierTransactionTypeEnum,
+    amount: z.union([z.string(), z.number()]).transform(val => Number(val)),
+    description: z.string().optional().nullable(),
+    paymentMethod: z.enum(['SAFE', 'CHEQUE', 'BANK_TRANSFER', 'OTHER', 'CASH']).optional(),
+    bankId: z.string().optional().nullable(),
+    chequeNumber: z.string().optional().nullable(),
+    chequeDate: z.union([z.string(), z.date()]).optional().transform(val => val ? new Date(val) : undefined),
+    recordedBy: z.string().optional(),
+    stationId: z.string().optional().nullable(),
+    organizationId: z.string().optional().nullable(),
 });

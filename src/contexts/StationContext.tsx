@@ -7,6 +7,7 @@ interface Station {
   name: string
   address: string
   city: string
+  monthStartDate: number
   isActive: boolean
   createdAt: string
   updatedAt: string

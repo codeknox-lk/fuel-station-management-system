@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Station, Shift, Assignment, PosTerminal, Pumper, ShopAssignment, FuelPrice } from '../types'
+import { LocalStation, Shift, Assignment, PosTerminal, Pumper, ShopAssignment, FuelPrice } from '../types'
 
 export function useShiftData(selectedStation: string | null, selectedShift: string) {
-    const [stations, setStations] = useState<Station[]>([])
+    const [stations, setStations] = useState<LocalStation[]>([])
     const [shifts, setShifts] = useState<Shift[]>([])
     const [assignments, setAssignments] = useState<Assignment[]>([])
     const [posTerminals, setPosTerminals] = useState<PosTerminal[]>([])

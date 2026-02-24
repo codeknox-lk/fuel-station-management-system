@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import DeliveryWizard, { DeliveryData } from '../../_components/DeliveryWizard'
+import DeliveryWizard from '../../_components/DeliveryWizard'
+import { DeliveryData } from '../../_components/types'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useStation } from '@/contexts/StationContext'
 import { useRouter } from 'next/navigation'
 import { getCurrentBusinessMonth, getBusinessMonth } from '@/lib/businessMonth'
@@ -27,7 +27,9 @@ import {
     ResponsiveContainer,
     BarChart,
     Bar,
-    Legend
+    Legend,
+    LineChart,
+    Line
 } from 'recharts'
 import {
     AlertCircle,
@@ -37,8 +39,39 @@ import {
     DollarSign,
     TrendingUp,
     AlertTriangle,
-    Layers
+    Layers,
+    Calendar,
+    RefreshCw,
+    BarChart3,
+    ArrowUpRight,
+    ArrowDownRight,
+    ArrowRight
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+interface DailySalesData {
+    date: string
+    day: number
+    sales: Record<string, number>
+    totalSales: number
+}
+
+interface WastageData {
+    id: string
+    productName: string
+    quantity: number
+    cost: number
+    reason?: string
+    date: string
+}
+
+interface LowStockData {
+    productId: string
+    productName: string
+    category: string
+    currentQuantity: number
+    threshold: number
+}
 
 interface PerformanceData {
     productId: string
@@ -70,6 +103,11 @@ interface ShopReportResponse {
     performance: PerformanceData[]
     categories: CategoryData[]
     valuationBreakdown: { [key: string]: number }
+    dailySales: DailySalesData[]
+    totalsByProduct: Record<string, number>
+    productNames: string[]
+    wastageBreakdown: WastageData[]
+    lowStockAlerts: LowStockData[]
 }
 
 const months = [
@@ -91,18 +129,23 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 
 export default function ShopProfitReportPage() {
     const router = useRouter()
-    const { selectedStation, isAllStations } = useStation()
-    const currentBusinessMonth = getCurrentBusinessMonth()
+    const { selectedStation, isAllStations, stations } = useStation()
+
+    const station = stations.find(s => s.id === selectedStation)
+    const monthStartDay = station?.monthStartDate || 1
+
+    const currentBusinessMonth = getCurrentBusinessMonth(monthStartDay)
     const [selectedMonth, setSelectedMonth] = useState(String(currentBusinessMonth.month).padStart(2, '0'))
     const [selectedYear, setSelectedYear] = useState(String(currentBusinessMonth.year))
     const [report, setReport] = useState<ShopReportResponse | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+    const [chartType, setChartType] = useState<'line' | 'bar'>('bar')
 
     const currentYear = new Date().getFullYear()
     const years = Array.from({ length: 5 }, (_, i) => currentYear - i)
 
-    const generateReport = async () => {
+    const generateReport = useCallback(async () => {
         if (!selectedStation) {
             setError('Please select a station')
             return
@@ -112,7 +155,7 @@ export default function ShopProfitReportPage() {
         setError('')
 
         try {
-            const businessMonth = getBusinessMonth(parseInt(selectedMonth), parseInt(selectedYear))
+            const businessMonth = getBusinessMonth(parseInt(selectedMonth), parseInt(selectedYear), monthStartDay)
             const url = `/api/reports/shop-performance?stationId=${selectedStation}&startDate=${businessMonth.startDate.toISOString()}&endDate=${businessMonth.endDate.toISOString()}`
 
             const response = await fetch(url)
@@ -126,7 +169,33 @@ export default function ShopProfitReportPage() {
         } finally {
             setLoading(false)
         }
+    }, [selectedStation, selectedMonth, selectedYear, monthStartDay])
+
+    useEffect(() => {
+        if (selectedStation && !isAllStations) {
+            generateReport()
+        }
+    }, [selectedStation, isAllStations, selectedMonth, selectedYear, generateReport])
+
+    const getGrowthIndicator = (current: number, previous: number) => {
+        if (!previous) return null;
+        const growth = ((current - previous) / previous) * 100;
+        const isPositive = growth > 0;
+        return (
+            <div className={cn("flex items-center text-[10px] font-medium ml-1", isPositive ? "text-green-600" : "text-red-600")}>
+                {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                {Math.abs(growth).toFixed(0)}%
+            </div>
+        )
     }
+
+    const getProductColor = (name: string) => {
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        return `hsl(${hash % 360}, 70%, 50%)`;
+    }
+
+
 
     const performanceColumns: Column<PerformanceData>[] = [
         {
@@ -143,19 +212,19 @@ export default function ShopProfitReportPage() {
         {
             key: 'revenue' as keyof PerformanceData,
             title: 'Revenue',
-            render: (val) => `Rs. ${(val as (number) || 0).toLocaleString()}`
+            render: (val) => `Rs. ${(val as number || 0).toLocaleString()}`
         },
         {
             key: 'cost' as keyof PerformanceData,
             title: 'Cost (FIFO)',
-            render: (val) => `Rs. ${(val as (number) || 0).toLocaleString()}`
+            render: (val) => `Rs. ${(val as number || 0).toLocaleString()}`
         },
         {
             key: 'profit' as keyof PerformanceData,
             title: 'Gross Profit',
             render: (val) => (
                 <span className={`font-bold ${(val as number) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    Rs. {(val as (number) || 0).toLocaleString()}
+                    Rs. ${(val as number || 0).toLocaleString()}
                 </span>
             )
         },
@@ -175,74 +244,135 @@ export default function ShopProfitReportPage() {
         }
     ]
 
+    const wastageColumns: Column<WastageData>[] = [
+        { key: 'date', title: 'Date', render: (val) => new Date(val as string).toLocaleDateString() },
+        { key: 'productName', title: 'Product' },
+        { key: 'reason', title: 'Reason', render: (val) => (val as string) || 'Not specified' },
+        { key: 'quantity', title: 'Qty' },
+        { key: 'cost', title: 'Loss Value', render: (val) => <span className="text-red-600 font-medium">Rs. {(val as number).toLocaleString()}</span> },
+    ]
+
+    const lowStockColumns: Column<LowStockData>[] = [
+        { key: 'productName', title: 'Product', render: (val) => <span className="font-medium">{val as string}</span> },
+        { key: 'category', title: 'Category' },
+        { key: 'threshold', title: 'Restock Threshold' },
+        {
+            key: 'currentQuantity',
+            title: 'Current Qty',
+            render: (val) => (
+                <span className="font-bold text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
+                    {val as number}
+                </span>
+            )
+        }
+    ]
+
     // Prepare Top 5 Products by Margin (Filtered for significance - e.g. sold > 5 items)
     const topMarginProducts = report?.performance
         .filter(p => p.quantitySold > 5)
         .sort((a, b) => b.margin - a.margin)
         .slice(0, 5) || [];
 
+    const lowStockAlerts = report?.lowStockAlerts || [];
+    const recentWastage = report?.wastageBreakdown || [];
+
     return (
         <div className="space-y-6 p-6">
-            <div className="flex items-center gap-4 mb-6">
-                <Button variant="outline" size="icon" onClick={() => router.push('/reports')}>
-                    <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <div>
-                    <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-                        <ShoppingBag className="h-8 w-8 text-orange-600" />
-                        Shop Profitability Report
-                    </h1>
-                    <p className="text-muted-foreground mt-1">
-                        Inventory performance and product margins
-                    </p>
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-4">
+                    <Button variant="outline" size="icon" onClick={() => router.push('/reports')}>
+                        <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <div>
+                        <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+                            <ShoppingBag className="h-8 w-8 text-orange-600" />
+                            Shop Profitability Report
+                        </h1>
+                        <p className="text-muted-foreground mt-1">
+                            Inventory performance and product margins
+                        </p>
+                    </div>
                 </div>
+                {report && (
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={generateReport}>
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Refresh
+                        </Button>
+                    </div>
+                )}
             </div>
 
-            <FormCard title="Report Configuration" description="Business month runs from 7th to 6th of next month">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    {isAllStations ? (
-                        <div className="col-span-full p-4 bg-amber-50 text-amber-700 rounded-lg border border-amber-200 flex items-center">
-                            <AlertCircle className="h-5 w-5 mr-2" />
-                            Please select a specific station to view shop profitability.
+            <Card className="mb-6">
+                <CardContent className="pt-6">
+                    <div className="flex flex-wrap items-end gap-6">
+                        <div className="w-32">
+                            <Label htmlFor="year" className="text-xs mb-1 block text-muted-foreground">Year</Label>
+                            <Select value={selectedYear} onValueChange={setSelectedYear}>
+                                <SelectTrigger id="year">
+                                    <SelectValue placeholder="Year" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
                         </div>
-                    ) : (
-                        <>
-                            <div>
-                                <Label htmlFor="month">Month</Label>
-                                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                                    <SelectTrigger id="month">
-                                        <SelectValue placeholder="Month" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {months.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div>
-                                <Label htmlFor="year">Year</Label>
-                                <Select value={selectedYear} onValueChange={setSelectedYear}>
-                                    <SelectTrigger id="year">
-                                        <SelectValue placeholder="Year" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex items-end">
-                                <Button onClick={generateReport} disabled={loading} className="w-full">
-                                    {loading ? 'Generating...' : 'Generate Report'}
+                        <div className="w-40">
+                            <Label htmlFor="month" className="text-xs mb-1 block text-muted-foreground">Month</Label>
+                            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                                <SelectTrigger id="month">
+                                    <SelectValue placeholder="Month" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {months.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {report && (
+                            <div className="ml-auto flex items-center bg-background rounded-lg border p-1">
+                                <Button
+                                    variant={chartType === 'bar' ? 'secondary' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => setChartType('bar')}
+                                    className="h-8 px-3"
+                                >
+                                    <BarChart3 className="h-4 w-4 mr-2" />
+                                    Bar Chart
+                                </Button>
+                                <Button
+                                    variant={chartType === 'line' ? 'secondary' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => setChartType('line')}
+                                    className="h-8 px-3"
+                                >
+                                    <TrendingUp className="h-4 w-4 mr-2" />
+                                    Line Chart
                                 </Button>
                             </div>
-                        </>
+                        )}
+                    </div>
+
+                    {isAllStations && (
+                        <div className="mt-4 flex items-center p-4 text-amber-800 bg-amber-50 rounded-lg dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                            <AlertCircle className="h-5 w-5 mr-3 flex-shrink-0" />
+                            <span className="font-medium text-sm">Please select a specific station to view shop profitability.</span>
+                        </div>
                     )}
-                </div>
-            </FormCard>
+                </CardContent>
+            </Card>
 
             {error && (
                 <div className="p-4 bg-red-50 text-red-700 rounded-lg flex items-center gap-2 border border-red-200">
                     <AlertCircle className="h-5 w-5" />
                     {error}
+                </div>
+            )}
+
+            {loading && !report && (
+                <div className="flex flex-col items-center justify-center py-20 bg-card rounded-lg border border-dashed animate-pulse">
+                    <RefreshCw className="h-8 w-8 text-primary animate-spin mb-4" />
+                    <p className="text-muted-foreground">Loading report data...</p>
                 </div>
             )}
 
@@ -323,6 +453,114 @@ export default function ShopProfitReportPage() {
                         </Card>
                     </div>
 
+                    {/* Daily Sales Chart */}
+                    {report.dailySales.length > 0 ? (
+                        <FormCard title="Daily Shop Sales (Revenue)" description="Item-wise daily revenue trend">
+                            <div className="w-full h-96 mt-4">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    {chartType === 'line' ? (
+                                        <LineChart data={report.dailySales} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.5} />
+                                            <XAxis
+                                                dataKey="date"
+                                                tick={{ fontSize: 10 }}
+                                                tickFormatter={(value) => {
+                                                    const d = new Date(value)
+                                                    return `${d.getDate()}/${d.getMonth() + 1}`
+                                                }}
+                                                axisLine={false}
+                                                tickLine={false}
+                                            />
+                                            <YAxis
+                                                axisLine={false}
+                                                tickLine={false}
+                                                tickFormatter={(value) => `Rs.${(value / 1000).toFixed(0)}k`}
+                                            />
+                                            <Tooltip
+                                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                                formatter={(value: number) => `Rs. ${(value || 0).toLocaleString()}`}
+                                                labelFormatter={(date) => {
+                                                    const d = new Date(date)
+                                                    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                                                }}
+                                            />
+                                            <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                            {report.productNames.slice(0, 15).map((pName) => (
+                                                <Line
+                                                    key={pName}
+                                                    type="monotone"
+                                                    dataKey={(row) => row.sales[pName] || 0}
+                                                    stroke={getProductColor(pName)}
+                                                    strokeWidth={2}
+                                                    dot={{ r: 0 }}
+                                                    activeDot={{ r: 6 }}
+                                                    name={pName}
+                                                />
+                                            ))}
+                                        </LineChart>
+                                    ) : (
+                                        <BarChart data={report.dailySales} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.5} />
+                                            <XAxis
+                                                dataKey="date"
+                                                tick={{ fontSize: 10 }}
+                                                tickFormatter={(value) => {
+                                                    const d = new Date(value)
+                                                    return `${d.getDate()}`
+                                                }}
+                                                axisLine={false}
+                                                tickLine={false}
+                                            />
+                                            <YAxis
+                                                axisLine={false}
+                                                tickLine={false}
+                                                tickFormatter={(value) => `Rs.${(value / 1000).toFixed(0)}k`}
+                                            />
+                                            <Tooltip
+                                                cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                                formatter={(value: number) => `Rs. ${(value || 0).toLocaleString()}`}
+                                                labelFormatter={(date) => {
+                                                    const d = new Date(date)
+                                                    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                                                }}
+                                            />
+                                            <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                            {report.productNames.slice(0, 15).map((pName) => (
+                                                <Bar
+                                                    key={pName}
+                                                    dataKey={(row) => row.sales[pName] || 0}
+                                                    stackId="a"
+                                                    fill={getProductColor(pName)}
+                                                    name={pName}
+                                                    radius={[0, 0, 0, 0]}
+                                                />
+                                            ))}
+                                        </BarChart>
+                                    )}
+                                </ResponsiveContainer>
+                            </div>
+                            {report.productNames.length > 15 && (
+                                <p className="text-xs text-muted-foreground text-center mt-2">
+                                    Displaying top 15 products in chart out of {report.productNames.length}. See table for all products.
+                                </p>
+                            )}
+                        </FormCard>
+                    ) : (
+                        <Card>
+                            <CardContent className="pt-6">
+                                <div className="text-center py-12 text-muted-foreground">
+                                    <div className="bg-muted w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <Calendar className="h-8 w-8 text-muted-foreground" />
+                                    </div>
+                                    <h3 className="text-lg font-semibold mb-1">No Daily Data Available</h3>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+
+
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Revenue by Category (Donut) */}
                         <FormCard title="Revenue Distribution" description="By Product Category" className="lg:col-span-1">
@@ -338,7 +576,9 @@ export default function ShopProfitReportPage() {
                                             innerRadius={60}
                                             outerRadius={80}
                                             paddingAngle={5}
-                                            label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                                            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                                            // @ts-ignore - recharts PieLabelRenderProps typing issue
+                                            label={({ percent }: { percent: number }) => `${(percent * 100).toFixed(0)}%`}
                                         >
                                             {report.categories.map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -398,6 +638,56 @@ export default function ShopProfitReportPage() {
                         </FormCard>
                     </div>
 
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Low Stock Alerts */}
+                        <Card className={cn(lowStockAlerts.length > 0 ? "border-red-200 bg-red-50/30" : "")}>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-red-600">
+                                    <AlertTriangle className="h-5 w-5" />
+                                    Low Stock Alerts
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {lowStockAlerts.length > 0 ? (
+                                    <DataTable
+                                        data={lowStockAlerts}
+                                        columns={lowStockColumns}
+                                        pagination={false}
+                                    />
+                                ) : (
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        <Package className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                                        <p>All stock levels are healthy.</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        {/* Recent Wastage */}
+                        <Card className={recentWastage.length > 0 ? "border-orange-200 bg-orange-50/30" : ""}>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-orange-600">
+                                    <AlertCircle className="h-5 w-5" />
+                                    Wastage Breakdown
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {recentWastage.length > 0 ? (
+                                    <DataTable
+                                        data={recentWastage}
+                                        columns={wastageColumns}
+                                        pagination={false}
+                                    />
+                                ) : (
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        <ArrowRight className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                                        <p>No wastage recorded for this period.</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
@@ -414,6 +704,59 @@ export default function ShopProfitReportPage() {
                             />
                         </CardContent>
                     </Card>
+
+                    {/* Daily Sales Breakdown Table at the end */}
+                    {report.dailySales.length > 0 && (
+                        <FormCard title="Daily Sales Breakdown" description="Item-wise daily revenue">
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse text-sm whitespace-nowrap">
+                                    <thead>
+                                        <tr className="border-b bg-muted/30">
+                                            <th className="text-left p-3 font-semibold text-muted-foreground sticky left-0 bg-background/95 backdrop-blur z-10 shadow-[1px_0_0_0_#e5e7eb] dark:shadow-[1px_0_0_0_#1f2937]">Day</th>
+                                            {report.productNames.map(pName => (
+                                                <th key={pName} className="text-right p-3 font-semibold">
+                                                    {pName}
+                                                </th>
+                                            ))}
+                                            <th className="text-right p-3 font-semibold text-foreground sticky right-0 bg-background/95 backdrop-blur z-10 shadow-[-1px_0_0_0_#e5e7eb] dark:shadow-[-1px_0_0_0_#1f2937]">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {report.dailySales.map((day, index) => {
+                                            const previousDay = index > 0 ? report.dailySales[index - 1] : null
+                                            return (
+                                                <tr key={day.date} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                                                    <td className="p-3 font-medium sticky left-0 bg-background/95 backdrop-blur z-10 shadow-[1px_0_0_0_#e5e7eb] dark:shadow-[1px_0_0_0_#1f2937]">
+                                                        <span>{new Date(day.date).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })}</span>
+                                                    </td>
+                                                    {report.productNames.map(pName => (
+                                                        <td key={pName} className="text-right p-3">
+                                                            {(day.sales[pName] || 0) > 0 ? `Rs. ${(day.sales[pName] || 0).toLocaleString()}` : '-'}
+                                                        </td>
+                                                    ))}
+                                                    <td className="text-right p-3 font-semibold flex flex-col items-end sticky right-0 bg-background/95 backdrop-blur z-10 shadow-[-1px_0_0_0_#e5e7eb] dark:shadow-[-1px_0_0_0_#1f2937]">
+                                                        <span>Rs. {(day.totalSales || 0).toLocaleString()}</span>
+                                                        {previousDay && getGrowthIndicator(day.totalSales, previousDay.totalSales)}
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })}
+                                        <tr className="bg-muted/50 font-bold border-t-2 border-primary/20">
+                                            <td className="p-4 sticky left-0 bg-background/95 backdrop-blur z-10 shadow-[1px_0_0_0_#e5e7eb] dark:shadow-[1px_0_0_0_#1f2937]">TOTAL</td>
+                                            {report.productNames.map(pName => (
+                                                <td key={pName} className="text-right p-4">
+                                                    Rs. {(report.totalsByProduct[pName] || 0).toLocaleString()}
+                                                </td>
+                                            ))}
+                                            <td className="text-right p-4 text-orange-600 text-lg sticky right-0 bg-background/95 backdrop-blur z-10 shadow-[-1px_0_0_0_#e5e7eb] dark:shadow-[-1px_0_0_0_#1f2937]">
+                                                Rs. {report.dailySales.reduce((sum, d) => sum + d.totalSales, 0).toLocaleString()}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </FormCard>
+                    )}
                 </div>
             )}
         </div>

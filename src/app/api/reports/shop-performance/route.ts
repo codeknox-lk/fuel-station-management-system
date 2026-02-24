@@ -47,7 +47,12 @@ export async function GET(request: NextRequest) {
                 }
             },
             include: {
-                product: true
+                product: true,
+                assignment: {
+                    include: {
+                        shift: true
+                    }
+                }
             }
         })
 
@@ -116,6 +121,55 @@ export async function GET(request: NextRequest) {
             productStats[sale.productId].cost += sale.costPrice * sale.quantity
         })
 
+        // 5.5 Generate chronological daily sales map
+        const dailySalesMap = new Map<string, Map<string, number>>() // date -> productName -> revenue
+        const currD = new Date(startDate)
+        while (currD <= endDate) {
+            const dateKey = `${currD.getFullYear()}-${String(currD.getMonth() + 1).padStart(2, '0')}-${String(currD.getDate()).padStart(2, '0')}`
+            dailySalesMap.set(dateKey, new Map())
+            currD.setDate(currD.getDate() + 1)
+        }
+
+        const allSoldProductNames = new Set<string>()
+
+        sales.forEach(sale => {
+            const shiftEndTime = sale.assignment.shift.endTime || sale.assignment.shift.startTime
+            const sDate = new Date(shiftEndTime)
+            const dateKey = `${sDate.getFullYear()}-${String(sDate.getMonth() + 1).padStart(2, '0')}-${String(sDate.getDate()).padStart(2, '0')}`
+
+            if (dailySalesMap.has(dateKey)) {
+                const dayMap = dailySalesMap.get(dateKey)!
+                const productName = sale.product.name
+                allSoldProductNames.add(productName)
+
+                const currentAmount = dayMap.get(productName) || 0
+                dayMap.set(productName, currentAmount + sale.totalAmount)
+            }
+        })
+
+        const dailySales = Array.from(dailySalesMap.entries()).map(([dateKey, dayMap]) => {
+            const salesRecord: Record<string, number> = {}
+            let totalSales = 0
+
+            allSoldProductNames.forEach(pName => {
+                const amount = dayMap.get(pName) || 0
+                salesRecord[pName] = amount
+                totalSales += amount
+            })
+
+            return {
+                date: dateKey,
+                day: parseInt(dateKey.split('-')[2]),
+                sales: salesRecord,
+                totalSales
+            }
+        })
+
+        const totalsByProduct: Record<string, number> = {}
+        allSoldProductNames.forEach(pName => {
+            totalsByProduct[pName] = dailySales.reduce((sum, day) => sum + (day.sales[pName] || 0), 0)
+        })
+
         // 6. Subtract Wastage from Profit (or record as loss)
         const totalWastageLoss = wastage.reduce((sum, w) => sum + (w.costPrice * w.quantity), 0)
 
@@ -137,6 +191,31 @@ export async function GET(request: NextRequest) {
             categoryStats[p.category].itemsSold += p.quantitySold
         })
 
+        // 9. Format Wastage Breakdown
+        const wastageBreakdown = wastage.map(w => ({
+            id: w.id,
+            productName: w.product.name,
+            quantity: w.quantity,
+            cost: w.costPrice * w.quantity,
+            reason: w.reason,
+            date: w.timestamp.toISOString()
+        })).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+        // 10. Low Stock Alerts
+        const lowStockAlerts = products
+            .map(p => {
+                const currentTotal = p.batches.reduce((sum, b) => sum + b.currentQuantity, 0)
+                return {
+                    productId: p.id,
+                    productName: p.name,
+                    category: p.category,
+                    currentQuantity: currentTotal,
+                    threshold: 10 // Arbitrary threshold for now
+                }
+            })
+            .filter(p => p.currentQuantity <= p.threshold)
+            .sort((a, b) => a.currentQuantity - b.currentQuantity)
+
         return NextResponse.json({
             summary: {
                 totalRevenue: sales.reduce((sum, s) => sum + s.totalAmount, 0),
@@ -147,7 +226,12 @@ export async function GET(request: NextRequest) {
             },
             performance,
             categories: Object.values(categoryStats),
-            valuationBreakdown: categoryValuation
+            valuationBreakdown: categoryValuation,
+            dailySales,
+            totalsByProduct,
+            productNames: Array.from(allSoldProductNames),
+            wastageBreakdown,
+            lowStockAlerts
         })
 
     } catch (error) {

@@ -207,6 +207,71 @@ export async function POST(
         }
       }
 
+      // --- C. Supplier Account Integration ---
+      const supplierId = result.data.supplierId || delivery.supplierId;
+      if (supplierId) {
+        // 1. Get current supplier balance
+        const supplier = await tx.supplier.findUnique({
+          where: { id: supplierId },
+          select: { currentBalance: true }
+        });
+
+        if (supplier) {
+          const balanceBefore = supplier.currentBalance;
+          // Debit the full cost of delivery to the supplier account (Purchase)
+          const balanceAfterPurchase = balanceBefore + (totalCost || 0);
+
+          // Record PURCHASE transaction
+          await tx.supplierTransaction.create({
+            data: {
+              supplierId,
+              type: 'PURCHASE',
+              amount: totalCost || 0,
+              balanceBefore,
+              balanceAfter: balanceAfterPurchase,
+              description: `Fuel Purchase: ${delivery.invoiceNumber || 'No Invoice'}`,
+              deliveryId: delivery.id,
+              organizationId: delivery.organization?.id,
+              transactionDate: new Date(),
+            }
+          });
+
+          // If a payment was made during verification, record it as a SETTLEMENT
+          if (paymentStatus === 'PAID' || paymentStatus === 'PARTIAL') {
+            const paidAmount = totalCost || 0;
+            const balanceAfterPayment = balanceAfterPurchase - paidAmount;
+
+            // Record SETTLEMENT transaction
+            await tx.supplierTransaction.create({
+              data: {
+                supplierId,
+                type: 'SETTLEMENT',
+                amount: paidAmount,
+                balanceBefore: balanceAfterPurchase,
+                balanceAfter: balanceAfterPayment,
+                description: `Settlement for Delivery: ${delivery.invoiceNumber || 'No Invoice'}`,
+                deliveryId: delivery.id,
+                chequeId: chequeId, // Link if it was a cheque
+                organizationId: delivery.organization?.id,
+                transactionDate: new Date(),
+              }
+            });
+
+            // Update supplier with final balance
+            await tx.supplier.update({
+              where: { id: supplierId },
+              data: { currentBalance: balanceAfterPayment }
+            });
+          } else {
+            // Update supplier with purchase balance (debt increases)
+            await tx.supplier.update({
+              where: { id: supplierId },
+              data: { currentBalance: balanceAfterPurchase }
+            });
+          }
+        }
+      }
+
       // B. Update Delivery
       const updatedDelivery = await tx.delivery.update({
         where: { id },
@@ -229,7 +294,8 @@ export async function POST(
           paymentStatus: (paymentType === 'CASH' || paymentType === 'CHEQUE')
             ? 'PAID'
             : (paymentStatus as DeliveryPaymentStatus),
-          chequeId
+          chequeId,
+          supplierId: supplierId || undefined
         }
       })
 

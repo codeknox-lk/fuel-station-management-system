@@ -16,7 +16,8 @@ import {
   GitCompare,
   ShoppingBag,
   CreditCard,
-  ArrowRight
+  ArrowRight,
+  Briefcase
 } from 'lucide-react'
 
 interface ReportCard {
@@ -123,6 +124,16 @@ export default function ReportsPage() {
       color: 'text-amber-600 dark:text-amber-400',
       bg: 'bg-amber-100 dark:bg-amber-900/20',
       bullet: 'bg-amber-500'
+    },
+    {
+      title: 'Office Staff Details',
+      description: 'Office staff profiles & allowances',
+      icon: <Briefcase className="h-6 w-6" />,
+      href: '/reports/office-staff-details',
+      features: ['Allowance breakdown', 'Loan tracking', 'Gross salary view'],
+      color: 'text-purple-600 dark:text-purple-400',
+      bg: 'bg-purple-100 dark:bg-purple-900/20',
+      bullet: 'bg-purple-500'
     }
   ]
 

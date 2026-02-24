@@ -239,6 +239,18 @@ export async function POST(request: NextRequest) {
           data: { currentBalance: balanceAfter }
         })
 
+        // Update bank current balance
+        const bank = await tx.bank.findUnique({ where: { id: bankId } })
+        if (!bank) throw new Error('Bank account not found')
+
+        const bankBalanceBefore = bank.currentBalance || 0
+        const bankBalanceAfter = bankBalanceBefore + amountVal
+
+        await tx.bank.update({
+          where: { id: bankId },
+          data: { currentBalance: bankBalanceAfter }
+        })
+
         // Create bank transaction record
         await tx.bankTransaction.create({
           data: {
@@ -247,6 +259,8 @@ export async function POST(request: NextRequest) {
             organizationId: user.organizationId,
             type: 'DEPOSIT',
             amount: amountVal,
+            balanceBefore: bankBalanceBefore,
+            balanceAfter: bankBalanceAfter,
             description: `Cash deposit from safe${bankDepositNotes ? `: ${bankDepositNotes}` : ''}`,
             referenceNumber: null,
             transactionDate: transactionTimestamp,

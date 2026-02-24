@@ -48,6 +48,7 @@ export default function Stage1_Arrival({ data, onUpdate, onNext, loading }: Prop
     const [tanks, setTanks] = useState<Tank[]>([])
     const [tanksLoading, setTanksLoading] = useState(false)
     const [activeAssignments, setActiveAssignments] = useState<ShiftAssignment[]>([])
+    const [suppliers, setSuppliers] = useState<{ id: string, name: string }[]>([])
     const [error, setError] = useState('')
 
     // Local state for validation
@@ -73,6 +74,16 @@ export default function Stage1_Arrival({ data, onUpdate, onNext, loading }: Prop
                 .finally(() => setTanksLoading(false))
         }
     }, [selectedStation])
+
+    // Fetch Suppliers
+    useEffect(() => {
+        fetch('/api/suppliers')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) setSuppliers(data)
+            })
+            .catch(err => console.error('Failed to fetch suppliers:', err))
+    }, [])
 
     // Fetch active shift assignments when tank selected
     useEffect(() => {
@@ -122,7 +133,7 @@ export default function Stage1_Arrival({ data, onUpdate, onNext, loading }: Prop
     useEffect(() => {
         const isValid =
             !!data.tankId &&
-            !!data.supplier &&
+            !!data.supplierId &&
             !!data.invoiceNumber && // NOW REQUIRED
             (data.invoiceQuantity !== undefined && data.invoiceQuantity >= 0) &&
             (data.beforeDipReading !== undefined && data.beforeDipReading >= 0) // Allow 0
@@ -237,14 +248,30 @@ export default function Stage1_Arrival({ data, onUpdate, onNext, loading }: Prop
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <Label htmlFor="supplier">Supplier *</Label>
-                        <Input
-                            id="supplier"
-                            value={data.supplier}
-                            onChange={(e) => onUpdate({ supplier: e.target.value })}
-                            placeholder="e.g., Lanka IOC PLC"
+                        <Select
+                            value={data.supplierId}
+                            onValueChange={(val) => {
+                                const s = suppliers.find(su => su.id === val)
+                                onUpdate({ supplierId: val, supplier: s?.name || '' })
+                            }}
                             disabled={loading}
-                            required
-                        />
+                        >
+                            <SelectTrigger id="supplier">
+                                <SelectValue placeholder="Choose supplier" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {suppliers.map(s => (
+                                    <SelectItem key={s.id} value={s.id}>
+                                        {s.name}
+                                    </SelectItem>
+                                ))}
+                                {suppliers.length === 0 && (
+                                    <div className="p-2 text-sm text-muted-foreground text-center">
+                                        No suppliers found. Create one in Bank Accounts page.
+                                    </div>
+                                )}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <div>

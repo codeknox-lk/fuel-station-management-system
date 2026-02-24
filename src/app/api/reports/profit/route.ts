@@ -23,18 +23,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid month or year' }, { status: 400 })
     }
 
-    // Business month: 7th of selected month to 6th of next month
-    const startOfMonth = new Date(yearNum, monthNum - 1, 7, 0, 0, 0, 0)
-    const endOfMonth = new Date(yearNum, monthNum, 6, 23, 59, 59, 999)
+    const station = await prisma.station.findUnique({ where: { id: stationId } })
+    const monthStartDay = station?.monthStartDate || 1
+
+    const startOfMonth = new Date(yearNum, monthNum - 1, monthStartDay, 0, 0, 0, 0)
+    const endOfMonth = new Date(yearNum, monthNum, monthStartDay - 1, 23, 59, 59, 999)
 
 
     // Generate report for current month
     const currentMonthData = await calculateProfitForPeriod(stationId, startOfMonth, endOfMonth)
 
     // Generate report for previous month (for comparison)
-    // Previous business month: 7th of prev month to 6th of current month
-    const startOfPrevMonth = new Date(yearNum, monthNum - 2, 7, 0, 0, 0, 0)
-    const endOfPrevMonth = new Date(yearNum, monthNum - 1, 6, 23, 59, 59, 999)
+    const startOfPrevMonth = new Date(yearNum, monthNum - 2, monthStartDay, 0, 0, 0, 0)
+    const endOfPrevMonth = new Date(yearNum, monthNum - 1, monthStartDay - 1, 23, 59, 59, 999)
 
     const prevMonthData = await calculateProfitForPeriod(stationId, startOfPrevMonth, endOfPrevMonth)
 

@@ -20,13 +20,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid month format' }, { status: 400 })
     }
 
-    // Business month: 7th of selected month to 6th of next month
-    const startOfMonth = new Date(year, monthNum - 1, 7, 0, 0, 0, 0)
-    const endOfMonth = new Date(year, monthNum, 6, 23, 59, 59, 999)
+    const station = await prisma.station.findUnique({ where: { id: stationId } })
+    const monthStartDay = station?.monthStartDate || 1
 
-    // Get number of days in the month to initialize arrays correctly
-    // We'll just use 31 days to be safe and simple for the arrays, filtering later if needed
-    const daysInGenericMonth = 31
+    // Business month
+    const startOfMonth = new Date(year, monthNum - 1, monthStartDay, 0, 0, 0, 0)
+    const endOfMonth = new Date(year, monthNum, monthStartDay - 1, 23, 59, 59, 999)
+
+    // Initialize chronological daily variance array
+    const chronologicalDays: string[] = []
+    const currentD = new Date(startOfMonth)
+    while (currentD <= endOfMonth) {
+      chronologicalDays.push(currentD.toISOString().split('T')[0])
+      currentD.setDate(currentD.getDate() + 1)
+    }
 
     // Get all closed shifts for the month
     const shifts = await prisma.shift.findMany({
@@ -71,9 +78,15 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Helper to create empty daily variances
-    const createEmptyDailyVariances = () =>
-      Array.from({ length: daysInGenericMonth }, (_, i) => ({ day: i + 1, variance: 0 }))
+
+    // Create an empty array for a pumper
+    const createEmptyDailyVariances = () => {
+      return chronologicalDays.map((date, index) => ({
+        day: index + 1,
+        date,
+        variance: 0
+      }))
+    }
 
     // Initialize pumper map
     for (const pumper of pumpers) {
@@ -142,14 +155,15 @@ export async function GET(request: NextRequest) {
         }
 
         // Always track daily variance for trend, regardless of threshold
-        const shiftDate = new Date(shift.startTime)
-        const dayOfMonth = shiftDate.getDate()
-        if (dayOfMonth >= 1 && dayOfMonth <= 31) {
+        const shiftDateKey = new Date(shift.startTime).toISOString().split('T')[0]
+        const dateIndex = chronologicalDays.indexOf(shiftDateKey)
+
+        if (dateIndex !== -1) {
           // Update pumper's daily variance
-          pumperData.dailyVariances[dayOfMonth - 1].variance += Math.abs(variance) // Use absolute for visual trend of "error magnitude"
+          pumperData.dailyVariances[dateIndex].variance += Math.abs(variance) // Use absolute for visual trend of "error magnitude"
 
           // Update station's daily variance
-          stationDailyVariances[dayOfMonth - 1].variance += Math.abs(variance)
+          stationDailyVariances[dateIndex].variance += Math.abs(variance)
         }
       }
     }

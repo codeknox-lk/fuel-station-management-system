@@ -88,26 +88,48 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create transaction
-    const transaction = await prisma.bankTransaction.create({
-      data: {
-        bankId,
-        stationId: stationId || null,
-        type: type as BankTransactionType,
-        amount: amount,
-        description,
-        referenceNumber: referenceNumber || null,
-        transactionDate: transactionDate,
-        createdBy,
-        notes: notes || null
-      },
-      include: {
-        bank: { select: { name: true } },
-        station: { select: { name: true } }
-      }
+    // Create transaction within a Prisma transaction to ensure atomicity
+    const newTransaction = await prisma.$transaction(async (tx) => {
+      // Get current balance
+      const bankRecord = await tx.bank.findUnique({
+        where: { id: bankId }
+      })
+
+      if (!bankRecord) throw new Error('Bank not found')
+
+      const balanceBefore = bankRecord.currentBalance || 0
+      const isAddition = ['DEPOSIT', 'TRANSFER_IN', 'INTEREST', 'ADJUSTMENT'].includes(type)
+      const balanceAfter = isAddition ? balanceBefore + amount : balanceBefore - amount
+
+      // Update bank balance
+      await tx.bank.update({
+        where: { id: bankId },
+        data: { currentBalance: balanceAfter }
+      })
+
+      // Create transaction
+      return await tx.bankTransaction.create({
+        data: {
+          bankId,
+          stationId: stationId || null,
+          type: type as BankTransactionType,
+          amount: amount,
+          balanceBefore,
+          balanceAfter,
+          description,
+          referenceNumber: referenceNumber || null,
+          transactionDate: transactionDate,
+          createdBy,
+          notes: notes || null
+        },
+        include: {
+          bank: { select: { name: true } },
+          station: { select: { name: true } }
+        }
+      })
     })
 
-    return NextResponse.json({ transaction }, { status: 201 })
+    return NextResponse.json({ transaction: newTransaction }, { status: 201 })
   } catch (error) {
     console.error('Error creating bank transaction:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

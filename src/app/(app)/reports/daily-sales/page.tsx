@@ -45,9 +45,10 @@ import {
   FileText,
   FileSpreadsheet,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  AlertCircle
 } from 'lucide-react'
-import { exportDailySalesReportPDF, exportDailySalesReportExcel, captureChartAsImage } from '@/lib/exportUtils'
+import { exportDailySalesReportPDF, exportDailySalesReportExcel } from '@/lib/exportUtils'
 import { cn } from '@/lib/utils'
 
 interface DailySalesData {
@@ -96,14 +97,17 @@ const getFuelColor = (fuelName: string): string => {
 
 export default function DailySalesReportPage() {
   const router = useRouter()
-  const { selectedStation, stations } = useStation()
+  const { selectedStation, stations, isAllStations } = useStation()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [salesData, setSalesData] = useState<DailySalesResponse | null>(null)
   const [chartType, setChartType] = useState<'line' | 'bar'>('bar')
 
-  // Month selection - using business month (7th to 6th)
-  const currentBusinessMonth = getCurrentBusinessMonth()
+  const station = stations.find(s => s.id === selectedStation)
+  const monthStartDay = station?.monthStartDate || 1
+
+  // Month selection - using business month
+  const currentBusinessMonth = getCurrentBusinessMonth(monthStartDay)
   const [selectedYear, setSelectedYear] = useState(currentBusinessMonth.year.toString())
   const [selectedMonth, setSelectedMonth] = useState(String(currentBusinessMonth.month).padStart(2, '0'))
 
@@ -189,14 +193,11 @@ export default function DailySalesReportPage() {
     )
   }
 
-  const exportToPDF = async () => {
+  const exportToPDF = () => {
     if (!salesData) return
     const station = stations.find(s => s.id === selectedStation)
     const stationName = station?.name || 'All Stations'
     const monthLabel = `${selectedYear}-${selectedMonth}`
-
-    // Capture chart as image
-    const chartImage = await captureChartAsImage('daily-sales-chart')
 
     const reportData = {
       dailySales: salesData.dailySales,
@@ -204,7 +205,7 @@ export default function DailySalesReportPage() {
       grandTotal: salesData.dailySales.reduce((sum, day) => sum + day.totalSales, 0)
     }
 
-    await exportDailySalesReportPDF(reportData, stationName, monthLabel, chartImage || undefined)
+    exportDailySalesReportPDF(reportData, stationName, monthLabel)
   }
 
   const exportToExcel = () => {
@@ -277,6 +278,14 @@ export default function DailySalesReportPage() {
           </DropdownMenu>
         </div>
       </div>
+
+      {/* All Stations Warning */}
+      {isAllStations && (
+        <div className="flex items-center p-4 text-amber-800 bg-amber-50 rounded-lg dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+          <AlertCircle className="h-5 w-5 mr-3 flex-shrink-0" />
+          <span className="font-medium">Please select a specific station to view this report.</span>
+        </div>
+      )}
 
       {/* Filters */}
       <Card className="bg-muted/30 border-none shadow-none">
@@ -396,7 +405,7 @@ export default function DailySalesReportPage() {
       {salesData && salesData.dailySales.length > 0 ? (
         <FormCard
           title="Daily Revenue Trend by Fuel Type"
-          description={`Business Month: ${formatBusinessMonthRange(getBusinessMonth(parseInt(selectedMonth), parseInt(selectedYear)))}`}
+          description={`Business Month: ${formatBusinessMonthRange(getBusinessMonth(parseInt(selectedMonth), parseInt(selectedYear), monthStartDay))}`}
         >
           <div id="daily-sales-chart" className="w-full h-96 mt-4">
             <ResponsiveContainer width="100%" height="100%">

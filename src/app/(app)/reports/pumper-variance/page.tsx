@@ -29,7 +29,6 @@ import {
 } from 'recharts'
 import {
   AlertCircle,
-  Calculator,
   AlertTriangle,
   CheckCircle,
   XCircle,
@@ -39,8 +38,18 @@ import {
   Activity,
   RefreshCw,
   User,
-  DollarSign
+  DollarSign,
+  Download,
+  FileText,
+  FileSpreadsheet
 } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { exportPumperVariancePDF, exportPumperVarianceExcel } from '@/lib/exportUtils'
 
 
 interface PumperVariance {
@@ -119,11 +128,31 @@ export default function PumperVariancePage() {
   const [error, setError] = useState('')
 
   // Form state
-  const { selectedStation, stations } = useStation()
-  const currentBusinessMonth = getCurrentBusinessMonth()
+  const { selectedStation, stations, isAllStations } = useStation()
+
+  const station = stations.find(s => s.id === selectedStation)
+  const monthStartDay = station?.monthStartDate || 1
+
+  const currentBusinessMonth = getCurrentBusinessMonth(monthStartDay)
   const [selectedMonth, setSelectedMonth] = useState(String(currentBusinessMonth.month).padStart(2, '0'))
   const [selectedYear, setSelectedYear] = useState(String(currentBusinessMonth.year))
 
+
+  const handleExportPDF = () => {
+    if (!pumperVariances.length) return
+    const station = stations.find(s => s.id === selectedStation)
+    const stationName = station?.name || 'All Stations'
+    const monthLabel = `${selectedYear}-${selectedMonth}`
+    exportPumperVariancePDF(pumperVariances, stationName, monthLabel)
+  }
+
+  const handleExportExcel = () => {
+    if (!pumperVariances.length) return
+    const station = stations.find(s => s.id === selectedStation)
+    const stationName = station?.name || 'All Stations'
+    const monthLabel = `${selectedYear}-${selectedMonth}`
+    exportPumperVarianceExcel(pumperVariances, stationName, monthLabel)
+  }
 
   const generateReport = useCallback(async () => {
     if (!selectedStation || !selectedMonth || !selectedYear) {
@@ -373,10 +402,28 @@ export default function PumperVariancePage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={generateReport} disabled={loading}>
+          <Button variant="outline" onClick={generateReport} size="sm" disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" disabled={!pumperVariances.length}>
+                <Download className="h-4 w-4 mr-2" />
+                Export Report
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={handleExportPDF} className="cursor-pointer">
+                <FileText className="mr-2 h-4 w-4 text-red-600" />
+                <span>Export as PDF</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportExcel} className="cursor-pointer">
+                <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" />
+                <span>Export as Excel</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -386,6 +433,14 @@ export default function PumperVariancePage() {
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
+      )}
+
+      {/* All Stations Warning */}
+      {isAllStations && (
+        <div className="flex items-center p-4 text-amber-800 bg-amber-50 rounded-lg dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+          <AlertCircle className="h-5 w-5 mr-3 flex-shrink-0" />
+          <span className="font-medium">Please select a specific station to view this report.</span>
+        </div>
       )}
 
       {/* Filters */}
@@ -424,16 +479,7 @@ export default function PumperVariancePage() {
               </Select>
             </div>
 
-            <div className="ml-auto">
-              <Button onClick={generateReport} disabled={loading || !selectedStation || !selectedMonth || !selectedYear}>
-                {loading ? 'Generating...' : (
-                  <>
-                    <Calculator className="mr-2 h-4 w-4" />
-                    Generate Report
-                  </>
-                )}
-              </Button>
-            </div>
+
           </div>
         </CardContent>
       </Card>

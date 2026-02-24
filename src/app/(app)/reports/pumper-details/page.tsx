@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useStation } from '@/contexts/StationContext'
 import { useRouter } from 'next/navigation'
-import { getCurrentBusinessMonth } from '@/lib/businessMonth'
+import { getCurrentBusinessMonth, getBusinessMonth } from '@/lib/businessMonth'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
@@ -184,8 +184,11 @@ export default function PumperDetailsReport() {
   const [reportData, setReportData] = useState<ReportData | null>(null)
   const [selectedPumper, setSelectedPumper] = useState<string>('all')
 
+  const station = stations.find(s => s.id === selectedStation)
+  const monthStartDay = station?.monthStartDate || 1
+
   // Month selection
-  const currentBusinessMonth = getCurrentBusinessMonth()
+  const currentBusinessMonth = getCurrentBusinessMonth(monthStartDay)
   const [selectedYear, setSelectedYear] = useState(currentBusinessMonth.year.toString())
   const [selectedMonth, setSelectedMonth] = useState(String(currentBusinessMonth.month).padStart(2, '0'))
 
@@ -234,8 +237,8 @@ export default function PumperDetailsReport() {
 
       const year = parseInt(selectedYear)
       const month = parseInt(selectedMonth)
-      const startDate = new Date(year, month - 1, 7)
-      const endDate = new Date(year, month, 6, 23, 59, 59)
+
+      const { startDate, endDate } = getBusinessMonth(month, year, monthStartDay)
 
       const res = await fetch(
         `/api/reports/pumper-details?stationId=${selectedStation}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
@@ -254,7 +257,7 @@ export default function PumperDetailsReport() {
     } finally {
       setLoading(false)
     }
-  }, [selectedStation, selectedYear, selectedMonth])
+  }, [selectedStation, selectedYear, selectedMonth, monthStartDay])
 
   useEffect(() => {
     if (selectedStation) {

@@ -63,6 +63,9 @@ model Organization {
   shopSales                 ShopSale[]
   shopWastages              ShopWastage[]
   subscriptionPayments      SubscriptionPayment[]
+  suppliers                 Supplier[]
+  supplierTransactions      SupplierTransaction[]
+
 
   @@index([slug])
 }
@@ -142,6 +145,7 @@ model Station {
   updatedAt                 DateTime                   @updatedAt
   email                     String?
   openingHours              String?
+  monthStartDate            Int                        @default(1)
   phone                     String?
   organizationId            String?
   bankTransactions          BankTransaction[]
@@ -169,6 +173,7 @@ model Station {
   tanks                     Tank[]
   tankDips                  TankDip[]
   users                     User[]
+  suppliers                 Supplier[]
 
   @@unique([id, organizationId])
   @@index([isActive])
@@ -411,6 +416,8 @@ model Delivery {
   verifiedAt          DateTime?
   verifiedBy          String?
   beforeMeterReadings Json?
+  supplierId          String?
+  supplierAccount     Supplier?             @relation(fields: [supplierId], references: [id])
   station             Station               @relation(fields: [stationId], references: [id])
   tank                Tank                  @relation(fields: [tankId], references: [id])
   organizationId      String?
@@ -424,7 +431,59 @@ model Delivery {
   @@index([organizationId])
   @@index([paymentStatus])
   @@index([chequeId])
+  @@index([supplierId])
+  supplierTransactions SupplierTransaction[]
 }
+
+
+model Supplier {
+  id             String                @id @default(uuid())
+  name           String
+  currentBalance Float                 @default(0)
+  isActive       Boolean               @default(true)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  organizationId String?
+  stationId      String?
+  station        Station?              @relation(fields: [stationId], references: [id])
+  organization   Organization?         @relation(fields: [organizationId], references: [id])
+  transactions   SupplierTransaction[]
+  deliveries     Delivery[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@index([stationId])
+}
+
+model SupplierTransaction {
+  id              String                  @id @default(uuid())
+  supplierId      String
+  type            SupplierTransactionType
+  amount          Float
+  balanceBefore   Float
+  balanceAfter    Float
+  description     String?
+  deliveryId      String?
+  chequeId        String?
+  recordedBy      String                  @default("System")
+  transactionDate DateTime                @default(now())
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  supplier        Supplier                @relation(fields: [supplierId], references: [id])
+  delivery        Delivery?               @relation(fields: [deliveryId], references: [id])
+  cheque          Cheque?                 @relation(fields: [chequeId], references: [id])
+  organizationId  String?
+  organization    Organization?           @relation(fields: [organizationId], references: [id])
+
+  @@unique([id, organizationId])
+  @@index([supplierId])
+  @@index([organizationId])
+  @@index([transactionDate])
+  @@index([deliveryId])
+  @@index([chequeId])
+}
+
+
 
 model Expense {
   id             String        @id @default(uuid())
@@ -578,7 +637,9 @@ model Cheque {
   @@index([receivedDate])
   @@index([chequeDate])
   @@index([organizationId])
+  supplierTransactions SupplierTransaction[]
 }
+
 
 model CreditCustomer {
   id             String          @id @default(uuid())
@@ -834,6 +895,7 @@ model Bank {
   email            String?
   phone            String?
   swiftCode        String?
+  currentBalance   Float           @default(0)
   organizationId   String?
   organization     Organization?     @relation(fields: [organizationId], references: [id])
   bankTransactions BankTransaction[]
@@ -853,6 +915,8 @@ model BankTransaction {
   stationId       String?
   type            BankTransactionType
   amount          Float
+  balanceBefore   Float               @default(0)
+  balanceAfter    Float               @default(0)
   description     String
   referenceNumber String?
   transactionDate DateTime
@@ -1463,4 +1527,12 @@ enum NotificationCategory {
   CREDIT
   POS
   DELIVERY
+  SUPPLIER
 }
+
+enum SupplierTransactionType {
+  PURCHASE
+  SETTLEMENT
+  ADJUSTMENT
+}
+

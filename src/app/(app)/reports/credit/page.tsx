@@ -40,6 +40,7 @@ import {
   RefreshCw,
   Download,
   AlertTriangle,
+  AlertCircle,
   FileText,
   FileSpreadsheet,
   Send,
@@ -120,13 +121,16 @@ const AGING_COLORS = {
 
 export default function CreditReportPage() {
   const router = useRouter()
-  const { selectedStation, stations } = useStation()
+  const { selectedStation, stations, isAllStations } = useStation()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [reportData, setReportData] = useState<CreditCustomerReport | null>(null)
 
+  const station = stations.find(s => s.id === selectedStation)
+  const monthStartDay = station?.monthStartDate || 1
+
   // Month selection - using business month
-  const currentBusinessMonth = getCurrentBusinessMonth()
+  const currentBusinessMonth = getCurrentBusinessMonth(monthStartDay)
   const [selectedYear, setSelectedYear] = useState(currentBusinessMonth.year.toString())
   const [selectedMonth, setSelectedMonth] = useState(String(currentBusinessMonth.month).padStart(2, '0'))
 
@@ -277,6 +281,14 @@ export default function CreditReportPage() {
           </DropdownMenu>
         </div>
       </div>
+
+      {/* All Stations Warning */}
+      {isAllStations && (
+        <div className="flex items-center p-4 text-amber-800 bg-amber-50 rounded-lg dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+          <AlertCircle className="h-5 w-5 mr-3 flex-shrink-0" />
+          <span className="font-medium">Please select a specific station to view this report.</span>
+        </div>
+      )}
 
       {/* Filters */}
       <Card className="bg-muted/30 border-none shadow-none">

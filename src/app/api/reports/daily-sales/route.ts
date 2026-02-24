@@ -15,23 +15,24 @@ export async function GET(request: NextRequest) {
     let startDate: Date
     let endDate: Date
 
+    const station = await prisma.station.findUnique({ where: { id: stationId } })
+    const monthStartDay = station?.monthStartDate || 1
+
     if (month) {
       const [year, monthNum] = month.split('-').map(Number)
-      // Business month: 7th of current month to 6th of next month
-      startDate = new Date(year, monthNum - 1, 7, 0, 0, 0, 0)
-      endDate = new Date(year, monthNum, 6, 23, 59, 59, 999)
+      // Business month
+      startDate = new Date(year, monthNum - 1, monthStartDay, 0, 0, 0, 0)
+      endDate = new Date(year, monthNum, monthStartDay - 1, 23, 59, 59, 999)
     } else {
       const now = new Date()
       const currentDay = now.getDate()
 
-      // If today is before 7th, business month is previous calendar month (7th) to current month (6th)
-      // If today is 7th or after, business month is current month (7th) to next month (6th)
-      if (currentDay < 7) {
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 7, 0, 0, 0, 0)
-        endDate = new Date(now.getFullYear(), now.getMonth(), 6, 23, 59, 59, 999)
+      if (currentDay < monthStartDay) {
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, monthStartDay, 0, 0, 0, 0)
+        endDate = new Date(now.getFullYear(), now.getMonth(), monthStartDay - 1, 23, 59, 59, 999)
       } else {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 7, 0, 0, 0, 0)
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 6, 23, 59, 59, 999)
+        startDate = new Date(now.getFullYear(), now.getMonth(), monthStartDay, 0, 0, 0, 0)
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, monthStartDay - 1, 23, 59, 59, 999)
       }
     }
 

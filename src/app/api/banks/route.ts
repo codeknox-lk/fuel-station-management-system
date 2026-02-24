@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
           contactPerson: true,
           phone: true,
           email: true,
+          currentBalance: true,
           isActive: true,
           createdAt: true,
           updatedAt: true,
@@ -84,6 +85,7 @@ export async function GET(request: NextRequest) {
         contactPerson: true,
         phone: true,
         email: true,
+        currentBalance: true,
         isActive: true,
         createdAt: true,
         updatedAt: true

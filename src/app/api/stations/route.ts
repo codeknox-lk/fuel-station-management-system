@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
         phone: true,
         email: true,
         openingHours: true,
+        monthStartDate: true,
         isActive: true,
         createdAt: true,
         updatedAt: true
@@ -97,10 +98,11 @@ export async function POST(request: NextRequest) {
       phone?: string
       email?: string
       openingHours?: string
+      monthStartDate?: number
     }
     const body = await request.json() as StationBody
 
-    const { name, address, city, phone, email, openingHours } = body
+    const { name, address, city, phone, email, openingHours, monthStartDate } = body
 
     if (!name || !address || !city) {
       return NextResponse.json(
@@ -137,6 +139,7 @@ export async function POST(request: NextRequest) {
         phone: phone || null,
         email: email || null,
         openingHours: openingHours || null,
+        monthStartDate: monthStartDate || 1,
         isActive: true
       }
     })
