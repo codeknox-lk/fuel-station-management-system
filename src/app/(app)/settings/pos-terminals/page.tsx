@@ -292,153 +292,155 @@ export default function POSTerminalsPage() {
       title: 'Total Terminals',
       value: safeTerminals.length.toString(),
       description: 'Registered terminals',
-      icon: <Monitor className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+      icon: <Monitor className="h-5 w-5 text-primary" />
     },
     {
       title: 'Active',
       value: safeTerminals.filter(t => t.isActive).length.toString(),
       description: 'Currently active',
-      icon: <div className="h-5 w-5 bg-green-500/10 dark:bg-green-500/200 rounded-full" />
+      icon: <div className="h-5 w-5 bg-green-500/10 rounded-full" />
     },
     {
       title: 'Inactive',
       value: safeTerminals.filter(t => !t.isActive).length.toString(),
       description: 'Not active',
-      icon: <div className="h-5 w-5 bg-muted0 rounded-full" />
+      icon: <div className="h-5 w-5 bg-muted rounded-full" />
     }
   ]
 
   return (
     <div className="space-y-6 p-6">
-      <div className="bg-gradient-to-r from-cyan-900 via-cyan-800 to-cyan-900 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
-        <div className="relative z-10 flex justify-between items-start">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.push('/settings')} className="text-cyan-100 hover:text-white hover:bg-white/10">
-              <ArrowLeft className="h-6 w-6" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                <Monitor className="h-8 w-8 text-cyan-400" />
-                POS Terminal Management
-              </h1>
-              <p className="text-cyan-100 mt-2 text-lg max-w-2xl">
-                Configure point-of-sale terminals and payment processing devices.
-              </p>
-            </div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => router.push('/settings')} className="hidden md:flex">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <Button variant="outline" size="icon" onClick={() => router.push('/settings')} className="md:hidden">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
+              <Monitor className="h-8 w-8 text-primary" />
+              POS Terminal Management
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Configure point-of-sale terminals and payment processing devices.
+            </p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={resetForm} className="bg-white text-cyan-900 hover:bg-cyan-50">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Terminal
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingTerminal ? 'Edit POS Terminal' : 'Add New POS Terminal'}
-                </DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Label htmlFor="terminalNumber">Terminal Number</Label>
-                  <Input
-                    id="terminalNumber"
-                    value={formData.terminalNumber}
-                    onChange={(e) => setFormData({ ...formData, terminalNumber: e.target.value })}
-                    placeholder="e.g., POS001"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="name">Terminal Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g., Main Counter POS"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="stationId">Station</Label>
-                  <select
-                    id="stationId"
-                    aria-label="Station"
-                    value={formData.stationId}
-                    onChange={(e) => setFormData({ ...formData, stationId: e.target.value })}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    required
-                  >
-                    <option value="">Select Station</option>
-                    {stations.map((station) => (
-                      <option key={station.id} value={station.id}>
-                        {station.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <Label htmlFor="bankId">Bank</Label>
-                  <select
-                    id="bankId"
-                    aria-label="Bank"
-                    value={formData.bankId}
-                    onChange={(e) => setFormData({ ...formData, bankId: e.target.value })}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="">Select Bank (Optional)</option>
-                    {banks && banks.length > 0 ? (
-                      banks.map((bank) => (
-                        <option key={bank.id} value={bank.id}>
-                          {bank.name}{bank.accountNumber ? ` - ${bank.accountNumber}` : ''}
-                        </option>
-                      ))
-                    ) : (
-                      <option disabled>Loading banks...</option>
-                    )}
-                  </select>
-                </div>
-
-                {editingTerminal && (
-                  <div>
-                    <Label htmlFor="isActive">Status</Label>
-                    <select
-                      id="isActive"
-                      aria-label="Status"
-                      value={formData.isActive ? 'true' : 'false'}
-                      onChange={(e) => setFormData({ ...formData, isActive: e.target.value === 'true' })}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      required
-                    >
-                      <option value="true">Active</option>
-                      <option value="false">Inactive</option>
-                    </select>
-                  </div>
-                )}
-
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit">
-                    {editingTerminal ? 'Update Terminal' : 'Create Terminal'}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
         </div>
+
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={resetForm}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Terminal
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                {editingTerminal ? 'Edit POS Terminal' : 'Add New POS Terminal'}
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="terminalNumber">Terminal Number</Label>
+                <Input
+                  id="terminalNumber"
+                  value={formData.terminalNumber}
+                  onChange={(e) => setFormData({ ...formData, terminalNumber: e.target.value })}
+                  placeholder="e.g., POS001"
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="name">Terminal Name</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g., Main Counter POS"
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="stationId">Station</Label>
+                <select
+                  id="stationId"
+                  aria-label="Station"
+                  value={formData.stationId}
+                  onChange={(e) => setFormData({ ...formData, stationId: e.target.value })}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  required
+                >
+                  <option value="">Select Station</option>
+                  {stations.map((station) => (
+                    <option key={station.id} value={station.id}>
+                      {station.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <Label htmlFor="bankId">Bank</Label>
+                <select
+                  id="bankId"
+                  aria-label="Bank"
+                  value={formData.bankId}
+                  onChange={(e) => setFormData({ ...formData, bankId: e.target.value })}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="">Select Bank (Optional)</option>
+                  {banks && banks.length > 0 ? (
+                    banks.map((bank) => (
+                      <option key={bank.id} value={bank.id}>
+                        {bank.name}{bank.accountNumber ? ` - ${bank.accountNumber}` : ''}
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled>Loading banks...</option>
+                  )}
+                </select>
+              </div>
+
+              {editingTerminal && (
+                <div>
+                  <Label htmlFor="isActive">Status</Label>
+                  <select
+                    id="isActive"
+                    aria-label="Status"
+                    value={formData.isActive ? 'true' : 'false'}
+                    onChange={(e) => setFormData({ ...formData, isActive: e.target.value === 'true' })}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    required
+                  >
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                  </select>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-4">
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  {editingTerminal ? 'Update Terminal' : 'Create Terminal'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {stats.map((stat, index) => (
-          <Card key={index} className="bg-card shadow-sm border">
+          <Card key={index}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -446,7 +448,7 @@ export default function POSTerminalsPage() {
                   <div className="text-sm font-medium text-foreground">{stat.title}</div>
                   <div className="text-xs text-muted-foreground">{stat.description}</div>
                 </div>
-                <div className="flex-shrink-0 p-2 bg-muted rounded-full">
+                <div className="flex-shrink-0">
                   {stat.icon}
                 </div>
               </div>
@@ -456,7 +458,7 @@ export default function POSTerminalsPage() {
       </div>
 
       {/* Terminals Table */}
-      <FormCard title="POS Terminals" description="Manage point-of-sale terminals and payment processing devices" className="bg-card border">
+      <FormCard title="POS Terminals" description="Manage point-of-sale terminals and payment processing devices">
         <DataTable
           data={safeTerminals}
           columns={columns}

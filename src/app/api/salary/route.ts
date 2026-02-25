@@ -345,19 +345,34 @@ export async function GET(request: NextRequest) {
             monthlyRental: l.monthlyRental,
             status: l.status,
             createdAt: l.createdAt,
-            pumperName: l.pumperName
+            pumperName: l.pumperName,
+            reason: l.reason
           }))
         )
       }
 
-      // Calculate monthly loan rental deductions (not total loan amount)
-      // All loans in pumperLoansFromRecords are already active and created before endDate
-      // Sum monthly rental amounts from all active loans
-      const totalMonthlyRental = pumperLoansFromRecords.reduce((sum, loan) => {
+      // Categorize deductions from loan records
+      // If reason starts with [ADVANCE], it's an advance
+      // Otherwise it's a loan
+      let safeAdvances = 0
+      let safeLoans = 0
+
+      pumperLoansFromRecords.forEach(loan => {
+        const isAdvance = loan.reason.startsWith('[ADVANCE]')
         const rental = loan.monthlyRental || 0
-        console.log(`[Salary API] Loan ${loan.id}: monthlyRental = ${rental}`)
-        return sum + rental
-      }, 0)
+
+        if (isAdvance) {
+          safeAdvances += rental
+          console.log(`[Salary API] Accounted as ADVANCE: ${loan.id} (rental: ${rental})`)
+        } else {
+          safeLoans += rental
+          console.log(`[Salary API] Accounted as LOAN: ${loan.id} (rental: ${rental})`)
+        }
+      })
+
+      // Add shift-based advances to safe-issued advances
+      totalAdvances += safeAdvances
+      const totalLoans = safeLoans
 
       // Calculate total outstanding loan amount (sum of remaining balances)
       const totalLoanAmount = pumperLoansFromRecords.reduce((sum, loan) => {
@@ -365,12 +380,6 @@ export async function GET(request: NextRequest) {
         const remainingAmount = loan.amount - paidAmount
         return sum + remainingAmount
       }, 0)
-
-      // Note: Safe transactions for pumper loans are now tracked via LoanPumper records
-      // We no longer count safe transactions separately for monthly rental calculation
-      // Loans created from safe page now create LoanPumper records with monthlyRental
-
-      const totalLoans = totalMonthlyRental // Use monthly rental instead of loan amount
 
       if (totalLoans > 0) {
         console.log(`[Salary API] Total monthly rental for ${pumper.name}: Rs. ${totalLoans}`)

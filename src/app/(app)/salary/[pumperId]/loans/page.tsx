@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useStation } from '@/contexts/StationContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,7 @@ import {
   CreditCard,
   DollarSign
 } from 'lucide-react'
-import Link from 'next/link'
+
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -19,12 +19,11 @@ import { MoneyInput } from '@/components/inputs/MoneyInput'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 export default function PumperLoansPage() {
-  const params = useParams()
   const searchParams = useSearchParams()
+  const router = useRouter()
 
   const { selectedStation } = useStation()
 
-  const pumperId = useMemo(() => (params?.pumperId as string) || '', [params])
   const pumperName = useMemo(() => searchParams?.get('pumperName') || 'Unknown', [searchParams])
 
   interface Loan {
@@ -200,20 +199,19 @@ export default function PumperLoansPage() {
   }, 0)
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center gap-4">
+        <Button variant="outline" onClick={() => router.back()}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Link href={`/salary/${pumperId}`}>
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Salary
-              </Button>
-            </Link>
-          </div>
-          <h1 className="text-3xl font-bold">Loan Management - {pumperName}</h1>
-          <p className="text-muted-foreground mt-1">View and manage all loans and payments</p>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <CreditCard className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+            Loan Management
+          </h1>
+          <p className="text-muted-foreground mt-1">{pumperName} - View and manage loans</p>
         </div>
       </div>
 

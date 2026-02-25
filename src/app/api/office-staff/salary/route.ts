@@ -88,31 +88,40 @@ export async function GET(request: NextRequest) {
     const monthStartDate = new Date(year, monthNum - 1, 1)
     const monthEndDate = new Date(year, monthNum, 0, 23, 59, 59, 999) // Last day of the month
 
-    // Get loan records for office staff (we'll use external loans or create office staff loans later)
-    // For now, we'll check external loans by matching names
-    interface ExternalLoan {
+    // Get active loan records for office staff
+    interface OfficeStaffLoan {
+      id: string;
+      staffName: string;
       amount: number;
-      borrowerName: string;
+      monthlyRental: number | null;
+      status: string;
+      reason: string;
     }
-    let externalLoans: ExternalLoan[] = []
+    let officeStaffLoans: OfficeStaffLoan[] = []
     try {
-      externalLoans = await prisma.loanExternal.findMany({
+      officeStaffLoans = await prisma.loanOfficeStaff.findMany({
         where: {
           stationId,
           status: 'ACTIVE',
           createdAt: {
             lte: monthEndDate // Loans created before or during the month
           }
+        },
+        select: {
+          id: true,
+          staffName: true,
+          amount: true,
+          monthlyRental: true,
+          status: true,
+          reason: true
         }
       })
-    } catch (loanError) {
-      console.error('Error fetching external loans for office staff:', loanError)
-      // Continue without loans if there's an error
-      externalLoans = []
+    } catch (loanCategoryError) {
+      console.error('Error fetching office staff loans:', loanCategoryError)
+      officeStaffLoans = []
     }
 
-    // Fetch all advance expenses once for the month
-
+    // Fetch all advance expenses once for the month (Legacy fallback)
     interface Expense {
       amount: number;
       description: string | null;
@@ -134,7 +143,7 @@ export async function GET(request: NextRequest) {
         }
       })
     } catch (expenseError) {
-      console.error('Error fetching advances for office staff:', expenseError)
+      console.error('Error fetching legacy advances for office staff:', expenseError)
       advanceExpenses = []
     }
 
@@ -155,17 +164,32 @@ export async function GET(request: NextRequest) {
       const grossSalary = baseSalary + totalAllowances
 
       // Calculate advances from expenses (match by staff name in description or paidBy field)
-      const staffAdvances = advanceExpenses.filter(expense =>
+      const staffAdvancesFromExpenses = advanceExpenses.filter(expense =>
         expense.description?.toLowerCase().includes(staff.name.toLowerCase()) ||
         expense.paidBy?.toLowerCase().includes(staff.name.toLowerCase())
       )
-      const advances = staffAdvances.reduce((sum, expense) => sum + (expense.amount || 0), 0)
+      const legacyAdvances = staffAdvancesFromExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0)
 
-      // Calculate loans (matching by name from external loans)
-      const staffLoans = externalLoans.filter(loan =>
-        loan.borrowerName.toLowerCase().trim() === staff.name.toLowerCase().trim()
+      // Calculate categories from new loan records (distinguished by reason prefix)
+      const pumperLoansFromRecords = officeStaffLoans.filter(loan =>
+        loan.staffName.toLowerCase().trim() === staff.name.toLowerCase().trim()
       )
-      const loans = staffLoans.reduce((sum, loan) => sum + (loan.amount || 0), 0)
+
+      let safeAdvances = 0
+      let safeLoans = 0
+
+      pumperLoansFromRecords.forEach(loan => {
+        const isAdvance = loan.reason?.startsWith('[ADVANCE]')
+        const rental = loan.monthlyRental || 0
+        if (isAdvance) {
+          safeAdvances += rental
+        } else {
+          safeLoans += rental
+        }
+      })
+
+      const advances = legacyAdvances + safeAdvances
+      const loans = safeLoans
 
       // Absent days deduction
       // Note: Absent days tracking is a future feature that will require:

@@ -107,12 +107,12 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 md:p-6">
       {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-orange-600 to-orange-700 rounded-lg p-6 text-white shadow-lg mx-1">
+      <div className="bg-gradient-to-r from-orange-600 to-orange-700 rounded-lg p-4 md:p-6 text-white shadow-lg">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold mb-2">
+            <h1 className="text-xl md:text-3xl font-bold mb-1 md:mb-2">
               Welcome, {organization?.name || 'Dashboard'}
             </h1>
             <p className="text-orange-100 flex items-center gap-2">

@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
         name,
         category,
         description,
-        icon: icon || '⛽',
+        icon: icon || 'fuel',
         sortOrder: (maxSortOrder._max.sortOrder || 0) + 1,
       },
     })

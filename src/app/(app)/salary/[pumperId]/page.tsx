@@ -1031,14 +1031,15 @@ export default function PumperSalaryDetailsPage() {
             <p className="text-sm text-muted-foreground">
               Loans are automatically deducted from salary each month based on monthly rental amount. You can update the monthly rental below.
             </p>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => router.push(`/salary/${pumperId}/loans?pumperName=${encodeURIComponent(pumperName)}`)}
-            >
-              <CreditCard className="h-4 w-4 mr-2" />
-              Manage Loans
-            </Button>
+            <Link href={`/salary/${pumperId}/loans?pumperName=${encodeURIComponent(pumperName)}`} className="w-full">
+              <Button
+                variant="outline"
+                className="w-full"
+              >
+                <CreditCard className="h-4 w-4 mr-2" />
+                Manage Loans
+              </Button>
+            </Link>
           </div>
         </CardContent>
       </Card>

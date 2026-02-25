@@ -85,19 +85,19 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 md:p-8 bg-gray-50">
       {/* Floating Rounded Container */}
-      <div className="w-full max-w-5xl grid lg:grid-cols-2 rounded-[2rem] overflow-hidden shadow-2xl bg-white min-h-[600px]">
+      <div className="w-full max-w-5xl grid lg:grid-cols-2 rounded-3xl lg:rounded-[2rem] overflow-hidden shadow-2xl bg-white min-h-[600px]">
 
         {/* Left: Form */}
-        <div className="flex flex-col justify-center px-8 lg:px-16 py-12 order-2 lg:order-1 relative">
+        <div className="flex flex-col justify-center px-6 lg:px-16 py-10 lg:py-12 order-2 lg:order-1 relative">
           <div className="w-full max-w-sm mx-auto">
             {/* Logo */}
-            <div className="flex items-center gap-3 mb-10">
+            <div className="flex items-center gap-3 mb-6 lg:mb-10">
               <Image
                 src="/images/fuelsync-logo-full.png"
                 alt="FuelSync Logo"
                 width={300}
                 height={100}
-                className="h-24 w-auto object-contain"
+                className="h-16 lg:h-24 w-auto object-contain"
                 priority
               />
             </div>

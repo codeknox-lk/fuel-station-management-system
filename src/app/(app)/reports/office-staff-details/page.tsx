@@ -25,9 +25,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
     Users,
-    ArrowLeft,
     RefreshCw,
     Download,
+    ArrowLeft,
+    Activity,
     AlertTriangle,
     AlertCircle,
     FileText,
@@ -35,9 +36,7 @@ import {
     Wallet,
     CheckCircle2,
     Briefcase,
-    PhoneCall,
-    Mail,
-    Calendar
+    ArrowRight
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import * as XLSX from 'xlsx'
@@ -51,6 +50,14 @@ interface ActiveLoan {
     monthlyRental: number
     createdAt: string
     dueDate: string | null
+}
+
+interface StaffPayment {
+    id: string
+    date: string
+    amount: number
+    method: string
+    status: string
 }
 
 interface StaffDetail {
@@ -73,6 +80,7 @@ interface StaffDetail {
     totalLoanBalance: number
     activeLoansCount: number
     activeLoans: ActiveLoan[]
+    recentPayments: StaffPayment[]
 }
 
 interface ReportData {
@@ -256,7 +264,7 @@ export default function OfficeStaffDetailsReport() {
                             Office Staff Details
                         </h1>
                         <p className="text-muted-foreground mt-1">
-                            Profiles, allowances and financial records for office staff
+                            Detailed professional profiles and financial records for office personnel
                         </p>
                     </div>
                 </div>
@@ -328,10 +336,10 @@ export default function OfficeStaffDetailsReport() {
                             <Label className="text-xs font-semibold uppercase text-muted-foreground mb-1 block">Employee Profile</Label>
                             <Select value={selectedStaff} onValueChange={setSelectedStaff}>
                                 <SelectTrigger className="bg-background">
-                                    <SelectValue placeholder="All Staff Members" />
+                                    <SelectValue placeholder="All Staff" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">View All Staff Members</SelectItem>
+                                    <SelectItem value="all">View All Staff</SelectItem>
                                     {reportData?.staffDetails.map(staff => (
                                         <SelectItem key={staff.id} value={staff.id}>
                                             {staff.name} - {staff.employeeId}
@@ -364,58 +372,57 @@ export default function OfficeStaffDetailsReport() {
                                     </div>
                                     <Badge variant="outline" className="text-white border-white/40 bg-white/10">Total Staff</Badge>
                                 </div>
-                                <div className="space-y-1">
-                                    <p className="text-3xl font-bold">{reportData.summary.totalStaff}</p>
-                                    <p className="text-sm text-purple-100 flex items-center justify-between">
-                                        <span>Active: {reportData.summary.activeStaff}</span>
-                                        <span>{reportData.summary.managers} Managers</span>
-                                    </p>
-                                </div>
+                                <div className="text-3xl font-bold mb-1">{reportData.summary.totalStaff}</div>
+                                <p className="text-xs text-purple-100 flex items-center gap-1">
+                                    <CheckCircle2 className="h-3 w-3" />
+                                    {reportData.summary.activeStaff} Active Personnel
+                                </p>
                             </CardContent>
                         </Card>
 
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Payroll</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-foreground">
-                                    Rs. {(reportData.summary.totalGrossSalary || 0).toLocaleString()}
+                        <Card className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white border-none shadow-md">
+                            <CardContent className="p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="p-2 bg-white/20 rounded-lg">
+                                        <Activity className="h-6 w-6 text-white" />
+                                    </div>
+                                    <Badge variant="outline" className="text-white border-white/40 bg-white/10">Role Mix</Badge>
                                 </div>
-                                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                                    <Wallet className="h-3 w-3" />
-                                    <span>Combined gross salary</span>
-                                </div>
+                                <div className="text-3xl font-bold mb-1">{reportData.summary.managers}</div>
+                                <p className="text-xs text-blue-100 italic">Managers / {reportData.summary.officeStaffCount} Staff</p>
                             </CardContent>
                         </Card>
 
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-muted-foreground">Roles</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex flex-wrap gap-2">
-                                    <Badge variant="outline" className={`${roleColors.MANAGER} border-transparent`}>
-                                        {reportData.summary.managers} Managers
-                                    </Badge>
-                                    <Badge variant="outline" className={`${roleColors.OFFICE_STAFF} border-transparent`}>
-                                        {reportData.summary.officeStaffCount} Office Staff
-                                    </Badge>
+                        <Card className="bg-gradient-to-br from-green-500 to-emerald-600 text-white border-none shadow-md">
+                            <CardContent className="p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="p-2 bg-white/20 rounded-lg">
+                                        <Wallet className="h-6 w-6 text-white" />
+                                    </div>
+                                    <Badge variant="outline" className="text-white border-white/40 bg-white/10">Total Payroll</Badge>
                                 </div>
+                                <div className="text-2xl font-bold mb-1">Rs. {reportData.summary.totalGrossSalary.toLocaleString()}</div>
+                                <p className="text-xs text-green-100">Monthly Gross Commitment</p>
                             </CardContent>
                         </Card>
 
-                        <Card>
+                        <Card className="bg-white border-none shadow-md dark:bg-slate-900 overflow-hidden relative">
+                            <div className="absolute top-0 right-0 p-3 opacity-10">
+                                <AlertTriangle className="h-12 w-12 text-red-500" />
+                            </div>
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-muted-foreground">Financial Health</CardTitle>
+                                <CardTitle className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1">
+                                    Loan Exposure
+                                    <AlertTriangle className="h-3 w-3 text-red-500" />
+                                </CardTitle>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="space-y-3">
                                 <div className="text-2xl font-bold text-foreground">
                                     Rs. {(reportData.summary.totalLoanBalance || 0).toLocaleString()}
                                 </div>
-                                <div className="flex items-center gap-1 text-xs text-red-600 mt-1">
-                                    <AlertTriangle className="h-3 w-3" />
-                                    <span>{reportData.summary.totalActiveLoans} Active Loans</span>
+                                <div className="flex items-center gap-1 text-[10px] text-red-600">
+                                    <AlertCircle className="h-3 w-3" />
+                                    <span>{reportData.summary.totalActiveLoans} Active Staff Loans</span>
                                 </div>
                             </CardContent>
                         </Card>
@@ -423,159 +430,241 @@ export default function OfficeStaffDetailsReport() {
                 </>
             )}
 
-            {/* Individual Staff View */}
+            {/* Individual Staff View - Profile Card Style */}
             {selectedStaffData && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Left Column - Profile Card */}
-                    <Card className="lg:col-span-1 overflow-hidden border-none shadow-md">
-                        <div className="h-32 bg-gradient-to-br from-purple-800 to-violet-900 relative">
-                            <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-background to-transparent"></div>
-                        </div>
-                        <CardContent className="relative pt-0 px-6 pb-6">
-                            <div className="flex justify-between items-end -mt-12 mb-6">
-                                <div className="h-24 w-24 rounded-full border-4 border-background bg-purple-100 flex items-center justify-center text-purple-600 text-3xl font-bold shadow-sm">
-                                    {selectedStaffData.name.charAt(0)}
+                    <Card className="lg:col-span-1 border-none shadow-md">
+                        <div className="h-2 bg-gradient-to-r from-purple-500 to-violet-400 rounded-t-xl"></div>
+                        <CardContent className="p-4 space-y-4">
+                            {/* Name + badge */}
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <h2 className="text-lg font-bold text-foreground leading-tight">{selectedStaffData.name}</h2>
+                                    <p className="text-xs text-muted-foreground mt-0.5">{selectedStaffData.employeeId} · {selectedStaffData.role.replace('_', ' ')}</p>
+                                    {selectedStaffData.phone && (
+                                        <p className="text-[11px] text-muted-foreground">{selectedStaffData.phone}</p>
+                                    )}
                                 </div>
-                                <Badge className={`${roleColors[selectedStaffData.role] || ''} text-sm px-3 py-1`}>
-                                    {selectedStaffData.role.replace('_', ' ')}
+                                <Badge className={`${roleColors[selectedStaffData.role]} shrink-0 text-[10px] px-2 py-0.5`}>
+                                    {selectedStaffData.isActive ? 'ACTIVE' : 'INACTIVE'}
                                 </Badge>
                             </div>
 
-                            <div className="mb-6">
-                                <h2 className="text-2xl font-bold text-foreground">{selectedStaffData.name}</h2>
-                                <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                                    <span>ID: {selectedStaffData.employeeId}</span>
-                                    {!selectedStaffData.isActive && (
-                                        <Badge variant="outline" className="text-red-600 border-red-300 text-xs">Inactive</Badge>
-                                    )}
-                                </p>
+                            {/* Quick stats / Professional Mix */}
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="rounded-lg bg-purple-50 dark:bg-purple-900/10 p-2 text-center">
+                                    <div className="text-[10px] text-muted-foreground uppercase font-semibold mb-0.5">Role</div>
+                                    <div className="text-sm font-bold text-purple-700 dark:text-purple-400">
+                                        {selectedStaffData.role === 'MANAGER' ? 'Management' : 'Office'}
+                                    </div>
+                                </div>
+                                <div className="rounded-lg bg-blue-50 dark:bg-blue-900/10 p-2 text-center">
+                                    <div className="text-[10px] text-muted-foreground uppercase font-semibold mb-0.5">Commitment</div>
+                                    <div className="text-sm font-bold text-blue-700 dark:text-blue-400">
+                                        Full Time
+                                    </div>
+                                </div>
                             </div>
 
-                            <div className="space-y-3 text-sm">
-                                {selectedStaffData.phone && (
-                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                        <PhoneCall className="h-4 w-4" />
-                                        <span>{selectedStaffData.phone}</span>
-                                    </div>
-                                )}
-                                {selectedStaffData.email && (
-                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                        <Mail className="h-4 w-4" />
-                                        <span>{selectedStaffData.email}</span>
-                                    </div>
-                                )}
-                                {selectedStaffData.hireDate && (
-                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                        <Calendar className="h-4 w-4" />
-                                        <span>Joined {new Date(selectedStaffData.hireDate).toLocaleDateString()}</span>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="space-y-2 pt-4 border-t mt-4">
-                                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                    <Wallet className="h-4 w-4" /> Salary Breakdown
+                            {/* Financial Status */}
+                            <div className="space-y-1.5 border-t pt-3">
+                                <h3 className="text-xs font-semibold text-foreground flex items-center gap-2 mb-1">
+                                    <Wallet className="h-3 w-3" /> Financial Status
                                 </h3>
-                                <div className="flex justify-between text-sm">
+                                <div className="flex justify-between text-xs">
                                     <span className="text-muted-foreground">Base Salary</span>
-                                    <span className="font-medium">Rs. {selectedStaffData.baseSalary.toLocaleString()}</span>
+                                    <span className="font-medium font-mono">Rs. {selectedStaffData.baseSalary.toLocaleString()}</span>
                                 </div>
                                 {selectedStaffData.specialAllowance > 0 && (
-                                    <div className="flex justify-between text-sm">
+                                    <div className="flex justify-between text-xs">
                                         <span className="text-muted-foreground">Special Allowance</span>
-                                        <span className="font-medium text-green-600">+Rs. {selectedStaffData.specialAllowance.toLocaleString()}</span>
+                                        <span className="font-medium text-green-600 font-mono">+Rs. {selectedStaffData.specialAllowance.toLocaleString()}</span>
                                     </div>
                                 )}
                                 {selectedStaffData.medicalAllowance > 0 && (
-                                    <div className="flex justify-between text-sm">
+                                    <div className="flex justify-between text-xs">
                                         <span className="text-muted-foreground">Medical</span>
-                                        <span className="font-medium text-green-600">+Rs. {selectedStaffData.medicalAllowance.toLocaleString()}</span>
+                                        <span className="font-medium text-green-600 font-mono">+Rs. {selectedStaffData.medicalAllowance.toLocaleString()}</span>
                                     </div>
                                 )}
                                 {selectedStaffData.holidayAllowance > 0 && (
-                                    <div className="flex justify-between text-sm">
+                                    <div className="flex justify-between text-xs">
                                         <span className="text-muted-foreground">Holiday</span>
-                                        <span className="font-medium text-green-600">+Rs. {selectedStaffData.holidayAllowance.toLocaleString()}</span>
+                                        <span className="font-medium text-green-600 font-mono">+Rs. {selectedStaffData.holidayAllowance.toLocaleString()}</span>
                                     </div>
                                 )}
                                 {selectedStaffData.fuelAllowance > 0 && (
-                                    <div className="flex justify-between text-sm">
+                                    <div className="flex justify-between text-xs">
                                         <span className="text-muted-foreground">Fuel</span>
-                                        <span className="font-medium text-green-600">+Rs. {selectedStaffData.fuelAllowance.toLocaleString()}</span>
+                                        <span className="font-medium text-green-600 font-mono">+Rs. {selectedStaffData.fuelAllowance.toLocaleString()}</span>
                                     </div>
                                 )}
                                 {selectedStaffData.otherAllowances > 0 && (
-                                    <div className="flex justify-between text-sm">
+                                    <div className="flex justify-between text-xs">
                                         <span className="text-muted-foreground">Other</span>
-                                        <span className="font-medium text-green-600">+Rs. {selectedStaffData.otherAllowances.toLocaleString()}</span>
+                                        <span className="font-medium text-green-600 font-mono">+Rs. {selectedStaffData.otherAllowances.toLocaleString()}</span>
                                     </div>
                                 )}
-                                <div className="flex justify-between text-sm border-t pt-2 mt-2">
+                                <div className="flex justify-between text-xs border-t pt-1.5 mt-0.5">
                                     <span className="font-semibold text-foreground">Gross Salary</span>
-                                    <span className="font-bold text-purple-600">Rs. {selectedStaffData.grossSalary.toLocaleString()}</span>
+                                    <span className="font-bold text-purple-600 font-mono text-sm">
+                                        Rs. {selectedStaffData.grossSalary.toLocaleString()}
+                                    </span>
                                 </div>
                                 {selectedStaffData.totalLoanBalance > 0 && (
-                                    <div className="flex justify-between text-sm">
+                                    <div className="flex justify-between text-xs">
                                         <span className="text-muted-foreground">Loan Balance</span>
-                                        <span className="font-medium text-red-600">Rs. {selectedStaffData.totalLoanBalance.toLocaleString()}</span>
+                                        <span className="font-medium text-red-600 font-mono">Rs. {selectedStaffData.totalLoanBalance.toLocaleString()}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Contact & Info */}
+                            <div className="space-y-1.5 border-t pt-3">
+                                <h3 className="text-xs font-semibold text-foreground flex items-center gap-2 mb-1">
+                                    <Users className="h-3 w-3" /> Professional Info
+                                </h3>
+                                {selectedStaffData.email && (
+                                    <div className="flex justify-between text-xs">
+                                        <span className="text-muted-foreground">Email</span>
+                                        <span className="text-foreground truncate ml-4">{selectedStaffData.email}</span>
+                                    </div>
+                                )}
+                                {selectedStaffData.hireDate && (
+                                    <div className="flex justify-between text-xs">
+                                        <span className="text-muted-foreground">Joined</span>
+                                        <span className="text-foreground">{new Date(selectedStaffData.hireDate).toLocaleDateString()}</span>
                                     </div>
                                 )}
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* Right Column - Loans */}
+                    {/* Middle & Right Column - Stats & History */}
                     <div className="lg:col-span-2 space-y-6">
-                        <div className="grid grid-cols-2 gap-4">
-                            <Card>
-                                <CardContent className="p-6">
-                                    <div className="text-xs text-muted-foreground uppercase font-semibold mb-1">Gross Monthly</div>
-                                    <div className="text-2xl font-bold text-purple-600">Rs. {selectedStaffData.grossSalary.toLocaleString()}</div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Card className="h-full">
+                                <CardHeader className="py-3">
+                                    <CardTitle className="text-sm flex items-center gap-2">
+                                        <Activity className="h-4 w-4 text-purple-600" />
+                                        Salary Overview
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-4">
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between text-sm">
+                                                <span className="font-medium">Base Proportion</span>
+                                                <span className="text-muted-foreground">{((selectedStaffData.baseSalary / selectedStaffData.grossSalary) * 100).toFixed(0)}%</span>
+                                            </div>
+                                            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-purple-500 dark:bg-purple-400"
+                                                    style={{ width: `${(selectedStaffData.baseSalary / selectedStaffData.grossSalary) * 100}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between text-sm">
+                                                <span className="font-medium">Allowances</span>
+                                                <span className="text-muted-foreground">{((selectedStaffData.totalAllowances / selectedStaffData.grossSalary) * 100).toFixed(0)}%</span>
+                                            </div>
+                                            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-green-500 dark:bg-green-400"
+                                                    style={{ width: `${(selectedStaffData.totalAllowances / selectedStaffData.grossSalary) * 100}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </CardContent>
                             </Card>
-                            <Card>
-                                <CardContent className="p-6">
-                                    <div className="text-xs text-muted-foreground uppercase font-semibold mb-1">Total Allowances</div>
-                                    <div className="text-2xl font-bold text-green-600">Rs. {selectedStaffData.totalAllowances.toLocaleString()}</div>
+
+                            <Card className="h-full">
+                                <CardHeader className="py-3">
+                                    <CardTitle className="text-sm flex items-center gap-2">
+                                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                                        Active Loans
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    {selectedStaffData.activeLoans.length > 0 ? (
+                                        <div className="space-y-3">
+                                            {selectedStaffData.activeLoans.map(loan => (
+                                                <div key={loan.id} className="flex justify-between items-center p-2 border rounded-lg bg-red-50/30 dark:bg-red-900/10">
+                                                    <div>
+                                                        <div className="font-medium text-xs truncate max-w-[120px]">{loan.description}</div>
+                                                        <div className="text-[10px] text-muted-foreground font-mono">Bal: Rs. {loan.balance.toLocaleString()}</div>
+                                                    </div>
+                                                    <Badge variant="outline" className="text-[10px] px-1 h-5 border-red-200 text-red-700">ACTIVE</Badge>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center h-24 text-muted-foreground">
+                                            <CheckCircle2 className="h-6 w-6 mb-1 text-green-500 opacity-50" />
+                                            <p className="text-xs">No active loans</p>
+                                        </div>
+                                    )}
                                 </CardContent>
                             </Card>
                         </div>
 
+                        {/* Payment History Section */}
                         <Card>
-                            <CardHeader>
-                                <CardTitle className="text-base">Active Loans</CardTitle>
-                                <CardDescription>Outstanding loan balances for this staff member</CardDescription>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <div>
+                                    <CardTitle className="text-lg">Payment History</CardTitle>
+                                    <CardDescription>Recent salary disbursements for this period</CardDescription>
+                                </div>
+                                <Badge variant="outline" className="font-mono">
+                                    {selectedStaffData.recentPayments.length} Payments
+                                </Badge>
                             </CardHeader>
                             <CardContent>
-                                {selectedStaffData.activeLoans.length > 0 ? (
-                                    <div className="space-y-3">
-                                        {selectedStaffData.activeLoans.map(loan => (
-                                            <div key={loan.id} className="flex justify-between items-start p-3 border rounded-lg bg-muted/20">
-                                                <div>
-                                                    <div className="font-medium text-sm">{loan.description}</div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {new Date(loan.createdAt).toLocaleDateString()}
-                                                        {loan.dueDate && ` · Due ${new Date(loan.dueDate).toLocaleDateString()}`}
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground mt-1">
-                                                        Total: Rs. {loan.amount.toLocaleString()} · Paid: Rs. {loan.paidAmount.toLocaleString()}
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="font-bold text-red-600 text-sm">Rs. {loan.balance.toLocaleString()}</div>
-                                                    {loan.monthlyRental > 0 && (
-                                                        <div className="text-xs text-muted-foreground">Rs. {loan.monthlyRental.toLocaleString()}/mo</div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
-                                        <CheckCircle2 className="h-8 w-8 mb-2 text-green-500 opacity-50" />
-                                        <p className="text-sm">No active loans</p>
-                                    </div>
-                                )}
+                                <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse text-sm">
+                                        <thead>
+                                            <tr className="border-b bg-muted/30">
+                                                <th className="text-left p-3 font-semibold text-muted-foreground uppercase text-[10px] tracking-wider">Date</th>
+                                                <th className="text-left p-3 font-semibold text-muted-foreground uppercase text-[10px] tracking-wider">Method</th>
+                                                <th className="text-right p-3 font-semibold text-muted-foreground uppercase text-[10px] tracking-wider">Amount</th>
+                                                <th className="text-center p-3 font-semibold text-muted-foreground uppercase text-[10px] tracking-wider">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {selectedStaffData.recentPayments.map((payment) => (
+                                                <tr
+                                                    key={payment.id}
+                                                    className="hover:bg-muted/50 transition-colors border-b"
+                                                >
+                                                    <td className="px-3 py-2 text-xs">
+                                                        {new Date(payment.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                    </td>
+                                                    <td className="px-3 py-2 text-xs font-medium text-muted-foreground">
+                                                        {payment.method}
+                                                    </td>
+                                                    <td className="px-3 py-2 text-xs font-mono font-bold text-right text-purple-600">
+                                                        Rs. {payment.amount.toLocaleString()}
+                                                    </td>
+                                                    <td className="px-3 py-2 text-center">
+                                                        <Badge variant="outline" className="text-[9px] h-4 bg-green-50 text-green-700 border-green-200 px-1">
+                                                            {payment.status}
+                                                        </Badge>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {selectedStaffData.recentPayments.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={4} className="p-8 text-center text-muted-foreground italic">
+                                                        No payment records found for this period.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </CardContent>
                         </Card>
                     </div>
@@ -649,7 +738,7 @@ export default function OfficeStaffDetailsReport() {
                                                     className="h-8 w-8 p-0"
                                                     onClick={() => setSelectedStaff(staff.id)}
                                                 >
-                                                    <Users className="h-4 w-4" />
+                                                    <ArrowRight className="h-4 w-4" />
                                                 </Button>
                                             </td>
                                         </tr>

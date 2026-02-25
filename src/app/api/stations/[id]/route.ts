@@ -1,24 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { auditOperations } from '@/lib/auditMiddleware'
+import { getServerUser } from '@/lib/auth-server'
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { id } = await params
     const body = await request.json()
 
+    // Ensure the station belongs to the user's organization
     const station = await prisma.station.findUnique({
-      where: { id }
+      where: {
+        id,
+        organizationId: user.organizationId
+      }
     })
 
     if (!station) {
-      return NextResponse.json({ error: 'Station not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Station not found or unauthorized' }, { status: 404 })
     }
 
-    const { name, address, city, phone, email, openingHours, monthStartDate, isActive } = body
+    const { name, address, city, phone, email, openingHours, monthStartDate, isActive, deliveryToleranceCm } = body
 
     const updatedStation = await prisma.station.update({
       where: { id },
@@ -30,7 +40,8 @@ export async function PUT(
         ...(email !== undefined && { email: email || null }),
         ...(openingHours !== undefined && { openingHours: openingHours || null }),
         ...(monthStartDate !== undefined && { monthStartDate }),
-        ...(isActive !== undefined && { isActive })
+        ...(isActive !== undefined && { isActive }),
+        ...(deliveryToleranceCm !== undefined && { deliveryToleranceCm: Number(deliveryToleranceCm) })
       }
     })
 
@@ -50,12 +61,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // PERMISSION CHECK: Only DEVELOPER can delete stations
-    const userRole = request.headers.get('x-user-role')
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    if (userRole !== 'DEVELOPER') {
+    // PERMISSION CHECK: Only DEVELOPER/OWNER can delete stations
+    if (user.role !== 'DEVELOPER' && user.role !== 'OWNER') {
       return NextResponse.json(
-        { error: 'Permission denied. Only DEVELOPER role can delete stations.' },
+        { error: 'Permission denied. Only DEVELOPER/OWNER role can delete stations.' },
         { status: 403 }
       )
     }
@@ -63,16 +77,21 @@ export async function DELETE(
     const { id } = await params
 
     const station = await prisma.station.findUnique({
-      where: { id }
+      where: {
+        id,
+        organizationId: user.organizationId
+      }
     })
 
     if (!station) {
-      return NextResponse.json({ error: 'Station not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Station not found or unauthorized' }, { status: 404 })
     }
 
     // Check for dependencies (shifts, tanks, etc.)
     const hasShifts = await prisma.shift.count({ where: { stationId: id } }) > 0
     const hasTanks = await prisma.tank.count({ where: { stationId: id } }) > 0
+    // Skip user dependency if needed, or check correctly.
+    // For now keep original logic but scoped to org just in case.
     const hasUsers = await prisma.user.count({ where: { stationId: id } }) > 0
 
     if (hasShifts || hasTanks || hasUsers) {

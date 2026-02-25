@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    const { stationId, staffName, amount, monthlyRental, reason, dueDate, fromSafe } = body
+    const { stationId, staffName, amount, monthlyRental, reason, dueDate, fromSafe, transactionType } = body
 
     if (!stationId || !staffName || !amount || !reason || !dueDate) {
       return NextResponse.json(
@@ -167,6 +167,8 @@ export async function POST(request: NextRequest) {
 
         const balanceAfter = balanceBefore - parseFloat(amount)
 
+        const typeLabel = transactionType === 'ADVANCE' ? 'advance' : 'loan'
+
         // Create safe transaction
         await prisma.safeTransaction.create({
           data: {
@@ -176,7 +178,7 @@ export async function POST(request: NextRequest) {
             balanceBefore,
             balanceAfter,
             loanId: newLoan.id,
-            description: `Office staff loan given: ${staffName} - ${reason}`,
+            description: `Office staff ${typeLabel} given: ${staffName} - ${reason}`,
             performedBy: secureGivenBy,
             timestamp: loanTimestamp,
             organizationId: user.organizationId

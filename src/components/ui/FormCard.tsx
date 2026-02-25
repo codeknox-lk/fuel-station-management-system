@@ -9,15 +9,15 @@ interface FormCardProps {
   actions?: React.ReactNode
 }
 
-export function FormCard({ 
-  title, 
-  description, 
-  children, 
+export function FormCard({
+  title,
+  description,
+  children,
   className,
-  actions 
+  actions
 }: FormCardProps) {
   return (
-    <Card className={cn('w-full', className)}>
+    <Card className={cn('w-full flex flex-col', className)}>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -33,7 +33,7 @@ export function FormCard({
           )}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1">
         {children}
       </CardContent>
     </Card>

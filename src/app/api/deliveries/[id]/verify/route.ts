@@ -54,7 +54,12 @@ export async function POST(
             tankNumber: true,
             currentLevel: true,
             capacity: true,
-            stationId: true
+            stationId: true,
+            station: {
+              select: {
+                deliveryToleranceCm: true
+              }
+            }
           }
         },
         organization: {
@@ -112,23 +117,34 @@ export async function POST(
 
     // --- 2. Calculate Gross Delivered & Variance ---
     // Formula: (VolumeAfter - VolumeBefore) + SalesDuringDrop
-    const beforeVolume = depthToVolume(delivery.beforeDipReading, delivery.tank.capacity as TankCapacity)
-    const afterVolume = depthToVolume(afterDipReading, delivery.tank.capacity as TankCapacity)
+    const capacity = delivery.tank.capacity as TankCapacity
+    const beforeVolume = depthToVolume(delivery.beforeDipReading, capacity)
+    const afterVolume = depthToVolume(afterDipReading, capacity)
     const physicalDifference = afterVolume - beforeVolume
     const actualReceived = physicalDifference + salesDuringDrop
 
     const invoiceQty = delivery.invoiceQuantity || 0
     const variance = invoiceQty - actualReceived
-    const variancePercentage = invoiceQty > 0 ? (Math.abs(variance) / invoiceQty) * 100 : 0
 
-    // Status Logic
+    // --- 3. Tolerance Logic ---
+    // Fetch tolerance in CM from station (default to 2 if missing)
+    const stationData = delivery.tank.station
+    const toleranceCm = stationData?.deliveryToleranceCm ?? 2
+
+    // Calculate Liter equivalent at the after-dip level
+    // We calculate the volume diff between current dip and (current dip - toleranceCm)
+    const volAtDip = depthToVolume(afterDipReading, capacity)
+    const volAtDipMinusTolerance = depthToVolume(Math.max(0, afterDipReading - toleranceCm), capacity)
+    const toleranceLitersUsed = Math.abs(volAtDip - volAtDipMinusTolerance)
+
+    // Status Determination
+    // If variance (absolute) is greater than the calculated liter threshold, it's a discrepancy
     let verificationStatus: 'VERIFIED' | 'DISCREPANCY' = 'VERIFIED'
-    if (Math.abs(variance) > 15 || variancePercentage > 0.5) { // 15L or 0.5% tolerance
-      // Note: Used 15L as a proxy for "1cm" broadly, but % is safer
+    if (Math.abs(variance) > toleranceLitersUsed) {
       verificationStatus = 'DISCREPANCY'
     }
 
-    // --- 3. Safety Checks ---
+    // --- 4. Safety Checks ---
     if (afterDipReading > delivery.tank.capacity * 1.05) { // 5% overfill tolerance for sensor error
       return NextResponse.json(
         { error: 'After dip reading exceeds tank capacity significantly' },
@@ -284,6 +300,8 @@ export async function POST(
           quantity: actualReceived, // Updating to physical quantity
           verificationStatus,
           status: verificationStatus === 'VERIFIED' ? 'VERIFIED' : 'DISCREPANCY', // Sync status
+          toleranceCmUsed: toleranceCm,
+          toleranceLitersUsed: toleranceLitersUsed,
           verifiedBy: userName,
           verifiedAt: new Date(),
           notes: notes ? `${delivery.notes || ''}\n\nVerification: ${notes}`.trim() : delivery.notes,

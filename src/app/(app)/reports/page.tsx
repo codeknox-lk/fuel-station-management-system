@@ -210,7 +210,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="space-y-8 p-6 max-w-[1600px] mx-auto">
+    <div className="space-y-8 p-6">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

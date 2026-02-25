@@ -17,7 +17,8 @@ import {
   Shield,
   Fuel,
   Briefcase,
-  AlertCircle
+  AlertCircle,
+  Monitor
 } from 'lucide-react'
 
 interface SettingCard {
@@ -137,6 +138,16 @@ export default function SettingsPage() {
       bullet: 'bg-cyan-500'
     },
     {
+      title: 'POS Terminals',
+      description: 'Configure point-of-sale terminals and devices',
+      icon: <Monitor className="h-6 w-6" />,
+      href: '/settings/pos-terminals',
+      features: ['Terminal Setup', 'Bank Linking', 'Status Monitoring'],
+      color: 'text-sky-600 dark:text-sky-400',
+      bg: 'bg-sky-100 dark:bg-sky-900/20',
+      bullet: 'bg-sky-500'
+    },
+    {
       title: 'Shift Templates',
       description: 'Define recurring shift patterns and timings',
       icon: <Clock className="h-6 w-6" />,
@@ -225,7 +236,7 @@ export default function SettingsPage() {
   })
 
   return (
-    <div className="space-y-8 p-6 max-w-[1600px] mx-auto">
+    <div className="space-y-8 p-6">
       {/* Standard Header */}
       <div>
         <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">

@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator'
 import { DeliveryData } from './types'
 import { depthToVolume, TankCapacity, validateDepth, getMaxDepth } from '@/lib/tank-calibration'
 import { Badge } from '@/components/ui/badge'
+import { FuelIcon } from '@/components/ui/FuelIcon'
 
 interface Tank {
     id: string
@@ -19,7 +20,7 @@ interface Tank {
     tankNumber: string
     capacity: number
     currentLevel: number
-    fuel?: { code: string; name: string; icon?: string | null }
+    fuel?: { code: string; name: string; category: string; icon?: string | null }
 }
 
 interface ShiftAssignment {
@@ -227,7 +228,12 @@ export default function Stage1_Arrival({ data, onUpdate, onNext, loading }: Prop
                                     <div className="flex items-center gap-2">
                                         <Fuel className="h-4 w-4 text-muted-foreground" />
                                         <span>Tank {t.tankNumber}</span>
-                                        {t.fuel && <Badge variant="outline">{t.fuel.icon} {t.fuel.code}</Badge>}
+                                        {t.fuel && (
+                                            <Badge variant="outline" className="flex items-center gap-1.5 ml-auto">
+                                                <FuelIcon name={t.fuel.category} className="h-4 w-6" />
+                                                {t.fuel.code}
+                                            </Badge>
+                                        )}
                                         <span className="text-muted-foreground text-sm">({t.capacity.toLocaleString()}L)</span>
                                     </div>
                                 </SelectItem>

@@ -30,8 +30,9 @@ import {
   AlertCircle,
   CheckCircle,
   Plus,
-
+  Fuel
 } from 'lucide-react'
+import { FuelIcon } from '@/components/ui/FuelIcon'
 
 
 interface CreditCustomer {
@@ -48,6 +49,7 @@ interface Fuel {
   id: string
   code: string
   name: string
+  category: string
   icon?: string | null
   isActive: boolean
 }
@@ -268,7 +270,10 @@ export default function CreditSalesPage() {
       render: (value: unknown, row: CreditSale) => (
         row.fuel ? (
           <div className="flex flex-col">
-            <Badge variant="outline">{row.fuel.icon} {row.fuel.name}</Badge>
+            <div className="flex items-center gap-1.5">
+              <FuelIcon name={row.fuel.category} className="h-5 w-8" />
+              <Badge variant="outline">{row.fuel.name}</Badge>
+            </div>
             {row.litres && (
               <span className="text-xs text-muted-foreground mt-1">
                 {row.litres}L
@@ -430,7 +435,10 @@ export default function CreditSalesPage() {
                 <SelectContent>
                   {fuels.map((fuel) => (
                     <SelectItem key={fuel.id} value={fuel.id}>
-                      {fuel.icon} {fuel.name}
+                      <div className="flex items-center gap-2">
+                        <FuelIcon name={fuel.category} className="h-5 w-8" />
+                        <span>{fuel.name}</span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>

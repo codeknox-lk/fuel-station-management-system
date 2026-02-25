@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dialog'
 import { Droplets, Clock, AlertCircle, CheckCircle, Plus, ArrowLeft, RefreshCw } from 'lucide-react'
 import { depthToVolume, getTankCapacityLabel, validateDepth, getMaxDepth } from '@/lib/tank-calibration'
+import { FuelIcon } from '@/components/ui/FuelIcon'
 
 
 
@@ -36,6 +37,7 @@ interface Fuel {
   id: string
   code: string
   name: string
+  category: string
   icon?: string | null
 }
 
@@ -439,7 +441,12 @@ export default function TankDipsPage() {
       render: (value: unknown, row: TankDip) => (
         <div className="flex items-center gap-2">
           <span className="font-medium">Tank {(value as string) || 'N/A'}</span>
-          {row.fuel && <Badge variant="outline">{row.fuel.icon} {row.fuel.name}</Badge>}
+          {row.fuel && (
+            <Badge variant="outline" className="flex items-center gap-1.5">
+              <FuelIcon name={row.fuel.category} className="h-4 w-6" />
+              {row.fuel.name}
+            </Badge>
+          )}
         </div>
       )
     },
@@ -550,7 +557,10 @@ export default function TankDipsPage() {
                   <SelectContent>
                     {availableTanks.map((tank) => (
                       <SelectItem key={tank.id} value={tank.id}>
-                        Tank {tank.tankNumber} - {tank.fuel?.icon} {tank.fuel?.name} ({(tank.capacity || 0).toLocaleString()}L)
+                        <div className="flex items-center gap-2">
+                          <FuelIcon name={tank.fuel?.category} className="h-5 w-8" />
+                          <span>Tank {tank.tankNumber} - {tank.fuel?.name} ({(tank.capacity || 0).toLocaleString()}L)</span>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -652,7 +662,10 @@ export default function TankDipsPage() {
                                   <Label className="text-xs text-muted-foreground">Nozzle/Tank</Label>
                                   <div className="font-medium text-sm">
                                     Nozzle {assignment.nozzle.nozzleNumber}
-                                    <Badge variant="outline" className="ml-1 text-xs">{assignment.nozzle.tank.fuel?.icon} {assignment.nozzle.tank.fuel?.name}</Badge>
+                                    <Badge variant="outline" className="ml-1 text-xs flex items-center gap-1">
+                                      <FuelIcon name={assignment.nozzle.tank.fuel?.category} className="h-4 w-6" />
+                                      {assignment.nozzle.tank.fuel?.name}
+                                    </Badge>
                                   </div>
                                 </div>
                                 <div>
@@ -729,8 +742,12 @@ export default function TankDipsPage() {
 
                               return (
                                 <div key={tank.id} className="p-3 bg-background rounded border text-sm">
-                                  <div className="font-medium mb-2">
-                                    Tank {tank.tankNumber} <Badge variant="outline" className="ml-1 text-xs">{tank.fuel?.icon} {tank.fuel?.name}</Badge>
+                                  <div className="font-medium mb-2 flex items-center gap-2">
+                                    Tank {tank.tankNumber}
+                                    <Badge variant="outline" className="text-xs flex items-center gap-1">
+                                      <FuelIcon name={tank.fuel?.category} className="h-4 w-6" />
+                                      {tank.fuel?.name}
+                                    </Badge>
                                   </div>
                                   <div className="space-y-1">
                                     <div className="flex justify-between text-muted-foreground">

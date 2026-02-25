@@ -15,7 +15,8 @@ import {
   ShoppingCart,
   CreditCard,
   AlertCircle,
-  Droplet
+  Droplet,
+  Truck
 } from 'lucide-react'
 
 interface SafeTransaction {
@@ -196,12 +197,16 @@ export default function TransactionDetailsPage() {
       LOAN_GIVEN: 'Loan Given',
       BANK_DEPOSIT: 'Bank Deposit',
       CASH_TRANSFER: 'Cash Transfer',
-      COUNT_ADJUSTMENT: 'Count Adjustment'
+      COUNT_ADJUSTMENT: 'Count Adjustment',
+      FUEL_DELIVERY_PAYMENT: 'Fuel Delivery Payment'
     }
     return labels[type] || type
   }
 
   const getTypeIcon = (type: string) => {
+    if (type === 'FUEL_DELIVERY_PAYMENT') {
+      return <Truck className="h-4 w-4 text-red-600 dark:text-red-400" />
+    }
     if (INCOME_TYPES.includes(type)) {
       return <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
     }

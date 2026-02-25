@@ -9,6 +9,8 @@ interface Station {
   city: string
   monthStartDate: number
   isActive: boolean
+  deliveryToleranceCm?: number
+  salesTolerance?: number
   createdAt: string
   updatedAt: string
 }
@@ -18,6 +20,7 @@ interface StationContextType {
   stations: Station[]
   setSelectedStation: (stationId: string) => void
   getSelectedStation: () => Station | null
+  fetchStations: () => Promise<void>
   isAllStations: boolean
   isLoading: boolean
   error: string | null
@@ -94,6 +97,21 @@ export function StationProvider({ children }: { children: ReactNode }) {
     initialize()
   }, [])
 
+  const fetchStations = async () => {
+    try {
+      setIsLoading(true)
+      const response = await fetch('/api/stations?active=true')
+      if (response.ok) {
+        const data = await response.json()
+        setStations(Array.isArray(data) ? data : [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch stations:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const setSelectedStation = (stationId: string) => {
     setSelectedStationState(stationId)
     localStorage.setItem('selectedStation', stationId)
@@ -116,6 +134,7 @@ export function StationProvider({ children }: { children: ReactNode }) {
         stations,
         setSelectedStation,
         getSelectedStation,
+        fetchStations,
         isAllStations,
         isLoading,
         error

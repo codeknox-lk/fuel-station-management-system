@@ -3,10 +3,10 @@ import { prisma } from '@/lib/db'
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const id = params.id
+        const { id } = await params
 
         const supplier = await prisma.supplier.findUnique({
             where: { id },
@@ -34,8 +34,8 @@ export async function GET(
         }
 
         return NextResponse.json(supplier)
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error fetching supplier details:', error)
-        return NextResponse.json({ error: error.message || 'Failed to fetch supplier details' }, { status: 500 })
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to fetch supplier details' }, { status: 500 })
     }
 }

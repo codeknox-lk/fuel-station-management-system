@@ -10,7 +10,17 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { DollarSign, Plus, AlertCircle, Fuel, BarChart3, Droplet, TrendingUp, Edit2 } from 'lucide-react'
+import {
+  DollarSign,
+  Plus,
+  AlertCircle,
+  Fuel,
+  BarChart3,
+  Droplet,
+  TrendingUp,
+  Edit2,
+  ArrowLeft
+} from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { MoneyInput } from '@/components/inputs/MoneyInput'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -18,7 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AreaChart, Area, ResponsiveContainer } from 'recharts'
 import { Progress } from '@/components/ui/progress'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { FuelIcon } from '@/components/ui/FuelIcon'
 
 interface Fuel {
   id: string
@@ -61,6 +71,7 @@ interface Tank {
   }
 }
 
+
 export default function FuelsPage() {
   const router = useRouter()
   const [prices, setPrices] = useState<Price[]>([])
@@ -80,10 +91,15 @@ export default function FuelsPage() {
     name: '',
     category: 'PETROL',
     description: '',
-    icon: '⛽'
+    icon: 'fuel'
   })
   const { selectedStation } = useStation()
   const { toast } = useToast()
+
+  // Auto-assign icon based on category
+  useEffect(() => {
+    setNewFuelData(prev => ({ ...prev, icon: newFuelData.category }))
+  }, [newFuelData.category])
 
   const fetchFuels = useCallback(async () => {
     try {
@@ -259,7 +275,7 @@ export default function FuelsPage() {
         name: '',
         category: 'PETROL',
         description: '',
-        icon: '⛽'
+        icon: 'fuel'
       })
 
       // Refresh fuels list
@@ -380,9 +396,11 @@ export default function FuelsPage() {
       key: 'fuelId',
       title: 'Fuel Type',
       render: (value, row) => (
-        <div className="flex items-center gap-2">
-          <span className="text-xl">{row.fuel?.icon || '⛽'}</span>
-          <span className="font-medium">{row.fuel?.name || 'Unknown'}</span>
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-12 flex items-center justify-center">
+            <FuelIcon name={row.fuel?.category} className="h-7 w-11" />
+          </div>
+          <span className="font-medium text-base">{row.fuel?.name || 'Unknown'}</span>
         </div>
       )
     },
@@ -462,7 +480,7 @@ export default function FuelsPage() {
   const stockPercentage = totalCapacity > 0 ? (totalStock / totalCapacity) * 100 : 0
 
   return (
-    <div className="space-y-6 p-6 max-w-[1600px] mx-auto">
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="outline" onClick={() => router.push('/settings')}>
@@ -541,18 +559,6 @@ export default function FuelsPage() {
                         </SelectContent>
                       </Select>
                     </div>
-
-                    <div>
-                      <Label htmlFor="newFuelIcon">Icon (Emoji)</Label>
-                      <Input
-                        id="newFuelIcon"
-                        value={newFuelData.icon}
-                        onChange={(e) => setNewFuelData({ ...newFuelData, icon: e.target.value })}
-                        placeholder="⛽"
-                        maxLength={2}
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">Single emoji character</p>
-                    </div>
                   </div>
 
                   <div>
@@ -570,15 +576,21 @@ export default function FuelsPage() {
                       <AlertCircle className="h-4 w-4 text-orange-600" />
                       Preview
                     </h4>
-                    <div className="flex items-center gap-3 bg-white dark:bg-gray-900 p-3 rounded border">
-                      <span className="text-2xl">{newFuelData.icon || '⛽'}</span>
-                      <div>
-                        <p className="font-medium">{newFuelData.name || 'Fuel Name'}</p>
-                        <p className="text-xs text-muted-foreground">{newFuelData.code || 'FUEL_CODE'} • {newFuelData.category}</p>
-                        {newFuelData.description && (
-                          <p className="text-xs text-muted-foreground mt-1">{newFuelData.description}</p>
-                        )}
+                    <div className="bg-white dark:bg-gray-950 p-4 rounded-xl border-2 border-dashed border-orange-200 dark:border-orange-900/50">
+                      <div className="flex items-center gap-4">
+                        <FuelIcon name={newFuelData.category} className="h-14 w-20" />
+                        <div>
+                          <p className="font-bold text-lg leading-tight">{newFuelData.name || 'Fuel Name'}</p>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider font-mono">
+                            {newFuelData.code || 'FUEL_CODE'} • {newFuelData.category}
+                          </p>
+                        </div>
                       </div>
+                      {newFuelData.description && (
+                        <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-dashed line-clamp-2 italic">
+                          {newFuelData.description}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -599,11 +611,16 @@ export default function FuelsPage() {
                     {fuels.map((fuel) => (
                       <div
                         key={fuel.id}
-                        className="flex items-center gap-2 p-2 rounded border bg-gray-50 dark:bg-gray-900"
+                        className="flex items-center gap-3 p-2.5 rounded-lg border bg-background hover:bg-muted/50 transition-colors"
                       >
-                        <span className="text-lg">{fuel.icon}</span>
-                        <span className="flex-1 text-xs font-medium">{fuel.name}</span>
-                        {fuel.isActive && <Badge variant="default" className="text-xs">Active</Badge>}
+                        <div className="h-8 w-11 flex items-center justify-center">
+                          <FuelIcon name={fuel.category} className="h-6 w-10" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate leading-tight">{fuel.name}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase">{fuel.category}</p>
+                        </div>
+                        {fuel.isActive && <Badge variant="outline" className="text-[10px] h-4 px-1 border-emerald-200 text-emerald-600 bg-emerald-50">Active</Badge>}
                       </div>
                     ))}
                   </div>
@@ -639,7 +656,10 @@ export default function FuelsPage() {
                     <SelectContent>
                       {fuels.filter(f => f.isActive).map(fuel => (
                         <SelectItem key={fuel.id} value={fuel.id}>
-                          {fuel.icon} {fuel.name}
+                          <div className="flex items-center gap-2">
+                            <FuelIcon name={fuel.category} className="h-4 w-4" />
+                            <span>{fuel.name}</span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -769,13 +789,15 @@ export default function FuelsPage() {
                   <Card key={fuel.id} className="overflow-hidden">
                     <CardHeader className="pb-3 bg-muted/30">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-2xl">{fuel.icon}</span>
-                          <CardTitle className="text-sm font-medium">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-lg bg-background flex items-center justify-center shadow-sm border">
+                            <FuelIcon name={fuel.category} className="h-6 w-6 text-orange-600" />
+                          </div>
+                          <CardTitle className="text-sm font-bold">
                             {fuel.name}
                           </CardTitle>
                         </div>
-                        <Badge variant="outline">{stats.tankCount} tanks</Badge>
+                        <Badge variant="secondary" className="text-[10px]">{stats.tankCount} tanks</Badge>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3 pt-4">
@@ -848,7 +870,7 @@ export default function FuelsPage() {
                       <CardHeader className="pb-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className="text-2xl">{price.fuel?.icon || '⛽'}</span>
+                            <FuelIcon name={price.fuel?.category} className="h-5 w-8" />
                             <CardTitle className="text-base font-medium">
                               {price.fuel?.name || 'Unknown Fuel'}
                             </CardTitle>

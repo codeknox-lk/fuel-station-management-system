@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { useStation } from '@/contexts/StationContext'
 import { useTheme } from '@/contexts/ThemeContext'
+import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,13 +26,15 @@ import {
   Moon,
   Monitor,
   RefreshCw,
-  User
+  User,
+  Menu
 } from 'lucide-react'
 
 type UserRole = 'DEVELOPER' | 'OWNER' | 'MANAGER' | 'ACCOUNTS'
 
 interface TopBarProps {
   userRole: UserRole
+  onMenuClick?: () => void
 }
 
 interface Notification {
@@ -54,7 +57,7 @@ const roleColors = {
   ACCOUNTS: 'bg-green-500/20 text-green-600 dark:bg-green-600/30 dark:text-green-300'
 }
 
-export function TopBar({ userRole }: TopBarProps) {
+export function TopBar({ userRole, onMenuClick }: TopBarProps) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [totalUnreadCount, setTotalUnreadCount] = useState(0)
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(true)
@@ -297,11 +300,21 @@ export function TopBar({ userRole }: TopBarProps) {
   return (
     <header className="bg-card border-b border-border px-6 py-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-semibold text-foreground">
+        <div className="flex items-center gap-3">
+          {onMenuClick && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={onMenuClick}
+            >
+              <Menu className="h-6 w-6" />
+            </Button>
+          )}
+          <h2 className="text-xl md:text-2xl font-semibold text-foreground truncate max-w-[120px] md:max-w-none">
             Dashboard
           </h2>
-          <Badge className={roleColors[userRole]}>
+          <Badge className={cn("hidden sm:flex", roleColors[userRole])}>
             {userRole}
           </Badge>
         </div>
@@ -443,9 +456,9 @@ export function TopBar({ userRole }: TopBarProps) {
           {/* Logout Button */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-2">
+              <Button variant="ghost" size="sm" className="gap-2 px-2 sm:px-3">
                 <User className="h-4 w-4" />
-                <span className="hidden sm:inline">Account</span>
+                <span className="hidden lg:inline">Account</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

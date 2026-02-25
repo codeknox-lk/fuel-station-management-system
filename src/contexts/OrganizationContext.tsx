@@ -2,17 +2,19 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
+import { PlanType } from '@/lib/features'
+
 interface Subscription {
     status: 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'UNPAID' | 'TRIALING'
     trialEndDate: string | null
-    planId: 'BASIC' | 'PREMIUM'
+    planId: PlanType
 }
 
 interface Organization {
     id: string
     name: string
     slug: string
-    plan: 'BASIC' | 'PREMIUM'
+    plan: PlanType
     subscription?: Subscription | null
 }
 

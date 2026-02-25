@@ -422,25 +422,27 @@ export default function SalaryPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <DollarSign className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
+            <DollarSign className="h-6 w-6 md:h-8 md:w-8 text-orange-600 dark:text-orange-400" />
             Salary Management
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm md:text-base text-muted-foreground mt-1">
             Monthly salary calculation based on shifts, sales, advances, and variance adjustments
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchSalaryData}>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={fetchSalaryData} className="flex-1 sm:flex-none">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
           <Button
             variant="outline"
+            size="sm"
             onClick={handleExport}
             disabled={!salaryData || salaryData.salaryData.length === 0}
+            className="flex-1 sm:flex-none"
           >
             <Download className="h-4 w-4 mr-2" />
             Export PDF
@@ -455,7 +457,7 @@ export default function SalaryPage() {
           <CardDescription>Salary periods run from 7th of each month to 6th of next month</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <Label htmlFor="year">Year</Label>
               <Select value={selectedYear} onValueChange={setSelectedYear}>

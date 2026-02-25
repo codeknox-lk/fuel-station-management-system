@@ -9,6 +9,10 @@ import { useIdleTimer } from '@/hooks/useIdleTimer'
 import { IdleWarningModal } from '@/components/auth/IdleWarningModal'
 import { logout } from '@/lib/auth'
 import { OnboardingCheck } from '@/components/auth/OnboardingCheck'
+import {
+  Sheet,
+  SheetContent,
+} from '@/components/ui/sheet'
 
 type UserRole = 'DEVELOPER' | 'OWNER' | 'MANAGER' | 'ACCOUNTS'
 
@@ -19,6 +23,7 @@ export default function AppLayout({
 }) {
   const [userRole, setUserRole] = useState<UserRole | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const router = useRouter()
 
   // Idle timer with 15-minute timeout
@@ -61,15 +66,29 @@ export default function AppLayout({
       <OnboardingCheck>
         <div className="min-h-screen bg-background">
           <div className="flex">
-            {/* Sidebar - sticky */}
-            <div className="sticky top-0 h-screen flex-shrink-0">
+            {/* Desktop Sidebar - hidden on mobile */}
+            <div className="hidden lg:block sticky top-0 h-screen flex-shrink-0">
               <Sidebar userRole={userRole} />
             </div>
 
+            {/* Mobile Sidebar - Sheet */}
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+              <SheetContent side="left" className="p-0 w-64 border-none">
+                <Sidebar
+                  userRole={userRole}
+                  onItemClick={() => setIsMobileMenuOpen(false)}
+                  showCloseButton
+                />
+              </SheetContent>
+            </Sheet>
+
             {/* Main content area */}
             <div className="flex-1 flex flex-col min-w-0">
-              <TopBar userRole={userRole} />
-              <main className="flex-1 p-6">
+              <TopBar
+                userRole={userRole}
+                onMenuClick={() => setIsMobileMenuOpen(true)}
+              />
+              <main className="flex-1 p-4 md:p-6">
                 {children}
               </main>
             </div>

@@ -41,6 +41,7 @@ import {
   Activity,
   Gauge
 } from 'lucide-react'
+import { FuelIcon } from '@/components/ui/FuelIcon'
 import { InfrastructureView } from '@/components/tanks/InfrastructureView'
 
 interface Pump {
@@ -62,6 +63,7 @@ interface Fuel {
   id: string
   code: string
   name: string
+  category: string
   icon?: string | null
   isActive?: boolean
 }
@@ -453,7 +455,7 @@ export default function TanksSettingsPage() {
       title: 'Fuel Type',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <Fuel className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+          <FuelIcon name={(value as Fuel)?.category} className="h-5 w-8" />
           <span>{(value as Fuel)?.name || 'Unknown'}</span>
         </div>
       )
@@ -539,8 +541,10 @@ export default function TanksSettingsPage() {
       render: (value: unknown) => (
         <div className="flex flex-wrap gap-2">
           {(value as { nozzleNumber: string; tank: { fuelId: string; fuel?: Fuel } }[]).map((nozzle) => (
-            <Badge key={nozzle.nozzleNumber} variant="outline">
-              {nozzle.nozzleNumber} → {nozzle.tank.fuel?.name || 'Unknown'}
+            <Badge key={nozzle.nozzleNumber} variant="outline" className="flex items-center gap-1">
+              {nozzle.nozzleNumber} →
+              <FuelIcon name={nozzle.tank.fuel?.category} className="h-4 w-6" />
+              {nozzle.tank.fuel?.name || 'Unknown'}
             </Badge>
           ))}
         </div>
@@ -588,8 +592,10 @@ export default function TanksSettingsPage() {
       title: 'Tank / Fuel Type',
       render: (value: unknown) => (
         <div className="flex items-center gap-2">
-          <Fuel className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-          <Badge variant="outline">{(value as { fuelId: string; fuel?: Fuel }).fuel?.name || 'Unknown'}</Badge>
+          <Badge variant="outline" className="flex items-center gap-1.5">
+            <FuelIcon name={(value as { fuelId: string; fuel?: Fuel }).fuel?.category} className="h-4 w-6" />
+            {(value as { fuelId: string; fuel?: Fuel }).fuel?.name || 'Unknown'}
+          </Badge>
         </div>
       )
     },
@@ -619,7 +625,7 @@ export default function TanksSettingsPage() {
   ]
 
   return (
-    <div className="space-y-6 p-6 max-w-[1600px] mx-auto">
+    <div className="space-y-6 p-6">
       {/* Standard Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -690,7 +696,10 @@ export default function TanksSettingsPage() {
                 <SelectContent>
                   {fuels.map(fuel => (
                     <SelectItem key={fuel.id} value={fuel.id}>
-                      {fuel.icon} {fuel.name}
+                      <div className="flex items-center gap-2">
+                        <FuelIcon name={fuel.category} className="h-5 w-8" />
+                        <span>{fuel.name}</span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>

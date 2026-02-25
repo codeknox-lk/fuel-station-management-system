@@ -21,11 +21,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Truck, Plus, ArrowLeft, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react'
+import { FuelIcon } from '@/components/ui/FuelIcon'
 
 interface Fuel {
   id: string
   code: string
   name: string
+  category: string
   icon?: string | null
 }
 
@@ -56,6 +58,8 @@ interface Delivery {
   createdAt: string
   invoiceVariance?: number
   dipVariance?: number
+  toleranceCmUsed?: number
+  toleranceLitersUsed?: number
 }
 
 export default function TankDeliveriesPage() {
@@ -151,7 +155,12 @@ export default function TankDeliveriesPage() {
       render: (_: unknown, row: Delivery) => (
         <div className="flex items-center gap-2">
           <span className="font-medium">Tank {row.tank?.tankNumber || 'N/A'}</span>
-          {row.tank?.fuel && <Badge variant="outline" className="text-xs">{row.tank.fuel.icon} {row.tank.fuel.name}</Badge>}
+          {row.tank?.fuel && (
+            <Badge variant="outline" className="text-xs flex items-center gap-1.5 ml-auto">
+              <FuelIcon name={row.tank.fuel.category} className="h-4 w-6" />
+              {row.tank.fuel.name}
+            </Badge>
+          )}
         </div>
       )
     },
@@ -174,6 +183,19 @@ export default function TankDeliveriesPage() {
       render: (value: unknown) => {
         if (value == null) return <span className="text-muted-foreground">Pending</span>
         return <span className="font-semibold text-green-600">{(value as (number) || 0).toLocaleString()}L</span>
+      }
+    },
+    {
+      key: 'toleranceLitersUsed' as keyof Delivery,
+      title: 'Tolerance',
+      render: (value: unknown, row: Delivery) => {
+        if (value == null) return '-'
+        return (
+          <div className="flex flex-col">
+            <span className="text-xs font-medium">±{(value as number).toLocaleString()}L</span>
+            <span className="text-[10px] text-muted-foreground">({row.toleranceCmUsed}cm limit)</span>
+          </div>
+        )
       }
     },
     {
@@ -226,30 +248,34 @@ export default function TankDeliveriesPage() {
   const verifiedDeliveries = deliveries.filter(d => d.verificationStatus !== 'PENDING_VERIFICATION')
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.push('/tanks')}>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <Button variant="outline" size="sm" onClick={() => router.push('/tanks')} className="w-fit">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-              <Truck className="h-8 w-8 text-orange-600" />
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
+              <Truck className="h-6 w-6 md:h-8 md:w-8 text-orange-600" />
               Fuel Deliveries
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs md:text-sm text-muted-foreground mt-1">
               Record and verify deliveries with before/after dip measurements
             </p>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={loadData}>
+          <Button variant="outline" size="sm" onClick={loadData} className="flex-1 sm:flex-none">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button onClick={() => router.push('/tanks/deliveries/new')} className="bg-orange-600 hover:bg-orange-700">
+          <Button
+            size="sm"
+            onClick={() => router.push('/tanks/deliveries/new')}
+            className="bg-orange-600 hover:bg-orange-700 flex-1 sm:flex-none"
+          >
             <Plus className="h-4 w-4 mr-2" />
             New Delivery
           </Button>
@@ -341,26 +367,26 @@ export default function TankDeliveriesPage() {
 
           {selectedDelivery && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-xs text-muted-foreground">Tank</Label>
-                  <div className="font-semibold">Tank {selectedDelivery.tank?.tankNumber} - {selectedDelivery.tank?.fuel?.icon} {selectedDelivery.tank?.fuel?.name}</div>
+                  <div className="text-sm font-semibold">Tank {selectedDelivery.tank?.tankNumber} - {selectedDelivery.tank?.fuel?.icon} {selectedDelivery.tank?.fuel?.name}</div>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Supplier</Label>
-                  <div className="font-semibold">{selectedDelivery.supplier}</div>
+                  <div className="text-sm font-semibold">{selectedDelivery.supplier}</div>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Invoice Quantity</Label>
-                  <div className="font-mono font-semibold">{(selectedDelivery.invoiceQuantity || 0).toLocaleString()}L</div>
+                  <div className="text-sm font-mono font-semibold">{(selectedDelivery.invoiceQuantity || 0).toLocaleString()}L</div>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Actual Received</Label>
-                  <div className="font-mono font-semibold text-green-600">{(selectedDelivery.actualReceived || 0).toLocaleString()}L</div>
+                  <div className="text-sm font-mono font-semibold text-green-600">{(selectedDelivery.actualReceived || 0).toLocaleString()}L</div>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Before Dip</Label>
-                  <div className="font-mono">
+                  <div className="text-sm font-mono">
                     {selectedDelivery.beforeDipReading?.toLocaleString()} cm
                     {selectedDelivery.tank?.capacity && (
                       <span className="text-muted-foreground ml-2 text-xs">
@@ -371,7 +397,7 @@ export default function TankDeliveriesPage() {
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">After Dip</Label>
-                  <div className="font-mono">
+                  <div className="text-sm font-mono">
                     {selectedDelivery.afterDipReading?.toLocaleString()} cm
                     {selectedDelivery.tank?.capacity && (
                       <span className="text-muted-foreground ml-2 text-xs">
@@ -382,11 +408,11 @@ export default function TankDeliveriesPage() {
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Fuel Sold During</Label>
-                  <div className="font-mono text-orange-600">{(selectedDelivery.fuelSoldDuring || 0).toLocaleString()}L</div>
+                  <div className="text-sm font-mono text-orange-600">{(selectedDelivery.fuelSoldDuring || 0).toLocaleString()}L</div>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Variance</Label>
-                  <div className={`font-mono font-semibold ${selectedDelivery.dipVariance && Math.abs(selectedDelivery.dipVariance) > 50
+                  <div className={`text-sm font-mono font-semibold ${selectedDelivery.dipVariance && Math.abs(selectedDelivery.dipVariance) > 50
                     ? 'text-red-600'
                     : 'text-green-600'
                     }`}>
@@ -398,20 +424,32 @@ export default function TankDeliveriesPage() {
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Received By</Label>
-                  <div>{selectedDelivery.receivedBy}</div>
+                  <div className="text-sm">{selectedDelivery.receivedBy}</div>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Verified By</Label>
-                  <div>{selectedDelivery.verifiedBy || '-'}</div>
+                  <div className="text-sm">{selectedDelivery.verifiedBy || '-'}</div>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Status</Label>
-                  <div>
+                  <div className="text-sm">
                     {selectedDelivery.verificationStatus === 'VERIFIED' && <Badge className="bg-green-600">Verified</Badge>}
                     {selectedDelivery.verificationStatus === 'DISCREPANCY' && <Badge variant="destructive">Discrepancy</Badge>}
                     {selectedDelivery.verificationStatus === 'PENDING_VERIFICATION' && <Badge variant="outline">Pending</Badge>}
                   </div>
                 </div>
+                {selectedDelivery.toleranceLitersUsed != null && (
+                  <>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Used Tolerance (CM)</Label>
+                      <div className="text-sm font-semibold">{selectedDelivery.toleranceCmUsed} cm</div>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Used Tolerance (Liters)</Label>
+                      <div className="text-sm font-semibold">±{selectedDelivery.toleranceLitersUsed.toLocaleString()} L</div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}

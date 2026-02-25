@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useOrganization } from '@/contexts/OrganizationContext'
 import { hasFeature, PlanType } from '@/lib/features'
@@ -21,13 +22,16 @@ import {
   Handshake,
   Landmark,
   Store,
-  Crown
+  Crown,
+  X
 } from 'lucide-react'
 
 type UserRole = 'DEVELOPER' | 'OWNER' | 'MANAGER' | 'ACCOUNTS'
 
 interface SidebarProps {
   userRole: UserRole
+  onItemClick?: () => void
+  showCloseButton?: boolean
 }
 
 interface NavItem {
@@ -128,7 +132,7 @@ const navigation: NavItem[] = [
   }
 ]
 
-export function Sidebar({ userRole }: SidebarProps) {
+export function Sidebar({ userRole, onItemClick, showCloseButton }: SidebarProps) {
   const pathname = usePathname()
   const { organization } = useOrganization()
 
@@ -151,10 +155,10 @@ export function Sidebar({ userRole }: SidebarProps) {
   })
 
   return (
-    <div className="w-64 bg-sidebar border-r border-border h-screen flex flex-col">
+    <div className="w-64 bg-sidebar border-r border-border h-full lg:h-screen flex flex-col">
       {/* Header */}
-      <div className="p-4 flex-shrink-0">
-        <div className="relative w-full h-16 mb-2">
+      <div className="p-4 flex-shrink-0 flex items-center justify-between">
+        <div className="relative w-full h-16">
           <Image
             src="/images/fuelsync-logo-full.png"
             alt="FuelSync"
@@ -163,6 +167,16 @@ export function Sidebar({ userRole }: SidebarProps) {
             priority
           />
         </div>
+        {showCloseButton && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden"
+            onClick={onItemClick}
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        )}
 
         {/* Organization Info */}
         {organization && (
@@ -216,6 +230,7 @@ export function Sidebar({ userRole }: SidebarProps) {
                     ? 'bg-primary/10 text-primary border border-primary/20'
                     : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                 )}
+                onClick={onItemClick}
               >
                 <Icon className="h-5 w-5" />
                 {item.title}

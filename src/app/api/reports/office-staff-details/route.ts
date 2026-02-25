@@ -39,10 +39,25 @@ export async function GET(request: NextRequest) {
             }
         })
 
+        // Fetch salary payments for office staff
+        const salaryPayments = await prisma.officeStaffSalaryPayment.findMany({
+            where: {
+                stationId,
+                organizationId: user.organizationId,
+                status: 'PAID'
+            },
+            orderBy: { paymentDate: 'desc' },
+            take: 100 // Get recent payments to filter per staff
+        })
+
         // Build per-staff detail objects
         const staffDetails = officeStaff.map(staff => {
             const staffLoans = activeLoans.filter(
                 loan => loan.staffName?.toLowerCase().trim() === staff.name.toLowerCase().trim()
+            )
+
+            const staffPayments = salaryPayments.filter(
+                p => p.officeStaffId === staff.id
             )
 
             const totalLoanBalance = staffLoans.reduce(
@@ -87,6 +102,13 @@ export async function GET(request: NextRequest) {
                     monthlyRental: l.monthlyRental || 0,
                     createdAt: l.createdAt.toISOString(),
                     dueDate: l.dueDate ? l.dueDate.toISOString() : null
+                })),
+                recentPayments: staffPayments.map(p => ({
+                    id: p.id,
+                    date: p.paymentDate?.toISOString() || p.createdAt.toISOString(),
+                    amount: p.netSalary,
+                    method: p.paymentMethod,
+                    status: p.status
                 }))
             }
         })

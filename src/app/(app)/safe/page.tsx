@@ -41,7 +41,8 @@ import {
   Calendar,
   AlertCircle,
   ArrowUpCircle,
-  Droplet
+  Droplet,
+  Truck
 } from 'lucide-react'
 
 interface Cheque {
@@ -290,10 +291,16 @@ export default function SafePage() {
   const { selectedStation } = useStation()
   const { organization, isLoading } = useOrganization()
 
-  // Robust check for Premium status (handle case sensitivity and different plan names)
-  const isPremium = organization?.subscription?.planId === 'PREMIUM' ||
-    (organization?.plan as string)?.toUpperCase() === 'PREMIUM' ||
-    (organization?.plan as string)?.toUpperCase() === 'ENTERPRISE'
+  // Robust check for Premium status
+  const planId = organization?.subscription?.planId
+  const orgPlan = organization?.plan
+  const isPremium = planId === 'PREMIUM' ||
+    planId === 'ENTERPRISE' ||
+    orgPlan === 'PREMIUM' ||
+    orgPlan === 'ENTERPRISE'
+
+  // Determine if we should show the upgrade banner
+  const showUpgradeBanner = !isLoading && organization && !isPremium
 
 
 
@@ -308,7 +315,6 @@ export default function SafePage() {
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
   const [balanceDialogOpen, setBalanceDialogOpen] = useState(false)
-  const [loanDialogOpen, setLoanDialogOpen] = useState(false)
   const [bankDepositDialogOpen, setBankDepositDialogOpen] = useState(false)
   const [chequeActionDialogOpen, setChequeActionDialogOpen] = useState(false)
   const [selectedCheque, setSelectedCheque] = useState<Cheque | null>(null)
@@ -347,13 +353,28 @@ export default function SafePage() {
   const [transactionDate, setTransactionDate] = useState<Date>(new Date())
   const [openingBalance, setOpeningBalance] = useState<number | undefined>(undefined)
 
-  // Loan form states
-  const [loanCategory, setLoanCategory] = useState<'PUMPER' | 'EXTERNAL' | 'OFFICE'>('PUMPER')
-  const [loanPumperId, setLoanPumperId] = useState('')
-  const [loanRecipientName, setLoanRecipientName] = useState('')
-  const [loanAmount, setLoanAmount] = useState<number | undefined>(undefined)
-  const [loanMonthlyRental, setLoanMonthlyRental] = useState<number | undefined>(undefined)
-  const [loanNotes, setLoanNotes] = useState('')
+  // Consolidated Financial Action (Advance/Loan) state
+  const [financialAction, setFinancialAction] = useState<{
+    isOpen: boolean
+    category: 'PUMPER' | 'OFFICE' | 'EXTERNAL'
+    type: 'ADVANCE' | 'LOAN'
+    pumperId: string
+    officeStaffId: string
+    recipientName: string
+    amount: number | undefined
+    monthlyRental: number | undefined
+    notes: string
+  }>({
+    isOpen: false,
+    category: 'PUMPER',
+    type: 'ADVANCE',
+    pumperId: '',
+    officeStaffId: '',
+    recipientName: '',
+    amount: undefined,
+    monthlyRental: undefined,
+    notes: ''
+  })
 
   // Bank deposit form states
   const [depositAmount, setDepositAmount] = useState<number | undefined>(undefined)
@@ -363,6 +384,7 @@ export default function SafePage() {
 
   // Data states
   const [pumpers, setPumpers] = useState<Array<{ id: string; name: string; employeeId?: string }>>([])
+  const [officeStaff, setOfficeStaff] = useState<Array<{ id: string; name: string; employeeId?: string }>>([])
   const [banks, setBanks] = useState<Bank[]>([])
 
   useEffect(() => {
@@ -377,8 +399,9 @@ export default function SafePage() {
     if (!selectedStation || selectedStation === 'all') return
 
     try {
-      const [pumpersRes, banksRes] = await Promise.all([
+      const [pumpersRes, officeStaffRes, banksRes] = await Promise.all([
         fetch(`/api/pumpers?active=true`),
+        fetch(`/api/office-staff?active=true&stationId=${selectedStation}`),
         fetch(`/api/banks?active=true`)
       ])
 
@@ -387,12 +410,17 @@ export default function SafePage() {
         setPumpers(Array.isArray(pumpersData) ? pumpersData : [])
       }
 
+      if (officeStaffRes.ok) {
+        const officeStaffData = await officeStaffRes.json()
+        setOfficeStaff(Array.isArray(officeStaffData) ? officeStaffData : [])
+      }
+
       if (banksRes.ok) {
         const banksData = await banksRes.json()
         setBanks(Array.isArray(banksData) ? banksData : [])
       }
     } catch (error) {
-      console.error('Failed to fetch pumpers/banks:', error)
+      console.error('Failed to fetch pumpers/staff/banks:', error)
     }
   }
 
@@ -701,43 +729,42 @@ export default function SafePage() {
     }
   }
 
-
-  const handleGiveLoan = async (e: React.FormEvent) => {
+  const handleFinancialAction = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedStation || selectedStation === 'all' || loanAmount === undefined) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields",
-        variant: "destructive"
-      })
+
+    const { category, type, pumperId, officeStaffId, recipientName, amount, monthlyRental, notes } = financialAction
+
+    if (!selectedStation || selectedStation === 'all' || !amount) {
+      toast({ title: "Error", description: "Please fill in all required fields", variant: "destructive" })
       return
     }
 
-    if (loanCategory === 'PUMPER' && !loanPumperId) {
-      toast({
-        title: "Error",
-        description: "Please select a pumper",
-        variant: "destructive"
-      })
+    if (category === 'PUMPER' && !pumperId) {
+      toast({ title: "Error", description: "Please select a pumper", variant: "destructive" })
       return
     }
 
-    if ((loanCategory === 'EXTERNAL' || loanCategory === 'OFFICE') && !loanRecipientName) {
-      toast({
-        title: "Error",
-        description: "Please enter recipient name",
-        variant: "destructive"
-      })
+    if (category === 'OFFICE' && !officeStaffId) {
+      toast({ title: "Error", description: "Please select a staff member", variant: "destructive" })
+      return
+    }
+
+    if (category === 'EXTERNAL' && !recipientName) {
+      toast({ title: "Error", description: "Please enter recipient name", variant: "destructive" })
       return
     }
 
     try {
       let apiUrl = ''
-      let bodyData: {
+      const isAdvance = type === 'ADVANCE'
+      const finalMonthlyRental = isAdvance ? amount : (monthlyRental || 0)
+      const typeLabel = isAdvance ? 'Advance' : 'Loan'
+      const typePrefix = isAdvance ? '[ADVANCE]' : '[LOAN]'
+
+      const bodyData: {
         stationId: string
         amount: number
         monthlyRental: number
-
         dueDate: string
         fromSafe: boolean
         pumperName?: string
@@ -746,72 +773,53 @@ export default function SafePage() {
         borrowerPhone?: string
         reason?: string
         notes?: string
+        transactionType?: string
       } = {
         stationId: selectedStation,
-        amount: loanAmount || 0,
-        monthlyRental: loanMonthlyRental || 0,
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
-        fromSafe: true
+        amount: amount,
+        monthlyRental: finalMonthlyRental,
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        fromSafe: true,
+        transactionType: type // Pass 'ADVANCE' or 'LOAN' explicitly
       }
 
-      if (loanCategory === 'PUMPER') {
-        const selectedPumper = pumpers.find(p => p.id === loanPumperId)
-        const pumperName = selectedPumper?.name || 'Unknown Pumper'
+      if (category === 'PUMPER') {
+        const pumper = pumpers.find(p => p.id === pumperId)
         apiUrl = '/api/loans/pumper'
-        bodyData = {
-          ...bodyData,
-          pumperName: pumperName,
-          reason: loanNotes || 'Loan given from safe'
-        }
-      } else if (loanCategory === 'OFFICE') {
+        bodyData.pumperName = pumper?.name || 'Unknown Pumper'
+        bodyData.reason = `${typePrefix} ${notes || `Staff ${typeLabel}: ${bodyData.pumperName}`}`
+      } else if (category === 'OFFICE') {
+        const staff = officeStaff.find(s => s.id === officeStaffId)
         apiUrl = '/api/loans/office'
-        bodyData = {
-          ...bodyData,
-          staffName: loanRecipientName,
-          reason: loanNotes || 'Loan given from safe'
-        }
-      } else if (loanCategory === 'EXTERNAL') {
+        bodyData.staffName = staff?.name || 'Unknown Staff'
+        bodyData.reason = `${typePrefix} ${notes || `Staff ${typeLabel}: ${bodyData.staffName}`}`
+      } else {
         apiUrl = '/api/loans/external'
-        bodyData = {
-          ...bodyData,
-          borrowerName: loanRecipientName,
-          borrowerPhone: 'N/A',
-          notes: loanNotes || 'Loan given from safe'
-        }
+        bodyData.borrowerName = recipientName
+        bodyData.borrowerPhone = 'N/A'
+        bodyData.notes = `${typePrefix} ${notes || `${typeLabel} given from safe`}`
       }
 
-      const loanResponse = await fetch(apiUrl, {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(bodyData)
       })
 
-      if (!loanResponse.ok) {
-        throw new Error('Failed to record loan')
-      }
+      if (!response.ok) throw new Error('Failed to record transaction')
 
-      setLoanDialogOpen(false)
-      setLoanCategory('PUMPER')
-      setLoanPumperId('')
-      setLoanRecipientName('')
-      setLoanAmount(undefined)
-      setLoanMonthlyRental(undefined)
-      setLoanNotes('')
+      toast({ title: "Success", description: `${typeLabel} recorded successfully!` })
 
-      toast({
-        title: "Success",
-        description: "Loan recorded successfully!"
-      })
-
+      setFinancialAction(prev => ({ ...prev, isOpen: false, amount: undefined, monthlyRental: undefined, notes: '', pumperId: '', officeStaffId: '', recipientName: '' }))
       fetchSafe()
-    } catch {
-      toast({
-        title: "Error",
-        description: "Failed to record loan",
-        variant: "destructive"
-      })
+    } catch (err) {
+      console.error(err)
+      toast({ title: "Error", description: "Failed to record transaction", variant: "destructive" })
     }
   }
+
+
+
 
   const handleBankDeposit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -962,7 +970,10 @@ export default function SafePage() {
   }
 
 
-  const getTypeLabel = (type: string) => {
+  const getTypeLabel = (type: string, description?: string) => {
+    if (type === 'LOAN_GIVEN' && description?.includes('[ADVANCE]')) {
+      return 'Advance Given'
+    }
     const labels: Record<string, string> = {
       CASH_FUEL_SALES: 'Cash from Sales',
       POS_CARD_PAYMENT: 'POS Card Payment',
@@ -987,9 +998,12 @@ export default function SafePage() {
     return <ArrowUpRight className="h-4 w-4 text-red-600 dark:text-red-400" />
   }
 
-  const getTypeColor = (type: string) => {
+  const getTypeColor = (type: string, description?: string) => {
     if (INCOME_TYPES.includes(type)) {
       return 'bg-green-500/20 text-green-400 dark:bg-green-600/30 dark:text-green-300'
+    }
+    if (type === 'LOAN_GIVEN' && description?.includes('[ADVANCE]')) {
+      // Use different color for advances? Maybe orange or keep red? Let's use red for consistency with outgoing.
     }
     return 'bg-red-500/20 text-red-400 dark:bg-red-600/30 dark:text-red-300'
   }
@@ -1033,8 +1047,8 @@ export default function SafePage() {
         return (
           <div className="flex items-center gap-2">
             {getTypeIcon(type)}
-            <Badge className={getTypeColor(type)}>
-              {getTypeLabel(type)}
+            <Badge className={getTypeColor(type, row.description)}>
+              {getTypeLabel(type, row.description)}
             </Badge>
           </div>
         )
@@ -1137,7 +1151,28 @@ export default function SafePage() {
           )
         }
 
-        return <span className="text-sm">{description}</span>
+        // Show fuel delivery details
+        if (row.type === 'FUEL_DELIVERY_PAYMENT') {
+          return (
+            <div className="space-y-1">
+              <div className="text-sm font-medium">{description}</div>
+              <div className="text-xs text-muted-foreground flex items-center gap-2">
+                <Truck className="h-3 w-3" />
+                <span>Fuel Delivery Receipt</span>
+              </div>
+            </div>
+          )
+        }
+
+        // Standard rendering for other transactions to ensure font consistency
+        return (
+          <div className="space-y-1">
+            <div className="text-sm font-medium">{description}</div>
+            <div className="text-xs text-muted-foreground">
+              {getTypeLabel(row.type)}
+            </div>
+          </div>
+        )
       }
     },
     {
@@ -1173,7 +1208,7 @@ export default function SafePage() {
   ]
 
   // Show loading state to prevent premature "Upgrade" banner
-  if (isLoading) {
+  if (isLoading || !organization) {
     return (
       <div className="flex items-center justify-center p-8 min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -1631,123 +1666,188 @@ export default function SafePage() {
               </DialogContent>
             </Dialog>
 
+
             {isPremium && (
-              <Dialog open={loanDialogOpen} onOpenChange={setLoanDialogOpen}>
+              <Dialog
+                open={financialAction.isOpen}
+                onOpenChange={(open) => setFinancialAction(prev => ({ ...prev, isOpen: open }))}
+              >
                 <DialogTrigger asChild>
                   <Button variant="outline">
                     <Users className="mr-2 h-4 w-4" />
-                    Give Loan
+                    Staff Advance / Loan
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-md">
                   <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <Users className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                      Give Loan from Safe
+                    <DialogTitle className="flex items-center gap-2 text-orange-700 dark:text-orange-400">
+                      <Users className="h-5 w-5" />
+                      Staff Advance or Loan
                     </DialogTitle>
-                    <p className="text-sm text-muted-foreground">Record a loan given from safe cash</p>
+                    <p className="text-sm text-muted-foreground">Issue salary advances or loans to staff</p>
                   </DialogHeader>
-                  <form onSubmit={handleGiveLoan} className="space-y-4">
-                    <div>
-                      <Label htmlFor="loanCategory" className="text-base font-semibold">Loan Category</Label>
-                      <Select value={loanCategory} onValueChange={(value) => {
-                        setLoanCategory(value as 'PUMPER' | 'EXTERNAL' | 'OFFICE')
-                        setLoanPumperId('')
-                        setLoanRecipientName('')
-                      }}>
-                        <SelectTrigger id="loanCategory" className="mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="PUMPER">Pumper Loan</SelectItem>
-                          <SelectItem value="EXTERNAL">External Loan (Customer/Supplier)</SelectItem>
-                          <SelectItem value="OFFICE">Office/Staff Loan</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {loanCategory === 'PUMPER' && 'Loan to a pumper employee'}
-                        {loanCategory === 'EXTERNAL' && 'Loan to external party (customer, supplier, etc.)'}
-                        {loanCategory === 'OFFICE' && 'Loan to office staff or management'}
-                      </p>
-                    </div>
 
-                    {loanCategory === 'PUMPER' ? (
+                  <form onSubmit={handleFinancialAction} className="space-y-4 pt-4">
+                    <div className="space-y-4">
+                      <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Users className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                          <span className="text-sm font-semibold text-amber-900 dark:text-amber-100">Financial Action</span>
+                        </div>
+                        <p className="text-xs text-amber-700 dark:text-amber-300">
+                          Issue money directly from the safe to staff or external parties.
+                        </p>
+                      </div>
+
+                      {/* Recipient Category */}
                       <div>
-                        <Label htmlFor="loanPumper" className="text-base font-semibold">Select Pumper</Label>
-                        <Select value={loanPumperId} onValueChange={setLoanPumperId}>
-                          <SelectTrigger id="loanPumper" className="mt-1">
-                            <SelectValue placeholder="Choose a pumper..." />
+                        <Label htmlFor="staffCategory" className="text-base font-semibold">Staff Category *</Label>
+                        <Select
+                          value={financialAction.category}
+                          onValueChange={(v: 'PUMPER' | 'OFFICE' | 'EXTERNAL') => setFinancialAction(prev => ({ ...prev, category: v, pumperId: '', officeStaffId: '', recipientName: '' }))}
+                        >
+                          <SelectTrigger id="staffCategory" className="mt-1">
+                            <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {pumpers.length === 0 ? (
-                              <div className="px-2 py-1.5 text-sm text-muted-foreground">No pumpers available</div>
-                            ) : (
-                              pumpers.map((pumper) => (
-                                <SelectItem key={pumper.id} value={pumper.id}>
-                                  {pumper.name}{pumper.employeeId ? ` (${pumper.employeeId})` : ''}
-                                </SelectItem>
-                              ))
-                            )}
+                            <SelectItem value="PUMPER">Pumper Staff</SelectItem>
+                            <SelectItem value="OFFICE">Office/Management Staff</SelectItem>
+                            <SelectItem value="EXTERNAL">External Party (Customer/Supplier)</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-                    ) : (
+
+                      {/* Recipient Selection */}
                       <div>
-                        <Label htmlFor="loanRecipient" className="text-base font-semibold">Recipient Name</Label>
-                        <Input
-                          id="loanRecipient"
-                          value={loanRecipientName}
-                          onChange={(e) => setLoanRecipientName(e.target.value)}
-                          placeholder={loanCategory === 'EXTERNAL' ? 'E.g., Customer Name, Supplier Name' : 'E.g., Office Manager, Accountant'}
+                        <Label htmlFor="recipient" className="text-base font-semibold">Recipient *</Label>
+                        {financialAction.category === 'PUMPER' ? (
+                          <div className="mt-1">
+                            <Select
+                              value={financialAction.pumperId}
+                              onValueChange={(v) => setFinancialAction(prev => ({ ...prev, pumperId: v }))}
+                            >
+                              <SelectTrigger id="recipient" className="w-full mt-1">
+                                <SelectValue placeholder="Select a pumper..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {pumpers.map(p => (
+                                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ) : financialAction.category === 'OFFICE' ? (
+                          <div className="mt-1">
+                            <Select
+                              value={financialAction.officeStaffId}
+                              onValueChange={(v) => setFinancialAction(prev => ({ ...prev, officeStaffId: v }))}
+                            >
+                              <SelectTrigger id="recipient" className="w-full mt-1">
+                                <SelectValue placeholder="Select staff member..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {officeStaff.map(s => (
+                                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ) : (
+                          <Input
+                            id="recipient"
+                            placeholder="Enter recipient name..."
+                            value={financialAction.recipientName}
+                            onChange={(e) => setFinancialAction(prev => ({ ...prev, recipientName: e.target.value }))}
+                            className="mt-1"
+                          />
+                        )}
+                      </div>
+
+                      {/* Deduction Type - Only for Staff */}
+                      {(financialAction.category === 'PUMPER' || financialAction.category === 'OFFICE') && (
+                        <div>
+                          <Label className="text-base font-semibold">Deduction Type *</Label>
+                          <div className="flex gap-2 mt-1">
+                            <Button
+                              type="button"
+                              variant={financialAction.type === 'ADVANCE' ? 'default' : 'outline'}
+                              className="flex-1"
+                              onClick={() => setFinancialAction(prev => ({ ...prev, type: 'ADVANCE' }))}
+                            >
+                              Quick Advance
+                            </Button>
+                            <Button
+                              type="button"
+                              variant={financialAction.type === 'LOAN' ? 'default' : 'outline'}
+                              className="flex-1"
+                              onClick={() => setFinancialAction(prev => ({ ...prev, type: 'LOAN' }))}
+                            >
+                              Fixed Loan
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {financialAction.type === 'ADVANCE'
+                              ? "Next salary will deduct 100% of this amount."
+                              : "This will be recovered in fixed monthly installments."}
+                          </p>
+                        </div>
+                      )}
+
+                      <div>
+                        <Label htmlFor="amount" className="text-base font-semibold">Amount (Rs.) *</Label>
+                        <MoneyInput
+                          id="amount"
+                          value={financialAction.amount}
+                          onChange={(v) => setFinancialAction(prev => ({ ...prev, amount: v }))}
+                          placeholder="0.00"
                           className="mt-1"
                         />
                       </div>
-                    )}
 
-                    <div>
-                      <Label htmlFor="loanAmount">Loan Amount (Rs.)</Label>
-                      <MoneyInput
-                        id="loanAmount"
-                        value={loanAmount}
-                        onChange={setLoanAmount}
-                        placeholder="0.00"
-                      />
+                      {financialAction.type === 'LOAN' && (
+                        <div>
+                          <Label htmlFor="monthlyRental" className="text-base font-semibold">Monthly Rental (Rs.) *</Label>
+                          <MoneyInput
+                            id="monthlyRental"
+                            value={financialAction.monthlyRental}
+                            onChange={(v) => setFinancialAction(prev => ({ ...prev, monthlyRental: v }))}
+                            placeholder="0.00"
+                            className="mt-1"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Amount to be deducted each month
+                          </p>
+                        </div>
+                      )}
+
+                      <div>
+                        <Label htmlFor="notes" className="text-base font-semibold">Additional Notes (Optional)</Label>
+                        <Input
+                          id="notes"
+                          placeholder="Why is this being given?"
+                          value={financialAction.notes}
+                          onChange={(e) => setFinancialAction(prev => ({ ...prev, notes: e.target.value }))}
+                          className="mt-1"
+                        />
+                      </div>
                     </div>
 
-                    <div>
-                      <Label htmlFor="loanMonthlyRental">Monthly Rental (Rs.)</Label>
-                      <MoneyInput
-                        id="loanMonthlyRental"
-                        value={loanMonthlyRental}
-                        onChange={setLoanMonthlyRental}
-                        placeholder="0.00"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Amount to deduct monthly (default: 0)
-                      </p>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="loanNotes">Notes (Optional)</Label>
-                      <Input
-                        id="loanNotes"
-                        value={loanNotes}
-                        onChange={(e) => setLoanNotes(e.target.value)}
-                        placeholder="Additional notes"
-                      />
-                    </div>
-
-                    <div className="flex justify-end gap-3">
-                      <Button type="button" variant="outline" onClick={() => setLoanDialogOpen(false)}>
+                    <div className="flex justify-end gap-3 pt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setFinancialAction(prev => ({ ...prev, isOpen: false }))}
+                      >
                         Cancel
                       </Button>
-                      <Button type="submit">Give Loan</Button>
+                      <Button type="submit" variant="destructive">
+                        Record Action
+                      </Button>
                     </div>
                   </form>
                 </DialogContent>
               </Dialog>
             )}
-
             {isPremium && (
               <Dialog open={bankDepositDialogOpen} onOpenChange={setBankDepositDialogOpen}>
                 <DialogTrigger asChild>
@@ -1855,7 +1955,7 @@ export default function SafePage() {
               </Dialog>
             )}
 
-            {!isPremium && (
+            {showUpgradeBanner && (
               <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg text-amber-800 dark:text-amber-200 text-sm">
                 <AlertCircle className="h-4 w-4" />
                 <span>Upgrade to Premium to manage Loans, Cheques and Bank Deposits</span>
@@ -2167,7 +2267,7 @@ export default function SafePage() {
         </DialogContent>
       </Dialog>
 
-    </div>
+    </div >
   )
 }
 

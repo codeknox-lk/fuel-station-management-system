@@ -147,6 +147,8 @@ model Station {
   openingHours              String?
   monthStartDate            Int                        @default(1)
   phone                     String?
+  deliveryToleranceCm       Int                        @default(2)
+  salesTolerance            Float                      @default(20)
   organizationId            String?
   bankTransactions          BankTransaction[]
   cheques                   Cheque[]
@@ -409,6 +411,9 @@ model Delivery {
   waterLevelBefore    Float?
   waterLevelAfter     Float?
   afterMeterReadings  Json?
+  
+  toleranceCmUsed     Int?
+  toleranceLitersUsed Float?
   
   chequeId            String?
   cheque              Cheque?               @relation(fields: [chequeId], references: [id])

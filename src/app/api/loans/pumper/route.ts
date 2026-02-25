@@ -98,10 +98,11 @@ export async function POST(request: NextRequest) {
       dueDate?: string | Date
       givenBy?: string
       fromSafe?: boolean
+      transactionType?: 'ADVANCE' | 'LOAN'
     }
     const body = await request.json() as LoanBody
 
-    const { stationId, pumperName, amount, monthlyRental, reason, dueDate, fromSafe } = body
+    const { stationId, pumperName, amount, monthlyRental, reason, dueDate, fromSafe, transactionType } = body
 
     if (!stationId || !pumperName || !amount || !reason || !dueDate) {
       return NextResponse.json(
@@ -189,6 +190,8 @@ export async function POST(request: NextRequest) {
 
         const balanceAfter = balanceBefore - parseFloat(String(amount))
 
+        const typeLabel = transactionType === 'ADVANCE' ? 'advance' : 'loan'
+
         // Create safe transaction
         await prisma.safeTransaction.create({
           data: {
@@ -198,7 +201,7 @@ export async function POST(request: NextRequest) {
             balanceBefore,
             balanceAfter,
             loanId: newLoan.id,
-            description: `Pumper loan given: ${pumperName} - ${reason}`,
+            description: `Pumper ${typeLabel} given: ${pumperName} - ${reason}`,
             performedBy: secureGivenBy,
             timestamp: loanTimestamp,
             organizationId: user.organizationId
