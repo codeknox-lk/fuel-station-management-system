@@ -411,6 +411,25 @@ export async function POST(
       }
     }
 
+    // Create a real-time notification that a shift closed
+    await prisma.notification.create({
+      data: {
+        organizationId: user.organizationId,
+        stationId: shift.stationId,
+        title: 'Shift Closed',
+        message: `Shift closed by ${closedBy || user.username || 'System'}. Total Sales: Rs. ${shiftWithStats.statistics.totalSales.toLocaleString()}`,
+        type: 'SUCCESS',
+        priority: 'MEDIUM',
+        category: 'SHIFT',
+        actionUrl: `/shifts/${id}`,
+        metadata: {
+          shiftId: id,
+          closedBy: closedBy || user.username || 'System',
+          totalSales: shiftWithStats.statistics.totalSales
+        }
+      }
+    }).catch(err => console.error('Failed to create shift close notification:', err))
+
     return NextResponse.json(shiftWithStats)
   } catch (error) {
     console.error('Error closing shift:', error)

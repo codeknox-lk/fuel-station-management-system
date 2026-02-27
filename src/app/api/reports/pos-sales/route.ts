@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { calculateBillingPeriod } from '@/lib/date-utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,6 +15,7 @@ export async function GET(request: NextRequest) {
 
     const station = await prisma.station.findUnique({ where: { id: stationId } })
     const monthStartDay = station?.monthStartDate || 1
+    const monthEndDay = station?.monthEndDate
 
     // Parse dates or use defaults (current business month)
     let dateStart: Date
@@ -29,13 +31,20 @@ export async function GET(request: NextRequest) {
       const now = new Date()
       const currentDay = now.getDate()
 
+      let targetMonth = now.getMonth()
+      let targetYear = now.getFullYear()
+
       if (currentDay < monthStartDay) {
-        dateStart = new Date(now.getFullYear(), now.getMonth() - 1, monthStartDay, 0, 0, 0, 0)
-        dateEnd = new Date(now.getFullYear(), now.getMonth(), monthStartDay - 1, 23, 59, 59, 999)
-      } else {
-        dateStart = new Date(now.getFullYear(), now.getMonth(), monthStartDay, 0, 0, 0, 0)
-        dateEnd = new Date(now.getFullYear(), now.getMonth() + 1, monthStartDay - 1, 23, 59, 59, 999)
+        targetMonth -= 1
+        if (targetMonth < 0) {
+          targetMonth = 11
+          targetYear -= 1
+        }
       }
+
+      const period = calculateBillingPeriod(targetYear, targetMonth, monthStartDay, monthEndDay)
+      dateStart = period.startDate
+      dateEnd = period.endDate
     }
 
     // Get all POS batches for the period
@@ -61,7 +70,8 @@ export async function GET(request: NextRequest) {
           include: {
             terminal: {
               include: {
-                bank: true
+                bank: true,
+                amexBank: true
               }
             }
           }
@@ -75,7 +85,7 @@ export async function GET(request: NextRequest) {
     // Get POS terminals for the station
     const posTerminals = await prisma.posTerminal.findMany({
       where: { stationId },
-      include: { bank: true }
+      include: { bank: true, amexBank: true }
     })
 
     // Get missing slips count
@@ -150,6 +160,9 @@ export async function GET(request: NextRequest) {
       if (terminal.bankId && terminal.bank) {
         uniqueBanks.set(terminal.bankId, terminal.bank.name)
       }
+      if (terminal.amexBankId && terminal.amexBank) {
+        uniqueBanks.set(terminal.amexBankId, terminal.amexBank.name)
+      }
     }
 
     // Initialize daily by bank maps for all banks
@@ -195,11 +208,20 @@ export async function GET(request: NextRequest) {
 
         // Daily breakdown by bank
         const bankId = entry.terminal.bankId || 'unknown'
+        const amexBankId = entry.terminal.amexBankId || bankId
+        const nonAmexTotal = entry.visaAmount + entry.masterAmount + entry.qrAmount + entry.dialogTouchAmount
+
         if (dailyByBank.has(bankId)) {
           const bankDaily = dailyByBank.get(bankId)!
           if (bankDaily.has(dateKey)) {
-            const currentAmount = bankDaily.get(dateKey)!
-            bankDaily.set(dateKey, currentAmount + entryTotal)
+            bankDaily.set(dateKey, bankDaily.get(dateKey)! + nonAmexTotal)
+          }
+        }
+
+        if (dailyByBank.has(amexBankId)) {
+          const bankDaily = dailyByBank.get(amexBankId)!
+          if (bankDaily.has(dateKey)) {
+            bankDaily.set(dateKey, bankDaily.get(dateKey)! + entry.amexAmount)
           }
         }
 
@@ -214,6 +236,11 @@ export async function GET(request: NextRequest) {
 
         // By bank (for summary)
         const bankName = entry.terminal.bank?.name || 'Unknown Bank'
+        const amexBankName = entry.terminal.amexBank?.name || bankName
+
+        const terminalBankDisplay = (entry.terminal.amexBankId && entry.terminal.amexBankId !== entry.terminal.bankId)
+          ? `${bankName} (Amex: ${amexBankName})`
+          : bankName
 
         if (!bankSales.has(bankId)) {
           bankSales.set(bankId, {
@@ -229,13 +256,29 @@ export async function GET(request: NextRequest) {
         }
 
         const bankData = bankSales.get(bankId)!
-        bankData.totalAmount += entryTotal
+        bankData.totalAmount += nonAmexTotal
         bankData.transactionCount += entry.transactionCount
         bankData.visa += entry.visaAmount
         bankData.master += entry.masterAmount
-        bankData.amex += entry.amexAmount
         bankData.qr += entry.qrAmount
         bankData.dialogTouch += entry.dialogTouchAmount
+
+        if (!bankSales.has(amexBankId)) {
+          bankSales.set(amexBankId, {
+            bankName: amexBankName,
+            totalAmount: 0,
+            transactionCount: 0,
+            visa: 0,
+            master: 0,
+            amex: 0,
+            qr: 0,
+            dialogTouch: 0
+          })
+        }
+
+        const amexBankData = bankSales.get(amexBankId)!
+        amexBankData.totalAmount += entry.amexAmount
+        amexBankData.amex += entry.amexAmount
 
         // By terminal (individual POS machine)
         const terminalKey = entry.terminalId
@@ -244,7 +287,7 @@ export async function GET(request: NextRequest) {
             terminalId: entry.terminalId,
             terminalName: entry.terminal.name,
             terminalNumber: entry.terminal.terminalNumber,
-            bankName,
+            bankName: terminalBankDisplay,
             totalAmount: 0,
             transactionCount: 0,
             visa: 0,

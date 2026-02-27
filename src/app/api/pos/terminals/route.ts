@@ -33,6 +33,12 @@ export async function GET(request: NextRequest) {
               name: true
             }
           },
+          amexBank: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
           _count: {
             select: {
               batchEntries: true
@@ -69,6 +75,12 @@ export async function GET(request: NextRequest) {
             name: true
           }
         },
+        amexBank: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
         _count: {
           select: {
             batchEntries: true
@@ -94,7 +106,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
-    const { stationId, terminalNumber, name, bankId } = body
+    const { stationId, terminalNumber, name, bankId, amexBankId } = body
 
     if (!stationId || !terminalNumber || !name) {
       return NextResponse.json(
@@ -123,6 +135,7 @@ export async function POST(request: NextRequest) {
         stationId,
         organizationId: user.organizationId,
         bankId: bankId || null,
+        amexBankId: amexBankId || null,
         terminalNumber,
         name,
         isActive: true
@@ -135,6 +148,12 @@ export async function POST(request: NextRequest) {
           }
         },
         bank: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        amexBank: {
           select: {
             id: true,
             name: true

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getAuthenticatedStationContext } from '@/lib/api-utils'
+import { calculateBillingPeriod } from '@/lib/date-utils'
 
 interface ShiftData {
   shiftId: string
@@ -25,6 +26,7 @@ export async function GET(request: NextRequest) {
       where: { id: stationId === 'all' ? undefined : stationId }
     })
     const monthStartDay = station?.monthStartDate || 1
+    const monthEndDay = station?.monthEndDate
 
     // Parse dates or use defaults (current business month)
     let dateStart: Date
@@ -40,13 +42,20 @@ export async function GET(request: NextRequest) {
       const now = new Date()
       const currentDay = now.getDate()
 
+      let targetMonth = now.getMonth()
+      let targetYear = now.getFullYear()
+
       if (currentDay < monthStartDay) {
-        dateStart = new Date(now.getFullYear(), now.getMonth() - 1, monthStartDay, 0, 0, 0, 0)
-        dateEnd = new Date(now.getFullYear(), now.getMonth(), monthStartDay - 1, 23, 59, 59, 999)
-      } else {
-        dateStart = new Date(now.getFullYear(), now.getMonth(), monthStartDay, 0, 0, 0, 0)
-        dateEnd = new Date(now.getFullYear(), now.getMonth() + 1, monthStartDay - 1, 23, 59, 59, 999)
+        targetMonth -= 1
+        if (targetMonth < 0) {
+          targetMonth = 11
+          targetYear -= 1
+        }
       }
+
+      const period = calculateBillingPeriod(targetYear, targetMonth, monthStartDay, monthEndDay)
+      dateStart = period.startDate
+      dateEnd = period.endDate
     }
 
     // Get all pumpers or specific pumper
@@ -261,8 +270,9 @@ export async function GET(request: NextRequest) {
       const totalLoanBalance = pumperLoans.reduce((sum, loan) => sum + (loan.amount - loan.paidAmount), 0)
       const totalMonthlyRental = pumperLoans.reduce((sum, loan) => sum + (loan.monthlyRental || 0), 0)
 
-      // Calculate advance limit (50,000 - monthly rental)
-      const advanceLimit = 50000 - totalMonthlyRental
+      // Calculate advance limit (pumper limit - monthly rental)
+      const baseAdvanceLimit = pumper.advanceLimit || 50000
+      const advanceLimit = baseAdvanceLimit - totalMonthlyRental
 
       // Get salary payments for the period
       const salaryPayments = await prisma.salaryPayment.findMany({

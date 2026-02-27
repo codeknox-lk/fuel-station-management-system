@@ -384,6 +384,24 @@ export async function POST(request: NextRequest) {
       return shift
     })
 
+    // Create a real-time notification that a shift opened
+    await prisma.notification.create({
+      data: {
+        organizationId: user.organizationId,
+        stationId: station.id,
+        title: 'Shift Opened',
+        message: `Shift ${newShift.shiftNumber} has been opened by ${user.username}.`,
+        type: 'INFO',
+        priority: 'LOW',
+        category: 'SHIFT',
+        actionUrl: `/shifts/${newShift.id}`,
+        metadata: {
+          shiftId: newShift.id,
+          openedBy: user.username
+        }
+      }
+    }).catch(err => console.error('Failed to create shift open notification:', err))
+
 
     // Log operation
     await auditOperations.shiftOpened(request, newShift.id, stationId, station.name)

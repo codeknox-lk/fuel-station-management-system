@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { calculateBillingPeriod } from '@/lib/date-utils'
 
 interface PumperBreakdown {
   pumperName: string
@@ -52,9 +53,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Station ID is required' }, { status: 400 })
     }
 
-    // Get monthStartDay from station
+    // Get monthStartDay and monthEndDay from station
     const station = await prisma.station.findUnique({ where: { id: stationId } })
     const monthStartDay = station?.monthStartDate || 1
+    const monthEndDay = station?.monthEndDate
 
     // Parse month or use current month
     // Salary month calculation
@@ -63,10 +65,9 @@ export async function GET(request: NextRequest) {
 
     if (month) {
       const [year, monthNum] = month.split('-').map(Number)
-      // Start: Dynamic start day of the specified month
-      startDate = new Date(year, monthNum - 1, monthStartDay, 0, 0, 0, 0)
-      // End: Previous day of next month at 23:59:59
-      endDate = new Date(year, monthNum, monthStartDay - 1, 23, 59, 59, 999)
+      const period = calculateBillingPeriod(year, monthNum - 1, monthStartDay, monthEndDay)
+      startDate = period.startDate
+      endDate = period.endDate
     } else {
       const now = new Date()
       // If current date is before start day, use previous month's salary period
@@ -76,15 +77,16 @@ export async function GET(request: NextRequest) {
 
       if (now.getDate() < monthStartDay) {
         // Use previous month
-        salaryMonth = now.getMonth() - 1
+        salaryMonth -= 1
         if (salaryMonth < 0) {
           salaryMonth = 11
-          salaryYear = now.getFullYear() - 1
+          salaryYear -= 1
         }
       }
 
-      startDate = new Date(salaryYear, salaryMonth, monthStartDay, 0, 0, 0, 0)
-      endDate = new Date(salaryYear, salaryMonth + 1, monthStartDay - 1, 23, 59, 59, 999)
+      const period = calculateBillingPeriod(salaryYear, salaryMonth, monthStartDay, monthEndDay)
+      startDate = period.startDate
+      endDate = period.endDate
     }
 
     // Get all pumpers for the station with base salary
@@ -99,7 +101,13 @@ export async function GET(request: NextRequest) {
         name: true,
         employeeId: true,
         baseSalary: true,
-        holidayAllowance: true // This field exists in schema but Prisma client might not be regenerated yet
+        holidayAllowance: true,
+        useStationSalaryDefaults: true,
+        epfRate: true,
+        commissionPerThousand: true,
+        overtimeMultiplier: true,
+        restDayDeductionAmount: true,
+        allowedRestDays: true
       }
     })
 
@@ -199,13 +207,17 @@ export async function GET(request: NextRequest) {
       const holidayAllowance = (pumper.holidayAllowance !== null && pumper.holidayAllowance !== undefined && pumper.holidayAllowance > 0)
         ? pumper.holidayAllowance
         : 4500
-      const restDayDeduction = 900 // Deduction per rest day
-      const allowedRestDays = 5 // 5 rest days per month
 
-      // Calculate OT rate per hour: ((basic/30) / 8) * 1.5
+      const epfRate = pumper.useStationSalaryDefaults ? (station?.defaultEpfRate ?? 8) : (pumper.epfRate ?? 0)
+      const commissionRate = pumper.useStationSalaryDefaults ? (station?.defaultCommissionPerThousand ?? 1) : (pumper.commissionPerThousand ?? 0)
+      const overtimeRateMult = pumper.useStationSalaryDefaults ? (station?.defaultOvertimeMultiplier ?? 1.5) : (pumper.overtimeMultiplier ?? 0)
+      const restDayDeduction = pumper.useStationSalaryDefaults ? (station?.defaultRestDayDeductionAmount ?? 900) : (pumper.restDayDeductionAmount ?? 0)
+      const allowedRestDays = pumper.useStationSalaryDefaults ? (station?.defaultAllowedRestDays ?? 5) : (pumper.allowedRestDays ?? 0)
+
+      // Calculate OT rate per hour
       const dailySalary = baseSalary / 30
       const hourlyRate = dailySalary / 8
-      const overtimeRate = hourlyRate * 1.5
+      const overtimeRate = hourlyRate * overtimeRateMult
 
       let totalHours = 0
       let totalSales = 0
@@ -389,25 +401,21 @@ export async function GET(request: NextRequest) {
         )
       }
 
-      // Calculate commission: 1 rs per 1000rs sales
-      const commission = Math.floor(totalSales / 1000)
+      const commission = Math.floor(totalSales / 1000) * commissionRate
 
       // Calculate rest days deduction
       // Total days in salary period (from 7th to 6th of next month = ~30 days)
       const daysInPeriod = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
       const daysWorked = workedDates.size
       // Rest days taken = total days in period - days worked
-      // They are allowed 5 rest days. For each rest day taken (up to 5), deduct 900rs
       const totalRestDays = daysInPeriod - daysWorked
-      const restDaysTaken = Math.min(totalRestDays, allowedRestDays) // Cap at 5 allowed rest days
-      // Deduct 900rs for each rest day taken (up to the 5 allowed)
-      const restDayDeductionAmount = restDaysTaken * restDayDeduction
-      const actualHolidayAllowance = holidayAllowance - restDayDeductionAmount
+      const restDaysTaken = Math.min(totalRestDays, allowedRestDays)
+      const restDayDeductionAmountToDeduct = restDaysTaken * restDayDeduction
+      const actualHolidayAllowance = holidayAllowance - restDayDeductionAmountToDeduct
 
-      // Calculate EPF (Employee Provident Fund) - typically 8% of gross salary
-      // EPF = 8% of (baseSalary + holidayAllowance + overtime + commission)
+      // Calculate EPF
       const grossSalary = baseSalary + actualHolidayAllowance + totalOvertimeAmount + commission
-      const epf = Math.round(grossSalary * 0.08 * 100) / 100
+      const epf = Math.round(grossSalary * (epfRate / 100) * 100) / 100
 
       // Calculate net salary
       // Formula: Base Salary + Holiday Allowance + Overtime + Commission + Variance Bonuses 
@@ -451,7 +459,13 @@ export async function GET(request: NextRequest) {
           name: true,
           employeeId: true,
           baseSalary: true,
-          holidayAllowance: true
+          holidayAllowance: true,
+          useStationSalaryDefaults: true,
+          epfRate: true,
+          commissionPerThousand: true,
+          overtimeMultiplier: true,
+          restDayDeductionAmount: true,
+          allowedRestDays: true
         }
       })
 
@@ -474,16 +488,18 @@ export async function GET(request: NextRequest) {
         const holidayAllowance = (pumper.holidayAllowance !== null && pumper.holidayAllowance !== undefined && pumper.holidayAllowance > 0)
           ? pumper.holidayAllowance
           : 4500
-        const restDayDeduction = 900
-        const allowedRestDays = 5
+        const epfRate = pumper.useStationSalaryDefaults ? (station?.defaultEpfRate ?? 8) : (pumper.epfRate ?? 0)
+        const restDayDeduction = pumper.useStationSalaryDefaults ? (station?.defaultRestDayDeductionAmount ?? 900) : (pumper.restDayDeductionAmount ?? 0)
+        const allowedRestDays = pumper.useStationSalaryDefaults ? (station?.defaultAllowedRestDays ?? 5) : (pumper.allowedRestDays ?? 0)
+
         const daysInPeriod = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-        // If no shifts worked, assume they took all 5 rest days (deduct full allowance)
+        // If no shifts worked, assume they took all total rest days
         const totalRestDays = daysInPeriod - 0 // 0 days worked
         const restDaysTaken = Math.min(totalRestDays, allowedRestDays)
-        const restDayDeductionAmount = restDaysTaken * restDayDeduction
-        const actualHolidayAllowance = holidayAllowance - restDayDeductionAmount
+        const restDayDeductionAmountToDeduct = restDaysTaken * restDayDeduction
+        const actualHolidayAllowance = holidayAllowance - restDayDeductionAmountToDeduct
         const grossSalary = baseSalary + actualHolidayAllowance
-        const epf = Math.round(grossSalary * 0.08 * 100) / 100
+        const epf = Math.round(grossSalary * (epfRate / 100) * 100) / 100
         const netSalary = baseSalary + actualHolidayAllowance - totalLoans - epf
 
         return NextResponse.json({

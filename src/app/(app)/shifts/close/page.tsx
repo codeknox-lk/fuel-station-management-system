@@ -727,8 +727,8 @@ export default function CloseShiftPage() {
     const pumper = pumpers.find(p => p.name === pumperName)
     const pumperId = pumper?.id
 
-    // Check advance limit: monthly rental + advance cannot exceed 50,000
-    const ADVANCE_LIMIT = 50000
+    // Check advance limit: monthly rental + advance cannot exceed the pumper's advance limit
+    const ADVANCE_LIMIT = pumper?.advanceLimit || 50000
     const monthlyRental = pumperId ? (pumperMonthlyRentals[pumperId] || 0) : 0
     const availableAdvanceLimit = ADVANCE_LIMIT - monthlyRental
 
@@ -774,8 +774,8 @@ export default function CloseShiftPage() {
         const receivingPumper = pumpers.find(p => p.name === receivingPumperName)
         const receivingPumperId = receivingPumper?.id
 
-        // Check advance limit for receiving pumper: monthly rental + advance cannot exceed 50,000
-        const ADVANCE_LIMIT = 50000
+        // Check advance limit for receiving pumper: monthly rental + advance cannot exceed their limit
+        const ADVANCE_LIMIT = receivingPumper?.advanceLimit || 50000
         const monthlyRental = receivingPumperId ? (pumperMonthlyRentals[receivingPumperId] || 0) : 0
         const availableAdvanceLimit = ADVANCE_LIMIT - monthlyRental
         const newAmount = value as number
@@ -1681,7 +1681,8 @@ export default function CloseShiftPage() {
               shiftId: selectedShift,
               terminalEntries,
               totalAmount: batchTotalAmount,
-              notes: `POS batch created during shift close`
+              notes: `POS batch created during shift close`,
+              addToSafe: true
             })
           })
 
@@ -2476,7 +2477,10 @@ export default function CloseShiftPage() {
                                                       <SelectItem key={terminal.id} value={terminal.id}>
                                                         {terminal.name} ({terminal.terminalNumber})
                                                         {terminal.bank && (
-                                                          <span className="ml-2 text-xs text-muted-foreground">- {terminal.bank.name}</span>
+                                                          <span className="ml-2 text-xs text-muted-foreground">
+                                                            - {terminal.bank.name}
+                                                            {terminal.amexBankId && terminal.amexBankId !== terminal.bank?.id && terminal.amexBank?.name ? ` (Amex: ${terminal.amexBank.name})` : ''}
+                                                          </span>
                                                         )}
                                                       </SelectItem>
                                                     ))}
@@ -2764,7 +2768,10 @@ export default function CloseShiftPage() {
                                                               <SelectItem key={terminal.id} value={terminal.id}>
                                                                 {terminal.name} ({terminal.terminalNumber})
                                                                 {terminal.bank && (
-                                                                  <span className="ml-2 text-xs text-muted-foreground">- {terminal.bank.name}</span>
+                                                                  <span className="ml-2 text-xs text-muted-foreground">
+                                                                    - {terminal.bank.name}
+                                                                    {terminal.amexBankId && terminal.amexBankId !== terminal.bank?.id && terminal.amexBank?.name ? ` (Amex: ${terminal.amexBank.name})` : ''}
+                                                                  </span>
                                                                 )}
                                                               </SelectItem>
                                                             ))}

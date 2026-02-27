@@ -32,11 +32,14 @@ interface OfficeStaff {
   fuelAllowance?: number
   hireDate: string | null
   isActive: boolean
+  useStationSalaryDefaults?: boolean
+  epfRate?: number | null
   createdAt: string
   updatedAt: string
   station?: {
     id: string
     name: string
+    defaultHolidayAllowance?: number
   }
 }
 
@@ -62,6 +65,8 @@ export default function OfficeStaffPage() {
     medicalAllowance: 0,
     holidayAllowance: 0,
     fuelAllowance: 0,
+    useStationSalaryDefaults: true,
+    epfRate: '' as string | number,
     hireDate: new Date().toISOString().split('T')[0],
     isActive: true
   })
@@ -207,6 +212,8 @@ export default function OfficeStaffPage() {
       medicalAllowance: staff.medicalAllowance || 0,
       holidayAllowance: staff.holidayAllowance || 0,
       fuelAllowance: staff.fuelAllowance || 0,
+      useStationSalaryDefaults: staff.useStationSalaryDefaults ?? true,
+      epfRate: staff.epfRate ?? '',
       hireDate: staff.hireDate ? new Date(staff.hireDate).toISOString().split('T')[0] : '',
       isActive: staff.isActive
     })
@@ -216,6 +223,16 @@ export default function OfficeStaffPage() {
   const handleCloseDialog = () => {
     setDialogOpen(false)
     setEditingStaff(null)
+
+    // Find selected station to use its defaults
+    let defaultHolidayAllowance = 0
+    if (selectedStation) {
+      const currentStation = stations.find(s => s.id === selectedStation)
+      if (currentStation) {
+        defaultHolidayAllowance = currentStation.defaultHolidayAllowance ?? 0
+      }
+    }
+
     setFormData({
       name: '',
       employeeId: '',
@@ -227,8 +244,10 @@ export default function OfficeStaffPage() {
       specialAllowance: 0,
       otherAllowances: 0,
       medicalAllowance: 0,
-      holidayAllowance: 0,
+      holidayAllowance: defaultHolidayAllowance,
       fuelAllowance: 0,
+      useStationSalaryDefaults: true,
+      epfRate: '',
       hireDate: new Date().toISOString().split('T')[0],
       isActive: true
     })
@@ -525,6 +544,39 @@ export default function OfficeStaffPage() {
                       )}
                     </div>
                   </div>
+                </div>
+
+                <div className="border border-border/50 rounded-lg p-4 bg-muted/20 space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="useStationSalaryDefaults"
+                      checked={formData.useStationSalaryDefaults}
+                      onChange={(e) => setFormData({ ...formData, useStationSalaryDefaults: e.target.checked })}
+                      className="rounded border-border"
+                      aria-label="Use Station Default Salary Settings"
+                      title="Use Station Default Salary Settings"
+                    />
+                    <Label htmlFor="useStationSalaryDefaults" className="font-semibold cursor-pointer">
+                      Use Station Default Salary Settings
+                    </Label>
+                  </div>
+
+                  {!formData.useStationSalaryDefaults && (
+                    <div className="grid grid-cols-2 gap-4 pt-2">
+                      <div>
+                        <Label htmlFor="epfRate">Custom EPF Rate (%)</Label>
+                        <Input
+                          id="epfRate"
+                          type="number"
+                          step="0.01"
+                          value={formData.epfRate}
+                          onChange={(e) => setFormData({ ...formData, epfRate: e.target.value })}
+                          placeholder="e.g. 8"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

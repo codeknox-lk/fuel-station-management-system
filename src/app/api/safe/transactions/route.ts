@@ -103,7 +103,8 @@ export async function GET(request: NextRequest) {
                 include: {
                   terminal: {
                     include: {
-                      bank: true
+                      bank: true,
+                      amexBank: true
                     }
                   }
                 }

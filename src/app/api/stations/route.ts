@@ -57,10 +57,12 @@ export async function GET(request: NextRequest) {
         name: true,
         address: true,
         city: true,
-        phone: true,
         email: true,
         openingHours: true,
         monthStartDate: true,
+        monthEndDate: true,
+        defaultAdvanceLimit: true,
+        defaultHolidayAllowance: true,
         isActive: true,
         createdAt: true,
         updatedAt: true
@@ -95,14 +97,14 @@ export async function POST(request: NextRequest) {
       name?: string
       address?: string
       city?: string
-      phone?: string
       email?: string
       openingHours?: string
       monthStartDate?: number
+      monthEndDate?: number | null
     }
     const body = await request.json() as StationBody
 
-    const { name, address, city, phone, email, openingHours, monthStartDate } = body
+    const { name, address, city, email, openingHours, monthStartDate, monthEndDate } = body
 
     if (!name || !address || !city) {
       return NextResponse.json(
@@ -136,10 +138,10 @@ export async function POST(request: NextRequest) {
         name,
         address,
         city,
-        phone: phone || null,
         email: email || null,
         openingHours: openingHours || null,
         monthStartDate: monthStartDate || 1,
+        monthEndDate: monthEndDate || null,
         isActive: true
       }
     })

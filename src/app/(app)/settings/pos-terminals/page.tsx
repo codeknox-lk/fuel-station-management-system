@@ -29,6 +29,11 @@ interface POSTerminal {
     id: string
     name: string
   }
+  amexBankId?: string
+  amexBank?: {
+    id: string
+    name: string
+  }
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -60,6 +65,7 @@ export default function POSTerminalsPage() {
     name: '',
     stationId: !isAllStations && selectedStation ? selectedStation : '',
     bankId: '',
+    amexBankId: '',
     isActive: true
   })
   const { toast } = useToast()
@@ -153,6 +159,7 @@ export default function POSTerminalsPage() {
       name: terminal.name || '',
       stationId: terminal.stationId || '',
       bankId: terminal.bankId || '',
+      amexBankId: terminal.amexBankId || '',
       isActive: terminal.isActive
     })
     setDialogOpen(true)
@@ -191,6 +198,7 @@ export default function POSTerminalsPage() {
       name: '',
       stationId: !isAllStations && selectedStation ? selectedStation : '',
       bankId: '',
+      amexBankId: '',
       isActive: true
     })
   }
@@ -238,12 +246,21 @@ export default function POSTerminalsPage() {
     {
       key: 'bank' as keyof POSTerminal,
       title: 'Bank',
-      render: (value: unknown) => {
-        const bank = value as { name: string } | undefined
+      render: (value: unknown, row: POSTerminal) => {
+        const bank = row.bank
+        const amexBank = row.amexBank
         return (
-          <div className="flex items-center gap-1 text-sm">
-            <CreditCard className="h-3 w-3 text-muted-foreground" />
-            {bank?.name || '-'}
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1 text-sm">
+              <CreditCard className="h-3 w-3 text-muted-foreground mr-1" />
+              {bank?.name || '-'}
+            </div>
+            {amexBank && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <span className="font-semibold mr-1">AMEX:</span>
+                {amexBank.name}
+              </div>
+            )}
           </div>
         )
       }
@@ -386,15 +403,16 @@ export default function POSTerminalsPage() {
               </div>
 
               <div>
-                <Label htmlFor="bankId">Bank</Label>
+                <Label htmlFor="bankId">Primary Settlement Bank</Label>
                 <select
                   id="bankId"
-                  aria-label="Bank"
+                  aria-label="Primary Bank"
                   value={formData.bankId}
                   onChange={(e) => setFormData({ ...formData, bankId: e.target.value })}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  required
                 >
-                  <option value="">Select Bank (Optional)</option>
+                  <option value="">Select Primary Bank</option>
                   {banks && banks.length > 0 ? (
                     banks.map((bank) => (
                       <option key={bank.id} value={bank.id}>
@@ -405,6 +423,25 @@ export default function POSTerminalsPage() {
                     <option disabled>Loading banks...</option>
                   )}
                 </select>
+              </div>
+
+              <div>
+                <Label htmlFor="amexBankId">AMEX Settlement Bank (Optional)</Label>
+                <select
+                  id="amexBankId"
+                  aria-label="AMEX Bank"
+                  value={formData.amexBankId}
+                  onChange={(e) => setFormData({ ...formData, amexBankId: e.target.value })}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="">Same as Primary Bank</option>
+                  {banks && banks.length > 0 && banks.map((bank) => (
+                    <option key={bank.id} value={bank.id}>
+                      {bank.name}{bank.accountNumber ? ` - ${bank.accountNumber}` : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground mt-1">If set, AMEX amounts entered for this terminal will route to this bank.</p>
               </div>
 
               {editingTerminal && (

@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
                 category,
                 unit: unit || 'piece',
                 sellingPrice: parseFloat(sellingPrice),
-                reorderLevel: reorderLevel ? parseFloat(reorderLevel) : 5,
+                reorderLevel: reorderLevel ? parseFloat(reorderLevel) : (station.defaultShopReorderLevel || 5),
                 isActive: true
             }
         })

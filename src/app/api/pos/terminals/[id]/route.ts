@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    
+
     const terminal = await prisma.posTerminal.findUnique({
       where: { id },
       include: {
@@ -18,6 +18,12 @@ export async function GET(
           }
         },
         bank: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        amexBank: {
           select: {
             id: true,
             name: true
@@ -41,7 +47,7 @@ export async function GET(
         }
       }
     })
-    
+
     if (!terminal) {
       return NextResponse.json({ error: 'POS terminal not found' }, { status: 404 })
     }
@@ -60,24 +66,25 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    
+
     const terminal = await prisma.posTerminal.findUnique({
       where: { id }
     })
-    
+
     if (!terminal) {
       return NextResponse.json({ error: 'POS terminal not found' }, { status: 404 })
     }
 
-    const { name, terminalNumber, isActive, bankId } = body
-    
+    const { name, terminalNumber, isActive, bankId, amexBankId } = body
+
     const updatedTerminal = await prisma.posTerminal.update({
       where: { id },
       data: {
         ...(name && { name }),
         ...(terminalNumber && { terminalNumber }),
         ...(isActive !== undefined && { isActive }),
-        ...(bankId !== undefined && { bankId: bankId || null })
+        ...(bankId !== undefined && { bankId: bankId || null }),
+        ...(amexBankId !== undefined && { amexBankId: amexBankId || null })
       },
       include: {
         station: {
@@ -91,6 +98,12 @@ export async function PUT(
             id: true,
             name: true
           }
+        },
+        amexBank: {
+          select: {
+            id: true,
+            name: true
+          }
         }
       }
     })
@@ -98,7 +111,7 @@ export async function PUT(
     return NextResponse.json(updatedTerminal)
   } catch (error) {
     console.error('Error updating POS terminal:', error)
-    
+
     // Handle unique constraint violations
     if (error instanceof Error && error.message.includes('Unique constraint')) {
       return NextResponse.json(
@@ -106,7 +119,7 @@ export async function PUT(
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json({ error: 'Failed to update POS terminal' }, { status: 500 })
   }
 }
@@ -117,11 +130,11 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    
+
     const terminal = await prisma.posTerminal.findUnique({
       where: { id }
     })
-    
+
     if (!terminal) {
       return NextResponse.json({ error: 'POS terminal not found' }, { status: 404 })
     }
@@ -130,10 +143,10 @@ export async function DELETE(
     const hasBatchEntries = await prisma.posBatchTerminalEntry.count({
       where: { terminalId: id }
     }) > 0
-    
+
     if (hasBatchEntries) {
-      return NextResponse.json({ 
-        error: 'Cannot delete POS terminal with existing batch entries' 
+      return NextResponse.json({
+        error: 'Cannot delete POS terminal with existing batch entries'
       }, { status: 400 })
     }
 

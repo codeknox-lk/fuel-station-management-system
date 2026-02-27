@@ -16,56 +16,56 @@ model Organization {
   isActive                  Boolean                    @default(true)
   createdAt                 DateTime                   @default(now())
   updatedAt                 DateTime                   @updatedAt
-  banks                     Bank[]
-  customers                 CreditCustomer[]
-  fuels                     Fuel[]
-  shopProducts              ShopProduct[]
-  stations                  Station[]
-  subscription              Subscription?
-  users                     User[]
-  shifts                    Shift[]
-  shiftAssignments          ShiftAssignment[]
+  timezoneId                String                     @default("Asia/Colombo")
   auditLogs                 AuditLog[]
-  expenses                  Expense[]
-  deposits                  Deposit[]
-  tanks                     Tank[]
-  tankDips                  TankDip[]
-  deliveries                Delivery[]
-  pumpers                   Pumper[]
-  officeStaff               OfficeStaff[]
-  pumps                     Pump[]
-  nozzles                   Nozzle[]
-  prices                    Price[]
-  safes                     Safe[]
-  safeTransactions          SafeTransaction[]
+  banks                     Bank[]
   bankTransactions          BankTransaction[]
-  notifications             Notification[]
-  meterAudits               MeterAudit[]
-  testPours                 TestPour[]
-  oilSales                  OilSale[]
-  tenders                   Tender[]
   cheques                   Cheque[]
-  creditSales               CreditSale[]
+  customers                 CreditCustomer[]
   creditPayments            CreditPayment[]
-  salaryPayments            SalaryPayment[]
-  officeStaffSalaryPayments OfficeStaffSalaryPayment[]
-  pumperLoans               LoanPumper[]
-  officeStaffLoans          LoanOfficeStaff[]
+  creditSales               CreditSale[]
+  deliveries                Delivery[]
+  deposits                  Deposit[]
+  expenses                  Expense[]
+  fuels                     Fuel[]
   externalLoans             LoanExternal[]
-  shiftTemplates            ShiftTemplate[]
-  posTerminals              PosTerminal[]
+  officeStaffLoans          LoanOfficeStaff[]
+  pumperLoans               LoanPumper[]
+  meterAudits               MeterAudit[]
+  notifications             Notification[]
+  nozzles                   Nozzle[]
+  officeStaff               OfficeStaff[]
+  officeStaffSalaryPayments OfficeStaffSalaryPayment[]
+  oilSales                  OilSale[]
   posBatches                PosBatch[]
   posBatchEntries           PosBatchTerminalEntry[]
   posMissingSlips           PosMissingSlip[]
-  shopPurchaseBatches       ShopPurchaseBatch[]
+  posTerminals              PosTerminal[]
+  prices                    Price[]
+  pumps                     Pump[]
+  pumpers                   Pumper[]
+  safes                     Safe[]
+  safeTransactions          SafeTransaction[]
+  salaryPayments            SalaryPayment[]
+  shifts                    Shift[]
+  shiftAssignments          ShiftAssignment[]
+  shiftTemplates            ShiftTemplate[]
   shopAssignments           ShopAssignment[]
-  shopShiftItems            ShopShiftItem[]
+  shopProducts              ShopProduct[]
+  shopPurchaseBatches       ShopPurchaseBatch[]
   shopSales                 ShopSale[]
+  shopShiftItems            ShopShiftItem[]
   shopWastages              ShopWastage[]
+  stations                  Station[]
+  subscription              Subscription?
   subscriptionPayments      SubscriptionPayment[]
   suppliers                 Supplier[]
-  supplierTransactions      SupplierTransaction[]
-
+  SupplierTransaction       SupplierTransaction[]
+  tanks                     Tank[]
+  tankDips                  TankDip[]
+  tenders                   Tender[]
+  testPours                 TestPour[]
+  users                     User[]
 
   @@index([slug])
 }
@@ -79,13 +79,13 @@ model Subscription {
   currency         String             @default("LKR")
   billingInterval  BillingInterval    @default(MONTH)
   maxStations      Int                @default(1)
-  paidStations     Int                @default(0)
   trialEndDate     DateTime?
   nextBillingDate  DateTime?
   cancelledAt      DateTime?
   stripeCustomerId String?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
+  paidStations     Int                @default(0)
   organization     Organization       @relation(fields: [organizationId], references: [id])
 }
 
@@ -117,9 +117,9 @@ model User {
   isActive       Boolean       @default(true)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
-  lastLogin      DateTime?
   failedAttempts Int           @default(0)
   isFirstLogin   Boolean       @default(true)
+  lastLogin      DateTime?
   lockoutUntil   DateTime?
   mfaEnabled     Boolean       @default(false)
   mfaSecret      String?
@@ -136,46 +136,62 @@ model User {
 }
 
 model Station {
-  id                        String                     @id @default(uuid())
-  name                      String
-  address                   String
-  city                      String
-  isActive                  Boolean                    @default(true)
-  createdAt                 DateTime                   @default(now())
-  updatedAt                 DateTime                   @updatedAt
-  email                     String?
-  openingHours              String?
-  monthStartDate            Int                        @default(1)
-  phone                     String?
-  deliveryToleranceCm       Int                        @default(2)
-  salesTolerance            Float                      @default(20)
-  organizationId            String?
-  bankTransactions          BankTransaction[]
-  cheques                   Cheque[]
-  deliveries                Delivery[]
-  deposits                  Deposit[]
-  expenses                  Expense[]
-  externalLoans             LoanExternal[]
-  officeStaffLoans          LoanOfficeStaff[]
-  pumperLoans               LoanPumper[]
-  notifications             Notification[]
-  officeStaff               OfficeStaff[]
-  officeStaffSalaryPayments OfficeStaffSalaryPayment[]
-  oilSales                  OilSale[]
-  posTerminals              PosTerminal[]
-  prices                    Price[]
-  pumps                     Pump[]
-  pumpers                   Pumper[]
-  safe                      Safe?
-  salaryPayments            SalaryPayment[]
-  shifts                    Shift[]
-  shiftTemplates            ShiftTemplate[]
-  shopProducts              ShopProduct[]
-  organization              Organization?              @relation(fields: [organizationId], references: [id])
-  tanks                     Tank[]
-  tankDips                  TankDip[]
-  users                     User[]
-  suppliers                 Supplier[]
+  id                            String                     @id @default(uuid())
+  name                          String
+  address                       String
+  city                          String
+  isActive                      Boolean                    @default(true)
+  createdAt                     DateTime                   @default(now())
+  updatedAt                     DateTime                   @updatedAt
+  email                         String?
+  openingHours                  String?
+  organizationId                String?
+  monthStartDate                Int                        @default(1)
+  deliveryToleranceCm           Int                        @default(2)
+  salesTolerance                Float                      @default(20)
+  defaultAllowedRestDays        Int                        @default(5)
+  defaultCommissionPerThousand  Float                      @default(1)
+  defaultEpfRate                Float                      @default(8)
+  defaultOvertimeMultiplier     Float                      @default(1.5)
+  defaultRestDayDeductionAmount Float                      @default(900)
+  tankWarningThreshold          Float                      @default(20)
+  tankCriticalThreshold         Float                      @default(10)
+  creditOverdueDays             Int                        @default(14)
+  allowedShiftVariance          Float                      @default(1.5)
+  maxShiftDurationHours         Int                        @default(24)
+  defaultAdvanceLimit           Float                      @default(50000)
+  defaultHolidayAllowance       Float                      @default(4500)
+  defaultShopReorderLevel       Int                        @default(5)
+  maxWaterIngressMm             Int                        @default(50)
+  maxDipVariancePercent         Float                      @default(2)
+  maxDipVarianceLiters          Float                      @default(200)
+  monthEndDate                  Int?
+  bankTransactions              BankTransaction[]
+  cheques                       Cheque[]
+  deliveries                    Delivery[]
+  deposits                      Deposit[]
+  expenses                      Expense[]
+  externalLoans                 LoanExternal[]
+  officeStaffLoans              LoanOfficeStaff[]
+  pumperLoans                   LoanPumper[]
+  notifications                 Notification[]
+  officeStaff                   OfficeStaff[]
+  officeStaffSalaryPayments     OfficeStaffSalaryPayment[]
+  oilSales                      OilSale[]
+  posTerminals                  PosTerminal[]
+  prices                        Price[]
+  pumps                         Pump[]
+  pumpers                       Pumper[]
+  safe                          Safe?
+  salaryPayments                SalaryPayment[]
+  shifts                        Shift[]
+  shiftTemplates                ShiftTemplate[]
+  shopProducts                  ShopProduct[]
+  organization                  Organization?              @relation(fields: [organizationId], references: [id])
+  suppliers                     Supplier[]
+  tanks                         Tank[]
+  tankDips                      TankDip[]
+  users                         User[]
 
   @@unique([id, organizationId])
   @@index([isActive])
@@ -195,19 +211,19 @@ model Shift {
   updatedAt       DateTime          @updatedAt
   statistics      Json?
   declaredAmounts Json?
+  organizationId  String?
+  shiftNumber     String?
   creditSales     CreditSale[]
   meterAudits     MeterAudit[]
   posBatches      PosBatch[]
   posMissingSlips PosMissingSlip[]
+  organization    Organization?     @relation(fields: [organizationId], references: [id])
   station         Station           @relation(fields: [stationId], references: [id])
   template        ShiftTemplate?    @relation(fields: [templateId], references: [id])
   assignments     ShiftAssignment[]
   shopAssignment  ShopAssignment?
   tenders         Tender[]
   testPours       TestPour[]
-  organizationId  String?
-  organization    Organization?     @relation(fields: [organizationId], references: [id])
-  shiftNumber     String?
 
   @@unique([id, organizationId])
   @@index([stationId])
@@ -231,10 +247,10 @@ model ShiftTemplate {
   breakStartTime String?
   description    String?
   icon           String?       @default("sun")
-  shifts         Shift[]
-  station        Station       @relation(fields: [stationId], references: [id])
   organizationId String?
+  shifts         Shift[]
   organization   Organization? @relation(fields: [organizationId], references: [id])
+  station        Station       @relation(fields: [stationId], references: [id])
 
   @@unique([id, organizationId])
   @@index([stationId])
@@ -253,10 +269,10 @@ model ShiftAssignment {
   closedAt          DateTime?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
-  nozzle            Nozzle           @relation(fields: [nozzleId], references: [id])
-  shift             Shift            @relation(fields: [shiftId], references: [id], onDelete: Cascade)
   organizationId    String?
+  nozzle            Nozzle           @relation(fields: [nozzleId], references: [id])
   organization      Organization?    @relation(fields: [organizationId], references: [id])
+  shift             Shift            @relation(fields: [shiftId], references: [id], onDelete: Cascade)
 
   @@unique([id, organizationId])
   @@index([shiftId])
@@ -276,13 +292,13 @@ model Tank {
   updatedAt      DateTime      @updatedAt
   tankNumber     String        @default("TANK-1")
   fuelId         String
+  organizationId String?
   deliveries     Delivery[]
   nozzles        Nozzle[]
   fuel           Fuel          @relation(fields: [fuelId], references: [id])
+  organization   Organization? @relation(fields: [organizationId], references: [id])
   station        Station       @relation(fields: [stationId], references: [id])
   tankDips       TankDip[]
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id])
 
   @@unique([stationId, tankNumber])
   @@unique([id, organizationId])
@@ -324,10 +340,10 @@ model Pump {
   isActive       Boolean       @default(true)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
-  nozzles        Nozzle[]
-  station        Station       @relation(fields: [stationId], references: [id])
   organizationId String?
+  nozzles        Nozzle[]
   organization   Organization? @relation(fields: [organizationId], references: [id])
+  station        Station       @relation(fields: [stationId], references: [id])
 
   @@unique([stationId, pumpNumber])
   @@unique([id, organizationId])
@@ -345,14 +361,14 @@ model Nozzle {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   meterMax          Float?
+  organizationId    String?
   rolloverThreshold Float?
   meterAudits       MeterAudit[]
+  organization      Organization?     @relation(fields: [organizationId], references: [id])
   pump              Pump              @relation(fields: [pumpId], references: [id], onDelete: Cascade)
   tank              Tank              @relation(fields: [tankId], references: [id])
   assignments       ShiftAssignment[]
   testPours         TestPour[]
-  organizationId    String?
-  organization      Organization?     @relation(fields: [organizationId], references: [id])
 
   @@unique([pumpId, nozzleNumber])
   @@unique([id, organizationId])
@@ -369,13 +385,13 @@ model TankDip {
   recordedBy     String
   dipDate        DateTime
   notes          String?
-  bookStock      Float?   // System stock level at the time of dip measurement
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+  organizationId String?
+  bookStock      Float?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
   station        Station       @relation(fields: [stationId], references: [id])
   tank           Tank          @relation(fields: [tankId], references: [id])
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id])
 
   @@unique([id, organizationId])
   @@index([stationId])
@@ -385,48 +401,46 @@ model TankDip {
 }
 
 model Delivery {
-  id                  String         @id @default(uuid())
-  stationId           String
-  tankId              String
-  quantity            Float
-  supplier            String
-  deliveryDate        DateTime
-  receivedBy          String
-  invoiceNumber       String?
-  notes               String?
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
-  invoiceQuantity     Float?
-  actualReceived      Float?
-  afterDipReading     Float?
-  afterDipTime        DateTime?
-  beforeDipReading    Float?
-  beforeDipTime       DateTime?
-  fuelSoldDuring      Float?
-  verificationStatus  DeliveryStatus        @default(PENDING_VERIFICATION)
-  status              DeliveryStatus        @default(PENDING_VERIFICATION)
-  paymentStatus       DeliveryPaymentStatus @default(UNPAID)
-  costPrice           Float?
-  totalCost           Float?
-  waterLevelBefore    Float?
-  waterLevelAfter     Float?
-  afterMeterReadings  Json?
-  
-  toleranceCmUsed     Int?
-  toleranceLitersUsed Float?
-  
-  chequeId            String?
-  cheque              Cheque?               @relation(fields: [chequeId], references: [id])
-
-  verifiedAt          DateTime?
-  verifiedBy          String?
-  beforeMeterReadings Json?
-  supplierId          String?
-  supplierAccount     Supplier?             @relation(fields: [supplierId], references: [id])
-  station             Station               @relation(fields: [stationId], references: [id])
-  tank                Tank                  @relation(fields: [tankId], references: [id])
-  organizationId      String?
-  organization        Organization?         @relation(fields: [organizationId], references: [id])
+  id                   String                @id @default(uuid())
+  stationId            String
+  tankId               String
+  quantity             Float
+  supplier             String
+  deliveryDate         DateTime
+  receivedBy           String
+  invoiceNumber        String?
+  notes                String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  invoiceQuantity      Float?
+  actualReceived       Float?
+  afterDipReading      Float?
+  afterDipTime         DateTime?
+  beforeDipReading     Float?
+  beforeDipTime        DateTime?
+  fuelSoldDuring       Float?
+  verificationStatus   DeliveryStatus        @default(PENDING_VERIFICATION)
+  verifiedAt           DateTime?
+  verifiedBy           String?
+  beforeMeterReadings  Json?
+  afterMeterReadings   Json?
+  chequeId             String?
+  costPrice            Float?
+  organizationId       String?
+  paymentStatus        DeliveryPaymentStatus @default(UNPAID)
+  status               DeliveryStatus        @default(PENDING_VERIFICATION)
+  totalCost            Float?
+  waterLevelAfter      Float?
+  waterLevelBefore     Float?
+  supplierId           String?
+  toleranceCmUsed      Int?
+  toleranceLitersUsed  Float?
+  cheque               Cheque?               @relation(fields: [chequeId], references: [id])
+  organization         Organization?         @relation(fields: [organizationId], references: [id])
+  station              Station               @relation(fields: [stationId], references: [id])
+  supplierAccount      Supplier?             @relation(fields: [supplierId], references: [id])
+  tank                 Tank                  @relation(fields: [tankId], references: [id])
+  supplierTransactions SupplierTransaction[]
 
   @@unique([id, organizationId])
   @@index([stationId])
@@ -437,9 +451,7 @@ model Delivery {
   @@index([paymentStatus])
   @@index([chequeId])
   @@index([supplierId])
-  supplierTransactions SupplierTransaction[]
 }
-
 
 model Supplier {
   id             String                @id @default(uuid())
@@ -450,10 +462,10 @@ model Supplier {
   updatedAt      DateTime              @updatedAt
   organizationId String?
   stationId      String?
-  station        Station?              @relation(fields: [stationId], references: [id])
-  organization   Organization?         @relation(fields: [organizationId], references: [id])
-  transactions   SupplierTransaction[]
   deliveries     Delivery[]
+  organization   Organization?         @relation(fields: [organizationId], references: [id])
+  station        Station?              @relation(fields: [stationId], references: [id])
+  transactions   SupplierTransaction[]
 
   @@unique([id, organizationId])
   @@index([organizationId])
@@ -474,11 +486,11 @@ model SupplierTransaction {
   transactionDate DateTime                @default(now())
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
-  supplier        Supplier                @relation(fields: [supplierId], references: [id])
-  delivery        Delivery?               @relation(fields: [deliveryId], references: [id])
-  cheque          Cheque?                 @relation(fields: [chequeId], references: [id])
   organizationId  String?
+  cheque          Cheque?                 @relation(fields: [chequeId], references: [id])
+  delivery        Delivery?               @relation(fields: [deliveryId], references: [id])
   organization    Organization?           @relation(fields: [organizationId], references: [id])
+  supplier        Supplier                @relation(fields: [supplierId], references: [id])
 
   @@unique([id, organizationId])
   @@index([supplierId])
@@ -487,8 +499,6 @@ model SupplierTransaction {
   @@index([deliveryId])
   @@index([chequeId])
 }
-
-
 
 model Expense {
   id             String        @id @default(uuid())
@@ -502,10 +512,10 @@ model Expense {
   expenseDate    DateTime
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
-  recordedBy     String        @default("System")
-  station        Station       @relation(fields: [stationId], references: [id])
   organizationId String?
+  recordedBy     String        @default("System")
   organization   Organization? @relation(fields: [organizationId], references: [id])
+  station        Station       @relation(fields: [stationId], references: [id])
 
   @@unique([id, organizationId])
   @@index([stationId])
@@ -525,10 +535,10 @@ model Deposit {
   depositDate    DateTime
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
-  bank           Bank          @relation(fields: [bankId], references: [id])
-  station        Station       @relation(fields: [stationId], references: [id])
   organizationId String?
+  bank           Bank          @relation(fields: [bankId], references: [id])
   organization   Organization? @relation(fields: [organizationId], references: [id])
+  station        Station       @relation(fields: [stationId], references: [id])
 
   @@unique([id, organizationId])
   @@index([stationId])
@@ -549,9 +559,9 @@ model LoanExternal {
   notes          String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
-  station        Station       @relation(fields: [stationId], references: [id])
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
+  station        Station       @relation(fields: [stationId], references: [id])
 
   @@unique([id, organizationId])
   @@index([stationId])
@@ -573,9 +583,9 @@ model LoanPumper {
   monthlyRental  Float?        @default(0)
   givenBy        String?
   paidAmount     Float         @default(0)
-  station        Station       @relation(fields: [stationId], references: [id])
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
+  station        Station       @relation(fields: [stationId], references: [id])
 
   @@unique([id, organizationId])
   @@index([stationId])
@@ -599,9 +609,9 @@ model LoanOfficeStaff {
   status         LoanStatus    @default(ACTIVE)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
-  station        Station       @relation(fields: [stationId], references: [id])
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
+  station        Station       @relation(fields: [stationId], references: [id])
 
   @@unique([id, organizationId])
   @@index([stationId])
@@ -611,29 +621,30 @@ model LoanOfficeStaff {
 }
 
 model Cheque {
-  id              String           @id @default(uuid())
-  stationId       String
-  chequeNumber    String           @unique
-  amount          Float
-  bankId          String
-  receivedFrom    String
-  receivedDate    DateTime
-  status          ChequeStatus     @default(PENDING)
-  clearedDate     DateTime?
-  notes           String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  recordedBy      String           @default("System")
-  chequeDate      DateTime         @default(now())
-  creditPaymentId String?          @unique
-  depositDate     DateTime?
-  organizationId  String?
-  organization    Organization?    @relation(fields: [organizationId], references: [id])
-  bankTransaction BankTransaction?
-  bank            Bank             @relation(fields: [bankId], references: [id])
-  creditPayment   CreditPayment?   @relation(fields: [creditPaymentId], references: [id])
-  station         Station          @relation(fields: [stationId], references: [id])
-  deliveries      Delivery[]
+  id                   String                @id @default(uuid())
+  stationId            String
+  chequeNumber         String                @unique
+  amount               Float
+  bankId               String
+  receivedFrom         String
+  receivedDate         DateTime
+  status               ChequeStatus          @default(PENDING)
+  clearedDate          DateTime?
+  notes                String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  chequeDate           DateTime              @default(now())
+  creditPaymentId      String?               @unique
+  depositDate          DateTime?
+  organizationId       String?
+  recordedBy           String                @default("System")
+  bankTransaction      BankTransaction?
+  bank                 Bank                  @relation(fields: [bankId], references: [id])
+  creditPayment        CreditPayment?        @relation(fields: [creditPaymentId], references: [id])
+  organization         Organization?         @relation(fields: [organizationId], references: [id])
+  station              Station               @relation(fields: [stationId], references: [id])
+  deliveries           Delivery[]
+  supplierTransactions SupplierTransaction[]
 
   @@unique([id, organizationId])
   @@index([stationId])
@@ -642,9 +653,7 @@ model Cheque {
   @@index([receivedDate])
   @@index([chequeDate])
   @@index([organizationId])
-  supplierTransactions SupplierTransaction[]
 }
-
 
 model CreditCustomer {
   id             String          @id @default(uuid())
@@ -682,11 +691,11 @@ model CreditSale {
   timestamp      DateTime
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+  organizationId String?
   recordedBy     String         @default("System")
   customer       CreditCustomer @relation(fields: [customerId], references: [id])
-  shift          Shift          @relation(fields: [shiftId], references: [id])
-  organizationId String?
   organization   Organization?  @relation(fields: [organizationId], references: [id])
+  shift          Shift          @relation(fields: [shiftId], references: [id])
 
   @@unique([id, organizationId])
   @@index([customerId])
@@ -708,10 +717,10 @@ model CreditPayment {
   updatedAt       DateTime            @updatedAt
   referenceNumber String?
   status          CreditPaymentStatus @default(CLEARED)
+  organizationId  String?
   cheque          Cheque?
   bank            Bank?               @relation(fields: [bankId], references: [id])
   customer        CreditCustomer      @relation(fields: [customerId], references: [id])
-  organizationId  String?
   organization    Organization?       @relation(fields: [organizationId], references: [id])
 
   @@unique([id, organizationId])
@@ -729,12 +738,14 @@ model PosTerminal {
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
   bankId         String?
+  organizationId String?
+  amexBankId     String?
   batchEntries   PosBatchTerminalEntry[]
   missingSlips   PosMissingSlip[]
+  amexBank       Bank?                   @relation("AmexBank", fields: [amexBankId], references: [id])
   bank           Bank?                   @relation(fields: [bankId], references: [id])
-  station        Station                 @relation(fields: [stationId], references: [id])
-  organizationId String?
   organization   Organization?           @relation(fields: [organizationId], references: [id])
+  station        Station                 @relation(fields: [stationId], references: [id])
 
   @@unique([stationId, terminalNumber])
   @@unique([id, organizationId])
@@ -753,10 +764,10 @@ model PosBatch {
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
   notes           String?
-  shift           Shift                   @relation(fields: [shiftId], references: [id])
-  terminalEntries PosBatchTerminalEntry[]
   organizationId  String?
   organization    Organization?           @relation(fields: [organizationId], references: [id])
+  shift           Shift                   @relation(fields: [shiftId], references: [id])
+  terminalEntries PosBatchTerminalEntry[]
 
   @@unique([id, organizationId])
   @@index([shiftId])
@@ -778,10 +789,10 @@ model PosBatchTerminalEntry {
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
   dialogTouchAmount Float         @default(0)
-  batch             PosBatch      @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  terminal          PosTerminal   @relation(fields: [terminalId], references: [id])
   organizationId    String?
+  batch             PosBatch      @relation(fields: [batchId], references: [id], onDelete: Cascade)
   organization      Organization? @relation(fields: [organizationId], references: [id])
+  terminal          PosTerminal   @relation(fields: [terminalId], references: [id])
 
   @@unique([id, organizationId])
   @@index([batchId])
@@ -800,10 +811,10 @@ model PosMissingSlip {
   notes          String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
-  shift          Shift         @relation(fields: [shiftId], references: [id])
-  terminal       PosTerminal   @relation(fields: [terminalId], references: [id])
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
+  shift          Shift         @relation(fields: [shiftId], references: [id])
+  terminal       PosTerminal   @relation(fields: [terminalId], references: [id])
 
   @@unique([id, organizationId])
   @@index([terminalId])
@@ -821,10 +832,10 @@ model Safe {
   countedBy      String?
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
-  station        Station           @relation(fields: [stationId], references: [id])
-  transactions   SafeTransaction[]
   organizationId String?
   organization   Organization?     @relation(fields: [organizationId], references: [id])
+  station        Station           @relation(fields: [stationId], references: [id])
+  transactions   SafeTransaction[]
 
   @@unique([id, organizationId])
   @@index([stationId])
@@ -850,9 +861,9 @@ model SafeTransaction {
   timestamp      DateTime
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
-  safe           Safe                @relation(fields: [safeId], references: [id], onDelete: Cascade)
   organizationId String?
   organization   Organization?       @relation(fields: [organizationId], references: [id])
+  safe           Safe                @relation(fields: [safeId], references: [id], onDelete: Cascade)
 
   @@unique([id, organizationId])
   @@index([safeId])
@@ -872,11 +883,11 @@ model Price {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   fuelId         String
+  organizationId String?
   updatedBy      String        @default("System")
   fuel           Fuel          @relation(fields: [fuelId], references: [id])
-  station        Station       @relation(fields: [stationId], references: [id])
-  organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
+  station        Station       @relation(fields: [stationId], references: [id])
 
   @@unique([id, organizationId])
   @@index([stationId])
@@ -898,15 +909,16 @@ model Bank {
   code             String?
   contactPerson    String?
   email            String?
+  organizationId   String?
   phone            String?
   swiftCode        String?
-  currentBalance   Float           @default(0)
-  organizationId   String?
+  currentBalance   Float             @default(0)
   organization     Organization?     @relation(fields: [organizationId], references: [id])
   bankTransactions BankTransaction[]
   cheques          Cheque[]
   creditPayments   CreditPayment[]
   deposits         Deposit[]
+  amexPosTerminals PosTerminal[]     @relation("AmexBank")
   posTerminals     PosTerminal[]
 
   @@unique([id, organizationId])
@@ -920,8 +932,6 @@ model BankTransaction {
   stationId       String?
   type            BankTransactionType
   amount          Float
-  balanceBefore   Float               @default(0)
-  balanceAfter    Float               @default(0)
   description     String
   referenceNumber String?
   transactionDate DateTime
@@ -930,11 +940,13 @@ model BankTransaction {
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   chequeId        String?             @unique
+  organizationId  String?
+  balanceAfter    Float               @default(0)
+  balanceBefore   Float               @default(0)
   bank            Bank                @relation(fields: [bankId], references: [id])
   cheque          Cheque?             @relation(fields: [chequeId], references: [id])
-  station         Station?            @relation(fields: [stationId], references: [id])
-  organizationId  String?
   organization    Organization?       @relation(fields: [organizationId], references: [id])
+  station         Station?            @relation(fields: [stationId], references: [id])
 
   @@unique([id, organizationId])
   @@index([bankId])
@@ -945,27 +957,33 @@ model BankTransaction {
 }
 
 model Pumper {
-  id               String          @id @default(uuid())
-  name             String
-  phone            String?
-  isActive         Boolean         @default(true)
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  employeeId       String?
-  experience       Float?
-  hireDate         DateTime?
-  rating           Float?
-  shift            PumperShift     @default(ANY)
-  specializations  String[]        @default([])
-  stationId        String?
-  status           PumperStatus    @default(ACTIVE)
-  baseSalary       Float?          @default(0)
-  holidayAllowance Float?          @default(4500)
-  advanceLimit     Float?          @default(50000)
-  station          Station?        @relation(fields: [stationId], references: [id])
-  salaryPayments   SalaryPayment[]
-  organizationId   String?
-  organization     Organization?   @relation(fields: [organizationId], references: [id])
+  id                       String          @id @default(uuid())
+  name                     String
+  phone                    String?
+  isActive                 Boolean         @default(true)
+  createdAt                DateTime        @default(now())
+  updatedAt                DateTime        @updatedAt
+  employeeId               String?
+  experience               Float?
+  hireDate                 DateTime?
+  rating                   Float?
+  shift                    PumperShift     @default(ANY)
+  specializations          String[]        @default([])
+  stationId                String?
+  status                   PumperStatus    @default(ACTIVE)
+  baseSalary               Float?          @default(0)
+  holidayAllowance         Float?          @default(4500)
+  organizationId           String?
+  advanceLimit             Float           @default(20000)
+  allowedRestDays          Int?
+  commissionPerThousand    Float?
+  epfRate                  Float?
+  overtimeMultiplier       Float?
+  restDayDeductionAmount   Float?
+  useStationSalaryDefaults Boolean         @default(true)
+  organization             Organization?   @relation(fields: [organizationId], references: [id])
+  station                  Station?        @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  salaryPayments           SalaryPayment[]
 
   @@unique([id, organizationId])
   @@index([stationId])
@@ -976,27 +994,29 @@ model Pumper {
 }
 
 model OfficeStaff {
-  id               String                     @id @default(uuid())
-  name             String
-  employeeId       String?
-  stationId        String
-  role             OfficeStaffRole            @default(MANAGER)
-  phone            String?
-  email            String?
-  baseSalary       Float                      @default(0)
-  isActive         Boolean                    @default(true)
-  hireDate         DateTime?
-  createdAt        DateTime                   @default(now())
-  updatedAt        DateTime                   @updatedAt
-  fuelAllowance    Float                      @default(0)
-  holidayAllowance Float                      @default(0)
-  medicalAllowance Float                      @default(0)
-  otherAllowances  Float                      @default(0)
-  specialAllowance Float                      @default(0)
-  station          Station                    @relation(fields: [stationId], references: [id])
-  salaryPayments   OfficeStaffSalaryPayment[]
-  organizationId   String?
-  organization     Organization?              @relation(fields: [organizationId], references: [id])
+  id                       String                     @id @default(uuid())
+  name                     String
+  employeeId               String?
+  stationId                String
+  role                     OfficeStaffRole            @default(MANAGER)
+  phone                    String?
+  email                    String?
+  baseSalary               Float                      @default(0)
+  isActive                 Boolean                    @default(true)
+  hireDate                 DateTime?
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+  fuelAllowance            Float                      @default(0)
+  holidayAllowance         Float                      @default(0)
+  medicalAllowance         Float                      @default(0)
+  otherAllowances          Float                      @default(0)
+  specialAllowance         Float                      @default(0)
+  organizationId           String?
+  epfRate                  Float?
+  useStationSalaryDefaults Boolean                    @default(true)
+  organization             Organization?              @relation(fields: [organizationId], references: [id])
+  station                  Station                    @relation(fields: [stationId], references: [id])
+  salaryPayments           OfficeStaffSalaryPayment[]
 
   @@unique([id, organizationId])
   @@index([stationId])
@@ -1024,10 +1044,10 @@ model SalaryPayment {
   status           SalaryPaymentStatus @default(PENDING)
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
-  pumper           Pumper              @relation(fields: [pumperId], references: [id])
-  station          Station             @relation(fields: [stationId], references: [id])
   organizationId   String?
   organization     Organization?       @relation(fields: [organizationId], references: [id])
+  pumper           Pumper              @relation(fields: [pumperId], references: [id])
+  station          Station             @relation(fields: [stationId], references: [id])
 
   @@unique([id, organizationId])
   @@index([stationId])
@@ -1056,10 +1076,10 @@ model OfficeStaffSalaryPayment {
   status           SalaryPaymentStatus @default(PENDING)
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
-  officeStaff      OfficeStaff         @relation(fields: [officeStaffId], references: [id])
-  station          Station             @relation(fields: [stationId], references: [id])
   organizationId   String?
+  officeStaff      OfficeStaff         @relation(fields: [officeStaffId], references: [id])
   organization     Organization?       @relation(fields: [organizationId], references: [id])
+  station          Station             @relation(fields: [stationId], references: [id])
 
   @@unique([id, organizationId])
   @@index([stationId])
@@ -1086,10 +1106,10 @@ model MeterAudit {
   notes           String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-  nozzle          Nozzle        @relation(fields: [nozzleId], references: [id])
-  shift           Shift?        @relation(fields: [shiftId], references: [id])
   organizationId  String?
+  nozzle          Nozzle        @relation(fields: [nozzleId], references: [id])
   organization    Organization? @relation(fields: [organizationId], references: [id])
+  shift           Shift?        @relation(fields: [shiftId], references: [id])
 
   @@unique([id, organizationId])
   @@index([shiftId])
@@ -1110,10 +1130,10 @@ model TestPour {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   notes          String?
-  nozzle         Nozzle        @relation(fields: [nozzleId], references: [id])
-  shift          Shift         @relation(fields: [shiftId], references: [id])
   organizationId String?
+  nozzle         Nozzle        @relation(fields: [nozzleId], references: [id])
   organization   Organization? @relation(fields: [organizationId], references: [id])
+  shift          Shift         @relation(fields: [shiftId], references: [id])
 
   @@unique([id, organizationId])
   @@index([shiftId])
@@ -1133,10 +1153,10 @@ model OilSale {
   saleDate       DateTime
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
-  recordedBy     String        @default("System")
-  station        Station       @relation(fields: [stationId], references: [id])
   organizationId String?
+  recordedBy     String        @default("System")
   organization   Organization? @relation(fields: [organizationId], references: [id])
+  station        Station       @relation(fields: [stationId], references: [id])
 
   @@unique([id, organizationId])
   @@index([stationId])
@@ -1152,9 +1172,9 @@ model Tender {
   notes          String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
-  shift          Shift         @relation(fields: [shiftId], references: [id])
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
+  shift          Shift         @relation(fields: [shiftId], references: [id])
 
   @@unique([id, organizationId])
   @@index([shiftId])
@@ -1201,9 +1221,9 @@ model Notification {
   metadata       Json?
   createdAt      DateTime             @default(now())
   readAt         DateTime?
-  station        Station?             @relation(fields: [stationId], references: [id])
   organizationId String?
   organization   Organization?        @relation(fields: [organizationId], references: [id])
+  station        Station?             @relation(fields: [stationId], references: [id])
 
   @@unique([id, organizationId])
   @@index([stationId])
@@ -1252,10 +1272,10 @@ model ShopPurchaseBatch {
   supplierId       String?
   recordedBy       String
   createdAt        DateTime      @default(now())
-  product          ShopProduct   @relation(fields: [productId], references: [id])
-  sales            ShopSale[]
   organizationId   String?
   organization     Organization? @relation(fields: [organizationId], references: [id])
+  product          ShopProduct   @relation(fields: [productId], references: [id])
+  sales            ShopSale[]
 
   @@unique([id, organizationId])
   @@index([productId])
@@ -1272,11 +1292,11 @@ model ShopAssignment {
   totalShortage  Float           @default(0)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+  organizationId String?
+  organization   Organization?   @relation(fields: [organizationId], references: [id])
   shift          Shift           @relation(fields: [shiftId], references: [id])
   sales          ShopSale[]
   items          ShopShiftItem[]
-  organizationId String?
-  organization   Organization?   @relation(fields: [organizationId], references: [id])
 
   @@unique([id, organizationId])
   @@unique([shiftId, organizationId])
@@ -1292,10 +1312,10 @@ model ShopShiftItem {
   closingStock   Float?
   soldQuantity   Float          @default(0)
   revenue        Float          @default(0)
-  assignment     ShopAssignment @relation(fields: [assignmentId], references: [id])
-  product        ShopProduct    @relation(fields: [productId], references: [id])
   organizationId String?
+  assignment     ShopAssignment @relation(fields: [assignmentId], references: [id])
   organization   Organization?  @relation(fields: [organizationId], references: [id])
+  product        ShopProduct    @relation(fields: [productId], references: [id])
 
   @@unique([id, organizationId])
   @@index([assignmentId])
@@ -1313,11 +1333,11 @@ model ShopSale {
   totalAmount    Float
   costPrice      Float
   timestamp      DateTime           @default(now())
+  organizationId String?
   assignment     ShopAssignment     @relation(fields: [assignmentId], references: [id])
   batch          ShopPurchaseBatch? @relation(fields: [batchId], references: [id])
-  product        ShopProduct        @relation(fields: [productId], references: [id])
-  organizationId String?
   organization   Organization?      @relation(fields: [organizationId], references: [id])
+  product        ShopProduct        @relation(fields: [productId], references: [id])
 
   @@unique([id, organizationId])
   @@index([assignmentId])
@@ -1333,9 +1353,9 @@ model ShopWastage {
   costPrice      Float
   recordedBy     String
   timestamp      DateTime      @default(now())
-  product        ShopProduct   @relation(fields: [productId], references: [id])
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
+  product        ShopProduct   @relation(fields: [productId], references: [id])
 
   @@unique([id, organizationId])
   @@index([productId])
@@ -1391,10 +1411,10 @@ enum AssignmentStatus {
 }
 
 enum DeliveryStatus {
-  PROCESSING
   PENDING_VERIFICATION
   VERIFIED
   DISCREPANCY
+  PROCESSING
 }
 
 enum DeliveryPaymentStatus {
@@ -1540,4 +1560,3 @@ enum SupplierTransactionType {
   SETTLEMENT
   ADJUSTMENT
 }
-

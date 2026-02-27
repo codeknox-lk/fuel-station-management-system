@@ -77,7 +77,7 @@ interface ShopSale {
 }
 
 export default function ShopPage() {
-    const { selectedStation } = useStation()
+    const { selectedStation, stations } = useStation()
     const { toast } = useToast()
     const [activeTab, setActiveTab] = useState('products')
 
@@ -372,7 +372,12 @@ export default function ShopPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="reorderLevel">Min Stock Alert</Label>
-                                <Input id="reorderLevel" name="reorderLevel" type="number" defaultValue={editingProduct?.reorderLevel || 5} />
+                                <Input
+                                    id="reorderLevel"
+                                    name="reorderLevel"
+                                    type="number"
+                                    defaultValue={editingProduct?.reorderLevel || (selectedStation !== 'all' ? stations.find(s => s.id === selectedStation)?.defaultShopReorderLevel || 5 : 5)}
+                                />
                             </div>
                         </div>
                         <DialogFooter>

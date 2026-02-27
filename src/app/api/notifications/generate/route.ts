@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-
+import { getServerUser } from '@/lib/auth-server'
 // POST - Generate notifications based on system events
 // This endpoint checks for various conditions and creates notifications
 export async function POST(request: NextRequest) {
@@ -9,6 +9,12 @@ export async function POST(request: NextRequest) {
     const stationId = searchParams.get('stationId')
     const generatedNotifications: string[] = []
     const errors: string[] = []
+
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const organizationId = user.organizationId
 
     // 1. Check for low tank levels (< 30%)
     try {
@@ -21,7 +27,9 @@ export async function POST(request: NextRequest) {
           station: {
             select: {
               id: true,
-              name: true
+              name: true,
+              tankWarningThreshold: true,
+              tankCriticalThreshold: true
             }
           },
           fuel: true
@@ -30,14 +38,18 @@ export async function POST(request: NextRequest) {
 
       for (const tank of tanks) {
         const fillPercentage = (tank.currentLevel / tank.capacity) * 100
+        const warningThreshold = tank.station.tankWarningThreshold ?? 20
+        const criticalThreshold = tank.station.tankCriticalThreshold ?? 10
 
-        if (fillPercentage < 30) {
+        if (fillPercentage < warningThreshold) {
+          const isCritical = fillPercentage < criticalThreshold
+
           // Check if notification already exists (within last 24 hours)
           const existingNotification = await prisma.notification.findFirst({
             where: {
               stationId: tank.stationId,
               category: 'TANK',
-              type: fillPercentage < 15 ? 'ERROR' : 'WARNING',
+              type: isCritical ? 'ERROR' : 'WARNING',
               message: {
                 contains: `Tank ${tank.tankNumber || tank.id}`
               },
@@ -50,13 +62,14 @@ export async function POST(request: NextRequest) {
           if (!existingNotification) {
             const notification = await prisma.notification.create({
               data: {
+                organizationId,
                 stationId: tank.stationId,
-                title: fillPercentage < 15
+                title: isCritical
                   ? 'Critical: Low Tank Level'
                   : 'Low Tank Level Warning',
-                message: `Tank ${tank.tankNumber || 'Unknown'} (${tank.fuel?.name || 'Unknown'}) is at ${fillPercentage.toFixed(1)}% capacity - refill needed ${fillPercentage < 15 ? 'urgently' : 'soon'}`,
-                type: fillPercentage < 15 ? 'ERROR' : 'WARNING',
-                priority: fillPercentage < 15 ? 'CRITICAL' : fillPercentage < 20 ? 'HIGH' : 'MEDIUM',
+                message: `Tank ${tank.tankNumber || 'Unknown'} (${tank.fuel?.name || 'Unknown'}) is at ${fillPercentage.toFixed(1)}% capacity - refill needed ${isCritical ? 'urgently' : 'soon'}`,
+                type: isCritical ? 'ERROR' : 'WARNING',
+                priority: isCritical ? 'CRITICAL' : fillPercentage < (warningThreshold + criticalThreshold) / 2 ? 'HIGH' : 'MEDIUM',
                 category: 'TANK',
                 actionUrl: `/tanks`,
                 metadata: {
@@ -114,7 +127,12 @@ export async function POST(request: NextRequest) {
             include: {
               shift: {
                 select: {
-                  stationId: true
+                  stationId: true,
+                  station: {
+                    select: {
+                      creditOverdueDays: true
+                    }
+                  }
                 }
               }
             }
@@ -129,7 +147,9 @@ export async function POST(request: NextRequest) {
             (Date.now() - new Date(lastSale.timestamp).getTime()) / (1000 * 60 * 60 * 24)
           )
 
-          if (daysSinceLastSale > 7 && customer.currentBalance > 0) {
+          const overdueLimit = lastSale.shift?.station?.creditOverdueDays ?? 14
+
+          if (daysSinceLastSale > overdueLimit && customer.currentBalance > 0) {
             // Check if notification already exists (within last 7 days)
             const existingNotification = await prisma.notification.findFirst({
               where: {
@@ -147,11 +167,12 @@ export async function POST(request: NextRequest) {
             if (!existingNotification) {
               const notification = await prisma.notification.create({
                 data: {
+                  organizationId,
                   stationId: lastSale.shift?.stationId || null,
                   title: 'Credit Payment Overdue',
-                  message: `${customer.name} payment is ${daysSinceLastSale} days overdue (Rs. ${(customer.currentBalance || 0).toLocaleString()})`,
+                  message: `${customer.name} payment is ${daysSinceLastSale} days overdue (Limit: ${overdueLimit} days. Rs. ${(customer.currentBalance || 0).toLocaleString()})`,
                   type: 'ERROR',
-                  priority: daysSinceLastSale > 14 ? 'CRITICAL' : 'HIGH',
+                  priority: daysSinceLastSale > (overdueLimit + 14) ? 'CRITICAL' : 'HIGH',
                   category: 'CREDIT',
                   actionUrl: `/credit/customers`,
                   metadata: {
@@ -186,7 +207,9 @@ export async function POST(request: NextRequest) {
           station: {
             select: {
               id: true,
-              name: true
+              name: true,
+              allowedShiftVariance: true,
+              salesTolerance: true
             }
           }
         },
@@ -197,8 +220,12 @@ export async function POST(request: NextRequest) {
         const statistics = shift.statistics as { variancePercentage?: number; variance?: number } | null
         if (statistics && statistics.variancePercentage) {
           const variancePercentage = Math.abs(statistics.variancePercentage)
+          const varianceAmount = Math.abs(statistics.variance || 0)
 
-          if (variancePercentage > 1.0) {
+          const percentLimit = shift.station?.allowedShiftVariance ?? 1.5
+          const amountLimit = shift.station?.salesTolerance ?? 20 // Added safety check with amount as per new rule
+
+          if (variancePercentage > percentLimit && varianceAmount > amountLimit) {
             // Check if notification already exists for this shift
             const existingNotification = await prisma.notification.findFirst({
               where: {
@@ -214,13 +241,17 @@ export async function POST(request: NextRequest) {
             })
 
             if (!existingNotification) {
+              const isCritical = variancePercentage > percentLimit + 1.0
+              const isHigh = variancePercentage > percentLimit + 0.5
+
               const notification = await prisma.notification.create({
                 data: {
+                  organizationId,
                   stationId: shift.stationId,
                   title: 'Shift Variance Alert',
-                  message: `Shift closed with ${variancePercentage.toFixed(2)}% variance (Rs. ${Math.abs(statistics.variance || (0) || 0).toLocaleString()}) - ${variancePercentage > 2.0 ? 'requires immediate review' : 'needs review'}`,
-                  type: variancePercentage > 2.0 ? 'ERROR' : 'WARNING',
-                  priority: variancePercentage > 2.0 ? 'CRITICAL' : variancePercentage > 1.5 ? 'HIGH' : 'MEDIUM',
+                  message: `Shift closed with ${variancePercentage.toFixed(2)}% variance (Rs. ${varianceAmount.toLocaleString()}) - ${isCritical ? 'requires immediate review' : 'needs review'}`,
+                  type: isCritical ? 'ERROR' : 'WARNING',
+                  priority: isCritical ? 'CRITICAL' : isHigh ? 'HIGH' : 'MEDIUM',
                   category: 'SHIFT',
                   actionUrl: `/shifts/${shift.id}`,
                   metadata: {
@@ -240,70 +271,63 @@ export async function POST(request: NextRequest) {
       errors.push('Failed to check shift variances')
     }
 
-    // 4. Check for unreconciled POS batches (older than 1 day)
+    // 4. Check for shifts exceeding max Shift Duration
     try {
-      const unreconciledBatches = await prisma.posBatch.findMany({
+      const overlyLongOpenShifts = await prisma.shift.findMany({
         where: {
-          isReconciled: false,
-          shift: {
-            ...(stationId ? { stationId } : {}),
-            endTime: {
-              lte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Older than 1 day
-            }
-          }
+          status: 'OPEN',
+          ...(stationId ? { stationId } : {})
         },
         include: {
-          shift: {
-            include: {
-              station: {
-                select: {
-                  id: true,
-                  name: true
-                }
-              }
-            }
+          station: {
+            select: { id: true, name: true, maxShiftDurationHours: true }
           }
         }
       })
 
-      if (unreconciledBatches.length > 0) {
-        // Check if notification already exists (within last 24 hours)
-        const existingNotification = await prisma.notification.findFirst({
-          where: {
-            category: 'POS',
-            type: 'WARNING',
-            message: {
-              contains: 'POS reconciliation'
-            },
-            createdAt: {
-              gte: new Date(Date.now() - 24 * 60 * 60 * 1000)
-            }
-          }
-        })
+      for (const shift of overlyLongOpenShifts) {
+        const hoursOpen = (Date.now() - new Date(shift.startTime).getTime()) / (1000 * 60 * 60)
+        const maxAllowed = shift.station?.maxShiftDurationHours ?? 24
 
-        if (!existingNotification) {
-          const notification = await prisma.notification.create({
-            data: {
-              stationId: unreconciledBatches[0].shift.stationId,
-              title: 'POS Reconciliation Pending',
-              message: `${unreconciledBatches.length} POS batch${unreconciledBatches.length > 1 ? 'es' : ''} need${unreconciledBatches.length > 1 ? '' : 's'} reconciliation`,
-              type: 'WARNING',
-              priority: unreconciledBatches.length > 5 ? 'HIGH' : 'MEDIUM',
-              category: 'POS',
-              actionUrl: `/pos/batches`,
-              metadata: {
-                batchCount: unreconciledBatches.length,
-                batchIds: unreconciledBatches.map(b => b.id)
-              }
+        if (hoursOpen >= maxAllowed) {
+          // Check if we already notified about this exact shift being too long
+          const existingNotification = await prisma.notification.findFirst({
+            where: {
+              stationId: shift.stationId,
+              category: 'SHIFT',
+              message: { contains: 'exceeded maximum allowed duration' },
+              metadata: { path: ['shiftId'], equals: shift.id },
             }
           })
-          generatedNotifications.push(notification.id)
+
+          if (!existingNotification) {
+            const notification = await prisma.notification.create({
+              data: {
+                organizationId,
+                stationId: shift.stationId,
+                title: 'Shift Duration Exceeded',
+                message: `Shift opened on ${new Date(shift.startTime).toLocaleDateString()} has exceeded maximum allowed duration of ${maxAllowed} hours. Please close it.`,
+                type: 'WARNING',
+                priority: 'HIGH',
+                category: 'SHIFT',
+                actionUrl: `/shifts/${shift.id}`,
+                metadata: {
+                  shiftId: shift.id,
+                  hoursOpen: hoursOpen.toFixed(1),
+                  maxAllowed
+                }
+              }
+            })
+            generatedNotifications.push(notification.id)
+          }
         }
       }
     } catch (error) {
-      console.error('Error checking POS batches:', error)
-      errors.push('Failed to check POS batches')
+      console.error('Error checking long shifts:', error)
+      errors.push('Failed to check long shifts')
     }
+
+
 
     return NextResponse.json({
       success: true,

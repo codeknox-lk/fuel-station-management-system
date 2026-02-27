@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getAuthenticatedStationContext } from '@/lib/api-utils'
+import { calculateBillingPeriod } from '@/lib/date-utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,6 +15,7 @@ export async function GET(request: NextRequest) {
 
     const station = stationId !== 'all' ? await prisma.station.findUnique({ where: { id: stationId } }) : null
     const monthStartDay = station?.monthStartDate || 1
+    const monthEndDay = station?.monthEndDate
 
     let dateStart: Date
     let dateEnd: Date
@@ -27,13 +29,20 @@ export async function GET(request: NextRequest) {
       const now = new Date()
       const currentDay = now.getDate()
 
+      let targetMonth = now.getMonth()
+      let targetYear = now.getFullYear()
+
       if (currentDay < monthStartDay) {
-        dateStart = new Date(now.getFullYear(), now.getMonth() - 1, monthStartDay, 0, 0, 0, 0)
-        dateEnd = new Date(now.getFullYear(), now.getMonth(), monthStartDay - 1, 23, 59, 59, 999)
-      } else {
-        dateStart = new Date(now.getFullYear(), now.getMonth(), monthStartDay, 0, 0, 0, 0)
-        dateEnd = new Date(now.getFullYear(), now.getMonth() + 1, monthStartDay - 1, 23, 59, 59, 999)
+        targetMonth -= 1
+        if (targetMonth < 0) {
+          targetMonth = 11
+          targetYear -= 1
+        }
       }
+
+      const period = calculateBillingPeriod(targetYear, targetMonth, monthStartDay, monthEndDay)
+      dateStart = period.startDate
+      dateEnd = period.endDate
     }
 
     // Get all active credit customers (we'll filter by station through their sales)

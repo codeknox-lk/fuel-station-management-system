@@ -57,7 +57,8 @@ export async function POST(
             stationId: true,
             station: {
               select: {
-                deliveryToleranceCm: true
+                deliveryToleranceCm: true,
+                maxWaterIngressMm: true
               }
             }
           }
@@ -137,14 +138,25 @@ export async function POST(
     const volAtDipMinusTolerance = depthToVolume(Math.max(0, afterDipReading - toleranceCm), capacity)
     const toleranceLitersUsed = Math.abs(volAtDip - volAtDipMinusTolerance)
 
-    // Status Determination
-    // If variance (absolute) is greater than the calculated liter threshold, it's a discrepancy
+    // --- 4. Status Determination (Volume Variance + Water Ingress) ---
+    const ingressMm = (waterLevelAfter || 0) - (delivery.waterLevelBefore || 0)
+    const maxIngressAllowed = stationData?.maxWaterIngressMm ?? 50
+    let isQuarantined = false
+
     let verificationStatus: 'VERIFIED' | 'DISCREPANCY' = 'VERIFIED'
+
+    // Check Volume Variance
     if (Math.abs(variance) > toleranceLitersUsed) {
       verificationStatus = 'DISCREPANCY'
     }
 
-    // --- 4. Safety Checks ---
+    // Check Water Ingress
+    if (ingressMm > maxIngressAllowed) {
+      verificationStatus = 'DISCREPANCY'
+      isQuarantined = true
+    }
+
+    // --- 5. Safety Checks ---
     if (afterDipReading > delivery.tank.capacity * 1.05) { // 5% overfill tolerance for sensor error
       return NextResponse.json(
         { error: 'After dip reading exceeds tank capacity significantly' },
@@ -324,9 +336,31 @@ export async function POST(
       await tx.tank.update({
         where: { id: delivery.tankId },
         data: {
-          currentLevel: physicalVolume // The physical truth in LITERS
+          currentLevel: physicalVolume, // The physical truth in LITERS
+          ...(isQuarantined && { isActive: false }) // QUARANTINE TANK
         }
       })
+
+      // D. Create Critical Warning Notification if quarantined
+      if (isQuarantined) {
+        await tx.notification.create({
+          data: {
+            stationId: delivery.tank.stationId,
+            organizationId: delivery.organization?.id,
+            type: 'TANK_LEVEL', // Reusing TANK_LEVEL category for alert priority
+            priority: 'CRITICAL',
+            title: 'TANK QUARANTINED',
+            message: `CRITICAL: High Water Ingress (+${ingressMm}mm) detected in Tank ${delivery.tank.tankNumber} during delivery ${delivery.invoiceNumber || ''}. Tank has been automatically deactivated for safety.`,
+            status: 'UNREAD',
+            metadata: {
+              tankId: delivery.tankId,
+              deliveryId: delivery.id,
+              ingressMm,
+              threshold: maxIngressAllowed
+            }
+          }
+        })
+      }
 
       return updatedDelivery
     })

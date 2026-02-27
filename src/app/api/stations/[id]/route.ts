@@ -28,7 +28,11 @@ export async function PUT(
       return NextResponse.json({ error: 'Station not found or unauthorized' }, { status: 404 })
     }
 
-    const { name, address, city, phone, email, openingHours, monthStartDate, isActive, deliveryToleranceCm } = body
+    const {
+      name, address, city, email, openingHours, monthStartDate, monthEndDate, isActive, deliveryToleranceCm,
+      defaultEpfRate, defaultCommissionPerThousand, defaultOvertimeMultiplier, defaultRestDayDeductionAmount, defaultAllowedRestDays,
+      tankWarningThreshold, tankCriticalThreshold, creditOverdueDays, allowedShiftVariance, maxShiftDurationHours, defaultAdvanceLimit, defaultHolidayAllowance, defaultShopReorderLevel, maxDipVariancePercent, maxDipVarianceLiters, salesTolerance, maxWaterIngressMm
+    } = body
 
     const updatedStation = await prisma.station.update({
       where: { id },
@@ -36,12 +40,29 @@ export async function PUT(
         ...(name && { name }),
         ...(address && { address }),
         ...(city && { city }),
-        ...(phone !== undefined && { phone: phone || null }),
         ...(email !== undefined && { email: email || null }),
         ...(openingHours !== undefined && { openingHours: openingHours || null }),
         ...(monthStartDate !== undefined && { monthStartDate }),
+        ...(monthEndDate !== undefined && { monthEndDate: monthEndDate || null }),
         ...(isActive !== undefined && { isActive }),
-        ...(deliveryToleranceCm !== undefined && { deliveryToleranceCm: Number(deliveryToleranceCm) })
+        ...(deliveryToleranceCm !== undefined && { deliveryToleranceCm: Number(deliveryToleranceCm) }),
+        ...(defaultEpfRate !== undefined && { defaultEpfRate: Number(defaultEpfRate) }),
+        ...(defaultCommissionPerThousand !== undefined && { defaultCommissionPerThousand: Number(defaultCommissionPerThousand) }),
+        ...(defaultOvertimeMultiplier !== undefined && { defaultOvertimeMultiplier: Number(defaultOvertimeMultiplier) }),
+        ...(defaultRestDayDeductionAmount !== undefined && { defaultRestDayDeductionAmount: Number(defaultRestDayDeductionAmount) }),
+        ...(defaultAllowedRestDays !== undefined && { defaultAllowedRestDays: Number(defaultAllowedRestDays) }),
+        ...(tankWarningThreshold !== undefined && { tankWarningThreshold: Number(tankWarningThreshold) }),
+        ...(tankCriticalThreshold !== undefined && { tankCriticalThreshold: Number(tankCriticalThreshold) }),
+        ...(creditOverdueDays !== undefined && { creditOverdueDays: Number(creditOverdueDays) }),
+        ...(allowedShiftVariance !== undefined && { allowedShiftVariance: Number(allowedShiftVariance) }),
+        ...(maxShiftDurationHours !== undefined && { maxShiftDurationHours: Number(maxShiftDurationHours) }),
+        ...(defaultAdvanceLimit !== undefined && { defaultAdvanceLimit: Number(defaultAdvanceLimit) }),
+        ...(defaultHolidayAllowance !== undefined && { defaultHolidayAllowance: Number(defaultHolidayAllowance) }),
+        ...(defaultShopReorderLevel !== undefined && { defaultShopReorderLevel: Number(defaultShopReorderLevel) }),
+        ...(maxDipVariancePercent !== undefined && { maxDipVariancePercent: Number(maxDipVariancePercent) }),
+        ...(maxDipVarianceLiters !== undefined && { maxDipVarianceLiters: Number(maxDipVarianceLiters) }),
+        ...(salesTolerance !== undefined && { salesTolerance: Number(salesTolerance) }),
+        ...(maxWaterIngressMm !== undefined && { maxWaterIngressMm: Number(maxWaterIngressMm) })
       }
     })
 

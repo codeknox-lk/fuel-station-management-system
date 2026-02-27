@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { calculateBillingPeriod } from '@/lib/date-utils'
 
 interface OfficeStaffSalaryData {
   id: string
@@ -43,7 +44,14 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get all active office staff for the station
+    const station = await prisma.station.findUnique({
+      where: { id: stationId },
+      select: { defaultEpfRate: true, monthStartDate: true, monthEndDate: true }
+    })
+
+    const monthStartDay = station?.monthStartDate || 1
+    const monthEndDay = station?.monthEndDate
+
     // Get all active office staff for the station
     // Define types consistent with Prisma models
     // Since we're not importing the full Prisma client types, we define compatible interfaces or use 'any' with care
@@ -63,6 +71,8 @@ export async function GET(request: NextRequest) {
       medicalAllowance: number | null;
       holidayAllowance: number | null;
       fuelAllowance: number | null;
+      useStationSalaryDefaults: boolean;
+      epfRate: number | null;
     }
 
     let officeStaff: OfficeStaff[] = []
@@ -83,10 +93,11 @@ export async function GET(request: NextRequest) {
       officeStaff = []
     }
 
-    // Parse month to create proper date (YYYY-MM format)
+    // Parse month using shared date utility
     const [year, monthNum] = month.split('-').map(Number)
-    const monthStartDate = new Date(year, monthNum - 1, 1)
-    const monthEndDate = new Date(year, monthNum, 0, 23, 59, 59, 999) // Last day of the month
+    const period = calculateBillingPeriod(year, monthNum - 1, monthStartDay, monthEndDay)
+    const monthStartDate = period.startDate
+    const monthEndDate = period.endDate
 
     // Get active loan records for office staff
     interface OfficeStaffLoan {
@@ -201,8 +212,11 @@ export async function GET(request: NextRequest) {
       const absentDeductionPerDay = baseSalary / 30 // Daily salary rate
       const absentDeduction = absentDays * absentDeductionPerDay
 
-      // Calculate EPF: 8% of gross salary
-      const epf = Math.round(grossSalary * 0.08 * 100) / 100
+      // Get EPF rate
+      const epfRate = staff.useStationSalaryDefaults ? (station?.defaultEpfRate ?? 8) : (staff.epfRate ?? 0)
+
+      // Calculate EPF
+      const epf = Math.round(grossSalary * (epfRate / 100) * 100) / 100
 
       // Total deductions: advances + loans + absent deduction + EPF
       const totalDeductions = advances + loans + absentDeduction + epf

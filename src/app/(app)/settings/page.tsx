@@ -18,7 +18,8 @@ import {
   Fuel,
   Briefcase,
   AlertCircle,
-  Monitor
+  Monitor,
+  Calculator
 } from 'lucide-react'
 
 interface SettingCard {
@@ -177,6 +178,17 @@ export default function SettingsPage() {
       color: 'text-rose-600 dark:text-rose-400',
       bg: 'bg-rose-100 dark:bg-rose-900/20',
       bullet: 'bg-rose-500',
+      minRole: 'OWNER'
+    },
+    {
+      title: 'Global Salary Settings',
+      description: 'Configure default salary calculations and rates',
+      icon: <Calculator className="h-6 w-6" />,
+      href: '/settings/salary',
+      features: ['EPF Rates', 'OT Multipliers', 'Commission Config'],
+      color: 'text-violet-600 dark:text-violet-400',
+      bg: 'bg-violet-100 dark:bg-violet-900/20',
+      bullet: 'bg-violet-500',
       minRole: 'OWNER'
     },
     {

@@ -212,7 +212,9 @@ export async function POST(request: NextRequest) {
         shiftId: shift.id,
         totalAmount: parseFloat(totalAmount),
         notes: notes || null,
-        isReconciled: false,
+        isReconciled: !!addToSafe,
+        reconciledBy: addToSafe ? (user.username || 'System') : null,
+        reconciledAt: addToSafe ? new Date() : null,
         organizationId: user.organizationId,
         terminalEntries: {
           create: entries.map(entry => ({

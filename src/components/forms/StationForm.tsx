@@ -17,6 +17,7 @@ export interface StationData {
     email: string
     openingHours: string
     monthStartDate: number
+    monthEndDate?: number | null
     isActive: boolean
 }
 
@@ -36,6 +37,7 @@ export function StationForm({ initialData, onSuccess, onCancel, isFirstStation =
         email: '',
         openingHours: '',
         monthStartDate: 1,
+        monthEndDate: null,
         isActive: true
     })
     const [isLoading, setIsLoading] = useState(false)
@@ -145,14 +147,14 @@ export function StationForm({ initialData, onSuccess, onCancel, isFirstStation =
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <Label htmlFor="openingHours">Opening Hours</Label>
                     <Input
                         id="openingHours"
                         value={formData.openingHours}
                         onChange={(e) => setFormData({ ...formData, openingHours: e.target.value })}
-                        placeholder="e.g., Mon-Fri: 6AM-10PM, Sat-Sun: 7AM-9PM"
+                        placeholder="e.g., 6AM-10PM"
                         disabled={isLoading}
                     />
                 </div>
@@ -167,6 +169,19 @@ export function StationForm({ initialData, onSuccess, onCancel, isFirstStation =
                         onChange={(e) => setFormData({ ...formData, monthStartDate: parseInt(e.target.value) || 1 })}
                         placeholder="e.g., 7"
                         required
+                        disabled={isLoading}
+                    />
+                </div>
+                <div>
+                    <Label htmlFor="monthEndDate">Month End (Optional, 1-31)</Label>
+                    <Input
+                        id="monthEndDate"
+                        type="number"
+                        min="1"
+                        max="31"
+                        value={formData.monthEndDate || ''}
+                        onChange={(e) => setFormData({ ...formData, monthEndDate: e.target.value ? parseInt(e.target.value) : null })}
+                        placeholder="Auto-calculated if empty"
                         disabled={isLoading}
                     />
                 </div>

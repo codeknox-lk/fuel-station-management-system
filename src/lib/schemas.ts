@@ -42,6 +42,12 @@ export const CreatePumperSchema = z.object({
     holidayAllowance: z.union([z.string(), z.number()]).optional().transform(val => val ? Number(val) : 4500),
     advanceLimit: z.union([z.string(), z.number()]).optional().transform(val => val ? Number(val) : 50000),
     isActive: z.boolean().optional().default(true),
+    useStationSalaryDefaults: z.boolean().optional().default(true),
+    epfRate: z.union([z.string(), z.number()]).optional().nullable().transform(val => val !== null && val !== '' && val !== undefined ? Number(val) : null),
+    commissionPerThousand: z.union([z.string(), z.number()]).optional().nullable().transform(val => val !== null && val !== '' && val !== undefined ? Number(val) : null),
+    overtimeMultiplier: z.union([z.string(), z.number()]).optional().nullable().transform(val => val !== null && val !== '' && val !== undefined ? Number(val) : null),
+    restDayDeductionAmount: z.union([z.string(), z.number()]).optional().nullable().transform(val => val !== null && val !== '' && val !== undefined ? Number(val) : null),
+    allowedRestDays: z.union([z.string(), z.number()]).optional().nullable().transform(val => val !== null && val !== '' && val !== undefined ? Number(val) : null),
 });
 
 export const UpdatePumperSchema = CreatePumperSchema.partial();
@@ -108,6 +114,8 @@ export const CreateOfficeStaffSchema = z.object({
     fuelAllowance: z.union([z.string(), z.number()]).optional().transform(val => val ? Number(val) : 0),
     hireDate: z.union([z.string(), z.date()]).optional().nullable().transform(val => val ? new Date(val) : null),
     isActive: z.boolean().optional().default(true),
+    useStationSalaryDefaults: z.boolean().optional().default(true),
+    epfRate: z.union([z.string(), z.number()]).optional().nullable().transform(val => val !== null && val !== '' && val !== undefined ? Number(val) : null),
 });
 
 // --- Shift Schemas ---

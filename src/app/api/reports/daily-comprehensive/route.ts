@@ -50,7 +50,8 @@ type PosBatchWithTerminals = Prisma.PosBatchGetPayload<{
       include: {
         terminal: {
           include: {
-            bank: true
+            bank: true,
+            amexBank: true
           }
         }
       }
@@ -417,7 +418,7 @@ export async function GET(request: NextRequest) {
           include: {
             terminalEntries: {
               include: {
-                terminal: { include: { bank: true } }
+                terminal: { include: { bank: true, amexBank: true } }
               }
             }
           }
@@ -453,7 +454,9 @@ export async function GET(request: NextRequest) {
             terminalId: entry.terminal.id,
             terminalName: entry.terminal.name || `Terminal ${entry.terminal.terminalNumber || 'Unknown'}`,
             terminalNumber: entry.terminal.terminalNumber || 'Unknown',
-            bankName: entry.terminal.bank?.name || 'Unknown Bank',
+            bankName: (entry.terminal.amexBankId && entry.terminal.amexBankId !== entry.terminal.bankId)
+              ? `${entry.terminal.bank?.name || 'Unknown Bank'} (Amex: ${entry.terminal.amexBank?.name || 'Unknown'})`
+              : (entry.terminal.bank?.name || 'Unknown Bank'),
             totalAmount: 0,
             transactionCount: 0,
             visaAmount: 0,

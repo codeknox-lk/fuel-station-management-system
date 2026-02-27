@@ -27,6 +27,15 @@ export default function TolerancePage() {
 
   const [deliveryToleranceCm, setDeliveryToleranceCm] = useState<number>(2)
   const [salesTolerance, setSalesTolerance] = useState<number>(20)
+  const [maxDipVariancePercent, setMaxDipVariancePercent] = useState<number>(2)
+  const [maxDipVarianceLiters, setMaxDipVarianceLiters] = useState<number>(200)
+  const [allowedShiftVariance, setAllowedShiftVariance] = useState<number>(1.5)
+  const [tankWarningThreshold, setTankWarningThreshold] = useState<number>(20)
+  const [tankCriticalThreshold, setTankCriticalThreshold] = useState<number>(10)
+  const [creditOverdueDays, setCreditOverdueDays] = useState<number>(14)
+  const [maxShiftDurationHours, setMaxShiftDurationHours] = useState<number>(24)
+  const [defaultShopReorderLevel, setDefaultShopReorderLevel] = useState<number>(5)
+  const [maxWaterIngressMm, setMaxWaterIngressMm] = useState<number>(50)
   const [updatingStation, setUpdatingStation] = useState(false)
 
   const [tanks, setTanks] = useState<Tank[]>([])
@@ -58,8 +67,17 @@ export default function TolerancePage() {
     if (selectedStation && selectedStation !== 'all') {
       const station = stations.find(s => s.id === selectedStation)
       if (station) {
-        setDeliveryToleranceCm(station.deliveryToleranceCm || 2)
-        setSalesTolerance(station.salesTolerance || 20)
+        setDeliveryToleranceCm(station.deliveryToleranceCm ?? 2)
+        setSalesTolerance(station.salesTolerance ?? 20)
+        setMaxDipVariancePercent(station.maxDipVariancePercent ?? 2)
+        setMaxDipVarianceLiters(station.maxDipVarianceLiters ?? 200)
+        setAllowedShiftVariance(station.allowedShiftVariance ?? 1.5)
+        setTankWarningThreshold(station.tankWarningThreshold ?? 20)
+        setTankCriticalThreshold(station.tankCriticalThreshold ?? 10)
+        setCreditOverdueDays(station.creditOverdueDays ?? 14)
+        setMaxShiftDurationHours(station.maxShiftDurationHours ?? 24)
+        setDefaultShopReorderLevel(station.defaultShopReorderLevel ?? 5)
+        setMaxWaterIngressMm(station.maxWaterIngressMm ?? 50)
       }
     }
     fetchTanks()
@@ -74,7 +92,19 @@ export default function TolerancePage() {
       const response = await fetch(`/api/stations/${selectedStation}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deliveryToleranceCm, salesTolerance })
+        body: JSON.stringify({
+          deliveryToleranceCm,
+          salesTolerance,
+          maxDipVariancePercent,
+          maxDipVarianceLiters,
+          allowedShiftVariance,
+          tankWarningThreshold,
+          tankCriticalThreshold,
+          creditOverdueDays,
+          maxShiftDurationHours,
+          defaultShopReorderLevel,
+          maxWaterIngressMm
+        })
       })
 
       if (!response.ok) throw new Error('Failed to update station configuration')
@@ -166,10 +196,10 @@ export default function TolerancePage() {
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Tank Delivery Section */}
             <FormCard
-              title="Dip Measurement Threshold"
+              title="Delivery Intake Threshold"
               description="Specify accepted variance for fuel delivery verification calculations."
               className="h-full flex flex-col"
             >
@@ -216,15 +246,15 @@ export default function TolerancePage() {
 
             {/* Shift Sales Section */}
             <FormCard
-              title="Station Sales Variance"
+              title="Shift Financial Variance"
               description="Configure distinct acceptable financial shift reconciliation buffers per station."
               className="h-full flex flex-col"
             >
               <div className="flex flex-col flex-1 justify-between">
                 <div className="space-y-6 pt-2">
-                  <div className="space-y-3">
-                    <Label htmlFor="stationVariance" className="text-sm font-semibold">Amount Threshold</Label>
-                    <div className="flex items-center space-x-2">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <Label htmlFor="stationVariance" className="text-sm font-semibold">Flat Amount Buffer</Label>
                       <MoneyInput
                         value={salesTolerance || 0}
                         onChange={(val) => setSalesTolerance(val)}
@@ -232,14 +262,34 @@ export default function TolerancePage() {
                         id="stationVariance"
                       />
                     </div>
+                    <div className="space-y-3">
+                      <Label htmlFor="allowedShiftVariance" className="text-sm font-semibold">Percentage Buffer (%)</Label>
+                      <div className="relative">
+                        <input
+                          id="allowedShiftVariance"
+                          title="Percentage Buffer"
+                          placeholder="1.5"
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="100"
+                          value={allowedShiftVariance}
+                          onChange={(e) => setAllowedShiftVariance(parseFloat(e.target.value) || 0)}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pr-8"
+                        />
+                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-muted-foreground">
+                          %
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="p-4 bg-muted/40 rounded-lg border flex gap-3">
                     <Info className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium">Flat Amount Setting</p>
+                      <p className="text-sm font-medium">Reconciliation Rule</p>
                       <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                        This limit determines the acceptable variance on financial values when closing a shift. Shifts with discrepancies above this buffer will trigger warnings or deduct from pumper liabilities depending on config.
+                        A shift variance triggers a warning if it exceeds <strong>BOTH</strong> the flat amount and the percentage buffer.
                       </p>
                     </div>
                   </div>
@@ -252,6 +302,223 @@ export default function TolerancePage() {
                   >
                     <Save className="mr-2 h-4 w-4" />
                     {updatingStation ? 'Saving...' : 'Save Buffers'}
+                  </Button>
+                </div>
+              </div>
+            </FormCard>
+
+            {/* Daily Dip Tolerance Section */}
+            <FormCard
+              title="Daily Dip Variance (EOD)"
+              description="Configure margins of error allowed when checking daily tank dips against book stock."
+              className="h-full flex flex-col lg:col-span-2"
+            >
+              <div className="flex flex-col flex-1 justify-between">
+                <div className="space-y-6 pt-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <Label htmlFor="maxDipVariancePercent" className="text-sm font-semibold">Percentage Tolerance (%)</Label>
+                      <div className="relative">
+                        <input
+                          id="maxDipVariancePercent"
+                          title="Percentage Tolerance"
+                          placeholder="2.0"
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="100"
+                          value={maxDipVariancePercent}
+                          onChange={(e) => setMaxDipVariancePercent(parseFloat(e.target.value) || 0)}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pr-8"
+                        />
+                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-muted-foreground">
+                          %
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label htmlFor="maxDipVarianceLiters" className="text-sm font-semibold">Minimum Volume Tolerance (Liters)</Label>
+                      <div className="relative">
+                        <input
+                          id="maxDipVarianceLiters"
+                          title="Minimum Volume Tolerance"
+                          placeholder="200"
+                          type="number"
+                          step="1"
+                          min="0"
+                          value={maxDipVarianceLiters}
+                          onChange={(e) => setMaxDipVarianceLiters(parseInt(e.target.value) || 0)}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pr-10"
+                        />
+                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-muted-foreground">
+                          Ltr
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-muted/40 rounded-lg border flex gap-3">
+                    <Info className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium">Dip Tolerance Rules</p>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                        The system allows a discrepancy between Book Stock and Physical Dip Stock up to the greater of <strong>{maxDipVariancePercent}%</strong> or <strong>{maxDipVarianceLiters} L</strong>. If exactly within half of this buffer, it marks as NORMAL. Above half is a WARNING, and exceeding the total limit raises a CRITICAL alert.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end mt-8 pt-4 border-t">
+                  <Button
+                    onClick={handleStationSubmit}
+                    disabled={updatingStation}
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    {updatingStation ? 'Saving...' : 'Save Settings'}
+                  </Button>
+                </div>
+              </div>
+            </FormCard>
+
+            {/* System Alert Thresholds Section */}
+            <FormCard
+              title="System Alert Thresholds"
+              description="Configure automatic notification triggers and operational limits."
+              className="h-full flex flex-col lg:col-span-2"
+            >
+              <div className="flex flex-col flex-1 justify-between">
+                <div className="space-y-6 pt-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="space-y-3">
+                      <Label htmlFor="tankWarningThreshold" className="text-sm font-semibold">Tank Warning Level (%)</Label>
+                      <div className="relative">
+                        <input
+                          id="tankWarningThreshold"
+                          title="Tank Warning Threshold"
+                          placeholder="20"
+                          type="number"
+                          step="1"
+                          min="0"
+                          max="100"
+                          value={tankWarningThreshold}
+                          onChange={(e) => setTankWarningThreshold(parseInt(e.target.value) || 0)}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pr-8"
+                        />
+                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-muted-foreground">%</div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label htmlFor="tankCriticalThreshold" className="text-sm font-semibold">Tank Critical Level (%)</Label>
+                      <div className="relative">
+                        <input
+                          id="tankCriticalThreshold"
+                          title="Tank Critical Threshold"
+                          placeholder="10"
+                          type="number"
+                          step="1"
+                          min="0"
+                          max="100"
+                          value={tankCriticalThreshold}
+                          onChange={(e) => setTankCriticalThreshold(parseInt(e.target.value) || 0)}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pr-8"
+                        />
+                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-muted-foreground">%</div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label htmlFor="creditOverdueDays" className="text-sm font-semibold">Credit Overdue Terms (Days)</Label>
+                      <div className="relative">
+                        <input
+                          id="creditOverdueDays"
+                          title="Credit Overdue Days"
+                          placeholder="14"
+                          type="number"
+                          step="1"
+                          min="0"
+                          value={creditOverdueDays}
+                          onChange={(e) => setCreditOverdueDays(parseInt(e.target.value) || 0)}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label htmlFor="maxShiftDurationHours" className="text-sm font-semibold">Max Shift Length (Hours)</Label>
+                      <div className="relative">
+                        <input
+                          id="maxShiftDurationHours"
+                          title="Max Shift Duration"
+                          placeholder="24"
+                          type="number"
+                          step="1"
+                          min="1"
+                          max="72"
+                          value={maxShiftDurationHours}
+                          onChange={(e) => setMaxShiftDurationHours(parseInt(e.target.value) || 0)}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pr-10"
+                        />
+                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-muted-foreground">Hrs</div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label htmlFor="defaultShopReorderLevel" className="text-sm font-semibold">Default Shop Reorder Level</Label>
+                      <div className="relative">
+                        <input
+                          id="defaultShopReorderLevel"
+                          title="Default Shop Reorder Level"
+                          placeholder="5"
+                          type="number"
+                          step="1"
+                          min="0"
+                          value={defaultShopReorderLevel}
+                          onChange={(e) => setDefaultShopReorderLevel(parseInt(e.target.value) || 0)}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pr-10"
+                        />
+                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-muted-foreground">Qty</div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label htmlFor="maxWaterIngressMm" className="text-sm font-semibold">Max Water Ingress (mm)</Label>
+                      <div className="relative">
+                        <input
+                          id="maxWaterIngressMm"
+                          title="Max Water Ingress"
+                          placeholder="50"
+                          type="number"
+                          step="1"
+                          min="0"
+                          value={maxWaterIngressMm}
+                          onChange={(e) => setMaxWaterIngressMm(parseInt(e.target.value) || 0)}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pr-10"
+                        />
+                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-muted-foreground">mm</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-muted/40 rounded-lg border flex gap-3 mt-4">
+                    <Info className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium">Notification Triggers</p>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                        These limits govern push notifications, SMS alerts, and dashboard flags for low inventory and overdue payments. Modifying these immediately updates background monitoring systems.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end mt-8 pt-4 border-t">
+                  <Button
+                    onClick={handleStationSubmit}
+                    disabled={updatingStation}
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    {updatingStation ? 'Saving...' : 'Save Settings'}
                   </Button>
                 </div>
               </div>
@@ -273,9 +540,10 @@ export default function TolerancePage() {
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </Card >
         </>
-      )}
-    </div>
+      )
+      }
+    </div >
   )
 }

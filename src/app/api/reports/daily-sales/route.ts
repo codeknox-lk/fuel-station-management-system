@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { calculateBillingPeriod } from '@/lib/date-utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,23 +18,31 @@ export async function GET(request: NextRequest) {
 
     const station = await prisma.station.findUnique({ where: { id: stationId } })
     const monthStartDay = station?.monthStartDate || 1
+    const monthEndDay = station?.monthEndDate
 
     if (month) {
       const [year, monthNum] = month.split('-').map(Number)
-      // Business month
-      startDate = new Date(year, monthNum - 1, monthStartDay, 0, 0, 0, 0)
-      endDate = new Date(year, monthNum, monthStartDay - 1, 23, 59, 59, 999)
+      const period = calculateBillingPeriod(year, monthNum - 1, monthStartDay, monthEndDay)
+      startDate = period.startDate
+      endDate = period.endDate
     } else {
       const now = new Date()
       const currentDay = now.getDate()
 
+      let targetMonth = now.getMonth()
+      let targetYear = now.getFullYear()
+
       if (currentDay < monthStartDay) {
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, monthStartDay, 0, 0, 0, 0)
-        endDate = new Date(now.getFullYear(), now.getMonth(), monthStartDay - 1, 23, 59, 59, 999)
-      } else {
-        startDate = new Date(now.getFullYear(), now.getMonth(), monthStartDay, 0, 0, 0, 0)
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, monthStartDay - 1, 23, 59, 59, 999)
+        targetMonth -= 1
+        if (targetMonth < 0) {
+          targetMonth = 11
+          targetYear -= 1
+        }
       }
+
+      const period = calculateBillingPeriod(targetYear, targetMonth, monthStartDay, monthEndDay)
+      startDate = period.startDate
+      endDate = period.endDate
     }
 
     // OPTIMIZED: Get all closed shifts for the month with select

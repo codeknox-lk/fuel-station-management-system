@@ -55,6 +55,11 @@ export interface PosTerminal {
         id: string
         name: string
     }
+    amexBankId?: string
+    amexBank?: {
+        id: string
+        name: string
+    }
 }
 
 export interface PumperCheque {

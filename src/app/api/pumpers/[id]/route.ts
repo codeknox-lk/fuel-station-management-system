@@ -68,7 +68,13 @@ export async function PUT(
       baseSalary,
       holidayAllowance,
       advanceLimit,
-      isActive
+      isActive,
+      useStationSalaryDefaults,
+      epfRate,
+      commissionPerThousand,
+      overtimeMultiplier,
+      restDayDeductionAmount,
+      allowedRestDays
     } = body
 
     const finalName = (name !== undefined && name !== '') ? name.trim() : existingPumper.name
@@ -134,6 +140,12 @@ export async function PUT(
     if (holidayAllowance !== undefined) updateData.holidayAllowance = holidayAllowance !== null && holidayAllowance !== '' ? parseFloat(String(holidayAllowance)) : 4500
     if (advanceLimit !== undefined) updateData.advanceLimit = advanceLimit !== null && advanceLimit !== '' ? parseFloat(String(advanceLimit)) : 50000
     if (isActive !== undefined) updateData.isActive = isActive
+    if (useStationSalaryDefaults !== undefined) updateData.useStationSalaryDefaults = useStationSalaryDefaults
+    if (epfRate !== undefined) updateData.epfRate = epfRate !== null && epfRate !== '' ? parseFloat(String(epfRate)) : null
+    if (commissionPerThousand !== undefined) updateData.commissionPerThousand = commissionPerThousand !== null && commissionPerThousand !== '' ? parseFloat(String(commissionPerThousand)) : null
+    if (overtimeMultiplier !== undefined) updateData.overtimeMultiplier = overtimeMultiplier !== null && overtimeMultiplier !== '' ? parseFloat(String(overtimeMultiplier)) : null
+    if (restDayDeductionAmount !== undefined) updateData.restDayDeductionAmount = restDayDeductionAmount !== null && restDayDeductionAmount !== '' ? parseFloat(String(restDayDeductionAmount)) : null
+    if (allowedRestDays !== undefined) updateData.allowedRestDays = allowedRestDays !== null && allowedRestDays !== '' ? parseInt(String(allowedRestDays)) : null
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 })

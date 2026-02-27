@@ -24,7 +24,7 @@ interface Props {
 }
 
 export default function Stage3_Verification({ data, onUpdate, onNext }: Props) {
-    const { selectedStation } = useStation()
+    const { selectedStation, getSelectedStation } = useStation()
     const [nozzles, setNozzles] = useState<Nozzle[]>([])
     const [tankCapacity, setTankCapacity] = useState<TankCapacity | null>(null)
     const [variance, setVariance] = useState<{ diff: number, percent: number } | null>(null)
@@ -144,14 +144,21 @@ export default function Stage3_Verification({ data, onUpdate, onNext }: Props) {
                         onChange={e => onUpdate({ waterLevelAfter: parseFloat(e.target.value) })}
                         placeholder="0"
                     />
-                    {data.waterLevelAfter !== undefined && (data.waterLevelBefore || 0) < data.waterLevelAfter && (
-                        data.waterLevelAfter - (data.waterLevelBefore || 0) > 50 && (
-                            <div className="flex items-center gap-2 text-red-600 text-sm mt-1 animate-pulse">
-                                <AlertCircle className="h-4 w-4" />
-                                <span>High Water Ingress Detected (+{(data.waterLevelAfter - (data.waterLevelBefore || 0))}mm)</span>
-                            </div>
-                        )
-                    )}
+                    {data.waterLevelAfter !== undefined && (data.waterLevelBefore || 0) < data.waterLevelAfter && (() => {
+                        const station = getSelectedStation()
+                        const threshold = station?.maxWaterIngressMm ?? 50
+                        const ingress = data.waterLevelAfter - (data.waterLevelBefore || 0)
+
+                        if (ingress > threshold) {
+                            return (
+                                <div className="flex items-center gap-2 text-red-600 text-sm mt-1 animate-pulse">
+                                    <AlertCircle className="h-4 w-4" />
+                                    <span>High Water Ingress Detected (+{ingress}mm)</span>
+                                </div>
+                            )
+                        }
+                        return null
+                    })()}
                 </div>
             </div>
 

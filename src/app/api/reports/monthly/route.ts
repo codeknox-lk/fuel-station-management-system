@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
 import { getAuthenticatedStationContext } from '@/lib/api-utils'
+import { calculateBillingPeriod } from '@/lib/date-utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,11 +13,13 @@ export async function GET(request: NextRequest) {
 
     const station = await prisma.station.findUnique({ where: { id: stationId } })
     const monthStartDay = station?.monthStartDate || 1
+    const monthEndDay = station?.monthEndDate
 
     // Parse month and get business month date range
     const [year, monthNum] = month.split('-').map(Number)
-    const startOfMonth = new Date(year, monthNum - 1, monthStartDay, 0, 0, 0, 0)
-    const endOfMonth = new Date(year, monthNum, monthStartDay - 1, 23, 59, 59, 999)
+    const period = calculateBillingPeriod(year, monthNum - 1, monthStartDay, monthEndDay)
+    const startOfMonth = period.startDate
+    const endOfMonth = period.endDate
 
     // Get all CLOSED shifts for the month
     // Use endTime to capture shifts that ended in this month (even if started previous month)
@@ -185,6 +187,8 @@ export async function GET(request: NextRequest) {
     const chequesEncashed = chequesReceived.filter(c => c.status === 'CLEARED' && c.clearedDate && c.clearedDate >= startOfMonth && c.clearedDate <= endOfMonth)
     const totalChequeEncashed = chequesEncashed.reduce((sum, cheque) => sum + cheque.amount, 0)
 
+    const overdueLimit = station?.creditOverdueDays ?? 14
+
     // Get credit aging
     const creditCustomers = await prisma.creditCustomer.findMany({
       where: {
@@ -197,10 +201,30 @@ export async function GET(request: NextRequest) {
             }
           }
         }
+      },
+      include: {
+        creditSales: {
+          orderBy: { timestamp: 'desc' },
+          take: 1
+        }
       }
     })
-    const totalOutstanding = creditCustomers.reduce((sum, customer) => sum + customer.currentBalance, 0)
-    const overdueAmount = totalOutstanding * 0.25 // Placeholder - would need payment terms to calculate
+
+    let totalOutstanding = 0
+    let overdueAmount = 0
+
+    for (const customer of creditCustomers) {
+      totalOutstanding += customer.currentBalance
+      if (customer.creditSales.length > 0) {
+        const lastSale = customer.creditSales[0]
+        const daysSinceLastSale = Math.floor(
+          (Date.now() - new Date(lastSale.timestamp).getTime()) / (1000 * 60 * 60 * 24)
+        )
+        if (daysSinceLastSale > overdueLimit) {
+          overdueAmount += customer.currentBalance
+        }
+      }
+    }
 
     // Calculate trends by day using real data (business month: 7th to 6th)
     const salesByDay = []
@@ -455,7 +479,7 @@ export async function GET(request: NextRequest) {
       tanks: {
         totalVariance: 0, // Placeholder - needs complex calculation
         variancePercentage: 0,
-        lowStockAlerts: tanks.filter(t => t.currentLevel < t.capacity * 0.2).length,
+        lowStockAlerts: tanks.filter(t => t.currentLevel < t.capacity * ((station?.tankWarningThreshold ?? 20) / 100)).length,
         deliveryCount
       }
     }

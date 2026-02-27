@@ -35,11 +35,19 @@ interface Pumper {
   baseSalary?: number
   holidayAllowance?: number
   advanceLimit?: number
+  useStationSalaryDefaults?: boolean
+  epfRate?: number | null
+  commissionPerThousand?: number | null
+  overtimeMultiplier?: number | null
+  restDayDeductionAmount?: number | null
+  allowedRestDays?: number | null
 }
 
 interface Station {
   id: string
   name: string
+  defaultAdvanceLimit?: number
+  defaultHolidayAllowance?: number
 }
 
 export default function PumpersPage() {
@@ -65,7 +73,13 @@ export default function PumpersPage() {
     specializations: [] as string[],
     baseSalary: 0,
     holidayAllowance: 4500,
-    advanceLimit: 50000
+    advanceLimit: 50000,
+    useStationSalaryDefaults: true,
+    epfRate: '' as string | number,
+    commissionPerThousand: '' as string | number,
+    overtimeMultiplier: '' as string | number,
+    restDayDeductionAmount: '' as string | number,
+    allowedRestDays: '' as string | number
   })
   const { toast } = useToast()
 
@@ -108,6 +122,12 @@ export default function PumpersPage() {
         baseSalary: number
         holidayAllowance: number
         advanceLimit: number
+        useStationSalaryDefaults?: boolean
+        epfRate?: number | null
+        commissionPerThousand?: number | null
+        overtimeMultiplier?: number | null
+        restDayDeductionAmount?: number | null
+        allowedRestDays?: number | null
         createdAt: string
         updatedAt: string
       }
@@ -128,7 +148,13 @@ export default function PumpersPage() {
         advanceLimit: pumper.advanceLimit || 50000,
         hireDate: pumper.hireDate || new Date().toISOString().split('T')[0],
         experience: pumper.experience || 0,
-        rating: pumper.rating || 0
+        rating: pumper.rating || 0,
+        useStationSalaryDefaults: pumper.useStationSalaryDefaults ?? true,
+        epfRate: pumper.epfRate ?? null,
+        commissionPerThousand: pumper.commissionPerThousand ?? null,
+        overtimeMultiplier: pumper.overtimeMultiplier ?? null,
+        restDayDeductionAmount: pumper.restDayDeductionAmount ?? null,
+        allowedRestDays: pumper.allowedRestDays ?? null
       }))
 
       setPumpers(pumpersWithStations)
@@ -233,7 +259,13 @@ export default function PumpersPage() {
       specializations: Array.isArray(pumper.specializations) ? pumper.specializations : [],
       baseSalary: pumper.baseSalary || 0,
       holidayAllowance: pumper.holidayAllowance || 4500,
-      advanceLimit: pumper.advanceLimit || 50000
+      advanceLimit: pumper.advanceLimit || 50000,
+      useStationSalaryDefaults: pumper.useStationSalaryDefaults ?? true,
+      epfRate: pumper.epfRate ?? '',
+      commissionPerThousand: pumper.commissionPerThousand ?? '',
+      overtimeMultiplier: pumper.overtimeMultiplier ?? '',
+      restDayDeductionAmount: pumper.restDayDeductionAmount ?? '',
+      allowedRestDays: pumper.allowedRestDays ?? ''
     })
     setDialogOpen(true)
   }
@@ -348,6 +380,19 @@ export default function PumpersPage() {
 
   const resetForm = () => {
     setEditingPumper(null)
+
+    // Find selected station to use its defaults
+    let defaultAdvanceLimit = 50000
+    let defaultHolidayAllowance = 4500
+
+    if (!isAllStations && selectedStation) {
+      const currentStation = stations.find(s => s.id === selectedStation)
+      if (currentStation) {
+        defaultAdvanceLimit = currentStation.defaultAdvanceLimit ?? 50000
+        defaultHolidayAllowance = currentStation.defaultHolidayAllowance ?? 4500
+      }
+    }
+
     setFormData({
       name: '',
       employeeId: '',
@@ -360,8 +405,14 @@ export default function PumpersPage() {
       rating: 5,
       specializations: [],
       baseSalary: 0,
-      holidayAllowance: 4500,
-      advanceLimit: 50000
+      holidayAllowance: defaultHolidayAllowance,
+      advanceLimit: defaultAdvanceLimit,
+      useStationSalaryDefaults: true,
+      epfRate: '',
+      commissionPerThousand: '',
+      overtimeMultiplier: '',
+      restDayDeductionAmount: '',
+      allowedRestDays: ''
     })
   }
 
@@ -810,6 +861,81 @@ export default function PumpersPage() {
                       Max total advance this pumper can take per month.
                     </p>
                   </div>
+                </div>
+
+                <div className="border border-border/50 rounded-lg p-4 bg-muted/20 space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="useStationSalaryDefaults"
+                      title="Use Station Default Salary Settings"
+                      checked={formData.useStationSalaryDefaults}
+                      onChange={(e) => setFormData({ ...formData, useStationSalaryDefaults: e.target.checked })}
+                      className="rounded border-border"
+                    />
+                    <Label htmlFor="useStationSalaryDefaults" className="font-semibold cursor-pointer">
+                      Use Station Default Salary Settings
+                    </Label>
+                  </div>
+
+                  {!formData.useStationSalaryDefaults && (
+                    <div className="grid grid-cols-2 gap-4 pt-2">
+                      <div>
+                        <Label htmlFor="epfRate">Custom EPF Rate (%)</Label>
+                        <Input
+                          id="epfRate"
+                          type="number"
+                          step="0.01"
+                          value={formData.epfRate}
+                          onChange={(e) => setFormData({ ...formData, epfRate: e.target.value })}
+                          placeholder="e.g. 8"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="commissionPerThousand">Custom Commission</Label>
+                        <Input
+                          id="commissionPerThousand"
+                          type="number"
+                          step="0.01"
+                          value={formData.commissionPerThousand}
+                          onChange={(e) => setFormData({ ...formData, commissionPerThousand: e.target.value })}
+                          placeholder="Rs per 1000 Rs"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="overtimeMultiplier">Custom OT Multiplier</Label>
+                        <Input
+                          id="overtimeMultiplier"
+                          type="number"
+                          step="0.01"
+                          value={formData.overtimeMultiplier}
+                          onChange={(e) => setFormData({ ...formData, overtimeMultiplier: e.target.value })}
+                          placeholder="e.g. 1.5"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="allowedRestDays">Custom Allowed Rest Days</Label>
+                        <Input
+                          id="allowedRestDays"
+                          type="number"
+                          value={formData.allowedRestDays}
+                          onChange={(e) => setFormData({ ...formData, allowedRestDays: e.target.value })}
+                          placeholder="Days per month"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="restDayDeductionAmount">Custom Rest Day Deduction</Label>
+                        <Input
+                          id="restDayDeductionAmount"
+                          type="number"
+                          step="0.01"
+                          value={formData.restDayDeductionAmount}
+                          onChange={(e) => setFormData({ ...formData, restDayDeductionAmount: e.target.value })}
+                          placeholder="LKR per excess day"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>

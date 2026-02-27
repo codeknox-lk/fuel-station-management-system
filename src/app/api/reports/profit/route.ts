@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
 import { getAuthenticatedStationContext } from '@/lib/api-utils'
+import { calculateBillingPeriod } from '@/lib/date-utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,17 +25,20 @@ export async function GET(request: NextRequest) {
 
     const station = await prisma.station.findUnique({ where: { id: stationId } })
     const monthStartDay = station?.monthStartDate || 1
+    const monthEndDay = station?.monthEndDate
 
-    const startOfMonth = new Date(yearNum, monthNum - 1, monthStartDay, 0, 0, 0, 0)
-    const endOfMonth = new Date(yearNum, monthNum, monthStartDay - 1, 23, 59, 59, 999)
+    const currentPeriod = calculateBillingPeriod(yearNum, monthNum - 1, monthStartDay, monthEndDay)
+    const startOfMonth = currentPeriod.startDate
+    const endOfMonth = currentPeriod.endDate
 
 
     // Generate report for current month
     const currentMonthData = await calculateProfitForPeriod(stationId, startOfMonth, endOfMonth)
 
     // Generate report for previous month (for comparison)
-    const startOfPrevMonth = new Date(yearNum, monthNum - 2, monthStartDay, 0, 0, 0, 0)
-    const endOfPrevMonth = new Date(yearNum, monthNum - 1, monthStartDay - 1, 23, 59, 59, 999)
+    const prevPeriod = calculateBillingPeriod(yearNum, monthNum - 2, monthStartDay, monthEndDay)
+    const startOfPrevMonth = prevPeriod.startDate
+    const endOfPrevMonth = prevPeriod.endDate
 
     const prevMonthData = await calculateProfitForPeriod(stationId, startOfPrevMonth, endOfPrevMonth)
 

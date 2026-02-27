@@ -39,7 +39,9 @@ export async function PUT(
       holidayAllowance,
       fuelAllowance,
       hireDate,
-      isActive
+      isActive,
+      useStationSalaryDefaults,
+      epfRate
     } = body
 
     const finalName = (name !== undefined && name !== '') ? name.trim() : existing.name
@@ -88,7 +90,9 @@ export async function PUT(
         holidayAllowance: holidayAllowance !== undefined && holidayAllowance !== null && holidayAllowance !== '' ? parseFloat(String(holidayAllowance)) : ((existing as { holidayAllowance?: number }).holidayAllowance || 0),
         fuelAllowance: finalFuelAllowance,
         hireDate: hireDate !== undefined ? (hireDate ? new Date(hireDate) : null) : existing.hireDate,
-        isActive: isActive !== undefined ? isActive : existing.isActive
+        isActive: isActive !== undefined ? isActive : existing.isActive,
+        useStationSalaryDefaults: useStationSalaryDefaults !== undefined ? useStationSalaryDefaults : existing.useStationSalaryDefaults,
+        epfRate: epfRate !== undefined ? (epfRate !== null && epfRate !== '' ? parseFloat(String(epfRate)) : null) : existing.epfRate
       },
       include: {
         station: {

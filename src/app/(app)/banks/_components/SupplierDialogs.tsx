@@ -132,7 +132,7 @@ interface SupplierPaymentDialogProps {
 export function SupplierPaymentDialog({ supplier, open, onOpenChange, onSuccess }: SupplierPaymentDialogProps) {
     const { selectedStation } = useStation()
     const [loading, setLoading] = useState(false)
-    const [banks, setBanks] = useState<any[]>([])
+    const [banks, setBanks] = useState<{ id: string; name: string; accountNumber?: string | null }[]>([])
     const [form, setForm] = useState({
         amount: '',
         paymentSource: 'SAFE', // SAFE, CHEQUE, BANK_TRANSFER, OTHER

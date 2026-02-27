@@ -89,7 +89,9 @@ export async function POST(request: NextRequest) {
       holidayAllowance,
       fuelAllowance,
       hireDate,
-      isActive
+      isActive,
+      useStationSalaryDefaults,
+      epfRate
     } = result.data
 
     console.log('✅ Validation passed using Zod')
@@ -162,7 +164,9 @@ export async function POST(request: NextRequest) {
       holidayAllowance,
       fuelAllowance: finalFuelAllowance,
       hireDate: hireDate || null,
-      isActive: isActive !== undefined ? isActive : true
+      isActive: isActive !== undefined ? isActive : true,
+      useStationSalaryDefaults: useStationSalaryDefaults !== undefined ? useStationSalaryDefaults : true,
+      epfRate: epfRate !== undefined ? epfRate : null
     })
 
     const newOfficeStaff = await prisma.officeStaff.create({
@@ -181,6 +185,8 @@ export async function POST(request: NextRequest) {
         fuelAllowance: finalFuelAllowance,
         hireDate: hireDate || null,
         isActive: isActive !== undefined ? isActive : true,
+        useStationSalaryDefaults: useStationSalaryDefaults !== undefined ? useStationSalaryDefaults : true,
+        epfRate: epfRate !== undefined ? epfRate : null,
         organizationId: user.organizationId
       },
       include: {

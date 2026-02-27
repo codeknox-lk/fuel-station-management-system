@@ -94,6 +94,10 @@ interface SafeTransaction {
         bank?: {
           name: string
         }
+        amexBankId?: string
+        amexBank?: {
+          name: string
+        }
       }
       startNumber: string
       endNumber: string
@@ -739,7 +743,12 @@ export default function TransactionDetailsPage() {
                           <div key={entry.id} className="bg-card p-3 rounded border space-y-2">
                             <div className="font-semibold text-sm border-b pb-2">
                               {idx + 1}. {entry.terminal.name} ({entry.terminal.terminalNumber})
-                              {entry.terminal.bank && ` • ${entry.terminal.bank.name}`}
+                              {entry.terminal.bank && (
+                                <span>
+                                  {` • ${entry.terminal.bank.name}`}
+                                  {entry.terminal.amexBank?.name && ` (Amex: ${entry.terminal.amexBank.name})`}
+                                </span>
+                              )}
                             </div>
 
                             <div className="grid grid-cols-2 gap-2 text-xs">
@@ -918,7 +927,12 @@ export default function TransactionDetailsPage() {
                       <div key={entry.id} className="bg-card p-3 rounded border space-y-2">
                         <div className="font-semibold text-sm border-b pb-2">
                           {idx + 1}. {entry.terminal.name} ({entry.terminal.terminalNumber})
-                          {entry.terminal.bank && ` • ${entry.terminal.bank.name}`}
+                          {entry.terminal.bank && (
+                            <span>
+                              {` • ${entry.terminal.bank.name}`}
+                              {entry.terminal.amexBank?.name && ` (Amex: ${entry.terminal.amexBank.name})`}
+                            </span>
+                          )}
                         </div>
 
                         <div className="grid grid-cols-2 gap-2 text-xs">

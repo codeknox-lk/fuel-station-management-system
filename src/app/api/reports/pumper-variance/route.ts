@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { calculateBillingPeriod } from '@/lib/date-utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,10 +23,12 @@ export async function GET(request: NextRequest) {
 
     const station = await prisma.station.findUnique({ where: { id: stationId } })
     const monthStartDay = station?.monthStartDate || 1
+    const monthEndDay = station?.monthEndDate
 
     // Business month
-    const startOfMonth = new Date(year, monthNum - 1, monthStartDay, 0, 0, 0, 0)
-    const endOfMonth = new Date(year, monthNum, monthStartDay - 1, 23, 59, 59, 999)
+    const period = calculateBillingPeriod(year, monthNum - 1, monthStartDay, monthEndDay)
+    const startOfMonth = period.startDate
+    const endOfMonth = period.endDate
 
     // Initialize chronological daily variance array
     const chronologicalDays: string[] = []

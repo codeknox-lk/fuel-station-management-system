@@ -23,7 +23,12 @@ export async function GET(request: NextRequest) {
     // Get station
     const station = await prisma.station.findUnique({
       where: { id: stationId },
-      select: { id: true, name: true }
+      select: {
+        id: true,
+        name: true,
+        maxDipVariancePercent: true,
+        maxDipVarianceLiters: true
+      }
     })
 
     if (!station) {
@@ -322,8 +327,11 @@ export async function GET(request: NextRequest) {
         ? (Math.abs(variance) / validatedClosingBookStock) * 100
         : (closingDipStock > 0 ? 100 : 0) // If book is 0 but dip > 0, variance is 100%
 
-      // Tolerance calculation (2% or 200L, whichever is greater)
-      const toleranceLimit = Math.max(validatedClosingBookStock * 0.02, 200)
+      // Tolerance calculation based on Station preferences
+      const dipVariancePercent = station.maxDipVariancePercent ?? 2
+      const dipVarianceLiters = station.maxDipVarianceLiters ?? 200
+      const toleranceLimit = Math.max(validatedClosingBookStock * (dipVariancePercent / 100), dipVarianceLiters)
+
       let toleranceStatus: 'NORMAL' | 'WARNING' | 'CRITICAL'
 
       if (Math.abs(variance) <= toleranceLimit * 0.5) {

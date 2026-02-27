@@ -56,6 +56,12 @@ export async function GET(request: NextRequest) {
           baseSalary: true,
           holidayAllowance: true,
           advanceLimit: true,
+          useStationSalaryDefaults: true,
+          epfRate: true,
+          commissionPerThousand: true,
+          overtimeMultiplier: true,
+          restDayDeductionAmount: true,
+          allowedRestDays: true,
           hireDate: true,
           createdAt: true,
           updatedAt: true
@@ -86,6 +92,12 @@ export async function GET(request: NextRequest) {
           baseSalary: true,
           holidayAllowance: true,
           advanceLimit: true,
+          useStationSalaryDefaults: true,
+          epfRate: true,
+          commissionPerThousand: true,
+          overtimeMultiplier: true,
+          restDayDeductionAmount: true,
+          allowedRestDays: true,
           hireDate: true,
           createdAt: true,
           updatedAt: true
@@ -136,7 +148,13 @@ export async function POST(request: NextRequest) {
       baseSalary,
       holidayAllowance,
       advanceLimit,
-      isActive
+      isActive,
+      useStationSalaryDefaults,
+      epfRate,
+      commissionPerThousand,
+      overtimeMultiplier,
+      restDayDeductionAmount,
+      allowedRestDays
     } = result.data
 
     const phoneToUse = phone || phoneNumber || null
@@ -225,6 +243,12 @@ export async function POST(request: NextRequest) {
         baseSalary: baseSalary,
         holidayAllowance: holidayAllowance,
         advanceLimit: advanceLimit,
+        useStationSalaryDefaults: useStationSalaryDefaults !== undefined ? useStationSalaryDefaults : true,
+        epfRate: epfRate !== undefined ? epfRate : null,
+        commissionPerThousand: commissionPerThousand !== undefined ? commissionPerThousand : null,
+        overtimeMultiplier: overtimeMultiplier !== undefined ? overtimeMultiplier : null,
+        restDayDeductionAmount: restDayDeductionAmount !== undefined ? restDayDeductionAmount : null,
+        allowedRestDays: allowedRestDays !== undefined ? allowedRestDays : null,
         isActive: isActive !== undefined ? isActive : true,
         organizationId: user.organizationId
       }
