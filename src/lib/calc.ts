@@ -1,4 +1,4 @@
-import { Price } from '@/lib/types'
+import { Price } from '@/types'
 import { Decimal } from 'decimal.js'
 
 // Tolerance configuration

@@ -26,6 +26,8 @@ import {
   Clock
 } from 'lucide-react'
 import { exportTankReportPDF } from '@/lib/exportUtils'
+import { Progress } from '@/components/ui/progress'
+import { cn } from '@/lib/utils'
 
 
 interface DeliveryDetail {
@@ -303,6 +305,12 @@ export default function TanksReportsPage() {
     return 'bg-red-500'
   }
 
+  const getFillCardBorderColor = (percentage: number) => {
+    if (percentage >= 80) return 'border-l-green-500'
+    if (percentage >= 30) return 'border-l-yellow-500'
+    return 'border-l-red-500'
+  }
+
   // Main tank columns
   const tankColumns: Column<TankMovement>[] = [
     {
@@ -418,12 +426,11 @@ export default function TanksReportsPage() {
             <div className={`font-semibold mb-1 ${getFillColor(percentage)}`}>
               {percentage?.toFixed(1) || 0}%
             </div>
-            <div className="w-full bg-muted rounded-full h-2">
-              <div
-                className={`h-2 rounded-full ${getFillBarColor(percentage)}`}
-                style={{ width: `${Math.min(100, Math.max(0, percentage))}%` }}
-              ></div>
-            </div>
+            <Progress
+              value={percentage}
+              className="h-2"
+              indicatorClassName={getFillBarColor(percentage)}
+            />
             {row.daysUntilEmpty && (
               <div className="text-xs text-muted-foreground mt-1">
                 ~{row.daysUntilEmpty.toFixed(1)} days left
@@ -813,7 +820,7 @@ export default function TanksReportsPage() {
 
           {/* Detailed Breakdowns by Tank */}
           {tankMovements.map((tank) => (
-            <Card key={tank.id} className="border-l-4" style={{ borderLeftColor: getFillBarColor(tank.closingPercentage) }}>
+            <Card key={tank.id} className={cn("border-l-4", getFillCardBorderColor(tank.closingPercentage))}>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>

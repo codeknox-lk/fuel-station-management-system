@@ -47,9 +47,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { exportPumperVariancePDF, exportPumperVarianceExcel } from '@/lib/exportUtils'
+import { Progress } from '@/components/ui/progress'
 
 
 interface PumperVariance {
@@ -341,15 +342,15 @@ export default function PumperVariancePage() {
           <div className={`font-bold ${getVarianceRateColor(value as number)}`}>
             {(value as number)?.toFixed(1)}%
           </div>
-          <div className="w-16 h-1 bg-slate-100 rounded-full overflow-hidden mt-1">
-            <div
-              className={`h-full ${(value as number) > 30 ? 'bg-red-500' :
+          <Progress
+            value={Math.min((value as number) * 2, 100)}
+            className="w-16 h-1 mt-1 bg-slate-100"
+            indicatorClassName={
+              (value as number) > 30 ? 'bg-red-500' :
                 (value as number) > 15 ? 'bg-orange-500' :
                   (value as number) > 5 ? 'bg-blue-500' : 'bg-green-500'
-                }`}
-              style={{ width: `${Math.min((value as number) * 2, 100)}%` }}
-            ></div>
-          </div>
+            }
+          />
         </div>
       )
     },
@@ -531,9 +532,11 @@ export default function PumperVariancePage() {
                 <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">
                   {averageVarianceRate.toFixed(1)}%
                 </div>
-                <div className="w-full h-1 bg-muted rounded-full overflow-hidden mt-2">
-                  <div className="h-full bg-orange-500" style={{ width: `${Math.min(averageVarianceRate * 2, 100)}%` }}></div>
-                </div>
+                <Progress
+                  value={Math.min(averageVarianceRate * 2, 100)}
+                  className="h-1 mt-2"
+                  indicatorClassName="bg-orange-500"
+                />
               </CardContent>
             </Card>
 

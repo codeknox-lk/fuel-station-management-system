@@ -12,6 +12,7 @@ import {
   AlertTriangle, Clock, Activity, FileText, Wallet,
   Building2, CheckCircle2, Package, ShoppingBag, Plus
 } from 'lucide-react'
+import { Progress } from '@/components/ui/progress'
 
 interface FuelStock {
   name: string
@@ -249,14 +250,14 @@ export default function DashboardPage() {
                     {(fuel.stock || 0).toLocaleString()} / {(fuel.capacity || 0).toLocaleString()} L
                   </span>
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full transition-all ${fuel.percentage < 20 ? 'bg-red-500' :
+                <Progress
+                  value={fuel.percentage}
+                  className="h-2"
+                  indicatorClassName={
+                    fuel.percentage < 20 ? 'bg-red-500' :
                       fuel.percentage < 50 ? 'bg-yellow-500' : 'bg-green-500'
-                      }`}
-                    style={{ width: `${Math.min(fuel.percentage, 100)}%` }}
-                  />
-                </div>
+                  }
+                />
               </div>
             ))}
             {fuelStock.length === 0 && (

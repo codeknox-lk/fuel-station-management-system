@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuditLogManual } from '@/lib/audit'
-import { AuditAction } from '@/lib/audit'
+import { AuditAction } from '@prisma/client'
 
 import { getServerUser } from '@/lib/auth-server'
 
@@ -41,8 +41,7 @@ export async function POST(request: NextRequest) {
             },
             user.userId,
             user.username,
-            user.role,
-            user.organizationId
+            user.role
         )
 
         return NextResponse.json({ success: true }, { status: 201 })

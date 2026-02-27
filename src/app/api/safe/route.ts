@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { safeParseFloat } from '@/lib/validation'
+import { safeParseFloat } from '@/lib/utils'
 import { getServerUser } from '@/lib/auth-server'
 
 // GET: Get safe for station(s) or create if doesn't exist

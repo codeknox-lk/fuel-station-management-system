@@ -37,6 +37,7 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { exportPumperDetailsReportPDF, exportPumperDetailsReportExcel } from '@/lib/exportUtils'
+import { Progress } from '@/components/ui/progress'
 import {
   XAxis,
   YAxis,
@@ -433,12 +434,11 @@ export default function PumperDetailsReport() {
                   <div className="flex flex-col">
                     <div className="text-xl font-bold truncate">{reportData.summary.topPerformer.name}</div>
                     <div className="flex items-center gap-2 mt-1">
-                      <div className="flex-1 h-1.5 bg-white/20 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-white"
-                          style={{ width: `${reportData.summary.topPerformer.efficiency}%` }}
-                        ></div>
-                      </div>
+                      <Progress
+                        value={reportData.summary.topPerformer.efficiency}
+                        className="flex-1 h-1.5 bg-white/20"
+                        indicatorClassName="bg-white"
+                      />
                       <span className="text-xs font-bold text-purple-100">{reportData.summary.topPerformer.efficiency.toFixed(1)}%</span>
                     </div>
                   </div>
@@ -466,10 +466,16 @@ export default function PumperDetailsReport() {
                     <span>Total: {reportData.summary.totalPumpers}</span>
                   </div>
                   <div className="flex gap-1 h-2 rounded-full overflow-hidden">
-                    <div className="bg-green-500 h-full" style={{ width: `${(reportData.summary.excellentPerformers / reportData.summary.totalPumpers) * 100}%` }}></div>
-                    <div className="bg-blue-500 h-full" style={{ width: `${(reportData.summary.goodPerformers / reportData.summary.totalPumpers) * 100}%` }}></div>
-                    <div className="bg-orange-500 h-full" style={{ width: `${(reportData.summary.needsImprovement / reportData.summary.totalPumpers) * 100}%` }}></div>
-                    <div className="bg-red-500 h-full" style={{ width: `${(reportData.summary.criticalPerformers / reportData.summary.totalPumpers) * 100}%` }}></div>
+                    <style>{`
+                      .perf-exc { width: ${Math.max(0, (reportData.summary.excellentPerformers / reportData.summary.totalPumpers) * 100)}% }
+                      .perf-good { width: ${Math.max(0, (reportData.summary.goodPerformers / reportData.summary.totalPumpers) * 100)}% }
+                      .perf-ni { width: ${Math.max(0, (reportData.summary.needsImprovement / reportData.summary.totalPumpers) * 100)}% }
+                      .perf-crit { width: ${Math.max(0, (reportData.summary.criticalPerformers / reportData.summary.totalPumpers) * 100)}% }
+                    `}</style>
+                    <div className="bg-green-500 h-full perf-exc"></div>
+                    <div className="bg-blue-500 h-full perf-good"></div>
+                    <div className="bg-orange-500 h-full perf-ni"></div>
+                    <div className="bg-red-500 h-full perf-crit"></div>
                   </div>
                   <div className="flex flex-wrap gap-y-1 gap-x-3 pt-1">
                     <div className="flex items-center gap-1.5 text-[10px]">
@@ -682,12 +688,11 @@ export default function PumperDetailsReport() {
                           <span className="font-medium">{formatFuelName(fuel.fuelType)}</span>
                           <span className="text-muted-foreground">{fuel.liters.toLocaleString()} L</span>
                         </div>
-                        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-orange-500 dark:bg-orange-400"
-                            style={{ width: `${selectedPumperData.totalLiters > 0 ? (fuel.liters / selectedPumperData.totalLiters) * 100 : 0}%` }}
-                          ></div>
-                        </div>
+                        <Progress
+                          value={selectedPumperData.totalLiters > 0 ? (fuel.liters / selectedPumperData.totalLiters) * 100 : 0}
+                          className="h-2 w-full"
+                          indicatorClassName="bg-orange-500 dark:bg-orange-400"
+                        />
                       </div>
                     ))}
                   </div>

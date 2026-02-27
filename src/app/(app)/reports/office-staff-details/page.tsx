@@ -40,6 +40,7 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import * as XLSX from 'xlsx'
+import { Progress } from '@/components/ui/progress'
 
 interface ActiveLoan {
     id: string
@@ -558,24 +559,22 @@ export default function OfficeStaffDetailsReport() {
                                                 <span className="font-medium">Base Proportion</span>
                                                 <span className="text-muted-foreground">{((selectedStaffData.baseSalary / selectedStaffData.grossSalary) * 100).toFixed(0)}%</span>
                                             </div>
-                                            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-purple-500 dark:bg-purple-400"
-                                                    style={{ width: `${(selectedStaffData.baseSalary / selectedStaffData.grossSalary) * 100}%` }}
-                                                ></div>
-                                            </div>
+                                            <Progress
+                                                value={(selectedStaffData.baseSalary / selectedStaffData.grossSalary) * 100}
+                                                className="h-2 w-full"
+                                                indicatorClassName="bg-purple-500 dark:bg-purple-400"
+                                            />
                                         </div>
                                         <div className="space-y-1">
                                             <div className="flex justify-between text-sm">
                                                 <span className="font-medium">Allowances</span>
                                                 <span className="text-muted-foreground">{((selectedStaffData.totalAllowances / selectedStaffData.grossSalary) * 100).toFixed(0)}%</span>
                                             </div>
-                                            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-green-500 dark:bg-green-400"
-                                                    style={{ width: `${(selectedStaffData.totalAllowances / selectedStaffData.grossSalary) * 100}%` }}
-                                                ></div>
-                                            </div>
+                                            <Progress
+                                                value={(selectedStaffData.totalAllowances / selectedStaffData.grossSalary) * 100}
+                                                className="h-2 w-full"
+                                                indicatorClassName="bg-green-500 dark:bg-green-400"
+                                            />
                                         </div>
                                     </div>
                                 </CardContent>

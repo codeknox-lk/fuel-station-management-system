@@ -23,6 +23,7 @@ import {
   Wrench,
   Network
 } from 'lucide-react'
+import { Progress } from '@/components/ui/progress'
 
 import { TankWithDetails } from '@/types/db'
 
@@ -265,12 +266,11 @@ export default function TanksPage() {
         const percentage = value as number
         return (
           <div className="flex items-center gap-2">
-            <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-              <div
-                className={`h-full ${getFillColor(percentage)} transition-all duration-300`}
-                style={{ width: `${Math.min(percentage, 100)}%` }}
-              />
-            </div>
+            <Progress
+              value={percentage}
+              className="w-20 h-2"
+              indicatorClassName={getFillColor(percentage)}
+            />
             <span className="text-sm font-medium">{percentage}%</span>
           </div>
         )
@@ -436,12 +436,11 @@ export default function TanksPage() {
                       {Math.round((tankDetails.currentLevel / tankDetails.capacity) * 100)}%
                     </span>
                   </div>
-                  <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${getFillColor(Math.round((tankDetails.currentLevel / tankDetails.capacity) * 100))} transition-all duration-300`}
-                      style={{ width: `${Math.min((tankDetails.currentLevel / tankDetails.capacity) * 100, 100)}%` }}
-                    />
-                  </div>
+                  <Progress
+                    value={Math.round((tankDetails.currentLevel / tankDetails.capacity) * 100)}
+                    className="h-3"
+                    indicatorClassName={getFillColor(Math.round((tankDetails.currentLevel / tankDetails.capacity) * 100))}
+                  />
                   <div className="flex justify-between text-xs text-muted-foreground mt-1">
                     <span>0L</span>
                     <span>{(tankDetails.capacity || 0).toLocaleString()}L</span>

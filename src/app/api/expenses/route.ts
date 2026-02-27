@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { auditOperations } from '@/lib/auditMiddleware'
+import { auditOperations } from '@/lib/audit'
 import { CreateExpenseSchema } from '@/lib/schemas'
 import { getServerUser } from '@/lib/auth-server'
 

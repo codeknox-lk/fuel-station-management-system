@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle } from 'lucide-react'
+import { Progress } from '@/components/ui/progress'
 
 interface IdleWarningModalProps {
     isOpen: boolean
@@ -61,14 +62,11 @@ export function IdleWarningModal({
                 </p>
 
                 {/* Countdown Bar */}
-                <div className="w-full bg-gray-200 rounded-full h-2 mb-6 overflow-hidden">
-                    <div
-                        className="bg-orange-600 h-full transition-all duration-1000 ease-linear"
-                        style={{
-                            width: `${(secondsRemaining / (warningTime / 1000)) * 100}%`,
-                        }}
-                    />
-                </div>
+                <Progress
+                    value={(secondsRemaining / (warningTime / 1000)) * 100}
+                    className="w-full h-2 mb-6"
+                    indicatorClassName="bg-orange-600 transition-all duration-1000 ease-linear"
+                />
 
                 {/* Buttons */}
                 <div className="flex gap-3">

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
-import { auditOperations } from '@/lib/auditMiddleware'
+import { auditOperations } from '@/lib/audit'
 import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {

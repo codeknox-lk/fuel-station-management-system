@@ -49,6 +49,7 @@ import {
 } from 'lucide-react'
 import { exportCreditCustomerReportPDF, exportCreditCustomerReportExcel } from '@/lib/exportUtils'
 import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
 
 interface CreditCustomerReport {
   summary: {
@@ -117,6 +118,28 @@ const AGING_COLORS = {
   '31-60 days': '#f59e0b',
   '61-90 days': '#ef4444',
   '90+ days': '#7c2d12'
+}
+
+const getAgingBadgeClass = (category: string) => {
+  switch (category) {
+    case 'Current': return 'border-emerald-500/40 text-emerald-500 bg-emerald-500/10'
+    case '1-30 days': return 'border-blue-500/40 text-blue-500 bg-blue-500/10'
+    case '31-60 days': return 'border-amber-500/40 text-amber-500 bg-amber-500/10'
+    case '61-90 days': return 'border-red-500/40 text-red-500 bg-red-500/10'
+    case '90+ days': return 'border-orange-900/40 text-orange-900 bg-orange-900/10'
+    default: return 'border-gray-500/40 text-gray-500 bg-gray-500/10'
+  }
+}
+
+const getAgingBgClass = (category: string) => {
+  switch (category) {
+    case 'Current': return 'bg-emerald-500'
+    case '1-30 days': return 'bg-blue-500'
+    case '31-60 days': return 'bg-amber-500'
+    case '61-90 days': return 'bg-red-500'
+    case '90+ days': return 'bg-orange-900'
+    default: return 'bg-gray-500'
+  }
 }
 
 export default function CreditReportPage() {
@@ -383,12 +406,11 @@ export default function CreditReportPage() {
               <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">
                 {collectionEfficiency.toFixed(1)}%
               </div>
-              <div className="w-full h-1 bg-muted rounded-full overflow-hidden mt-2">
-                <div
-                  className={`h-full ${collectionEfficiency > 90 ? 'bg-green-500' : collectionEfficiency > 75 ? 'bg-blue-500' : 'bg-red-500'}`}
-                  style={{ width: `${Math.min(collectionEfficiency, 100)}%` }}
-                ></div>
-              </div>
+              <Progress
+                value={Math.min(collectionEfficiency, 100)}
+                className="h-1 mt-2"
+                indicatorClassName={collectionEfficiency > 90 ? 'bg-green-500' : collectionEfficiency > 75 ? 'bg-blue-500' : 'bg-red-500'}
+              />
             </CardContent>
           </Card>
 
@@ -538,8 +560,7 @@ export default function CreditReportPage() {
                 <div key={category} className="flex items-center justify-between p-3 rounded border">
                   <div className="flex items-center gap-3">
                     <div
-                      className="w-4 h-4 rounded"
-                      style={{ backgroundColor: AGING_COLORS[category as keyof typeof AGING_COLORS] }}
+                      className={`w-4 h-4 rounded ${getAgingBgClass(category)}`}
                     />
                     <div>
                       <p className="font-semibold">{category}</p>
@@ -592,12 +613,11 @@ export default function CreditReportPage() {
                     <td className="text-right p-3">
                       <div className="flex flex-col items-end gap-1">
                         <span className="text-xs">{customer.utilizationPercent.toFixed(0)}%</span>
-                        <div className="w-16 h-1 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className={`h-full ${customer.utilizationPercent > 90 ? 'bg-red-500' : customer.utilizationPercent > 50 ? 'bg-orange-500' : 'bg-green-500'}`}
-                            style={{ width: `${Math.min(customer.utilizationPercent, 100)}%` }}
-                          ></div>
-                        </div>
+                        <Progress
+                          value={Math.min(customer.utilizationPercent, 100)}
+                          className="w-16 h-1"
+                          indicatorClassName={customer.utilizationPercent > 90 ? 'bg-red-500' : customer.utilizationPercent > 50 ? 'bg-orange-500' : 'bg-green-500'}
+                        />
                       </div>
                     </td>
                     <td className="text-right p-3">Rs. {(customer.salesInPeriod || 0).toLocaleString()}</td>
@@ -610,12 +630,7 @@ export default function CreditReportPage() {
                     <td className="p-3">
                       <Badge
                         variant="outline"
-                        className="font-normal"
-                        style={{
-                          borderColor: `${AGING_COLORS[customer.agingCategory as keyof typeof AGING_COLORS]}40`,
-                          color: AGING_COLORS[customer.agingCategory as keyof typeof AGING_COLORS],
-                          backgroundColor: `${AGING_COLORS[customer.agingCategory as keyof typeof AGING_COLORS]}10`
-                        }}
+                        className={`font-normal ${getAgingBadgeClass(customer.agingCategory)}`}
                       >
                         {customer.agingCategory}
                       </Badge>

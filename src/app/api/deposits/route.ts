@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { safeParseFloat, validateAmount, validateRequired, validateDate } from '@/lib/validation'
+import { safeParseFloat, validateAmount, validateRequired, validateDate } from '@/lib/utils'
 import { getServerUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {

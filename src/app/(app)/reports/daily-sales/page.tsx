@@ -95,6 +95,30 @@ const getFuelColor = (fuelName: string): string => {
   return fuelColors[fuelName] || '#666'
 }
 
+const getFuelBgClass = (fuelName: string): string => {
+  const classes: Record<string, string> = {
+    'Petrol 92': 'bg-blue-500',
+    'Petrol 95': 'bg-violet-500',
+    'Diesel': 'bg-emerald-500',
+    'Super Diesel': 'bg-amber-500',
+    'Extra Mile': 'bg-pink-500',
+    'Oil': 'bg-red-500'
+  }
+  return classes[fuelName] || 'bg-gray-500'
+}
+
+const getFuelTextClass = (fuelName: string): string => {
+  const classes: Record<string, string> = {
+    'Petrol 92': 'text-blue-500',
+    'Petrol 95': 'text-violet-500',
+    'Diesel': 'text-emerald-500',
+    'Super Diesel': 'text-amber-500',
+    'Extra Mile': 'text-pink-500',
+    'Oil': 'text-red-500'
+  }
+  return classes[fuelName] || 'text-gray-500'
+}
+
 export default function DailySalesReportPage() {
   const router = useRouter()
   const { selectedStation, stations, isAllStations } = useStation()
@@ -382,7 +406,7 @@ export default function DailySalesReportPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: getFuelColor(fuelName) }}></div>
+                    <div className={`w-2 h-2 rounded-full ${getFuelBgClass(fuelName)}`}></div>
                     {fuelName}
                   </span>
                   <Fuel className="h-4 w-4 text-muted-foreground" />
@@ -520,7 +544,7 @@ export default function DailySalesReportPage() {
                 <tr className="border-b bg-muted/30">
                   <th className="text-left p-3 font-semibold text-muted-foreground">Day</th>
                   {salesData.fuelTypes.map(fuelName => (
-                    <th key={fuelName} className="text-right p-3 font-semibold" style={{ color: getFuelColor(fuelName) }}>
+                    <th key={fuelName} className={`text-right p-3 font-semibold ${getFuelTextClass(fuelName)}`}>
                       {fuelName}
                     </th>
                   ))}
@@ -553,7 +577,7 @@ export default function DailySalesReportPage() {
                 <tr className="bg-muted/50 font-bold border-t-2 border-primary/20">
                   <td className="p-4">TOTAL</td>
                   {salesData.fuelTypes.map(fuelName => (
-                    <td key={fuelName} className="text-right p-4" style={{ color: getFuelColor(fuelName) }}>
+                    <td key={fuelName} className={`text-right p-4 ${getFuelTextClass(fuelName)}`}>
                       Rs. {(salesData.totalsByFuelType?.[fuelName] || (0) || 0).toLocaleString()}
                     </td>
                   ))}
